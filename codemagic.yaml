@@ -33,6 +33,9 @@ workflows:
           setkey NSMicrophoneUsageDescription "لتسجيل مقطع فيديو يوضّح مشكلة الصيانة"
           setkey CFBundleVersion "$BUILD_NUMBER"
           setkey CFBundleDisplayName "خافِت"
+          # التطبيق يستخدم HTTPS القياسي فقط = تشفير معفى، فلا تسأل آبل كل مرة
+          plutil -insert ITSAppUsesNonExemptEncryption -bool false "$PLIST" 2>/dev/null || \
+            plutil -replace ITSAppUsesNonExemptEncryption -bool false "$PLIST"
           echo "— الأذونات بعد التعديل —"
           plutil -p "$PLIST" | grep -i -e usagedescription -e CFBundleVersion
       - name: تجهيز مفتاح آبل

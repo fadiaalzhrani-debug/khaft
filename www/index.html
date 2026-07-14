@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>خافِت | صيانة منزلية شاملة</title>
 <meta name="description" content="خافِت — منصة صيانة منزلية شاملة: سباكة، كهرباء، تكييف، نجارة، دهان، أجهزة وتنظيف. احجز فني موثوق في الوقت المناسب لك." />
 <link rel="icon" href="logo.png" />
@@ -38,7 +38,7 @@
   ::selection{background:var(--gold);color:var(--ink)}
 
   /* ===== Header ===== */
-  header.top{position:sticky;top:0;z-index:40;background:rgba(250,247,239,.82);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line)}
+  header.top{position:sticky;top:0;z-index:40;background:rgba(250,247,239,.82);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
   .top .wrap{display:flex;align-items:center;gap:12px;height:68px}
   .logo{display:flex;align-items:center;gap:11px;font-weight:900;font-size:1.4rem;color:var(--ink);letter-spacing:-.01em}
   .logo .mk{width:40px;height:40px;border-radius:13px;overflow:hidden;flex-shrink:0;box-shadow:var(--shadow-gold)}
