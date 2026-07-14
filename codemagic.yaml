@@ -1,5 +1,5 @@
 # إعدادات بناء تطبيق خافِت على Codemagic (iOS)
-# التوقيع والرفع عبر متغيّرات بيئة App Store Connect (مجموعة: appstore)
+# المفتاح الخاص يُحفظ بصيغة Base64 (سطر واحد) لتفادي كسر الأسطر، ثم يُفكّ داخل البناء.
 workflows:
   ios-khafet:
     name: خافِت iOS
@@ -20,22 +20,36 @@ workflows:
         script: |
           npx cap add ios || true
           npx cap sync ios
+      - name: تجهيز مفتاح آبل
+        script: |
+          echo "$APP_STORE_CONNECT_KEY_B64" | base64 --decode > /tmp/AuthKey.p8
+          echo "تم تجهيز المفتاح:"
+          head -1 /tmp/AuthKey.p8
       - name: إنشاء وإعداد شهادات التوقيع
         script: |
           keychain initialize
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key @file:/tmp/AuthKey.p8 \
+            --create
           keychain add-certificates
           xcode-project use-profiles
       - name: بناء ملف IPA
         script: |
           cd ios/App
           xcode-project build-ipa --workspace "App.xcworkspace" --scheme "App"
+      - name: رفع للـ App Store Connect
+        script: |
+          IPA=$(find "$CM_BUILD_DIR" -name '*.ipa' | head -1)
+          echo "الملف: $IPA"
+          app-store-connect publish \
+            --path "$IPA" \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
+            --private-key @file:/tmp/AuthKey.p8
     artifacts:
+      - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
-    publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
