@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>خافِت | بوابة المزوّد</title>
+<meta name="robots" content="noindex" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%23141414'/><text y='.9em' x='18' font-size='60'>🤝</text></svg>" />
+<meta name="theme-color" content="#141414" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
+<style>
+  :root{ --gold:#F5C518; --gold-strong:#E7B70B; --ink:#141414; --bg:#0F1115; --panel:#171A20; --card:#1C2027;
+    --text:#EDEEF0; --muted:#9AA0AA; --line:#2A2F38; --ok:#22C55E; --danger:#F87171; --r:18px; --shadow:0 12px 30px rgba(0,0,0,.35); }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Cairo','Segoe UI',Tahoma,system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-tap-highlight-color:transparent}
+  .wrap{max-width:900px;margin:0 auto;padding:0 16px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select{font-family:inherit;font-size:1rem}
+  a{color:inherit;text-decoration:none}
+  header.top{position:sticky;top:0;z-index:30;background:rgba(15,17,21,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;gap:12px;min-height:64px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:900;font-size:1.15rem}
+  .brand .mk{width:36px;height:36px;border-radius:10px;background:var(--gold);color:var(--ink);display:grid;place-items:center;font-size:1.1rem;flex-shrink:0}
+  .brand small{display:block;color:var(--muted);font-size:.72rem;font-weight:700}
+  .spacer{flex:1}
+  .logout{color:var(--muted);font-weight:700;font-size:.85rem}
+
+  .login{max-width:400px;margin:40px auto;padding:0 18px;text-align:center}
+  .login .ic{font-size:3rem;margin-bottom:8px}
+  .login h1{font-size:1.5rem;font-weight:900}
+  .login p{color:var(--muted);margin:6px 0 20px}
+  .login input{width:100%;padding:15px;border-radius:13px;background:var(--card);border:1px solid var(--line);color:var(--text);text-align:center;font-weight:700;font-size:1.1rem;margin-bottom:12px}
+  .btn{width:100%;background:var(--gold);color:var(--ink);font-weight:900;padding:16px;border-radius:13px;font-size:1.05rem;transition:.15s}
+  .btn:hover{background:var(--gold-strong)}
+  .login .reg{display:block;margin-top:16px;color:var(--gold);font-weight:800}
+  .login .reg2{display:block;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);color:var(--muted);font-weight:700;font-size:.9rem}
+  .login .reg2:hover{color:var(--text)}
+  .login .msg{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);color:#fca5a5;border-radius:12px;padding:12px;margin-top:12px;font-weight:600}
+  .login .msg.wait{background:rgba(245,197,24,.12);border-color:rgba(245,197,24,.3);color:var(--gold)}
+
+  .hero{padding:18px 0 6px}
+  .hero h1{font-size:1.3rem;font-weight:900}
+  .hero .sub{color:var(--muted);font-size:.9rem}
+  .owed{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:7px 14px;margin-top:10px;font-size:.85rem;font-weight:700;color:var(--muted)}
+  .owed b{color:var(--gold)}
+  .tabs{display:flex;gap:8px;margin:16px 0}
+  .tab{flex:1;padding:12px;border-radius:12px;background:var(--card);border:1px solid var(--line);font-weight:800;color:var(--muted);text-align:center}
+  .tab.active{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  .tab .cnt{opacity:.7}
+
+  .tjob{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow)}
+  .tj-head{background:linear-gradient(90deg,rgba(245,197,24,.14),rgba(245,197,24,.04));padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+  .tj-when{font-weight:900;font-size:1.2rem}
+  .status{font-size:.76rem;font-weight:800;padding:5px 12px;border-radius:999px;background:#23272f;border:1px solid var(--line)}
+  .status.new{background:rgba(245,197,24,.15);color:var(--gold)}
+  .status.confirmed,.status.progress{background:rgba(56,132,255,.15);color:#7fb0ff}
+  .status.done{background:rgba(34,197,94,.15);color:#6ee7a0}
+  .tj-body{padding:15px 18px}
+  .tj-row{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--line);font-size:1.05rem}
+  .tj-row:last-child{border-bottom:none}
+  .tj-k{min-width:110px;color:var(--muted);font-weight:700;font-size:.95rem;flex-shrink:0}
+  .tj-v{flex:1;font-weight:800}
+  .tj-v a{color:var(--gold)}
+  .quick-tag{display:inline-block;background:var(--gold);color:var(--ink);font-weight:900;padding:6px 14px;border-radius:999px;font-size:.9rem;margin-bottom:6px}
+  .tvideo{display:inline-flex;gap:6px;background:#7c3aed;color:#fff !important;padding:9px 15px;border-radius:11px;font-weight:800;font-size:.92rem;margin-top:4px}
+  .tmap{display:inline-flex;gap:6px;margin-top:8px;background:var(--gold);color:var(--ink);padding:9px 15px;border-radius:11px;font-weight:800;font-size:.9rem}
+  .tacts{display:flex;gap:10px;padding:0 18px 16px}
+  .tbtn{flex:1;padding:16px;border-radius:13px;font-weight:900;font-size:1.1rem;text-align:center}
+  .tbtn.accept{background:var(--gold);color:var(--ink)}
+  .tbtn.done{background:var(--ok);color:#04210f}
+  .tbtn.inv{background:#211D16;border:1px solid rgba(245,197,24,.3);color:var(--gold)}
+  .tbtn.inv.sent{background:rgba(34,197,94,.14);color:#6ee7a0}
+  .tbtn.donelbl{background:rgba(34,197,94,.14);color:#6ee7a0}
+  .empty{text-align:center;padding:50px 20px;color:var(--muted)}
+  .empty .ico{font-size:3rem;margin-bottom:10px;opacity:.5}
+
+  /* Invoice modal */
+  .inv-modal{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center}
+  .inv-modal.show{display:flex}
+  .inv-card{background:var(--panel);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:18px}
+  .inv-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .inv-head b{font-size:1.3rem;font-weight:900}
+  .inv-head button{width:38px;height:38px;border-radius:50%;background:var(--card);font-size:1.2rem}
+  .inv-add{display:flex;gap:8px;margin-bottom:14px}
+  .inv-add select{flex:1;padding:15px 12px;border-radius:12px;background:var(--card);color:var(--text);border:1px solid var(--line);font-weight:800;font-size:1.05rem}
+  .inv-add .cust{padding:15px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--text);font-weight:800;white-space:nowrap}
+  .inv-row{display:flex;align-items:center;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}
+  .inv-row .ir-name{flex:1;font-weight:800;font-size:1.15rem}
+  .inv-row .ir-qty{display:flex;align-items:center;background:var(--card);border-radius:11px;overflow:hidden}
+  .inv-row .ir-qty button{width:38px;height:40px;font-weight:900;color:var(--gold);font-size:1.35rem}
+  .inv-row .ir-qty span{min-width:30px;text-align:center;font-weight:900;font-size:1.15rem}
+  .inv-row .ir-price{width:92px;padding:11px;border-radius:10px;background:var(--card);border:1px solid var(--line);color:var(--text);font-weight:900;text-align:center;font-size:1.1rem}
+  .inv-row .ir-del{color:var(--danger);font-size:1.3rem;padding:6px}
+  .inv-empty{color:var(--muted);text-align:center;padding:20px;font-weight:700}
+  .inv-total{display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:14px;border-top:2px solid var(--line);font-weight:900;font-size:1.5rem}
+  .inv-total b{color:var(--gold)}
+  .inv-acts{display:flex;gap:10px;margin-top:18px}
+  .inv-acts .tbtn{flex:1}
+
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--gold);color:var(--ink);padding:14px 24px;border-radius:14px;font-weight:800;z-index:80;opacity:0;transition:.3s;box-shadow:var(--shadow);max-width:90%;text-align:center;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="brand"><span class="mk">🤝</span><span>خافِت<small>بوابة المزوّد</small></span></div>
+  <span class="spacer"></span>
+  <button class="logout" id="logoutBtn" style="display:none" onclick="logout()">خروج</button>
+</div></header>
+
+<div class="wrap"><div id="app"></div></div>
+<div id="invModal" class="inv-modal"></div>
+<div id="toast"></div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://zulogtqxbuqxmdmjpzqj.supabase.co';
+const SUPABASE_ANON='sb_publishable_ssggqTzT4GG4sreXV1LObQ_C3yiYhaG';
+const BRAND='خافِت'; const CONTACT='0590497866'; const COMMISSION=3; const SAVE_KEY='siyanah_v1';
+const PROVIDER_PASS='khafet2025';   // كلمة مرور بوابة المزوّد (عدّليها — يعطيها للمزوّدين المعتمدين)
+const SERVICES=[
+  {id:'p1',ico:'🚿',name:'تغيير شطّاف',price:80},{id:'p2',ico:'🚰',name:'تسليك مجاري/بالوعة',price:120},
+  {id:'p3',ico:'🔩',name:'تغيير خلاط ماء',price:100},{id:'p4',ico:'💧',name:'إصلاح تسريب مياه',price:150},
+  {id:'p5',ico:'♨️',name:'تركيب/إصلاح سخان',price:250},{id:'p6',ico:'🚽',name:'إصلاح سيفون الحمام',price:110},
+  {id:'e1',ico:'💡',name:'تغيير لمبة/إضاءة',price:50},{id:'e2',ico:'✨',name:'تركيب ثريا',price:180},
+  {id:'e3',ico:'⚡',name:'إصلاح قصر/انقطاع',price:160},{id:'e4',ico:'🔌',name:'تغيير مفتاح/بريزة',price:70},
+  {id:'e5',ico:'🌀',name:'تركيب مروحة سقف',price:200},{id:'e6',ico:'🧰',name:'فحص لوحة الكهرباء',price:130},
+  {id:'ac1',ico:'❄️',name:'تنظيف مكيف سبليت',price:120},{id:'ac2',ico:'🌀',name:'تعبئة فريون',price:200},
+  {id:'ac3',ico:'🧰',name:'صيانة/إصلاح مكيف',price:180},{id:'ac4',ico:'🔧',name:'تركيب مكيف سبليت',price:350},
+  {id:'ac5',ico:'🪟',name:'صيانة مكيف شباك',price:150},
+  {id:'c1',ico:'🚪',name:'إصلاح باب/مفصلات',price:120},{id:'c2',ico:'🗄️',name:'إصلاح دولاب/مطبخ',price:150},
+  {id:'c3',ico:'🪟',name:'إصلاح نافذة/شيش',price:130},{id:'c4',ico:'🛏️',name:'تركيب/تجميع أثاث',price:140},
+  {id:'pt1',ico:'🎨',name:'دهان غرفة',price:400},{id:'pt2',ico:'🖌️',name:'ترميم وتلميس دهان',price:200},
+  {id:'pt3',ico:'🧱',name:'معالجة تشققات ورطوبة',price:300},
+  {id:'a1',ico:'🧺',name:'إصلاح غسالة',price:180},{id:'a2',ico:'🧊',name:'إصلاح ثلاجة',price:200},
+  {id:'a3',ico:'🍽️',name:'إصلاح غسالة صحون',price:180},{id:'a4',ico:'🔥',name:'إصلاح فرن/بوتاجاز',price:170},
+  {id:'cl1',ico:'🧽',name:'تنظيف عام للمنزل',price:250},{id:'cl2',ico:'🛋️',name:'تنظيف كنب وسجاد',price:200},
+  {id:'cl3',ico:'💧',name:'تنظيف خزان المياه',price:220},
+  {id:'g1',ico:'🔨',name:'تعليق/تركيب رفوف',price:60},{id:'g2',ico:'🧱',name:'عزل تسرب بسيط',price:180},
+  {id:'g4',ico:'🪣',name:'ترويبة بلاط/سيراميك',price:200},
+  {id:'g3',ico:'📝',name:'خدمة إضافية',price:0},
+];
+function svc(id){ return SERVICES.find(s=>s.id===id); }
+
+let me=null, ORDERS=[], tab='available';
+const AR_DIG='٠١٢٣٤٥٦٧٨٩';
+function ar(n){ return String(n).replace(/[0-9]/g,d=>AR_DIG[d]); }
+function money(n){ return ar(n)+' ر.س'; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+const AR_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const AR_MON=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function parseISO(s){ const [y,m,d]=String(s).split('-').map(Number); return new Date(y,m-1,d); }
+function dayLabel(s){ const d=parseISO(s); return AR_DAYS[d.getDay()]+' '+ar(d.getDate())+' '+AR_MON[d.getMonth()]; }
+function fmtTime(mins){ let h=Math.floor(mins/60),m=mins%60; const ap=h<12?'ص':'م'; let h12=h%12||12; return ar(h12)+':'+ar(String(m).padStart(2,'0'))+' '+ap; }
+function fmtDur(mins){ if(!mins) return 'حسب المعاينة'; const h=Math.floor(mins/60),m=mins%60,p=[]; if(h===1)p.push('ساعة');else if(h===2)p.push('ساعتان');else if(h>2)p.push(ar(h)+' ساعات'); if(m)p.push(ar(m)+' دقيقة'); return p.join(' و'); }
+
+/* ---- السحابة ---- */
+let sb=null, cloudReady=false;
+async function loadPrices(){
+  if(!cloudReady) return;
+  try{ const { data }=await sb.from('khafet_prices').select('*'); if(data&&data.length){ const map={}; data.forEach(r=>{ map[r.sid]=Number(r.price); }); SERVICES.forEach(s=>{ if(map[s.id]!=null) s.price=map[s.id]; }); } }catch(e){}
+}
+function initCloud(){
+  try{ if(window.supabase && SUPABASE_URL){ sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON); cloudReady=true; loadPrices(); autoLogin(); subscribe(); return; } }catch(e){}
+  render();
+}
+function rowToOrder(r){
+  return { id:'#'+ar(r.order_no), dbId:r.id, items:r.items||[], customer:{name:r.customer_name||'',phone:r.customer_phone||''},
+    address:r.address||{}, date:r.service_date, startMin:r.start_min, duration:r.duration, endMin:r.end_min,
+    status:r.status||'new', quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'' };
+}
+async function loadOrders(){
+  if(!cloudReady||!me){ render(); return; }
+  try{ const { data, error } = await sb.from('khafet_orders').select('*').order('service_date').order('start_min'); if(error) throw error; ORDERS=(data||[]).map(rowToOrder); render(); }catch(e){ render(); }
+}
+function subscribe(){ if(!cloudReady) return; try{ sb.channel('khafet_prov').on('postgres_changes',{event:'*',schema:'public',table:'khafet_orders'},()=>{ if(me) loadOrders(); }).subscribe(); }catch(e){} }
+
+/* ---- الدخول ---- */
+async function login(){
+  const phone=(document.getElementById('lg_phone')||{}).value ? document.getElementById('lg_phone').value.trim() : '';
+  const pass=((document.getElementById('lg_pass')||{}).value||'').trim();
+  if(!phone){ toast('اكتب رقم جوالك'); return; }
+  if(!pass){ toast('اكتب كلمة المرور'); return; }
+  if(pass!==PROVIDER_PASS){ showLogin('❌ كلمة المرور غير صحيحة.'); return; }
+  if(!cloudReady){ toast('لا يوجد اتصال بالخادم'); return; }
+  const btn=document.querySelector('.login .btn'); if(btn){ btn.disabled=true; btn.textContent='⏳...'; }
+  try{
+    const { data } = await sb.from('khafet_providers').select('*').eq('phone',phone);
+    const p=(data||[])[0];
+    if(!p){ showLogin('❌ الرقم غير مسجّل. سجّل كمزوّد أولاً من الموقع.'); return; }
+    if((p.status||'pending')!=='approved'){ showLogin('⏳ حسابك قيد المراجعة. بننتظر اعتماد الإدارة.', true); return; }
+    me=p; localStorage.setItem('khafet_provider_phone',phone); loadOrders();
+  }catch(e){ showLogin('تعذّر الاتصال، حاول مرة ثانية.'); }
+}
+async function autoLogin(){
+  const saved=localStorage.getItem('khafet_provider_phone');
+  if(!saved){ render(); return; }
+  try{ const { data } = await sb.from('khafet_providers').select('*').eq('phone',saved); const p=(data||[])[0];
+    if(p && (p.status||'')==='approved'){ me=p; loadOrders(); return; } }catch(e){}
+  render();
+}
+function logout(){ me=null; localStorage.removeItem('khafet_provider_phone'); render(); }
+
+/* ---- قبول الطلب ---- */
+async function acceptOrder(id){
+  const o=ORDERS.find(x=>x.id===id); if(!o) return;
+  if(!confirm('تأكيد قبول الطلب '+o.id+'؟')) return;
+  try{
+    const { data, error } = await sb.from('khafet_orders').update({provider_phone:me.phone, status:'confirmed'}).eq('id',o.dbId).is('provider_phone',null).select();
+    if(error) throw error;
+    if(!data || !data.length){ toast('اعتذار — الطلب أخذه مزوّد آخر'); loadOrders(); return; }
+    toast('تم قبول الطلب ✅'); tab='mine'; loadOrders();
+  }catch(e){ toast('تعذّر القبول، حاول مرة ثانية'); }
+}
+async function setJobStatus(id, st){
+  const o=ORDERS.find(x=>x.id===id); if(!o) return;
+  o.status=st;
+  try{ await sb.from('khafet_orders').update({status:st}).eq('id',o.dbId); }catch(e){}
+  toast('✓'); loadOrders();
+}
+
+/* ---- الفاتورة (نفس منطق بوابة الفنيين) ---- */
+let invEditing=null, invItems=[];
+function openInvoice(id){ const o=ORDERS.find(x=>x.id===id); if(!o) return; invEditing=id;
+  invItems=(o.invoice&&o.invoice.items)?o.invoice.items.map(it=>({id:it.id||'custom',name:it.name,qty:+it.qty||1,price:+it.price||0})):[]; renderInvoice(); }
+function closeInvoice(){ invEditing=null; const m=document.getElementById('invModal'); m.classList.remove('show'); m.innerHTML=''; }
+function captureInvPrices(){ document.querySelectorAll('.ir-price').forEach(inp=>{ const i=+inp.dataset.i; if(invItems[i]) invItems[i].price=+inp.value||0; }); }
+function addInvItem(id){ if(!id) return; captureInvPrices(); const s=svc(id); if(s) invItems.push({id:s.id,name:s.name,qty:1,price:s.price}); renderInvoice(); }
+function addCustomItem(){ captureInvPrices(); const nm=prompt('اسم الخدمة:'); if(!nm) return; const pr=+prompt('السعر:')||0; invItems.push({id:'custom',name:nm,qty:1,price:pr}); renderInvoice(); }
+function invQty(i,d){ captureInvPrices(); if(invItems[i]) invItems[i].qty=Math.max(1,(invItems[i].qty||1)+d); renderInvoice(); }
+function invRemove(i){ captureInvPrices(); invItems.splice(i,1); renderInvoice(); }
+function invTotal(){ return invItems.reduce((a,it)=>a+(+it.price||0)*(+it.qty||1),0); }
+async function saveInvoice(){
+  captureInvPrices(); const o=ORDERS.find(x=>x.id===invEditing); if(!o) return;
+  const invoice={ items:invItems.map(it=>({name:it.name,qty:+it.qty||1,price:+it.price||0})), total:invTotal(), createdAt:Date.now() };
+  o.invoice=invoice;
+  try{ await sb.from('khafet_orders').update({invoice:invoice}).eq('id',o.dbId); }catch(e){}
+  toast('أُرسلت الفاتورة ✓'); closeInvoice(); loadOrders();
+}
+function printInv(){ captureInvPrices(); const o=ORDERS.find(x=>x.id===invEditing); if(!o) return; printInvoiceDoc({...o,invoice:{items:invItems,total:invTotal()}}); }
+function printInvoiceDoc(o){
+  const inv=o.invoice||{items:[],total:0};
+  const rows=(inv.items||[]).map(it=>`<tr><td>${esc(it.name)}</td><td>${ar(it.qty||1)}</td><td>${ar(+it.price||0)} ر.س</td><td>${ar((+it.price||0)*(+it.qty||1))} ر.س</td></tr>`).join('');
+  const d=new Date(); const ds=ar(d.getDate())+'/'+ar(d.getMonth()+1)+'/'+ar(d.getFullYear());
+  const html='<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>فاتورة '+o.id+'</title>'
+   +'<style>body{font-family:Cairo,Arial,sans-serif;padding:24px;color:#141414;max-width:520px;margin:0 auto}.h{display:flex;justify-content:space-between;border-bottom:3px solid #F5C518;padding-bottom:12px}.h .b{font-size:1.5rem;font-weight:900}.h .b span{background:#F5C518;padding:2px 10px;border-radius:8px}.meta{color:#555;font-size:.9rem;margin:12px 0}table{width:100%;border-collapse:collapse;margin-top:8px}th,td{text-align:right;padding:9px 6px;border-bottom:1px solid #eee}th{background:#FBF3D0}.tot{display:flex;justify-content:space-between;font-weight:900;font-size:1.2rem;margin-top:14px;border-top:2px solid #141414;padding-top:10px}.ft{margin-top:22px;text-align:center;color:#888;font-size:.85rem}@media print{.noprint{display:none}}</style></head><body>'
+   +'<div class="h"><div class="b">🔧 <span>'+BRAND+'</span></div><div style="text-align:left"><b>فاتورة</b><br>'+o.id+'</div></div>'
+   +'<div class="meta"><div>العميل: '+esc(o.customer.name)+' · '+esc(o.customer.phone)+'</div><div>المزوّد: '+esc(me?me.name:'')+'</div><div>التاريخ: '+ds+'</div></div>'
+   +'<table><thead><tr><th>الخدمة</th><th>العدد</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>'
+   +'<div class="tot"><span>الإجمالي</span><span>'+ar(inv.total||0)+' ر.س</span></div>'
+   +'<div class="ft">شكراً لتعاملك مع '+BRAND+' · '+CONTACT+'</div>'
+   +'<div class="noprint" style="text-align:center;margin-top:18px"><button onclick="print()" style="padding:10px 22px;font-weight:800;border:none;background:#141414;color:#fff;border-radius:10px;cursor:pointer">🖨️ طباعة</button></div></body></html>';
+  const w=window.open('','_blank'); if(!w){ toast('اسمح بالنوافذ المنبثقة'); return; } w.document.write(html); w.document.close();
+}
+function renderInvoice(){
+  const m=document.getElementById('invModal'); if(!invEditing){ m.classList.remove('show'); m.innerHTML=''; return; }
+  const opts=SERVICES.map(s=>`<option value="${s.id}">${s.ico} ${s.name} — ${ar(s.price)}</option>`).join('');
+  const rows=invItems.length?invItems.map((it,i)=>`<div class="inv-row"><span class="ir-name">${esc(it.name)}</span>
+    <div class="ir-qty"><button onclick="invQty(${i},1)">+</button><span>${ar(it.qty)}</span><button onclick="invQty(${i},-1)">−</button></div>
+    <input class="ir-price" type="number" inputmode="numeric" value="${it.price}" data-i="${i}" />
+    <button class="ir-del" onclick="invRemove(${i})">🗑️</button></div>`).join('') : `<div class="inv-empty">＋ أضف خدمة</div>`;
+  m.innerHTML=`<div class="inv-card"><div class="inv-head"><b>🧾 فاتورة ${invEditing}</b><button onclick="closeInvoice()">✕</button></div>
+    <div class="inv-add"><select onchange="addInvItem(this.value);this.value=''"><option value="">＋ أضف خدمة</option>${opts}</select><button class="cust" onclick="addCustomItem()">بند مخصص</button></div>
+    <div class="inv-items">${rows}</div>
+    <div class="inv-total"><span>الإجمالي</span><b>${ar(invTotal())} ر.س</b></div>
+    <div class="inv-acts"><button class="tbtn done" onclick="saveInvoice()">حفظ وإرسال للعميل</button><button class="tbtn inv" onclick="printInv()">🖨️ طباعة</button></div></div>`;
+  m.classList.add('show');
+}
+
+/* ---- العرض ---- */
+function showLogin(msg, wait){
+  document.getElementById('logoutBtn').style.display='none';
+  document.getElementById('app').innerHTML=`<div class="login">
+    <div class="ic">🤝</div><h1>بوابة المزوّد</h1>
+    <p>سجّل دخولك برقمك المسجّل وكلمة المرور لاستقبال طلبات منطقتك.</p>
+    <input id="lg_phone" inputmode="tel" placeholder="05xxxxxxxx" autocomplete="username" />
+    <input id="lg_pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()" />
+    <button class="btn" onclick="login()">دخول</button>
+    ${msg?`<div class="msg ${wait?'wait':''}">${msg}</div>`:''}
+    <a class="reg" href="index.html">لست مسجّلاً؟ سجّل كمزوّد صيانة</a>
+    <a class="reg2" href="fanyeen.html">🧑‍🔧 هل أنت فني؟ دخول الفنيين</a>
+  </div>`;
+}
+function sameCity(o){ return (o.address&&o.address.city||'').trim() === (me.city||'').trim(); }
+function jobCard(o, mode){
+  const a=o.address||{};
+  const work=o.quick?`<div class="quick-tag">⚡ طلب سريع (معاينة)</div>`:`<div class="tj-row"><span class="tj-k">🔧 المطلوب</span><span class="tj-v">${(o.items||[]).map(i=>i.ico+' '+i.name+(i.qty>1?' ×'+ar(i.qty):'')).join('، ')}</span></div>`;
+  const mapUrl=a.mapUrl||('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent([a.city,a.district,a.street,a.house].filter(Boolean).join(' ')));
+  let acts='';
+  if(mode==='available') acts=`<button class="tbtn accept" onclick="acceptOrder('${o.id}')">✅ اقبل الطلب</button>`;
+  else { // mine
+    if(o.status==='confirmed') acts=`<button class="tbtn done" onclick="setJobStatus('${o.id}','progress')">🔧 بدء العمل</button>`;
+    else if(o.status==='progress') acts=`<button class="tbtn done" onclick="setJobStatus('${o.id}','done')">✅ إنهاء</button>`;
+    else if(o.status==='done') acts=`<div class="tbtn donelbl">✓ مكتمل</div>`;
+    acts+=`<button class="tbtn inv ${o.invoice?'sent':''}" onclick="openInvoice('${o.id}')">${o.invoice?'✓ الفاتورة':'🧾 فاتورة'}</button>`;
+  }
+  return `<div class="tjob">
+    <div class="tj-head"><span class="tj-when">🕐 ${fmtTime(o.startMin)} · ${dayLabel(o.date)}</span><span class="status ${o.status}">${({new:'جديد',confirmed:'مؤكد',progress:'قيد التنفيذ',done:'مكتمل'})[o.status]||o.status}</span></div>
+    <div class="tj-body">
+      ${work}
+      ${o.note?`<div class="tj-row"><span class="tj-k">🛠️ المشكلة</span><span class="tj-v">${esc(o.note)}</span></div>`:''}
+      ${o.videoUrl?`<div class="tj-row"><span class="tj-k">📷 صورة/مقطع</span><span class="tj-v"><a class="tvideo" href="${esc(o.videoUrl)}" target="_blank" rel="noopener">🎥 عرض</a></span></div>`:''}
+      <div class="tj-row"><span class="tj-k">⏱️ المدة</span><span class="tj-v">${fmtDur(o.duration)}</span></div>
+      <div class="tj-row"><span class="tj-k">📍 الموقع</span><span class="tj-v">${[[a.city,a.district,a.street].filter(Boolean).join(' · '), a.house?'منزل '+esc(a.house):''].filter(Boolean).join(' · ')||'📍 GPS'}
+        <a class="tmap" href="${mapUrl}" target="_blank" rel="noopener">🗺️ الخريطة</a>
+        ${a.photoUrl?`<a class="tmap" style="background:#7c3aed;color:#fff" href="${esc(a.photoUrl)}" target="_blank" rel="noopener">🏠 صورة المنزل</a>`:''}</span></div>
+      ${mode==='mine'?`<div class="tj-row"><span class="tj-k">👤 العميل</span><span class="tj-v">${esc(o.customer.name)} · <a href="tel:${esc(o.customer.phone)}">📞 ${esc(o.customer.phone)}</a></span></div>`:''}
+    </div>
+    <div class="tacts">${acts}</div>
+  </div>`;
+}
+function render(){
+  if(!me){ showLogin(''); return; }
+  document.getElementById('logoutBtn').style.display='';
+  const avail=ORDERS.filter(o=>['new','confirmed'].includes(o.status) && !o.providerPhone && sameCity(o));
+  const mine=ORDERS.filter(o=>o.providerPhone===me.phone && o.status!=='cancelled')
+    .sort((a,b)=>{ const r=s=>s==='done'?1:0; if(r(a.status)!==r(b.status)) return r(a.status)-r(b.status); return (a.date+String(a.startMin).padStart(4,'0')).localeCompare(b.date+String(b.startMin).padStart(4,'0')); });
+  const myDone=mine.filter(o=>o.status==='done').length;
+  const owed=myDone*COMMISSION;
+  const listArr = tab==='available'?avail:mine;
+  const list = listArr.length ? listArr.map(o=>jobCard(o, tab)).join('') : `<div class="empty"><div class="ico">🧰</div><h3>${tab==='available'?'لا توجد طلبات متاحة في مدينتك حالياً':'ما قبلت طلبات بعد'}</h3></div>`;
+  document.getElementById('app').innerHTML=`
+    <div class="hero">
+      <h1>أهلاً ${esc(me.name)}</h1>
+      <div class="sub">📍 ${esc(me.city)} · تستقبل طلبات منطقتك</div>
+      ${owed>0?`<div class="owed">💼 مستحق للمنصة: <b>${money(owed)}</b> (${ar(myDone)} طلب)</div>`:''}
+    </div>
+    <div class="tabs">
+      <button class="tab ${tab==='available'?'active':''}" onclick="setTab('available')">طلبات متاحة <span class="cnt">(${ar(avail.length)})</span></button>
+      <button class="tab ${tab==='mine'?'active':''}" onclick="setTab('mine')">طلباتي <span class="cnt">(${ar(mine.length)})</span></button>
+    </div>
+    <div style="padding-bottom:30px">${list}</div>`;
+}
+function setTab(t){ tab=t; render(); }
+function toast(m){ const el=document.getElementById('toast'); el.textContent=m; el.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>el.classList.remove('show'),2200); }
+
+render();
+if(window.supabase) initCloud(); else window.addEventListener('load', initCloud);
+</script>
+</body>
+</html>

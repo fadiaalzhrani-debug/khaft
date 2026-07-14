@@ -1,0 +1,8 @@
+{
+  "appId": "com.khafet.app",
+  "appName": "خافِت",
+  "webDir": "www",
+  "server": {
+    "iosScheme": "https"
+  }
+}

@@ -1,0 +1,41 @@
+# إعدادات بناء تطبيق خافِت على Codemagic (iOS)
+# ملاحظة: التوقيع (Code Signing) + ربط App Store Connect يُضبطان في واجهة Codemagic:
+#   Teams/App settings → Code signing identities → أضيفي App Store Connect API key
+#   ثم سمّي مجموعة المتغيرات (Group) باسم: appstore
+workflows:
+  ios-khafet:
+    name: خافِت iOS
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: KhafetASC   # اسم تكامل App Store Connect (تنشئينه في Codemagic)
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.khafet.app
+      vars:
+        BUNDLE_ID: "com.khafet.app"
+        APP_STORE_APPLE_ID: 0000000000   # ID التطبيق من App Store Connect (يُعبّأ بعد إنشائه)
+      node: 20.19.0
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: تثبيت الحزم
+        script: npm install
+      - name: تجهيز منصة iOS
+        script: |
+          npx cap add ios || true
+          npx cap sync ios
+      - name: إعداد التوقيع
+        script: xcode-project use-profiles
+      - name: بناء ملف IPA
+        script: |
+          cd ios/App
+          xcode-project build-ipa --workspace "App.xcworkspace" --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
