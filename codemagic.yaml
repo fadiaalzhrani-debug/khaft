@@ -20,6 +20,21 @@ workflows:
         script: |
           npx cap add ios || true
           npx cap sync ios
+      - name: أذونات الجهاز ورقم الإصدار
+        script: |
+          PLIST="ios/App/App/Info.plist"
+          setkey() {
+            plutil -insert "$1" -string "$2" "$PLIST" 2>/dev/null || plutil -replace "$1" -string "$2" "$PLIST"
+          }
+          setkey NSCameraUsageDescription "لتصوير مشكلة الصيانة في منزلك وإرفاقها مع طلبك"
+          setkey NSPhotoLibraryUsageDescription "لاختيار صورة من معرض صورك توضّح مشكلة الصيانة"
+          setkey NSPhotoLibraryAddUsageDescription "لحفظ صور الصيانة في معرض صورك"
+          setkey NSLocationWhenInUseUsageDescription "نستخدم موقعك لتحديد مكان الخدمة بدقة وربطك بأقرب فنّي"
+          setkey NSMicrophoneUsageDescription "لتسجيل مقطع فيديو يوضّح مشكلة الصيانة"
+          setkey CFBundleVersion "$BUILD_NUMBER"
+          setkey CFBundleDisplayName "خافِت"
+          echo "— الأذونات بعد التعديل —"
+          plutil -p "$PLIST" | grep -i -e usagedescription -e CFBundleVersion
       - name: تجهيز مفتاح آبل
         script: |
           echo "$APP_STORE_CONNECT_KEY_B64" | base64 --decode > /tmp/AuthKey.p8
