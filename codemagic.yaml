@@ -1,13 +1,13 @@
 # إعدادات بناء تطبيق خافِت على Codemagic (iOS)
-# التوقيع تلقائي عبر App Store Connect API (تكامل باسم KhafetASC)
+# التوقيع والرفع عبر متغيّرات بيئة App Store Connect (مجموعة: appstore)
 workflows:
   ios-khafet:
     name: خافِت iOS
     instance_type: mac_mini_m2
     max_build_duration: 60
-    integrations:
-      app_store_connect: KhafetASC
     environment:
+      groups:
+        - appstore
       vars:
         BUNDLE_ID: "com.khafet.app"
       node: 20.19.0
@@ -35,5 +35,7 @@ workflows:
       - /tmp/xcodebuild_logs/*.log
     publishing:
       app_store_connect:
-        auth: integration
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
         submit_to_testflight: true
