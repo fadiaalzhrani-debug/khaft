@@ -120,7 +120,9 @@
 const SUPABASE_URL='https://zulogtqxbuqxmdmjpzqj.supabase.co';
 const SUPABASE_ANON='sb_publishable_ssggqTzT4GG4sreXV1LObQ_C3yiYhaG';
 const BRAND='خافِت'; const CONTACT='0590497866'; const COMMISSION=3; const SAVE_KEY='siyanah_v1';
-const PROVIDER_PASS='khafet2025';   // كلمة مرور بوابة المزوّد (عدّليها — يعطيها للمزوّدين المعتمدين)
+/* حساب المزوّدين محفوظ في Supabase → Authentication (ما فيه كلمة مرور بالكود).
+   لتغيير كلمة المرور: Supabase → Authentication → Users → provider@khafet.app */
+const PROVIDER_EMAIL='provider@khafet.app';   // معرّف فقط — ليس سرّاً
 const SERVICES=[
   {id:'p1',ico:'🚿',name:'تغيير شطّاف',price:80},{id:'p2',ico:'🚰',name:'تسليك مجاري/بالوعة',price:120},
   {id:'p3',ico:'🔩',name:'تغيير خلاط ماء',price:100},{id:'p4',ico:'💧',name:'إصلاح تسريب مياه',price:150},
@@ -167,6 +169,23 @@ function initCloud(){
   try{ if(window.supabase && SUPABASE_URL){ sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON); cloudReady=true; loadPrices(); autoLogin(); subscribe(); return; } }catch(e){}
   render();
 }
+/* ---------- وسائط العملاء ----------
+   الباكِت خاص — رابط موقّع ينتهي بعد ١٠ دقائق عند كل فتح. */
+function mediaPath(v){
+  if(!v) return '';
+  const s=String(v);
+  const m=s.match(/khafet-videos\/(.+?)(\?|$)/);
+  return m ? decodeURIComponent(m[1]) : s;
+}
+async function openMedia(v){
+  const p=mediaPath(v);
+  if(!p || !sb) return;
+  try{
+    const { data, error } = await sb.storage.from('khafet-videos').createSignedUrl(p, 600);
+    if(error || !data) throw error || new Error('no url');
+    window.open(data.signedUrl, '_blank', 'noopener');
+  }catch(e){ console.warn('media:', e.message||e); toast('تعذّر فتح الملف'); }
+}
 function rowToOrder(r){
   return { id:'#'+ar(r.order_no), dbId:r.id, items:r.items||[], customer:{name:r.customer_name||'',phone:r.customer_phone||''},
     address:r.address||{}, date:r.service_date, startMin:r.start_min, duration:r.duration, endMin:r.end_min,
@@ -184,10 +203,12 @@ async function login(){
   const pass=((document.getElementById('lg_pass')||{}).value||'').trim();
   if(!phone){ toast('اكتب رقم جوالك'); return; }
   if(!pass){ toast('اكتب كلمة المرور'); return; }
-  if(pass!==PROVIDER_PASS){ showLogin('❌ كلمة المرور غير صحيحة.'); return; }
   if(!cloudReady){ toast('لا يوجد اتصال بالخادم'); return; }
   const btn=document.querySelector('.login .btn'); if(btn){ btn.disabled=true; btn.textContent='⏳...'; }
   try{
+    // التحقق من كلمة المرور يصير في الخادم (Supabase) — مو في المتصفح
+    const { error:aerr } = await sb.auth.signInWithPassword({ email:PROVIDER_EMAIL, password:pass });
+    if(aerr){ showLogin('❌ كلمة المرور غير صحيحة.'); return; }
     const { data } = await sb.from('khafet_providers').select('*').eq('phone',phone);
     const p=(data||[])[0];
     if(!p){ showLogin('❌ الرقم غير مسجّل. سجّل كمزوّد أولاً من الموقع.'); return; }
@@ -198,11 +219,16 @@ async function login(){
 async function autoLogin(){
   const saved=localStorage.getItem('khafet_provider_phone');
   if(!saved){ render(); return; }
-  try{ const { data } = await sb.from('khafet_providers').select('*').eq('phone',saved); const p=(data||[])[0];
-    if(p && (p.status||'')==='approved'){ me=p; loadOrders(); return; } }catch(e){}
+  // لازم تكون فيه جلسة Supabase صالحة — مو بس رقم محفوظ بالمتصفح
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(!session){ localStorage.removeItem('khafet_provider_phone'); render(); return; }
+    const { data } = await sb.from('khafet_providers').select('*').eq('phone',saved); const p=(data||[])[0];
+    if(p && (p.status||'')==='approved'){ me=p; loadOrders(); return; }
+  }catch(e){}
   render();
 }
-function logout(){ me=null; localStorage.removeItem('khafet_provider_phone'); render(); }
+async function logout(){ try{ if(sb) await sb.auth.signOut(); }catch(e){} me=null; localStorage.removeItem('khafet_provider_phone'); render(); }
 
 /* ---- قبول الطلب ---- */
 async function acceptOrder(id){
@@ -302,11 +328,11 @@ function jobCard(o, mode){
     <div class="tj-body">
       ${work}
       ${o.note?`<div class="tj-row"><span class="tj-k">🛠️ المشكلة</span><span class="tj-v">${esc(o.note)}</span></div>`:''}
-      ${o.videoUrl?`<div class="tj-row"><span class="tj-k">📷 صورة/مقطع</span><span class="tj-v"><a class="tvideo" href="${esc(o.videoUrl)}" target="_blank" rel="noopener">🎥 عرض</a></span></div>`:''}
+      ${o.videoUrl?`<div class="tj-row"><span class="tj-k">📷 صورة/مقطع</span><span class="tj-v"><button class="tvideo" onclick="openMedia('${esc(o.videoUrl)}')">🎥 عرض</button></span></div>`:''}
       <div class="tj-row"><span class="tj-k">⏱️ المدة</span><span class="tj-v">${fmtDur(o.duration)}</span></div>
       <div class="tj-row"><span class="tj-k">📍 الموقع</span><span class="tj-v">${[[a.city,a.district,a.street].filter(Boolean).join(' · '), a.house?'منزل '+esc(a.house):''].filter(Boolean).join(' · ')||'📍 GPS'}
         <a class="tmap" href="${mapUrl}" target="_blank" rel="noopener">🗺️ الخريطة</a>
-        ${a.photoUrl?`<a class="tmap" style="background:#7c3aed;color:#fff" href="${esc(a.photoUrl)}" target="_blank" rel="noopener">🏠 صورة المنزل</a>`:''}</span></div>
+        ${a.photoUrl?`<button class="tmap" style="background:#7c3aed;color:#fff" onclick="openMedia('${esc(a.photoUrl)}')">🏠 صورة المنزل</button>`:''}</span></div>
       ${mode==='mine'?`<div class="tj-row"><span class="tj-k">👤 العميل</span><span class="tj-v">${esc(o.customer.name)} · <a href="tel:${esc(o.customer.phone)}">📞 ${esc(o.customer.phone)}</a></span></div>`:''}
     </div>
     <div class="tacts">${acts}</div>

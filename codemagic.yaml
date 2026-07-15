@@ -20,6 +20,12 @@ workflows:
         script: |
           npx cap add ios || true
           npx cap sync ios
+      - name: أيقونة التطبيق وشاشة البداية
+        script: |
+          # يولّد كل مقاسات الأيقونة من assets/icon.png داخل مشروع iOS
+          npx capacitor-assets generate --ios
+          echo "— الأيقونات المولّدة —"
+          ls ios/App/App/Assets.xcassets/AppIcon.appiconset/ | head -20
       - name: أذونات الجهاز ورقم الإصدار
         script: |
           PLIST="ios/App/App/Info.plist"
@@ -38,6 +44,23 @@ workflows:
             plutil -replace ITSAppUsesNonExemptEncryption -bool false "$PLIST"
           echo "— الأذونات بعد التعديل —"
           plutil -p "$PLIST" | grep -i -e usagedescription -e CFBundleVersion
+      - name: صلاحية الإشعارات الفورية
+        script: |
+          # مشروع iOS يتولّد كل بناء، فنضيف صلاحية Push تلقائياً
+          ENT="ios/App/App/App.entitlements"
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+            '<plist version="1.0"><dict/></plist>' > "$ENT"
+          /usr/libexec/PlistBuddy -c "Add :aps-environment string production" "$ENT"
+          # اربط الملف بالمشروع (xcodeproj متوفّر مع CocoaPods)
+          ruby -e "require 'xcodeproj'; \
+            p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \
+            t = p.targets.find { |x| x.name == 'App' }; \
+            t.build_configurations.each { |c| c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements' }; \
+            p.save; \
+            puts '✅ تمت إضافة صلاحية الإشعارات'"
+          cat "$ENT"
       - name: تجهيز مفتاح آبل
         script: |
           echo "$APP_STORE_CONNECT_KEY_B64" | base64 --decode > /tmp/AuthKey.p8

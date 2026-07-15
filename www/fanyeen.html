@@ -215,9 +215,10 @@ const SUPABASE_ANON = 'sb_publishable_ssggqTzT4GG4sreXV1LObQ_C3yiYhaG';
 const SAVE_KEY = 'siyanah_v1';
 const BRAND='خافِت'; const PHONE='0590497866';
 /* ---- دخول الفنيين (غيّري اليوزر والباسورد) ---- */
-const WORKER_USER='fanni';
-const WORKER_PASS='1234';
-let loggedIn = localStorage.getItem('khafet_worker_auth')==='1';
+/* حساب الفنيين محفوظ في Supabase → Authentication (ما فيه كلمة مرور بالكود).
+   لتغيير كلمة المرور: Supabase → Authentication → Users → tech@khafet.app */
+const WORKER_EMAIL='tech@khafet.app';   // معرّف فقط — ليس سرّاً
+let loggedIn=false;                     // تُحدَّد من جلسة Supabase
 
 /* كتالوج الخدمات (للفاتورة) — الأسماء بالعربي تُطبع للعميل */
 const SERVICES=[
@@ -383,11 +384,35 @@ function dateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(
 
 /* ---- السحابة ---- */
 let sb=null, cloudReady=false;
-function initCloud(){
+/* ---------- وسائط العملاء ----------
+   الباكِت خاص — نولّد رابطاً موقّعاً ينتهي بعد ١٠ دقائق عند كل فتح. */
+function mediaPath(v){
+  if(!v) return '';
+  const s=String(v);
+  const m=s.match(/khafet-videos\/(.+?)(\?|$)/);
+  return m ? decodeURIComponent(m[1]) : s;
+}
+async function openMedia(v){
+  const p=mediaPath(v);
+  if(!p || !sb) return;
+  try{
+    const { data, error } = await sb.storage.from('khafet-videos').createSignedUrl(p, 600);
+    if(error || !data) throw error || new Error('no url');
+    window.open(data.signedUrl, '_blank', 'noopener');
+  }catch(e){ console.warn('media:', e.message||e); }
+}
+async function initCloud(){
   try{
     if(window.supabase && SUPABASE_URL && !/YOUR_/.test(SUPABASE_URL)){
       sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-      cloudReady=true; loadPrices(); loadInv(); loadOrders(); subscribe();
+      cloudReady=true;
+      // استعادة الجلسة: الدخول محفوظ في Supabase مو في المتصفح
+      const { data:{ session } }=await sb.auth.getSession();
+      if(session){
+        const { data:role }=await sb.rpc('staff_role');
+        if(role) loggedIn=true; else { try{ await sb.auth.signOut(); }catch(e){} }
+      }
+      loadPrices(); loadInv(); loadOrders(); subscribe();
       return;
     }
   }catch(e){}
@@ -661,13 +686,24 @@ function showLogin(){
     </div>`;
   const wp=document.getElementById('wp'); if(wp) wp.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
 }
-function doLogin(){
+async function doLogin(){
   const u=(document.getElementById('wu')||{}).value ? document.getElementById('wu').value.trim() : '';
   const p=(document.getElementById('wp')||{}).value || '';
-  if(u===WORKER_USER && p===WORKER_PASS){ loggedIn=true; localStorage.setItem('khafet_worker_auth','1'); render(); if(cloudReady) loadOrders(); }
-  else { const e=document.getElementById('lgerr'); if(e) e.style.display='block'; }
+  const btn=document.querySelector('.login .btn');
+  const fail=()=>{ const e=document.getElementById('lgerr'); if(e) e.style.display='block';
+    if(btn){ btn.disabled=false; btn.textContent='دخول · Login'; } };
+  if(!cloudReady){ fail(); return; }
+  if(btn){ btn.disabled=true; btn.textContent='⏳...'; }
+  try{
+    // التحقق يصير في الخادم (Supabase) — مو في المتصفح
+    const { error }=await sb.auth.signInWithPassword({ email: u.includes('@')?u:WORKER_EMAIL, password:p });
+    if(error) throw error;
+    const { data:role }=await sb.rpc('staff_role');
+    if(!role){ await sb.auth.signOut(); throw new Error('لا توجد صلاحية'); }
+    loggedIn=true; render(); loadOrders();
+  }catch(e){ fail(); }
 }
-function logout(){ loggedIn=false; localStorage.removeItem('khafet_worker_auth'); render(); }
+async function logout(){ try{ if(sb) await sb.auth.signOut(); }catch(e){} loggedIn=false; localStorage.removeItem('khafet_worker_auth'); render(); }
 
 /* ---- تقويم الشهر (نظرة عامة على الحجوزات) ---- */
 let calMonth=(function(){ const d=new Date(); d.setDate(1); d.setHours(0,0,0,0); return d; })();
@@ -760,12 +796,12 @@ function render(){
       <div class="tj-body">
         ${o.quick?`<div class="quick-tag">${t('quickTag')}</div>`:`<div class="tj-row"><span class="tj-k">🔧 ${t('whatNeeded')}</span><span class="tj-v">${work}</span></div>`}
         ${o.note?`<div class="tj-row"><span class="tj-k">🛠️ ${t('problem')}</span><span class="tj-v">${esc(o.note)}${lang!=='ar'?` <a class="ttrans" href="https://translate.google.com/?sl=auto&tl=${lang}&text=${encodeURIComponent(o.note)}&op=translate" target="_blank" rel="noopener">${t('translate')}</a>`:''}</span></div>`:''}
-        ${o.videoUrl?`<div class="tj-row"><span class="tj-k">📷 ${lang==='ne'?'फोटो/भिडियो':lang==='en'?'Photo/Video':lang==='hi'?'फोटो/वीडियो':lang==='ur'?'تصویر/ویڈیو':'صورة/مقطع'}</span><span class="tj-v"><a class="tvideo" href="${esc(o.videoUrl)}" target="_blank" rel="noopener">${t('watchVideo')}</a></span></div>`:''}
+        ${o.videoUrl?`<div class="tj-row"><span class="tj-k">📷 ${lang==='ne'?'फोटो/भिडियो':lang==='en'?'Photo/Video':lang==='hi'?'फोटो/वीडियो':lang==='ur'?'تصویر/ویڈیو':'صورة/مقطع'}</span><span class="tj-v"><button class="tvideo" onclick="openMedia('${esc(o.videoUrl)}')">${t('watchVideo')}</button></span></div>`:''}
         <div class="tj-row"><span class="tj-k">⏱️ ${t('duration')}</span><span class="tj-v">${jobDur(o.duration)}</span></div>
         <div class="tj-row"><span class="tj-k">📍 ${t('location')}</span><span class="tj-v">${[addr, a.house?t('house')+' '+esc(a.house):''].filter(Boolean).join(' · ')||(gpsPin?'📍 GPS':'')}
           ${a.mark?`<div style="color:var(--muted);font-weight:600;margin-top:2px">🚩 ${esc(a.mark)}</div>`:''}
           <a class="tmap" href="${mapUrl}" target="_blank" rel="noopener">🗺️ ${gpsPin?'📍 ':''}${t('openMap')}</a>
-          ${a.photoUrl?`<a class="tmap" style="background:#7c3aed;color:#fff" href="${esc(a.photoUrl)}" target="_blank" rel="noopener">🏠 ${lang==='ne'?'घरको फोटो':lang==='en'?'House photo':lang==='hi'?'घर की फोटो':lang==='ur'?'گھر کی تصویر':'صورة المنزل'}</a>`:''}</span></div>
+          ${a.photoUrl?`<button class="tmap" style="background:#7c3aed;color:#fff" onclick="openMedia('${esc(a.photoUrl)}')">🏠 ${lang==='ne'?'घरको फोटो':lang==='en'?'House photo':lang==='hi'?'घर की फोटो':lang==='ur'?'گھر کی تصویر':'صورة المنزل'}</button>`:''}</span></div>
         <div class="tj-row"><span class="tj-k">👤 ${t('customer')}</span><span class="tj-v">${esc(o.customer.name)} · <a class="twa" href="${waLink(o.customer.phone,'')}" target="_blank" rel="noopener">${t('whatsapp')} ${esc(o.customer.phone)}</a> · <a href="tel:${esc(o.customer.phone)}">${t('call')}</a></span></div>
         ${(o.wantsEarlier && o.status!=='done')?`<div class="tj-row early-row"><span class="tj-k">🔔</span><span class="tj-v">${lang==='ne'?'ग्राहक चाँडो समयमा आउन तयार — रिक्त भए सम्पर्क गर्नुहोस्':lang==='en'?'Customer welcomes an earlier slot — contact them if one frees up':lang==='hi'?'ग्राहक जल्दी समय के लिए तैयार — खाली होने पर संपर्क करें':lang==='ur'?'گاہک جلد وقت کے لیے تیار — خالی ہونے پر رابطہ کریں':'العميل يرحّب بموعد أبكر — لو تيسّر تواصل معه وقدّمه'}</span></div>`:''}
         ${a.notes?`<div class="tj-row"><span class="tj-k">📝 ${t('notes')}</span><span class="tj-v">${esc(a.notes)}</span></div>`:''}

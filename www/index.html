@@ -589,7 +589,11 @@ const WHATSAPP = '966590497866';      // واتساب بصيغة دولية بد
 const HOURS    = 'يومياً ٨ ص – ١٠ م'; // ساعات العمل
 const CITY     = 'الخبر';             // منطقة التغطية
 const WARRANTY = 'ضمان ٧ أيام';       // الضمان
-const ADMIN_PIN = '1234';
+/* لوحة المؤسسة انتقلت لصفحة admin.html بحساب Supabase — ما عاد فيه رمز هنا */
+/* أيام الإجازة — ما نستقبل فيها حجوزات.
+   الترقيم: ٠=الأحد ١=الإثنين ٢=الثلاثاء ٣=الأربعاء ٤=الخميس ٥=الجمعة ٦=السبت
+   حالياً: الجمعة إجازة. تبين تضيفين السبت؟ خليها [5,6] */
+const OFF_DAYS = [5];
 const WORK_START = 8 * 60;
 const WORK_END   = 22 * 60;
 const SLOT_STEP  = 30;
@@ -601,7 +605,8 @@ const QUICK_DURATION   = 90;   // مدة افتراضية أكبر للطلب ا
 const LOYALTY_TARGET = 5;   // كل ٥ طلبات مدفوعة، السادس مجاني كامل
 const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل عبر مزوّد (مخفية عن العميل)
 // أكواد الخصم (عدّليها/أضيفي أكواد — الكود : نسبة الخصم %)
-const PROMO_CODES = { 'اهلا':10, 'مميز':10, 'خافت10':10 };
+/* أكواد الخصم الثابتة أُلغيت — صار النظام أكواد إحالة شخصية عشوائية
+   يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي (النموذج الآمن — مو «لا محدودة»)
 const PLANS = [
   { id:'apartment', name:'باقة الشقة', price:399, badge:'', avgVisit:150, visits:4, features:[
@@ -756,17 +761,66 @@ function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }ca
    لو ما توفّر اتصال/مكتبة: يشتغل الموقع محلياً بدون مشاكل
    ============================================================ */
 let sb=null, cloudReady=false, cloudFails=0, cloudLoading=false;
-function initCloud(){
+/* هوية مجهولة للعميل — تربط طلباته بجهازه بدون ما يسجّل حساب.
+   بدونها ما نقدر نقفل قاعدة البيانات (لأن الخادم ما يعرف مين صاحب الطلب). */
+let myUid=null;
+let isVerified=false;   // سجّل برقمه عبر الرمز؟ (يحدّد هل نقاطه تتبعه لأي جهاز)
+async function ensureAnonSession(){
+  if(!sb) return null;
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session && session.user){
+      myUid=session.user.id;
+      isVerified = !session.user.is_anonymous;
+      return myUid;
+    }
+    const { data, error } = await sb.auth.signInAnonymously();
+    if(!error && data && data.user){ myUid=data.user.id; isVerified=false; }
+  }catch(e){ console.warn('anon auth:', e.message||e); }
+  return myUid;
+}
+async function initCloud(){
   if(cloudReady) return;
   try{
     if(window.supabase && SUPABASE_URL && SUPABASE_ANON && !/YOUR_/.test(SUPABASE_URL)){
       sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
       cloudReady=true;
+      await ensureAnonSession();
       loadPrices();
       loadOrdersFromCloud();
+      loadMyRef().then(()=>{ if(['account','info','home'].includes(view)) render(); });  // كودي ورصيدي
       subscribeCloud();
+      initPush();          // إشعارات التطبيق (تعمل داخل التطبيق فقط، تُتجاهل على المتصفح)
     }
   }catch(e){ cloudReady=false; }
+}
+
+/* ---------- إشعارات التطبيق (Push) ----------
+   تشتغل بس لما الموقع يكون داخل تطبيق Capacitor.
+   على المتصفح العادي ما يصير شي — بدون أي خطأ. */
+function inApp(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+async function initPush(){
+  if(!inApp()) return;                       // متصفح عادي → تجاهل
+  try{
+    const PN = window.Capacitor.Plugins.PushNotifications;
+    if(!PN) return;
+    let perm = await PN.checkPermissions();
+    if(perm.receive === 'prompt') perm = await PN.requestPermissions();
+    if(perm.receive !== 'granted') return;   // العميل رفض — احترم اختياره
+    PN.addListener('registration', async (t)=>{
+      try{
+        if(!myUid) await ensureAnonSession();
+        await sb.from('khafet_devices').upsert(
+          { token:t.value, user_id:myUid, platform:'ios', updated_at:new Date().toISOString() },
+          { onConflict:'token' }
+        );
+      }catch(e){ console.warn('device save:', e.message||e); }
+    });
+    PN.addListener('registrationError', e=> console.warn('push reg error:', e));
+    // ضغط على الإشعار → افتح طلباتي
+    PN.addListener('pushNotificationActionPerformed', ()=>{ go('mybookings'); });
+    await PN.register();
+  }catch(e){ console.warn('push init:', e.message||e); }
 }
 // حمّل الأسعار المعدّلة من لوحة المؤسسة وطبّقها على الكتالوج
 async function loadPrices(){
@@ -791,6 +845,7 @@ function rowToOrder(r){
     price:Number(r.price)||0, finalPrice:Number(r.final_price)||0, free:!!r.free,
     status:r.status||'new', rating:r.rating||0, reminded:!!r.reminded,
     quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
+    referredBy:r.referred_by||'', creditUsed:+r.credit_used||0,
   };
 }
 function orderToPayload(o){
@@ -801,16 +856,39 @@ function orderToPayload(o){
     price:o.price, final_price:o.finalPrice, free:o.free,
     status:o.status, rating:o.rating||0, reminded:!!o.reminded,
     quick:!!o.quick, note:o.note||'', video_url:o.videoUrl||'', invoice:o.invoice||null, provider_phone:o.providerPhone||null, wants_earlier:!!o.wantsEarlier, promo_code:o.promoCode||'', discount_pct:+o.discountPct||0,
+    user_id:myUid,   // صاحب الطلب — عليه يعتمد قفل القراءة
+    // الخادم يعيد التحقق من هذين ويتجاهل أي تلاعب
+    referred_by:o.referredBy||null, credit_used:+o.creditUsed||0,
   };
 }
 /* رفع مقطع الفيديو إلى Supabase Storage وإرجاع رابطه العام */
+/* ---------- وسائط العملاء (صور/فيديو المنزل) ----------
+   نخزّن *المسار* مو رابطاً عاماً. الرابط يُولَّد موقّعاً وينتهي بعد دقائق،
+   فما أحد يقدر يتصفّح صور بيوت العملاء حتى لو حصل على الرابط لاحقاً. */
 async function uploadVideo(file){
   const ext=(file.name.split('.').pop()||'mp4').toLowerCase();
-  const path='v_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)+'.'+ext;
+  // اسم طويل عشوائي — ما يُخمّن
+  const rnd=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)).replace(/-/g,'');
+  const path='v_'+Date.now()+'_'+rnd+'.'+ext;
   const { error } = await sb.storage.from('khafet-videos').upload(path, file, {upsert:false, contentType:file.type||'video/mp4'});
   if(error) throw error;
-  const { data } = sb.storage.from('khafet-videos').getPublicUrl(path);
-  return data.publicUrl;
+  return path;   // ← المسار، مو الرابط
+}
+/* يقبل المسار الجديد أو الرابط العام القديم */
+function mediaPath(v){
+  if(!v) return '';
+  const s=String(v);
+  const m=s.match(/khafet-videos\/(.+?)(\?|$)/);
+  return m ? decodeURIComponent(m[1]) : s;
+}
+async function openMedia(v){
+  const p=mediaPath(v);
+  if(!p || !sb){ toast('تعذّر فتح الملف'); return; }
+  try{
+    const { data, error } = await sb.storage.from('khafet-videos').createSignedUrl(p, 600);  // ١٠ دقائق
+    if(error || !data) throw error || new Error('no url');
+    window.open(data.signedUrl, '_blank', 'noopener');
+  }catch(e){ console.warn('media:', e.message||e); toast('تعذّر فتح الملف'); }
 }
 async function loadOrdersFromCloud(){
   if(!cloudReady || cloudLoading) return;
@@ -833,8 +911,10 @@ async function loadOrdersFromCloud(){
   }finally{ cloudLoading=false; }
 }
 async function cloudInsert(order){
+  if(!myUid) await ensureAnonSession();   // ضمان وجود هوية قبل الحفظ
   const { data, error } = await sb.from('khafet_orders').insert(orderToPayload(order)).select().single();
   if(error) throw error;
+  loadMyRef();   // الخادم خصم الرصيد — حدّثه عندنا
   return rowToOrder(data);
 }
 async function cloudPatch(dbId, patch){
@@ -903,7 +983,18 @@ function phoneLoyalty(phone){
   const earned=Math.floor(paidDone/LOYALTY_TARGET);
   return {done:paidDone, progress:paidDone%LOYALTY_TARGET, freeAvailable:Math.max(0, earned-freeDone)};
 }
-function isFreeOrder(){ if(quickMode) return false; return phoneLoyalty(state.customer.phone).freeAvailable>0; }
+/* نقاط الولاء = طلبات *هذه الهوية* المنجزة.
+   القفل يضمن إن state.orders فيها طلبات هذا العميل فقط، فالعدّ عليها مباشرة
+   أدقّ من المطابقة بالجوال — اللي كانت تنكسر بعد القفل (كل جهاز يشوف هويته فقط).
+   ولما يسجّل بالرمز تنربط أجهزته بهوية وحدة وتتجمّع نقاطه تلقائياً. */
+function myLoyalty(){
+  const mine=state.orders.filter(o=>o.status==='done');
+  const paidDone=mine.filter(o=>!o.free).length;
+  const freeDone=mine.filter(o=>o.free).length;
+  const earned=Math.floor(paidDone/LOYALTY_TARGET);
+  return {done:paidDone, progress:paidDone%LOYALTY_TARGET, freeAvailable:Math.max(0, earned-freeDone)};
+}
+function isFreeOrder(){ if(quickMode) return false; return myLoyalty().freeAvailable>0; }
 function finalPrice(){ return isFreeOrder()?0:cartPrice(); }
 
 function addToCart(id){
@@ -920,7 +1011,9 @@ function removeFromCart(id){ delete state.cart[id]; save(); render(); }
 
 /* ---- المواعيد المتاحة ---- */
 function bookingsOn(iso,excludeId){ return state.orders.filter(o=>o.date===iso && o.status!=='cancelled' && o.id!==excludeId); }
+function isOffDay(iso){ return OFF_DAYS.includes(parseISO(iso).getDay()); }
 function slotAvailable(iso,startMin,needMin,excludeId){
+  if(isOffDay(iso)) return false;              // إجازة — ما فيه مواعيد
   const end=startMin+needMin+BUFFER;
   if(end-BUFFER>WORK_END) return false;
   if(bookingsOn(iso,excludeId).length >= MAX_JOBS_PER_DAY) return false;  // اليوم ممتلئ
@@ -943,7 +1036,7 @@ function windowLabel(startMin){ return fmtTime(startMin)+' – '+fmtTime(Math.mi
 /* ============================================================
    التنقل / العرض
    ============================================================ */
-function go(v){ view=v; if(v!=='admin') isAdmin=false; window.scrollTo(0,0); render(); }
+function go(v){ view=v; if(v!=='admin') isAdmin=false; if(v!=='login') otpStep=false; window.scrollTo(0,0); render(); }
 function render(){
   syncHeader();
   if(view==='home') return renderHome();
@@ -962,18 +1055,42 @@ function render(){
   if(view==='admin') return renderAdmin();
 }
 function myOrders(){ const ids=state.myOrderIds||[]; const ph=state.customer&&state.customer.phone; return state.orders.filter(o=> ids.includes(o.id) || (ph && o.customer && o.customer.phone===ph) ); }
-/* ---------- تسجيل دخول العميل (بالجوال) + روابط الفريق ---------- */
+/* ---------- تسجيل دخول العميل (جوال + رمز تحقق SMS) + روابط الفريق ----------
+   الرمز يُرسل ويُتحقق منه في خادم Supabase — المتصفح ما يقدر يتجاوزه.
+   لو العميل داخل بهوية مجهولة، نربط الرقم بنفس الهوية عشان طلباته القديمة تنتقل معه. */
+/* قناة إرسال الرمز: 'whatsapp' أرخص وما يحتاج تسجيل مُرسِل بـCITC.
+   لو احتجتِ ترجعين للرسائل النصية، غيّريها لـ'sms' — وبس. */
+const OTP_CHANNEL='whatsapp';
+let otpStep=false, otpPhone='', otpMode='';   // otpMode: 'link' | 'signin'
+
+/* 05xxxxxxxx → +9665xxxxxxxx */
+function normPhone(p){
+  let d=String(p||'').replace(/[^0-9]/g,'');
+  if(d.startsWith('00966')) d=d.slice(2);
+  else if(d.startsWith('966')) { /* كما هو */ }
+  else if(d.startsWith('0')) d='966'+d.slice(1);
+  else if(d.startsWith('5')) d='966'+d;
+  return '+'+d;
+}
 function renderLogin(){
   const ph=(state.customer&&state.customer.phone)||'';
+  const chName = OTP_CHANNEL==='whatsapp' ? 'واتساب' : 'رسالة نصية';
+  const chIco  = OTP_CHANNEL==='whatsapp' ? '💬' : '📩';
+  const body = otpStep ? `
+      <h3>${chIco} رمز التحقق</h3>
+      <p style="color:var(--muted);font-size:.9rem;margin:4px 0 12px">أرسلنا لك رمزاً على <b>${chName}</b> إلى <b dir="ltr">${esc(otpPhone)}</b></p>
+      <div class="field"><label>الرمز</label><input id="lg_otp" inputmode="numeric" maxlength="6" placeholder="------" style="letter-spacing:.5em;text-align:center;font-weight:900" onkeydown="if(event.key==='Enter')verifyOtpCode()" /></div>
+      <button class="cta" onclick="verifyOtpCode()">تأكيد ودخول</button>
+      <button class="ghost" style="width:100%;margin-top:8px" onclick="otpStep=false;render()">← تغيير الرقم</button>`
+    : `
+      <h3>👤 حسابي</h3>
+      <p style="color:var(--muted);font-size:.9rem;margin:4px 0 12px">أدخل رقم جوالك — يوصلك رمز على <b>${chName}</b>، وتشوف طلباتك ونقاط ولائك على أي جهاز.</p>
+      <div class="field"><label>رقم الجوال</label><input id="lg_cust_phone" value="${esc(ph)}" inputmode="tel" placeholder="05xxxxxxxx" onkeydown="if(event.key==='Enter')sendOtp()" /></div>
+      <button class="cta" onclick="sendOtp()">${chIco} أرسل الرمز على ${chName}</button>`;
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('تسجيل الدخول','home')}
-      <div class="panel" style="margin-top:14px">
-        <h3>👤 حسابي</h3>
-        <p style="color:var(--muted);font-size:.9rem;margin:4px 0 12px">أدخل رقم جوالك لعرض طلباتك ونقاط الولاء على أي جهاز.</p>
-        <div class="field"><label>رقم الجوال</label><input id="lg_cust_phone" value="${esc(ph)}" inputmode="tel" placeholder="05xxxxxxxx" onkeydown="if(event.key==='Enter')doCustomerLogin()" /></div>
-        <button class="cta" onclick="doCustomerLogin()">دخول لحسابي</button>
-      </div>
+      <div class="panel" style="margin-top:14px">${body}</div>
       <div class="panel">
         <h3 style="font-size:1.02rem">👷 فريق العمل</h3>
         <div class="staff-links" style="border-top:none;margin-top:10px;padding-top:0;justify-content:flex-start">
@@ -984,15 +1101,75 @@ function renderLogin(){
       <div style="height:24px"></div>
     </div>`;
 }
-function doCustomerLogin(){
-  const p=(document.getElementById('lg_cust_phone')||{}).value ? document.getElementById('lg_cust_phone').value.trim() : '';
-  if(!p){ toast('اكتب رقم جوالك'); return; }
-  state.customer=state.customer||{}; state.customer.phone=p; save();
-  toast('أهلاً بك 👋'); go('account');
+async function sendOtp(){
+  const raw=((document.getElementById('lg_cust_phone')||{}).value||'').trim();
+  const phone=normPhone(raw);
+  if(!/^\+9665\d{8}$/.test(phone)){ toast('اكتب رقم جوال سعودي صحيح (05xxxxxxxx)'); return; }
+  if(!cloudReady){ toast('لا يوجد اتصال بالخادم'); return; }
+  const btn=document.querySelector('.panel .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نرسل الرمز...'; }
+  otpPhone=phone;
+  try{
+    const { data:{ user } } = await sb.auth.getUser();
+    if(user && user.is_anonymous){
+      // اربط الرقم بالهوية الحالية → طلباته السابقة تنتقل معه
+      const { error } = await sb.auth.updateUser({ phone });
+      if(!error){ otpMode='link'; otpStep=true; render(); return; }
+    }
+    // رقم مسجّل من قبل (أو جهاز جديد) → دخول عادي
+    const { error } = await sb.auth.signInWithOtp({ phone, options:{ channel:OTP_CHANNEL } });
+    if(error) throw error;
+    otpMode='signin'; otpStep=true; render();
+  }catch(e){
+    console.warn('otp send:', e.message||e);
+    toast('تعذّر إرسال الرمز — تأكد من الرقم وحاول مرة ثانية');
+    otpStep=false; render();   // أعد بناء الشاشة (الزر يرجع لنصه الصحيح)
+  }
+}
+async function verifyOtpCode(){
+  const token=((document.getElementById('lg_otp')||{}).value||'').trim();
+  if(!/^\d{4,8}$/.test(token)){ toast('اكتب الرمز المرسل'); return; }
+  const btn=document.querySelector('.panel .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳...'; }
+  try{
+    const { error } = await sb.auth.verifyOtp({
+      phone: otpPhone, token,
+      type: otpMode==='link' ? 'phone_change' : 'sms'
+    });
+    if(error) throw error;
+    const { data:{ user } } = await sb.auth.getUser();
+    if(user){ myUid=user.id; isVerified=true; }
+    state.customer=state.customer||{};
+    state.customer.phone=(document.getElementById('lg_cust_phone')||{}).value || state.customer.phone || otpPhone;
+    save();
+    otpStep=false;
+    await loadOrdersFromCloud();
+    toast('أهلاً بك 👋'); go('account');
+  }catch(e){
+    console.warn('otp verify:', e.message||e);
+    toast('الرمز غير صحيح أو انتهت صلاحيته');
+    if(btn){ btn.disabled=false; btn.textContent='تأكيد ودخول'; }
+  }
 }
 /* ---------- حسابي ---------- */
-function custCode(phone){ const d=String(phone||'').replace(/[^0-9]/g,''); return 'خافت-'+(d.slice(-4)||'0000'); }
+/* ---------- الإحالة والرصيد ----------
+   الكود عشوائي ويُولّده الخادم (مو مشتقاً من رقم الجوال — كان يُخمّن بسهولة).
+   الرصيد يُصرف بعد إنجاز الطلب فقط، فما فيه خسارة. */
+let myRef={ code:null, balance:0, referrals:0 };
+async function loadMyRef(){
+  if(!cloudReady || !sb) return;
+  try{
+    const { data:code } = await sb.rpc('my_referral_code');       // ينشئه أول مرة
+    const { data:info } = await sb.rpc('my_credit');
+    myRef = { code: code || (info&&info.code) || null,
+              balance: (info&&+info.balance) || 0,
+              referrals: (info&&+info.referrals) || 0 };
+  }catch(e){ console.warn('ref:', e.message||e); }
+}
 function copyCode(code){ try{ navigator.clipboard.writeText(code); toast('📋 تم نسخ الكود'); }catch(e){ toast(code); } }
+function shareCode(code){
+  const txt=`جرّب خافِت للصيانة المنزلية — استخدم كودي ${code} واحصل على خصم ١٠٪ على أول طلب 🏠`;
+  if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); }
+  else copyCode(txt);
+}
 function saveAccount(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():undefined;};
   const nm=g('acc_name'), ph=g('acc_phone');
@@ -1001,19 +1178,41 @@ function saveAccount(){
   if(ph!==undefined && ph) state.customer.phone=ph;
   save(); toast('💾 تم حفظ التعديلات'); renderAccount();
 }
-function logoutAccount(){ if(!confirm('تسجيل الخروج من حسابك؟')) return; state.customer=state.customer||{}; state.customer.phone=''; save(); toast('تم تسجيل الخروج'); go('home'); }
+async function logoutAccount(){
+  if(!confirm('تسجيل الخروج من حسابك؟')) return;
+  // اخرج من جلسة Supabase فعلياً، ثم ارجع لهوية مجهولة جديدة
+  try{ if(sb){ await sb.auth.signOut(); myUid=null; await ensureAnonSession(); } }catch(e){}
+  state.customer=state.customer||{}; state.customer.phone='';
+  state.myOrderIds=[]; state.orders=[];
+  save(); toast('تم تسجيل الخروج'); go('home');
+  if(cloudReady) loadOrdersFromCloud();
+}
 function renderAccount(){
   if(!(state.customer&&state.customer.phone)){ go('login'); return; }
-  const c=state.customer||{}; const n=myOrders().length; const code=custCode(c.phone);
+  const c=state.customer||{}; const n=myOrders().length; const code=myRef.code;
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('حسابي','home')}
       <div class="panel" style="margin-top:14px">
         <div class="acc-head"><div class="acc-avatar">👤</div><div><b style="font-size:1.15rem">${esc(c.name||'عميل خافِت')}</b><div style="color:var(--muted)">📱 ${esc(c.phone||'')}</div></div></div>
       </div>
+      ${myRef.balance>0?`<div class="panel" style="background:linear-gradient(135deg,#0b7a3b,#0e9950);border:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff">
+          <div><div style="font-size:.85rem;opacity:.9">رصيدك</div>
+            <b style="font-size:1.9rem;line-height:1.2">${ar(myRef.balance)} <span style="font-size:1rem">ر.س</span></b></div>
+          <div style="font-size:2.4rem">💰</div>
+        </div>
+        <p style="color:#fff;opacity:.92;font-size:.84rem;margin-top:8px">يُخصم تلقائياً من طلبك الجاي</p>
+      </div>`:''}
       <div class="panel"><h3>🎟️ كودك الخاص</h3>
+        ${code?`
         <div class="ref-code"><b>${esc(code)}</b><button class="sbtn ok" onclick="copyCode('${esc(code)}')">📋 نسخ</button></div>
-        <p style="color:var(--muted);font-size:.85rem;margin-top:8px">شاركه مع أصحابك — يحصلون <b>خصم ١٠٪</b> على طلبهم عند إدخاله كـ«كود خصم».</p>
+        <button class="cta" style="margin-top:10px" onclick="shareCode('${esc(code)}')">📤 شارك كودك</button>
+        <p style="color:var(--muted);font-size:.85rem;margin-top:10px">
+          صاحبك ياخذ <b>خصم ١٠٪</b> على أول طلب — وأنتِ تاخذين <b>٥ ر.س رصيد</b> بعد ما يخلص طلبه ✅</p>
+        ${myRef.referrals>0?`<div style="margin-top:10px;padding:10px 12px;background:var(--gold-tint);border-radius:10px;font-weight:800;font-size:.9rem">
+          🎉 أحلتِ ${ar(myRef.referrals)} ${myRef.referrals===1?'شخص':'أشخاص'} — شكراً لك!</div>`:''}
+        `:`<p style="color:var(--muted);font-size:.88rem">جارٍ تجهيز كودك…</p>`}
       </div>
       <button class="services-btn" onclick="go('mybookings')"><span class="sb-ic">📋</span><span class="sb-t"><b>طلباتي</b><small>${ar(n)} طلب — تابع حالتها</small></span><span class="qb-ar">←</span></button>
       <button class="services-btn" onclick="go('plans')"><span class="sb-ic">🛡️</span><span class="sb-t"><b>باقات الصيانة</b><small>اشترك ووفّر على صيانة منزلك</small></span><span class="qb-ar">←</span></button>
@@ -1131,11 +1330,15 @@ const LOGO_BIG=`<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" 
 
 /* ---------- الرئيسية: زرّان — طلب سريع / باقي الخدمات ---------- */
 function renderHome(){
-  const phone=state.customer.phone;
-  const L=phoneLoyalty(phone);
+  const L=myLoyalty();
   const dots=Array.from({length:LOYALTY_TARGET},(_,i)=>`<i class="${i<L.progress?'on':''}"></i>`).join('');
-  const tkTitle=(phone && L.freeAvailable>0) ? 'لديك طلب مجاني بانتظارك 🎉' : 'الطلب السادس مجاني';
-  const tkSub=phone ? `أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} · محفوظ برقم جوالك` : `كل ${ar(LOYALTY_TARGET)} طلبات · محفوظ برقم جوالك`;
+  const tkTitle=(L.freeAvailable>0) ? 'لديك طلب مجاني بانتظارك 🎉' : 'الطلب السادس مجاني';
+  // نقول الحقيقة: النقاط تتبع الجهاز لين يسجّل برقمه
+  const tkSub = isVerified
+    ? `أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} · محفوظ بحسابك على أي جهاز ✅`
+    : (L.done>0
+        ? `أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} · سجّل برقمك ليُحفظ على أي جهاز`
+        : `كل ${ar(LOYALTY_TARGET)} طلبات · سجّل برقمك ليُحفظ على أي جهاز`);
   const GIFT_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/></svg>';
 
   // آراء العملاء الإيجابية (٤ نجوم فأكثر + كتبوا ملاحظة)
@@ -1419,7 +1622,11 @@ async function reverseGeocodeCity(lat,lng){
     if(city){ state.address.city=city; save(); }
   }catch(e){/* تجاهل بصمت */}
 }
-function pickDate(iso){ state.booking.date=iso; state.booking.time=null; renderTime(); }
+function pickDate(iso){
+  // يحمي «التاريخ الأبعد» كمان — لأن تقويم الجهاز يسمح باختيار أي يوم
+  if(isOffDay(iso)){ toast('يوم '+AR_DAYS[parseISO(iso).getDay()]+' إجازة — اختر يوماً آخر'); return; }
+  state.booking.date=iso; state.booking.time=null; renderTime();
+}
 function pickTime(min){ state.booking.time=min; renderTime(); }
 function toggleWantsEarlier(){ state.booking.wantsEarlier = state.booking.wantsEarlier===false; renderTime(); }
 // يبحث عن أبكر موعد متاح قبل موعد الطلب الحالي (يظهر إذا ألغى عميل ثاني وفرّغ وقت)
@@ -1469,7 +1676,9 @@ function renderTime(){
       if(has){ b.date=iso; break; } }
     if(!b.date) b.date=dateISO(today);
   }
-  const days=[]; for(let i=0;i<14;i++){ const d=new Date(today); d.setDate(today.getDate()+i); days.push(d); }
+  // نتخطّى أيام الإجازة تماماً — ما تظهر بالشريط
+  const days=[]; for(let i=0;i<16;i++){ const d=new Date(today); d.setDate(today.getDate()+i);
+    if(!OFF_DAYS.includes(d.getDay())) days.push(d); }
   const dchips=days.map(d=>{
     const iso=dateISO(d), isToday=i0(d,today), active=b.date===iso;
     return `<button class="dchip ${active?'active':''}" onclick="pickDate('${iso}')">
@@ -1522,7 +1731,7 @@ function renderInfo(){
   const svcNames=quickMode?'⚡ طلب سريع (معاينة)':cartItems().map(i=>i.ico+' '+i.name).join('، ');
   const free=isFreeOrder();
   const desc=(state.problem&&state.problem.desc)||'';
-  const pPct = (free||quickMode)?0:promoPct(state.promo);
+  const pPct = (free||quickMode||!refCheck.ok)?0:10;
   const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
     : (free ? 'مجاني — مكافأة ولاء 🎁'
     : (pPct>0 ? `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(finalPrice())}</span> ${money(Math.round(finalPrice()*(1-pPct/100)))} <span style="color:#0b7a3b;font-size:.6em;font-weight:800">خصم ${ar(pPct)}٪ 🎟️</span>`
@@ -1565,7 +1774,18 @@ function renderInfo(){
         </label>
       </div>
 
-      ${free?'':`<div class="panel" style="padding:14px 16px"><div class="field" style="margin:0"><label>🎟️ كود خصم (اختياري)</label><input id="f_promo" value="${esc(state.promo||'')}" onchange="setPromo(this.value)" placeholder="اكتب الكود إن وجد" />${pPct>0?`<div style="color:#0b7a3b;font-weight:800;font-size:.86rem;margin-top:6px">✅ خصم ${ar(pPct)}٪ مطبّق</div>`:(state.promo?`<div style="color:#c0392b;font-weight:700;font-size:.84rem;margin-top:6px">الكود غير صحيح</div>`:'')}</div></div>`}
+      ${free?'':`<div class="panel" style="padding:14px 16px"><div class="field" style="margin:0">
+        <label>🎟️ كود صديق (اختياري)</label>
+        <input id="f_promo" value="${esc(state.promo||'')}" onchange="setPromo(this.value)" placeholder="مثال: خافت-K7F2M9" />
+        ${refCheck.busy?`<div style="color:var(--muted);font-weight:700;font-size:.84rem;margin-top:6px">⏳ نتحقق…</div>`
+          : refCheck.ok?`<div style="color:#0b7a3b;font-weight:800;font-size:.86rem;margin-top:6px">✅ خصم ١٠٪ مطبّق — أهلاً بك في خافِت 🎉</div>`
+          : (state.promo?`<div style="color:#c0392b;font-weight:700;font-size:.84rem;margin-top:6px">${REF_MSG[refCheck.reason]||'❌ الكود غير صحيح'}</div>`:'')}
+      </div></div>
+      ${myRef.balance>0?`<div class="panel" style="padding:14px 16px;background:#e8f7ee;border-color:#0b7a3b">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <b style="color:#0b7a3b">💰 رصيدك ${ar(myRef.balance)} ر.س</b>
+          <span style="color:#0b7a3b;font-weight:800;font-size:.86rem">يُخصم تلقائياً</span>
+        </div></div>`:''}`}
 
       <div class="est"><span style="font-size:1.5rem">${quickMode?'🔎':(free?'🎁':'💳')}</span>
         <div><div style="color:var(--muted);font-size:.85rem">الإجمالي التقريبي</div>
@@ -1578,9 +1798,28 @@ function renderInfo(){
   initPickMap();
 }
 /* ---------- كود الخصم ---------- */
-function normCode(s){ return String(s||'').trim().toLowerCase(); }
-function promoPct(code){ const c=normCode(code); if(!c) return 0; for(const k in PROMO_CODES){ if(normCode(k)===c) return PROMO_CODES[k]; } if(/^(خافت|khafet)-?\d{4}$/i.test(String(code||'').trim())) return 10; return 0; }
-function setPromo(v){ state.promo=(v||'').trim(); captureBookingInputs(); renderInfo(); }
+/* التحقّق من كود الإحالة يصير في *الخادم* — المتصفح ما يقرّر خصماً.
+   يرجع سبباً واضحاً: كود غلط / كودك أنت / مو أول طلب. */
+let refCheck={ code:'', ok:false, reason:'', busy:false };
+const REF_MSG={
+  unknown: '❌ الكود غير صحيح',
+  self:    '❌ ما تقدر تستخدم كودك أنت',
+  not_new: 'ℹ️ الخصم لأول طلب فقط — وأنت عميل عندنا من قبل 🙏',
+  not_signed_in: '❌ تعذّر التحقق، حدّث الصفحة'
+};
+async function setPromo(v){
+  state.promo=(v||'').trim();
+  captureBookingInputs();
+  if(!state.promo){ refCheck={code:'',ok:false,reason:'',busy:false}; renderInfo(); return; }
+  refCheck={ code:state.promo, ok:false, reason:'', busy:true }; renderInfo();
+  try{
+    if(!myUid) await ensureAnonSession();
+    const { data, error } = await sb.rpc('check_referral', { p_code: state.promo });
+    if(error) throw error;
+    refCheck={ code:state.promo, ok:!!(data&&data.ok), reason:(data&&data.reason)||'', busy:false };
+  }catch(e){ console.warn('ref check:', e.message||e); refCheck={ code:state.promo, ok:false, reason:'unknown', busy:false }; }
+  renderInfo();
+}
 
 /* ---------- خريطة اختيار الموقع (Leaflet + OpenStreetMap) ---------- */
 let _pmap=null, _pmarker=null;
@@ -1624,6 +1863,7 @@ function locateMe(){
 }
 
 let lastOrderId=null;
+let lastSaveError='';   // سبب فشل الحفظ السحابي (يُعرض بشاشة التأكيد)
 async function confirmOrder(){
   captureBookingInputs();
   const c=state.customer,a=state.address,b=state.booking;
@@ -1639,7 +1879,9 @@ async function confirmOrder(){
   const duration=scheduleDuration();
   const note=(state.problem&&state.problem.desc)||'';
   const promoCodeIn=(document.getElementById('f_promo')||{}).value ? document.getElementById('f_promo').value.trim() : (state.promo||'');
-  const discPct = free ? 0 : promoPct(promoCodeIn);   // الخصم لا ينطبق على الطلب المجاني
+  // الخصم والرصيد يُعاد حسابهما في الخادم — هذي بس للعرض
+  const discPct = (free || !refCheck.ok) ? 0 : 10;
+  const creditUse = (free||quickMode) ? 0 : Math.min(myRef.balance||0, Math.round(cartPrice()*(1-discPct/100)));
   const videoFile=(document.getElementById('f_video')||{}).files;
   const houseFile=(document.getElementById('f_housePhoto')||{}).files;
 
@@ -1668,14 +1910,24 @@ async function confirmOrder(){
   const base={
     createdAt:Date.now(), items, customer:{...c}, address:{...a},
     date:b.date, startMin:b.time, duration, endMin:b.time+duration,
-    price: quickMode?0:cartPrice(), finalPrice: (quickMode||free)?0:Math.round(cartPrice()*(1-discPct/100)),
+    price: quickMode?0:cartPrice(),
+    finalPrice: (quickMode||free)?0:Math.max(0, Math.round(cartPrice()*(1-discPct/100)) - creditUse),
+    referredBy: (discPct>0 ? promoCodeIn : ''), creditUsed: creditUse,
     free, status:'new', rating:0, reminded:false, quick:quickMode, note, videoUrl, wantsEarlier: state.booking.wantsEarlier!==false,
     promoCode: discPct>0?promoCodeIn:'', discountPct: discPct,
   };
   let order=null;
   if(cloudReady){
     try{ order=await cloudInsert(base); }
-    catch(e){ toast('تعذّر الاتصال بالخادم، حُفظ محلياً'); }
+    catch(e){
+      // اطبع السبب كامل — لا تبتلعه بصمت
+      console.error('❌ فشل حفظ الطلب في الخادم:', {
+        message: e && e.message, code: e && e.code,
+        details: e && e.details, hint: e && e.hint, raw: e
+      });
+      lastSaveError = (e && (e.message || e.details || e.hint)) || String(e);
+      toast('⚠️ ما وصل الخادم: ' + lastSaveError);
+    }
   }
   if(!order){ state.seq++; order=Object.assign({id:'#'+ar(state.seq), num:state.seq, dbId:null}, base); }
   state.orders.unshift(order);
@@ -1693,11 +1945,17 @@ function renderConfirm(){
     <div class="wrap screen">
       <div class="panel" style="margin-top:26px">
         <div class="success">
-          <div class="circle">✅</div>
-          <h2>تم استلام طلبك!</h2>
+          <div class="circle">${o.dbId?'✅':'⚠️'}</div>
+          <h2>${o.dbId?'تم استلام طلبك!':'طلبك ما وصلنا بعد'}</h2>
           <div class="ordno">رقم الطلب ${o.id}</div>
-          <p style="color:var(--muted);margin-top:10px">وصلنا طلبك، وبنتواصل معك لتأكيد الموعد.</p>
+          <p style="color:var(--muted);margin-top:10px">${o.dbId
+            ? 'وصلنا طلبك، وبنتواصل معك لتأكيد الموعد.'
+            : 'حُفظ على جهازك فقط — لم يصل إلى فريق خافِت. تواصل معنا أو أعد المحاولة.'}</p>
         </div>
+        ${o.dbId?'':`<div style="background:#fdecea;border:1px solid #f5c6c2;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+          <b style="color:#a3251c;font-size:.9rem">سبب عدم الوصول:</b>
+          <div style="font-size:.82rem;color:#a3251c;margin-top:5px;word-break:break-word" dir="ltr">${esc(lastSaveError||'اتصال غير متاح')}</div>
+        </div>`}
         <div class="kv"><span>الخدمات</span><b style="max-width:60%">${itemsList}</b></div>
         <div class="kv"><span>الموعد</span><b>${dayLabel(o.date)} · ${windowLabel(o.startMin)}</b></div>
         <div class="kv"><span>المدة التقريبية</span><b>${fmtDuration(o.duration)} (ينتهي ~ ${fmtTime(o.endMin)})</b></div>
@@ -1878,14 +2136,8 @@ function renderTech(){
 /* ============================================================
    لوحة المؤسسة
    ============================================================ */
-function openAdmin(){
-  if(!isAdmin){
-    const pin=prompt('رمز الدخول للوحة المؤسسة:'); if(pin===null) return;
-    if(pin!==ADMIN_PIN){ toast('رمز غير صحيح ❌'); return; }
-    isAdmin=true;
-  }
-  view='admin'; window.scrollTo(0,0); render(); loadProviders();
-}
+/* أُزيلت openAdmin() — اللوحة صارت في admin.html بحساب Supabase حقيقي.
+   كانت تُفتح برمز مكتوب في الكود، وهذا خطر أمني. */
 let providersList=null;
 async function loadProviders(){
   let arr=[];
@@ -2007,7 +2259,7 @@ function renderAdminOrder(o){
       ${o.address.mark?`<div><div class="k">🚩 علامة مميزة</div>${esc(o.address.mark)}</div>`:''}
       ${o.note?`<div><div class="k">🛠️ وصف المشكلة</div>${esc(o.note)}</div>`:''}
       ${o.address.notes?`<div><div class="k">📝 ملاحظات</div>${esc(o.address.notes)}</div>`:''}
-      ${o.videoUrl?`<div><div class="k">📹 المقطع</div><a href="${esc(o.videoUrl)}" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:800">🎥 مشاهدة الفيديو</a></div>`:''}
+      ${o.videoUrl?`<div><div class="k">📹 المقطع</div><button onclick="openMedia('${esc(o.videoUrl)}')" style="color:#7c3aed;font-weight:800;background:none;border:none;padding:0;cursor:pointer;font-family:inherit;font-size:inherit">🎥 مشاهدة الفيديو</button></div>`:''}
     </div>
     <div class="aitems">${o.quick?'⚡ طلب سريع (معاينة)':itemsRows}</div>
     <div class="actions">${acts}</div>
