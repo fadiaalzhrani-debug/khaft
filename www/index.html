@@ -799,28 +799,45 @@ async function initCloud(){
    تشتغل بس لما الموقع يكون داخل تطبيق Capacitor.
    على المتصفح العادي ما يصير شي — بدون أي خطأ. */
 function inApp(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+
+/* حالة الإشعارات — تُعرض بصفحة «حسابي» عشان نشخّص بدون أدوات مطوّر */
+let pushState='—';
+function setPushState(s){ pushState=s; if(view==='account') renderAccount(); }
+
+/* الطريقة الصحيحة للوصول لإضافة أصلية بدون حزم JS:
+   Capacitor.registerPlugin — أما Capacitor.Plugins فطريقة قديمة قد لا تعمل بالإصدار ٦. */
+function getPushPlugin(){
+  const C=window.Capacitor;
+  if(!C) return null;
+  try{ if(typeof C.registerPlugin==='function') return C.registerPlugin('PushNotifications'); }catch(e){}
+  return (C.Plugins && C.Plugins.PushNotifications) || null;
+}
 async function initPush(){
-  if(!inApp()) return;                       // متصفح عادي → تجاهل
+  if(!inApp()){ setPushState('متصفح — الإشعارات للتطبيق فقط'); return; }
   try{
-    const PN = window.Capacitor.Plugins.PushNotifications;
-    if(!PN) return;
-    let perm = await PN.checkPermissions();
-    if(perm.receive === 'prompt') perm = await PN.requestPermissions();
-    if(perm.receive !== 'granted') return;   // العميل رفض — احترم اختياره
+    const PN = getPushPlugin();
+    if(!PN){ setPushState('❌ إضافة الإشعارات غير مثبّتة'); return; }
+
     PN.addListener('registration', async (t)=>{
       try{
         if(!myUid) await ensureAnonSession();
-        await sb.from('khafet_devices').upsert(
+        const { error } = await sb.from('khafet_devices').upsert(
           { token:t.value, user_id:myUid, platform:'ios', updated_at:new Date().toISOString() },
           { onConflict:'token' }
         );
-      }catch(e){ console.warn('device save:', e.message||e); }
+        if(error) throw error;
+        setPushState('✅ الجهاز مسجّل — الإشعارات شغّالة');
+      }catch(e){ setPushState('❌ فشل حفظ الجهاز: '+(e.message||e)); }
     });
-    PN.addListener('registrationError', e=> console.warn('push reg error:', e));
-    // ضغط على الإشعار → افتح طلباتي
+    PN.addListener('registrationError', e=> setPushState('❌ رفضتها آبل: '+JSON.stringify(e)));
     PN.addListener('pushNotificationActionPerformed', ()=>{ go('mybookings'); });
+
+    let perm = await PN.checkPermissions();
+    if(perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PN.requestPermissions();
+    if(perm.receive !== 'granted'){ setPushState('⚠️ الإذن مرفوض ('+perm.receive+') — فعّليه من إعدادات الآيفون'); return; }
+    setPushState('⏳ نسجّل الجهاز…');
     await PN.register();
-  }catch(e){ console.warn('push init:', e.message||e); }
+  }catch(e){ setPushState('❌ خطأ: '+(e.message||e)); }
 }
 // حمّل الأسعار المعدّلة من لوحة المؤسسة وطبّقها على الكتالوج
 async function loadPrices(){
@@ -1216,6 +1233,10 @@ function renderAccount(){
       </div>
       <button class="services-btn" onclick="go('mybookings')"><span class="sb-ic">📋</span><span class="sb-t"><b>طلباتي</b><small>${ar(n)} طلب — تابع حالتها</small></span><span class="qb-ar">←</span></button>
       <button class="services-btn" onclick="go('plans')"><span class="sb-ic">🛡️</span><span class="sb-t"><b>باقات الصيانة</b><small>اشترك ووفّر على صيانة منزلك</small></span><span class="qb-ar">←</span></button>
+      ${inApp()?`<div class="panel"><h3>🔔 الإشعارات</h3>
+        <div style="font-size:.88rem;font-weight:700;word-break:break-word">${esc(pushState)}</div>
+        <button class="sbtn" style="margin-top:10px" onclick="initPush()">🔄 أعد المحاولة</button>
+      </div>`:''}
       <div class="panel"><h3>⚙️ الإعدادات</h3>
         <div class="field"><label>الاسم</label><input id="acc_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
