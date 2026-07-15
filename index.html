@@ -1,0 +1,2303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>خافِت | صيانة منزلية شاملة</title>
+<meta name="description" content="خافِت — منصة صيانة منزلية شاملة: سباكة، كهرباء، تكييف، نجارة، دهان، أجهزة وتنظيف. احجز فني موثوق في الوقت المناسب لك." />
+<link rel="icon" href="logo.png" />
+<meta name="theme-color" content="#F5C518" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root{
+    /* هوية خافِت — أصفر ذهبي + فحمي دافئ */
+    --gold:#F5C518; --gold-strong:#E3AF07; --gold-deep:#B8860B; --gold-soft:#FBF1C9; --gold-tint:#FDF8E7;
+    --ink:#1A1712; --ink-soft:#40392E; --brand:#1A1712; --brand-dark:#000000; --brand-soft:#FBF1C9;
+    --accent:#F5C518; --accent-soft:#FEF6D6;
+    --bg:#FAF7EF; --card:#FFFFFF; --muted:#6E685B; --line:#EBE5D6; --line-strong:#DED6C3;
+    --ok:#15803D; --ok-soft:#DCFCE7; --danger:#DC2626; --danger-soft:#FBE4E4; --warn:#B45309;
+    --r:18px; --r-sm:12px; --r-lg:24px;
+    --shadow:0 1px 2px rgba(40,32,10,.04), 0 10px 28px rgba(40,32,10,.06);
+    --shadow-sm:0 1px 2px rgba(40,32,10,.04), 0 4px 12px rgba(40,32,10,.045);
+    --shadow-gold:0 8px 26px rgba(245,197,24,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .wrap{max-width:940px;margin:0 auto;padding:0 20px}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  input,select,textarea{font-family:inherit;font-size:1rem}
+  h1,h2,h3{line-height:1.25;letter-spacing:-.02em;text-wrap:balance}
+  .hidden{display:none !important}
+  a{color:inherit;text-decoration:none}
+  ::selection{background:var(--gold);color:var(--ink)}
+
+  /* ===== Header ===== */
+  header.top{position:sticky;top:0;z-index:40;background:rgba(250,247,239,.82);backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
+  .top .wrap{display:flex;align-items:center;gap:12px;height:68px}
+  .logo{display:flex;align-items:center;gap:11px;font-weight:900;font-size:1.4rem;color:var(--ink);letter-spacing:-.01em}
+  .logo .mk{width:40px;height:40px;border-radius:13px;overflow:hidden;flex-shrink:0;box-shadow:var(--shadow-gold)}
+  .logo .brand-txt{display:flex;flex-direction:column;line-height:1.08}
+  .logo .brand-txt small{font-size:.6rem;font-weight:700;color:var(--muted);letter-spacing:.02em;margin-top:1px}
+  .logo .mk img{width:100%;height:100%;object-fit:cover;display:block}
+  .spacer{flex:1}
+  .hbtn{display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;font-weight:700;font-size:.92rem;transition:.18s}
+  .hbtn.solid{background:var(--gold);color:var(--ink)}
+  .hbtn.solid:hover{background:var(--gold-strong)}
+  .hbtn.ghost{background:transparent;color:var(--muted)}
+  .hbtn.ghost:hover{background:rgba(0,0,0,.05);color:var(--ink)}
+  .hbtn .badge{background:var(--ink);color:#fff;border-radius:999px;min-width:20px;height:20px;padding:0 6px;font-size:.75rem;display:grid;place-items:center}
+  /* اختيار الموقع */
+  .loc-chip{display:inline-flex;align-items:center;gap:6px;background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:999px;padding:8px 13px;font-weight:800;font-size:.9rem;color:var(--ink);max-width:170px}
+  .loc-chip #locCity{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .loc-chip .chev{color:var(--muted);font-size:.8rem}
+  .loc-modal{position:fixed;inset:0;z-index:75;background:rgba(20,18,10,.5);backdrop-filter:blur(2px);display:none;align-items:flex-end;justify-content:center}
+  .loc-modal.show{display:flex}
+  .loc-sheet{background:var(--card);width:100%;max-width:560px;max-height:88vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:20px}
+  .loc-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .loc-head b{font-size:1.2rem;font-weight:900}
+  .loc-head button{width:36px;height:36px;border-radius:50%;background:var(--bg);font-size:1.1rem}
+  .loc-sheet .hint{color:var(--muted);font-size:.9rem;margin-bottom:14px}
+  .loc-gps{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;background:var(--ink);color:#fff;font-weight:800;padding:14px;border-radius:13px;margin-bottom:14px}
+  .loc-cities{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .loc-cities button{padding:13px 8px;border-radius:12px;border:1.5px solid var(--line);background:#fcfbf6;font-weight:800;font-size:.92rem;transition:.12s}
+  .loc-cities button:hover{border-color:var(--gold)}
+  .loc-cities button.on{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+  .loc-other{display:flex;gap:8px;margin-top:14px}
+  .loc-other input{flex:1;padding:13px 15px;border:1.5px solid var(--line);border-radius:12px;background:#fcfbf6}
+  .loc-other button{background:var(--gold);color:var(--ink);font-weight:900;padding:0 20px;border-radius:12px}
+
+  /* ===== Hero ===== */
+  .hero{background:linear-gradient(158deg,#F9D338 0%,#F5C518 52%,#EFBC0C 100%);color:var(--ink);position:relative;overflow:hidden}
+  .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 90% at 85% -10%, rgba(255,255,255,.35), transparent 55%);pointer-events:none}
+  .hero-in{padding:44px 20px 48px;text-align:center;position:relative;z-index:1}
+  .hero-mark{width:74px;height:74px;margin:0 auto 14px;color:var(--ink)}
+  .hero-logo{display:inline-block;width:92px;height:92px;border-radius:24px;overflow:hidden;margin-bottom:14px;box-shadow:0 10px 26px rgba(0,0,0,.14);background:#fff}
+  .hero-logo img{width:100%;height:100%;object-fit:cover;display:block}
+  .hero h1{font-size:2.15rem;font-weight:900;letter-spacing:-.035em}
+  .hero p{font-size:1.05rem;max-width:460px;margin:9px auto 0;color:var(--ink-soft);font-weight:600}
+  .hero-sub b{display:block;font-size:1.18rem;font-weight:900;color:var(--ink)}
+  .hero-sub span{display:block;font-size:.98rem;font-weight:600;color:var(--ink-soft);margin-top:3px}
+  /* هيرو مختصر */
+  .hero-slim .hero-in{padding:30px 20px 34px}
+  .hero.hero-slim h1{font-size:2rem}
+  .hero-slim p{margin-top:5px}
+  .hero-wave{display:block;width:100%;height:22px;color:var(--bg);position:relative;z-index:1}
+
+  /* ===== Layout ===== */
+  section{margin-top:34px}
+  .sec-head{margin-bottom:16px}
+  .sec-head h2{font-size:1.35rem;font-weight:900}
+  .sec-head p{color:var(--muted);font-size:.92rem;margin-top:2px}
+
+  .features{display:flex;justify-content:center;flex-wrap:wrap;gap:8px 22px;margin-top:22px;color:var(--muted);font-size:.9rem;font-weight:600}
+  .features span{display:inline-flex;gap:6px;align-items:center}
+
+  /* Category tiles */
+  .ctiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .ctile{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px 14px;text-align:center;box-shadow:var(--shadow-sm);transition:.18s}
+  .ctile:hover{transform:translateY(-4px);box-shadow:var(--shadow);border-color:var(--gold)}
+  .ct-ic{width:58px;height:58px;margin:0 auto 12px;border-radius:16px;background:var(--gold-soft);display:grid;place-items:center;font-size:1.7rem}
+  .ctile b{display:block;font-size:1.05rem;font-weight:800}
+  .ctile small{color:var(--muted);font-size:.82rem}
+
+  /* Popular row */
+  .popular{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r-sm);padding:14px 12px;text-align:center;transition:.15s;position:relative;box-shadow:var(--shadow-sm)}
+  .pcard:hover{border-color:var(--gold);transform:translateY(-3px)}
+  .pcard .pic{font-size:1.7rem}
+  .pcard b{display:block;font-size:.92rem;margin-top:4px}
+  .pcard small{color:var(--muted);font-size:.76rem}
+  .pcard .padd{position:absolute;top:8px;left:8px;width:34px;height:34px;border-radius:50%;background:var(--gold);color:var(--ink);font-weight:900;display:grid;place-items:center;font-size:1.2rem}
+
+  /* Loyalty slim */
+  .loystrip{display:flex;align-items:center;gap:14px;background:var(--gold-soft);border:1px solid #F1E3A8;border-radius:var(--r);padding:15px 18px}
+  .loystrip .ls-ic{font-size:1.7rem}
+  .loystrip .ls-txt{flex:1;font-size:.95rem;font-weight:600}
+  .loystrip .ls-txt b{font-weight:800}
+  .loystrip .ls-count{font-weight:900;font-size:1.15rem;background:#fff;border:1px solid #F1E3A8;padding:6px 13px;border-radius:999px;white-space:nowrap}
+
+  /* Service cards */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .scard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;transition:.15s}
+  .scard:hover{box-shadow:var(--shadow);border-color:#e3ddc9}
+  .scard .stop{display:flex;gap:13px;align-items:flex-start}
+  .scard .sico{width:50px;height:50px;border-radius:15px;background:var(--gold-soft);display:grid;place-items:center;font-size:1.6rem;flex-shrink:0}
+  .scard .sinfo{flex:1}
+  .scard .scat{font-size:.74rem;color:var(--muted);font-weight:700}
+  .scard h3{font-size:1.05rem;font-weight:800;margin-top:1px}
+  .scard .sdesc{color:var(--muted);font-size:.9rem;margin-top:3px;min-height:36px}
+  .scard .meta{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .pill{font-size:.79rem;font-weight:700;padding:6px 11px;border-radius:999px;display:inline-flex;gap:5px;align-items:center}
+  .pill.time{background:#f3f1e9;color:#5c5a50}
+  .pill.price{background:var(--gold-soft);color:#7a5f00}
+  .scard .add{margin-top:15px;background:var(--ink);color:#fff;font-weight:800;padding:12px;border-radius:13px;transition:.15s;display:flex;align-items:center;justify-content:center;gap:7px}
+  .scard .add:hover{background:#000}
+  .scard .add.in{background:var(--ok)}
+
+  /* Floating cart */
+  .cartbar{position:fixed;bottom:0;left:0;right:0;z-index:45;background:var(--ink);color:#fff;box-shadow:0 -8px 24px rgba(0,0,0,.18);transform:translateY(120%);transition:.25s}
+  .cartbar.show{transform:translateY(0)}
+  .cartbar .wrap{display:flex;align-items:center;gap:14px;height:68px}
+  .cartbar .ci{background:rgba(255,255,255,.14);width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:1.2rem;position:relative}
+  .cartbar .ci b{position:absolute;top:-6px;left:-6px;background:var(--gold);color:var(--ink);border-radius:999px;min-width:20px;height:20px;font-size:.72rem;display:grid;place-items:center;padding:0 5px}
+  .cartbar .cinfo{flex:1;line-height:1.35}
+  .cartbar .cinfo b{font-size:1.02rem}
+  .cartbar .cinfo small{opacity:.8;display:block;font-size:.82rem}
+  .cartbar .cgo{background:var(--gold);color:var(--ink);font-weight:900;padding:12px 22px;border-radius:13px;display:flex;gap:7px;align-items:center}
+
+  /* ===== Sub screens ===== */
+  .screen{min-height:60vh;padding-bottom:30px}
+  .pagehead{display:flex;align-items:center;gap:13px;margin:22px 0 4px}
+  .back{width:44px;height:44px;border-radius:13px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-size:1.2rem;box-shadow:var(--shadow-sm);transition:.15s}
+  .back:hover{background:#f4f2ea}
+  .pagehead h2{font-size:1.5rem;font-weight:900;letter-spacing:-.02em}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:22px;margin-top:16px}
+  .panel h3{font-size:1.05rem;font-weight:800;margin-bottom:15px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+
+  /* Cart lines */
+  .cline{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--line)}
+  .cline:last-child{border-bottom:none}
+  .cline .ci2{width:46px;height:46px;border-radius:13px;background:var(--gold-soft);display:grid;place-items:center;font-size:1.4rem;flex-shrink:0}
+  .cline .cn{flex:1}
+  .cline .cn b{font-size:.98rem}
+  .cline .cn small{color:var(--muted);display:block;font-size:.8rem}
+  .qty{display:flex;align-items:center;background:#f4f2ea;border-radius:11px;overflow:hidden}
+  .qty button{width:34px;height:36px;font-weight:900;font-size:1.15rem}
+  .qty span{min-width:28px;text-align:center;font-weight:800}
+  .del{color:var(--danger);font-size:1.15rem;padding:6px}
+  .totals{display:flex;flex-direction:column;gap:9px}
+  .totals .row{display:flex;justify-content:space-between;align-items:center}
+  .totals .row.big{font-size:1.18rem;font-weight:900;border-top:2px dashed var(--line);padding-top:13px;margin-top:4px}
+  .totals .muted{color:var(--muted)}
+  .est{background:var(--gold-soft);border:1px solid #F1E3A8;border-radius:var(--r-sm);padding:14px 16px;display:flex;gap:12px;align-items:center;margin-top:16px}
+  .est .big{font-size:1.08rem;font-weight:800}
+
+  /* Forms */
+  .field{margin-bottom:15px}
+  .field label{display:block;font-weight:700;font-size:.9rem;margin-bottom:7px}
+  .field label .req{color:var(--danger)}
+  .field input,.field textarea,.field select{width:100%;padding:13px 15px;border:1.5px solid var(--line);border-radius:12px;background:#FCFBF6;transition:.15s}
+  .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--gold-strong);background:#fff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .field textarea{resize:vertical;min-height:72px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+
+  /* Date chips */
+  .dates{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
+  .dates::-webkit-scrollbar{display:none}
+  .dchip{flex-shrink:0;min-width:76px;text-align:center;padding:11px 8px;border-radius:15px;border:1.5px solid var(--line);background:#fcfbf7;transition:.15s}
+  .dchip.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .dchip small{display:block;font-size:.72rem;opacity:.85}
+  .dchip b{font-size:1.3rem;display:block;font-weight:800}
+  .dchip .mon{font-size:.72rem}
+  .more-date{position:relative;border-style:dashed;border-color:var(--gold-strong);background:var(--gold-tint);cursor:pointer;display:block}
+  .more-date b{color:var(--gold-deep,#B8860B)}
+  .more-date.active{border-style:solid;background:var(--ink);color:#fff;border-color:var(--ink)}
+  .more-date.active b{color:#fff}
+  .more-date input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0}
+
+  /* Time slots */
+  .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:4px}
+  .slot{padding:12px 6px;border-radius:13px;border:1.5px solid var(--line);background:#fcfbf7;font-weight:700;text-align:center;transition:.15s;font-size:.9rem}
+  .slot.win{white-space:nowrap;font-size:.88rem;font-weight:800}
+  .slot.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .slot:disabled{opacity:.35;text-decoration:line-through;cursor:not-allowed}
+  .slot-note{color:var(--muted);font-size:.83rem;margin-top:10px;display:flex;gap:6px;align-items:flex-start}
+  .notify-toggle{display:flex;align-items:center;gap:12px;margin-top:14px;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;transition:.15s}
+  .notify-toggle.on{border-color:#25D366;background:rgba(37,211,102,.1)}
+  .notify-toggle .nt-check{width:26px;height:26px;flex-shrink:0;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;font-weight:900;color:#fff;font-size:1rem}
+  .notify-toggle.on .nt-check{background:#25D366;border-color:#25D366}
+  .notify-toggle .nt-t b{display:block;font-weight:800;font-size:.98rem;color:var(--ink)}
+  .notify-toggle .nt-t small{color:var(--muted);font-size:.82rem}
+  .reject-note{display:flex;align-items:center;gap:11px;background:rgba(248,113,113,.1);border:1.5px solid rgba(248,113,113,.45);border-radius:var(--r-sm);padding:12px 14px;margin-top:12px}
+  .reject-note .rj-ic{font-size:1.3rem;line-height:1}
+  .reject-note .rj-t{display:flex;flex-direction:column;font-size:.86rem;color:#a3352f;font-weight:700;line-height:1.4}
+  .reject-note .rj-t b{font-size:.98rem;color:#8a201b;font-weight:900}
+  .delay-note{display:flex;align-items:center;gap:11px;background:rgba(255,149,0,.1);border:1.5px solid rgba(255,149,0,.45);border-radius:var(--r-sm);padding:12px 14px;margin-top:12px}
+  .delay-note .dn-ic{font-size:1.4rem;line-height:1}
+  .delay-note .dn-t{display:flex;flex-direction:column;font-size:.84rem;color:#b26a00;font-weight:700;line-height:1.4}
+  .delay-note .dn-t b{font-size:.98rem;color:#8a4b00;font-weight:900}
+  .advance-note{display:flex;align-items:center;gap:11px;background:var(--gold-tint);border:1.5px solid var(--gold-strong);border-radius:var(--r-sm);padding:12px 14px;margin-top:12px}
+  .advance-note .an-ic{font-size:1.5rem;line-height:1}
+  .advance-note .an-t{flex:1;display:flex;flex-direction:column;font-size:.82rem;color:#7a5f00;font-weight:700;line-height:1.35}
+  .advance-note .an-t b{font-size:.98rem;color:var(--ink);font-weight:900}
+  .advance-note .an-btn{background:var(--ink);color:#fff;border:none;border-radius:10px;padding:10px 15px;font-weight:900;font-size:.9rem;cursor:pointer;white-space:nowrap;font-family:inherit}
+  .advance-note .an-btn:active{transform:scale(.97)}
+
+  .cta{width:100%;background:var(--ink);color:#fff;font-weight:900;font-size:1.05rem;padding:17px;border-radius:15px;transition:.2s cubic-bezier(.2,.7,.3,1);display:flex;align-items:center;justify-content:center;gap:9px;letter-spacing:-.01em;box-shadow:0 8px 22px rgba(26,23,18,.22)}
+  .cta:hover{background:#000;transform:translateY(-2px);box-shadow:0 12px 28px rgba(26,23,18,.28)}
+  .cta:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;transform:none}
+  .cta.gold{background:var(--gold);color:var(--ink);box-shadow:var(--shadow-gold)}
+  .cta.gold:hover{background:var(--gold-strong)}
+
+  /* Confirmation */
+  .success{text-align:center;padding:18px 0}
+  .success .circle{width:94px;height:94px;border-radius:50%;background:var(--gold-soft);display:grid;place-items:center;font-size:3rem;margin:0 auto 14px;animation:pop .4s}
+  @keyframes pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .success h2{font-size:1.5rem;font-weight:900}
+  .success .ordno{display:inline-block;background:var(--gold-soft);color:#7a5f00;font-weight:800;padding:6px 17px;border-radius:999px;margin-top:8px}
+  .kv{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:.95rem}
+  .kv:last-child{border-bottom:none}
+  .kv b{font-weight:800;text-align:left}
+  .reminder-note{background:var(--gold-soft);border:1px solid #F1E3A8;border-radius:var(--r-sm);padding:13px 15px;display:flex;gap:10px;color:#7a5f00;font-weight:600;margin-top:15px;font-size:.9rem}
+  .rate-box{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line)}
+  .rate-row{display:flex;align-items:center;gap:10px}
+  .rate-lbl{font-weight:800;color:var(--ink)}
+  .rate-thanks{margin-top:10px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.35);border-radius:var(--r-sm);padding:11px 14px;color:#0b7a3b;font-weight:800;font-size:.92rem}
+  .fb-box{margin-top:10px}
+  .fb-box textarea{width:100%;min-height:72px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);background:#fcfbf7;font-family:inherit;font-size:.95rem;color:var(--ink);resize:vertical}
+  .fb-box textarea:focus{outline:none;border-color:var(--gold-strong);background:#fff}
+  .fb-box .fb-send{margin-top:8px}
+  .acc-head{display:flex;align-items:center;gap:14px}
+  .acc-avatar{width:56px;height:56px;border-radius:50%;background:var(--gold-tint);border:1px solid var(--gold-soft);display:grid;place-items:center;font-size:1.8rem;flex-shrink:0}
+  .ref-code{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--gold-tint);border:1.5px dashed var(--gold-strong);border-radius:12px;padding:13px 16px}
+  .ref-code b{font-size:1.3rem;font-weight:900;letter-spacing:1px;color:var(--ink)}
+  .reviews{margin-top:24px}
+  .reviews .rv-head{font-weight:900;font-size:1.15rem;color:var(--ink);margin-bottom:13px}
+  .rv-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+  .rv-card{flex:0 0 80%;max-width:300px;scroll-snap-align:start;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 17px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column}
+  .rv-stars{font-size:.95rem;letter-spacing:1px;margin-bottom:9px}
+  .rv-text{color:var(--ink-soft);font-weight:600;font-size:.95rem;line-height:1.55;flex:1}
+  .rv-name{margin-top:12px;color:var(--muted);font-weight:800;font-size:.88rem}
+  .labor-note{display:flex;align-items:flex-start;gap:11px;background:rgba(255,149,0,.1);border:1.5px solid rgba(255,149,0,.4);border-radius:14px;padding:14px 16px;margin-top:16px}
+  .labor-note b{display:block;color:#8a4b00;font-weight:900;font-size:.98rem}
+  .labor-note span{display:block;color:#b26a00;font-weight:600;font-size:.88rem;margin-top:3px}
+  .plans-grid{display:grid;gap:14px;margin-top:16px}
+  .plan-card{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:20px 18px;box-shadow:var(--shadow-sm)}
+  .plan-card.featured{border-color:var(--gold-strong);box-shadow:0 10px 30px rgba(245,197,24,.2)}
+  .plan-badge{position:absolute;top:-11px;right:18px;background:var(--gold-strong);color:var(--ink);font-weight:900;font-size:.78rem;padding:5px 13px;border-radius:999px}
+  .plan-name{font-weight:900;font-size:1.25rem;color:var(--ink)}
+  .plan-old{color:var(--muted);font-size:.86rem;font-weight:600;margin-top:6px}
+  .plan-old s{color:#c0392b}
+  .plan-price{font-weight:900;font-size:1.7rem;color:var(--gold-deep,#B8860B);margin:2px 0 4px}
+  .plan-price span{font-size:.85rem;font-weight:700;color:var(--muted)}
+  .plan-save{display:inline-block;background:rgba(37,211,102,.14);color:#0b7a3b;font-weight:900;font-size:.9rem;padding:5px 12px;border-radius:999px;margin-bottom:10px}
+  .plan-calc{background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:10px;padding:9px 12px;font-size:.82rem;color:var(--ink-soft);font-weight:600;margin-bottom:12px;line-height:1.5}
+  .plan-calc b{color:var(--ink);font-weight:900}
+  .plan-feats{list-style:none;padding:0;margin:0 0 16px}
+  .plan-feats li{font-weight:600;color:var(--ink-soft);font-size:.94rem;padding:6px 0;border-bottom:1px dashed var(--line)}
+  .value-card{background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:var(--r-sm);padding:16px 16px 13px;margin-top:16px}
+  .value-card .vc-head{font-weight:900;font-size:1.05rem;color:var(--ink);margin-bottom:13px}
+  .value-card .vc-list{display:grid;gap:11px}
+  .value-card .vc-item{display:flex;align-items:center;gap:11px;font-weight:700;color:var(--ink-soft);font-size:.94rem;line-height:1.4}
+  .value-card .vc-item b{color:var(--ink);font-weight:900}
+  .value-card .vc-ic{width:36px;height:36px;flex-shrink:0;display:grid;place-items:center;background:#fff;border:1px solid var(--gold-soft);border-radius:10px;font-size:1.15rem}
+  .arrived-note{background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.4);border-radius:var(--r-sm);padding:13px 15px;display:flex;gap:10px;align-items:center;color:#0b7a3b;font-weight:700;margin-top:12px;font-size:.94rem;animation:arrPulse 1.6s ease-in-out infinite}
+  @keyframes arrPulse{0%,100%{box-shadow:0 0 0 0 rgba(37,211,102,.25)}50%{box-shadow:0 0 0 6px rgba(37,211,102,0)}}
+
+  /* My bookings */
+  .obook{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:18px;margin-bottom:14px}
+  .obook .oh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+  .status{font-size:.78rem;font-weight:800;padding:5px 12px;border-radius:999px;white-space:nowrap}
+  .st-new{background:var(--gold-soft);color:#7a5f00}
+  .st-confirmed{background:#E0F2FE;color:#075985}
+  .st-progress{background:#FEF0C7;color:#92600A}
+  .st-done{background:var(--ok-soft);color:#166534}
+  .st-cancelled{background:var(--danger-soft);color:#991B1B}
+  .obook .oitems{color:var(--muted);font-size:.88rem}
+  .obook .ometa{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .obook .oact{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+  .sbtn{padding:10px 15px;border-radius:11px;font-weight:700;font-size:.86rem;border:1.5px solid var(--line);background:#fff;transition:.15s}
+  .sbtn:hover{background:#f6f4ec}
+  .sbtn.danger{color:var(--danger);border-color:#f0cccc}
+  .sbtn.ok{color:#fff;background:var(--ok);border-color:var(--ok)}
+  .stars{display:flex;gap:4px;font-size:1.5rem}
+  .stars span{cursor:pointer;color:#dcd8cc;transition:.1s}
+  .stars span.on{color:var(--gold-strong)}
+  .stars.locked span{cursor:default}
+  .complaint-note{margin-top:10px;background:rgba(255,149,0,.1);border:1px solid rgba(255,149,0,.4);border-radius:var(--r-sm);padding:11px 14px;color:#b26a00;font-weight:800;font-size:.92rem}
+  .fb-saved{margin-top:10px;background:#f6f4ec;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 14px;color:var(--ink-soft);font-weight:600;font-size:.92rem}
+  .sbtn.complaint-send{background:#c0392b;color:#fff;border-color:#c0392b}
+  .cust-invoice{margin-top:13px;background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:13px;padding:13px 15px}
+  .cust-invoice .ci-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .cust-invoice .ci-head b{font-size:1rem;font-weight:900}
+  .cust-invoice .ci-row{display:flex;justify-content:space-between;padding:7px 0;font-size:.9rem;font-weight:600;border-bottom:1px dashed #EAD9A0}
+  .cust-invoice .ci-row:last-child{border-bottom:none}
+  .cust-invoice .ci-total{font-weight:900;border-top:2px solid #E7D9A6;margin-top:3px;padding-top:9px;font-size:1.02rem;color:#7a5f00}
+
+  .empty{text-align:center;padding:56px 20px;color:var(--muted)}
+  .empty .ico{font-size:3.6rem;margin-bottom:12px;opacity:.5}
+  .empty h3{color:var(--ink)}
+
+  /* ===== Admin ===== */
+  .admin-bar{background:var(--ink);color:#fff;border-radius:var(--r);padding:18px 20px;display:flex;align-items:center;gap:13px;margin-top:16px}
+  .admin-bar .ico{font-size:1.7rem;color:var(--gold)}
+  .admin-bar b{font-size:1.15rem}
+  .admin-bar small{opacity:.7;display:block}
+  .apill{background:rgba(245,197,24,.16);color:var(--gold);padding:7px 13px;border-radius:999px;font-weight:800;font-size:.85rem;white-space:nowrap}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:17px;box-shadow:var(--shadow-sm)}
+  .stat .n{font-size:1.7rem;font-weight:900;line-height:1}
+  .stat .l{color:var(--muted);font-size:.85rem;margin-top:6px}
+  .stat.gold .n{color:var(--gold-strong)}
+  .stat.green .n{color:var(--ok)}
+  .fbar{display:flex;gap:8px;overflow-x:auto;margin-top:18px;padding-bottom:4px;scrollbar-width:none}
+  .fbar::-webkit-scrollbar{display:none}
+  .tab{white-space:nowrap;padding:9px 16px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-weight:700;color:var(--muted);font-size:.9rem;transition:.15s}
+  .tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .aorder{background:var(--card);border:1px solid var(--line);border-right:5px solid var(--gold);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:17px;margin-top:12px}
+  .aorder.st-confirmed{border-right-color:#0284C7}
+  .aorder.st-progress{border-right-color:var(--gold-strong)}
+  .aorder.st-done{border-right-color:var(--ok)}
+  .aorder.st-cancelled{border-right-color:var(--danger)}
+  .aorder .ah{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start}
+  .aorder .who b{font-size:1.05rem}
+  .aorder .who a{color:var(--ink);text-decoration:none;font-weight:800;border-bottom:2px solid var(--gold)}
+  .aorder .abody{display:grid;grid-template-columns:1fr 1fr;gap:9px 18px;margin-top:13px;font-size:.9rem}
+  .aorder .abody .k{color:var(--muted);font-size:.8rem}
+  .aorder .aitems{background:#faf8f1;border-radius:12px;padding:11px 13px;margin-top:13px;font-size:.88rem}
+  .aorder .aitems .li{display:flex;justify-content:space-between;padding:3px 0}
+  .aorder .actions{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
+  .reminders-panel .rline{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)}
+  .reminders-panel .rline:last-child{border-bottom:none}
+  .reminders-panel .rl-t{flex:1}
+  .reminders-panel .rl-t small{color:var(--muted);display:block;font-size:.8rem}
+  .prov-card{border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:10px;background:#fcfbf6}
+  .prov-card .pc-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .prov-card b{font-size:1.02rem}
+
+  /* ===== Simple guided flow ===== */
+  .home-q{text-align:center;margin-top:28px}
+  .home-q h2{font-size:2rem;font-weight:900;letter-spacing:-.03em}
+  .home-q p{color:var(--muted);margin-top:5px;font-size:1.02rem}
+  .cats-big{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:22px}
+  .catbtn{display:flex;align-items:center;gap:15px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 18px;box-shadow:var(--shadow-sm);transition:.16s;text-align:right;width:100%}
+  .catbtn:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--gold)}
+  .catbtn .cb-ic{width:58px;height:58px;border-radius:16px;background:var(--gold-soft);display:grid;place-items:center;font-size:1.9rem;flex-shrink:0}
+  .catbtn .cb-t{flex:1}
+  .catbtn .cb-t b{font-size:1.18rem;font-weight:800;display:block}
+  .catbtn .cb-t small{color:var(--muted);font-size:.85rem}
+  .catbtn .cb-ar{color:var(--muted);font-size:1.5rem;font-weight:800}
+  .loyalty-mini{margin-top:22px;text-align:center;color:#7a5f00;font-size:.92rem;background:var(--gold-soft);border:1px solid #F1E3A8;border-radius:999px;padding:11px 18px;font-weight:600}
+  .loyalty-line{margin-top:26px;text-align:center;color:var(--muted);font-size:.92rem;font-weight:600}
+  .loyalty-line b{color:var(--gold-deep)}
+  /* كوبون الولاء البصري */
+  .lticket{display:flex;align-items:stretch;background:linear-gradient(135deg,#1E1A13,#171310);border-radius:18px;overflow:hidden;box-shadow:0 12px 30px rgba(26,23,18,.22);margin-top:26px}
+  .lticket .tk-left{width:78px;background:linear-gradient(150deg,#F8D23B,#E7B10A);display:grid;place-items:center;color:#1A1712;position:relative;flex-shrink:0}
+  .lticket .tk-left svg{width:33px;height:33px}
+  .lticket .tk-left::after{content:"";position:absolute;left:-6px;top:0;bottom:0;width:12px;background:radial-gradient(circle at left,transparent 0 5px,#171310 5px) 0 0/12px 14px repeat-y}
+  .lticket .tk-body{flex:1;padding:14px 17px;color:#F3EEE2}
+  .lticket .tk-body b{font-size:1.04rem;font-weight:900;color:#F5C518;display:block;letter-spacing:-.01em}
+  .lticket .tk-mini{display:flex;gap:5px;margin:10px 0 7px}
+  .lticket .tk-mini i{width:12px;height:12px;border-radius:50%;background:#3A352A}
+  .lticket .tk-mini i.on{background:#F5C518;box-shadow:0 0 0 2px rgba(245,197,24,.25)}
+  .lticket .tk-body span{color:#A79E88;font-size:.79rem;font-weight:600}
+  /* عناصر الثقة — رقائق تتكيّف مع العرض */
+  .trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:26px}
+  .trust-item{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow-sm)}
+  .trust-item .ti-ic{font-size:1.05rem;width:26px;height:26px;border-radius:50%;background:var(--gold-tint);display:grid;place-items:center;flex-shrink:0}
+  .trust-item b{font-size:.87rem;font-weight:800;white-space:nowrap;letter-spacing:-.01em}
+  /* فوتر احترافي بمعلومات التواصل */
+  .site-footer{margin:32px 0 40px;border-top:1px solid var(--line);padding-top:24px;text-align:center}
+  .staff-links{margin-top:16px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px 18px;padding-top:14px;border-top:1px dashed var(--line)}
+  .staff-links a{color:var(--muted);font-weight:700;font-size:.85rem;text-decoration:none}
+  .staff-links a:hover{color:var(--ink)}
+  .foot-brand b{display:block;font-size:1.15rem;font-weight:900}
+  .foot-brand span{color:var(--muted);font-size:.85rem}
+  .foot-contact{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:12px;color:var(--muted);font-size:.9rem;font-weight:600}
+  .foot-contact a{color:var(--ink);font-weight:800;text-decoration:none}
+  /* زر واتساب عائم */
+  .wa-float{position:fixed;bottom:20px;left:20px;width:58px;height:58px;border-radius:50%;background:#25D366;color:#fff;display:grid;place-items:center;box-shadow:0 10px 24px rgba(37,211,102,.45);z-index:50;transition:.15s}
+  .wa-float:hover{transform:scale(1.08)}
+  .wa-float svg{width:31px;height:31px}
+  .join-link{display:inline-block;color:var(--ink);font-weight:800;font-size:.9rem;background:var(--gold-tint);border:1px solid var(--gold-soft);padding:11px 18px;border-radius:999px;cursor:pointer;transition:.15s}
+  .join-link:hover{background:var(--gold-soft)}
+  .chips-pick{display:flex;flex-wrap:wrap;gap:10px}
+  .chips-pick label{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--line);border-radius:12px;padding:12px 16px;font-weight:700;cursor:pointer;transition:.15s;background:#fcfbf6}
+  .chips-pick label:has(input:checked){border-color:var(--gold-strong);background:var(--gold-tint)}
+  .chips-pick input{width:18px;height:18px;accent-color:var(--gold-strong)}
+  .staff-links{margin-top:10px;text-align:center;font-size:.8rem;color:var(--muted)}
+  .staff-links a{display:inline-block;color:var(--muted);text-decoration:none;cursor:pointer;padding:8px 10px;font-weight:700;opacity:.75}
+  .staff-links a:hover{color:var(--ink);opacity:1}
+
+  .steps{display:flex;align-items:center;justify-content:center;gap:7px;margin:20px 0 4px}
+  .step{display:flex;align-items:center;gap:7px;color:var(--muted);font-weight:800;font-size:.86rem}
+  .step .sd{width:25px;height:25px;border-radius:50%;background:#ECEADF;display:grid;place-items:center;font-size:.8rem}
+  .step.active{color:var(--ink)}
+  .step.active .sd{background:var(--ink);color:#fff}
+  .step.done .sd{background:var(--gold);color:var(--ink)}
+  .sline{width:22px;height:2px;background:var(--line)}
+
+  .srows{display:flex;flex-direction:column;gap:11px;margin-top:16px}
+  .srow{display:flex;align-items:center;gap:14px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;transition:.15s;text-align:right;width:100%}
+  .srow:hover{border-color:#e0d9c2}
+  .srow.sel{border-color:var(--ink);background:#FFFDF4}
+  .srow .srow-ic{width:48px;height:48px;border-radius:14px;background:var(--gold-soft);display:grid;place-items:center;font-size:1.55rem;flex-shrink:0}
+  .srow .srow-t{flex:1}
+  .srow .srow-t b{font-size:1.04rem;font-weight:800;display:block}
+  .srow .srow-t small{color:var(--muted);font-size:.86rem}
+  .srow .srow-ck{width:29px;height:29px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:900;flex-shrink:0;font-size:1rem}
+  .srow.sel .srow-ck{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+  .addmore{display:block;text-align:center;margin-top:16px;color:var(--muted);font-weight:800;font-size:.92rem;text-decoration:none;padding:12px;border:1.5px dashed var(--line);border-radius:14px}
+  .addmore:hover{color:var(--ink);border-color:#cfccc0}
+
+  .nextbar{position:fixed;bottom:0;left:0;right:0;z-index:45;background:var(--ink);color:#fff;box-shadow:0 -10px 30px rgba(26,23,18,.2);border-top:1px solid rgba(245,197,24,.25)}
+  .nextbar .wrap{display:flex;align-items:center;gap:14px;height:74px}
+  .nextbar .nb-info{flex:1;line-height:1.3}
+  .nextbar .nb-info b{font-size:1.02rem}
+  .nextbar .nb-info small{opacity:.72;display:block;font-size:.82rem}
+  .nextbar .nb-go{background:var(--gold);color:var(--ink);font-weight:900;padding:14px 26px;border-radius:13px;display:flex;gap:8px;align-items:center;font-size:1.02rem;box-shadow:var(--shadow-gold);transition:.15s}
+  .nextbar .nb-go:hover{background:#fff}
+  .nextbar .nb-go:disabled{opacity:.4;box-shadow:none}
+  .flow-sum{background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:var(--r-sm);padding:14px 16px;margin-top:14px;font-size:.92rem;font-weight:600;display:flex;gap:10px;align-items:center}
+  /* زر الطلب السريع + قائمة الأسعار */
+  .quick-btn{display:flex;align-items:center;gap:15px;width:100%;background:linear-gradient(150deg,#F9D338,#F3C010);color:var(--ink);border-radius:var(--r-lg);padding:22px 20px;box-shadow:var(--shadow-gold), inset 0 1px 0 rgba(255,255,255,.45);margin-top:24px;text-align:right;transition:.2s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden}
+  .quick-btn::after{content:"";position:absolute;inset:0;background:radial-gradient(90% 120% at 90% -20%,rgba(255,255,255,.4),transparent 55%);pointer-events:none}
+  .quick-btn:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(245,197,24,.5), inset 0 1px 0 rgba(255,255,255,.45)}
+  .quick-btn .qb-ic{width:56px;height:56px;border-radius:15px;background:rgba(26,23,18,.14);display:grid;place-items:center;font-size:1.9rem;flex-shrink:0;position:relative;z-index:1}
+  .quick-btn .qb-t{flex:1;position:relative;z-index:1}
+  .quick-btn .qb-t b{font-size:1.32rem;font-weight:900;display:block;letter-spacing:-.02em}
+  .quick-btn .qb-t small{font-size:.85rem;color:var(--ink-soft);font-weight:600;display:block;margin-top:3px;line-height:1.45}
+  .quick-btn .qb-ar{font-size:1.3rem;font-weight:900;position:relative;z-index:1}
+  .services-btn{display:flex;align-items:center;gap:15px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;margin-top:14px;text-align:right;transition:.2s cubic-bezier(.2,.7,.3,1);box-shadow:var(--shadow-sm)}
+  .services-btn:hover{transform:translateY(-3px);border-color:var(--gold);box-shadow:var(--shadow)}
+  .services-btn .sb-ic{width:54px;height:54px;border-radius:15px;background:var(--gold-tint);border:1px solid var(--gold-soft);display:grid;place-items:center;font-size:1.6rem;flex-shrink:0}
+  .services-btn .sb-t{flex:1}
+  .services-btn .sb-t b{font-size:1.15rem;font-weight:800;display:block;letter-spacing:-.01em}
+  .services-btn .sb-t small{color:var(--muted);font-size:.83rem;margin-top:2px;display:block}
+  .services-btn .qb-ar{color:var(--muted);font-size:1.3rem;font-weight:900}
+  .prices-btn{display:block;width:100%;margin-top:14px;background:transparent;border:1.5px dashed var(--line);border-radius:14px;padding:14px;font-weight:800;color:var(--ink);transition:.15s}
+  .prices-btn:hover{border-color:var(--gold);background:var(--gold-soft)}
+  /* قائمة الأسعار */
+  .price-cat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:8px 16px 12px;margin-top:16px}
+  .price-cat h3{font-size:1.08rem;font-weight:800;padding:12px 2px;border-bottom:1px solid var(--line);letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .price-row{display:flex;align-items:center;gap:10px;padding:12px 6px;border-bottom:1px solid var(--line);width:100%;text-align:right;background:transparent;border-radius:10px;transition:.12s}
+  .price-row:last-child{border-bottom:none}
+  .price-row:hover{background:#faf8f1}
+  .price-row.sel{background:#FFFDF4}
+  .price-row .pr-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-weight:900;font-size:.85rem;flex-shrink:0}
+  .price-row.sel .pr-check{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+  .price-row .pr-name{flex:1;font-weight:700;font-size:.95rem}
+  .price-row .pr-dur{color:var(--muted);font-size:.82rem;white-space:nowrap}
+  .price-row .pr-price{font-weight:800;color:#7a5f00;background:var(--gold-soft);padding:4px 11px;border-radius:999px;font-size:.85rem;white-space:nowrap}
+  /* رفع مقطع فيديو */
+  .video-up{display:flex;align-items:center;gap:12px;border:1.5px dashed var(--line);border-radius:13px;padding:14px;cursor:pointer;margin-top:4px;transition:.15s}
+  .video-up:hover{border-color:var(--gold-strong)}
+  .video-up .vu-ic{font-size:1.6rem}
+  .video-up .vu-t b{display:block;font-size:.95rem;font-weight:800}
+  .video-up .vu-t small{color:var(--muted);font-size:.8rem}
+  .video-up.has{border-color:var(--ok);border-style:solid;background:var(--ok-soft)}
+  .video-up.has .vu-t small{color:#166534}
+  /* زر تحديد الموقع */
+  .city-select{display:flex;align-items:center;gap:10px;width:100%;background:#fcfbf6;border:1.5px solid var(--line);border-radius:14px;padding:15px 16px;text-align:right;transition:.15s}
+  .city-select.set{border-color:var(--gold-strong);background:var(--gold-tint)}
+  .city-select .cs-l{color:var(--muted);font-weight:700;font-size:.92rem}
+  .city-select b{flex:1;text-align:center;font-size:1.05rem;font-weight:900}
+  .city-select .chev{color:var(--muted);font-size:.9rem}
+  .loc-hint{color:var(--muted);font-size:.9rem;font-weight:600;margin-bottom:10px}
+  .pickmap{height:260px;width:100%;border-radius:14px;overflow:hidden;border:1.5px solid var(--line);margin-bottom:12px;z-index:0}
+  .pickmap .leaflet-control-attribution{font-size:.6rem}
+  .loc-btn{display:flex;align-items:center;gap:13px;width:100%;background:var(--ink);color:#fff;border-radius:14px;padding:15px 16px;text-align:right;transition:.15s}
+  .loc-btn:hover{background:#000}
+  .loc-btn.set{background:var(--ok)}
+  .loc-btn.busy{opacity:.7}
+  .loc-btn .lb-ic{font-size:1.6rem}
+  .loc-btn .lb-t b{display:block;font-size:1rem;font-weight:800}
+  .loc-btn .lb-t small{font-size:.8rem;opacity:.85}
+  .loc-ok{background:var(--ok-soft);color:#166534;border-radius:11px;padding:10px 14px;margin-top:10px;font-weight:700;font-size:.9rem}
+  .loc-ok a{color:#166534;font-weight:800;text-decoration:underline}
+  .loc-loading{color:var(--muted);padding:10px 4px;font-weight:600;font-size:.9rem}
+  .loc-err{background:var(--danger-soft);color:#991B1B;border-radius:11px;padding:10px 14px;margin-top:10px;font-weight:600;font-size:.88rem}
+
+  /* ===== Technicians page ===== */
+  .langsw{display:inline-flex;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+  .langsw button{padding:8px 14px;border-radius:9px;font-weight:800;font-size:.88rem;color:var(--muted);transition:.15s}
+  .langsw button.active{background:var(--ink);color:#fff}
+  .tech-sub{color:var(--muted);font-size:.95rem;margin:2px 0 6px}
+  .tjob{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:15px}
+  .tjob.st-done{opacity:.72}
+  .tj-head{background:var(--gold-soft);padding:15px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #F1E3A8}
+  .tj-when{font-weight:900;font-size:1.2rem;display:flex;align-items:center;gap:9px;line-height:1.2}
+  .tj-body{padding:15px 18px}
+  .tj-row{display:flex;gap:14px;padding:11px 0;border-bottom:1px solid var(--line);font-size:1rem}
+  .tj-row:last-child{border-bottom:none}
+  .tj-k{min-width:118px;color:var(--muted);font-weight:700;font-size:.9rem;flex-shrink:0}
+  .tj-v{flex:1;font-weight:700}
+  .tj-v a{font-weight:800;border-bottom:2px solid var(--gold);text-decoration:none}
+  .tmap{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:var(--ink);color:#fff;padding:9px 15px;border-radius:11px;font-weight:800;font-size:.9rem;text-decoration:none}
+  .tacts{display:flex;gap:10px;padding:0 18px 16px}
+  .tbtn{flex:1;padding:15px;border-radius:13px;font-weight:900;font-size:1.02rem;text-align:center}
+  .tbtn.start{background:var(--gold);color:var(--ink)}
+  .tbtn.done{background:var(--ok);color:#fff}
+  .tbtn.donelbl{background:var(--ok-soft);color:#166534}
+
+  footer{margin:44px 0 100px;text-align:center;color:var(--muted);font-size:.85rem}
+
+  #toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--ink);color:#fff;padding:14px 24px;border-radius:14px;font-weight:700;z-index:60;opacity:0;transition:.3s;box-shadow:0 12px 30px rgba(0,0,0,.25);max-width:90%;text-align:center;pointer-events:none}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast b{color:var(--gold)}
+
+  @media (max-width:760px){
+    .ctiles{grid-template-columns:repeat(2,1fr)}
+    .popular{grid-template-columns:repeat(2,1fr)}
+    .grid{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .aorder .abody{grid-template-columns:1fr}
+    .hero h1{font-size:1.7rem}
+  }
+  @media (max-width:520px){
+    .grid2{grid-template-columns:1fr}
+    .hbtn .lbl{display:none}
+    .logo{font-size:1.3rem}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="logo" href="#" onclick="go('home');return false">
+      <span class="mk"><img src="logo.png" alt="خافِت" /></span>
+      <span class="brand-txt"><b>خافِت</b><small>للصيانة المنزلية</small></span>
+    </a>
+    <span class="spacer"></span>
+    <button id="accountBtn" class="hbtn ghost" onclick="go('account')" style="display:none">
+      <span>👤</span><span class="lbl">حسابي</span>
+      <span class="badge" id="myCount">0</span>
+    </button>
+    <button id="loginBtn" class="hbtn ghost" onclick="go('login')">
+      <span>👤</span><span class="lbl">تسجيل الدخول</span>
+    </button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<div id="locModal" class="loc-modal"></div>
+
+<div id="toast"></div>
+
+<!-- مكتبة Supabase (تُحمّل بالخلفية بدون تعطيل فتح الصفحة) -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* ============================================================
+   خافِت — مؤسسة صيانة منزلية (سباكة وكهرباء)
+   موقع صفحة واحدة يعمل بدون إنترنت — يحفظ البيانات في المتصفح
+   ============================================================ */
+
+/* ---- إعدادات المؤسسة (قابلة للتعديل) ---- */
+const BRAND = 'خافِت';
+const TAGLINE = 'صيانة منزلية موثوقة';
+const PHONE    = '0590497866';        // رقم التواصل (عدّليه)
+const WHATSAPP = '966590497866';      // واتساب بصيغة دولية بدون + (عدّليه)
+const HOURS    = 'يومياً ٨ ص – ١٠ م'; // ساعات العمل
+const CITY     = 'الخبر';             // منطقة التغطية
+const WARRANTY = 'ضمان ٧ أيام';       // الضمان
+/* لوحة المؤسسة انتقلت لصفحة admin.html بحساب Supabase — ما عاد فيه رمز هنا */
+/* أيام الإجازة — ما نستقبل فيها حجوزات.
+   الترقيم: ٠=الأحد ١=الإثنين ٢=الثلاثاء ٣=الأربعاء ٤=الخميس ٥=الجمعة ٦=السبت
+   حالياً: الجمعة إجازة. تبين تضيفين السبت؟ خليها [5,6] */
+const OFF_DAYS = [5];
+const WORK_START = 8 * 60;
+const WORK_END   = 22 * 60;
+const SLOT_STEP  = 30;
+const BUFFER     = 15;
+const LEAD_MIN   = 60;
+const ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «٤–٦م» بدل وقت دقيق)
+const MAX_JOBS_PER_DAY = 8;    // أقصى عدد حجوزات في اليوم (يمنع زحمة الجدول)
+const QUICK_DURATION   = 90;   // مدة افتراضية أكبر للطلب السريع/المعاينة (حجمه مجهول)
+const LOYALTY_TARGET = 5;   // كل ٥ طلبات مدفوعة، السادس مجاني كامل
+const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل عبر مزوّد (مخفية عن العميل)
+// أكواد الخصم (عدّليها/أضيفي أكواد — الكود : نسبة الخصم %)
+/* أكواد الخصم الثابتة أُلغيت — صار النظام أكواد إحالة شخصية عشوائية
+   يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
+// باقات الاشتراك السنوي (النموذج الآمن — مو «لا محدودة»)
+const PLANS = [
+  { id:'apartment', name:'باقة الشقة', price:399, badge:'', avgVisit:150, visits:4, features:[
+      '🔧 أجرة اليد مجانية للصيانات البسيطة',
+      '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
+      'زيارة فحص وقائي',
+      'خصم ١٠٪ على الأعمال الكبيرة',
+      'أولوية في الحجز' ] },
+  { id:'home', name:'باقة المنزل', price:699, badge:'الأكثر طلباً', avgVisit:175, visits:6, features:[
+      '🔧 أجرة اليد مجانية لكل الصيانات البسيطة طوال السنة',
+      '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
+      'زيارتان فحص وقائي دورية',
+      'خصم ١٥٪ على الأعمال الكبيرة',
+      'أولوية في الحجز' ] },
+  { id:'premium', name:'باقة راحة البال', price:999, badge:'', avgVisit:180, visits:8, features:[
+      '🔧 أجرة اليد مجانية للصيانات البسيطة والمتوسطة',
+      '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
+      '٤ زيارات فحص وقائي دورية',
+      'خصم ٢٥٪ على الأعمال الكبيرة',
+      'أولوية قصوى + دعم واتساب مباشر',
+      'ضمان ممتد على الأعمال' ] },
+];
+const SAVE_KEY = 'siyanah_v1';
+
+/* ---- ربط قاعدة البيانات Supabase (غيّري القيمتين بمفاتيح مشروعك لو مختلف) ---- */
+const SUPABASE_URL  = 'https://zulogtqxbuqxmdmjpzqj.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_ssggqTzT4GG4sreXV1LObQ_C3yiYhaG';
+
+/* ---- الأقسام ---- */
+const CATS = {
+  plumb: {name:'سباكة',        ico:'🔧'},
+  elec:  {name:'كهرباء',       ico:'⚡'},
+  ac:    {name:'تكييف وتبريد',  ico:'❄️'},
+  carp:  {name:'نجارة',        ico:'🪚'},
+  paint: {name:'دهان',         ico:'🎨'},
+  appl:  {name:'أجهزة منزلية',  ico:'🔌'},
+  clean: {name:'تنظيف',        ico:'🧽'},
+  gen:   {name:'أعمال عامة',    ico:'🛠️'},
+};
+
+/* ---- كتالوج الخدمات ---- */
+const SERVICES = [
+  {id:'p1', cat:'plumb', ico:'🚿', name:'تغيير شطّاف',        desc:'فك وتركيب شطّاف الحمام مع الخرطوم.',     dur:30, price:80,  quick:true},
+  {id:'p2', cat:'plumb', ico:'🚰', name:'تسليك مجاري/بالوعة', desc:'تسليك انسداد المجاري أو البالوعات.',      dur:45, price:120, quick:true},
+  {id:'p3', cat:'plumb', ico:'🔩', name:'تغيير خلاط ماء',      desc:'تركيب خلاط مغسلة أو مطبخ جديد.',          dur:40, price:100},
+  {id:'p4', cat:'plumb', ico:'💧', name:'إصلاح تسريب مياه',    desc:'كشف ومعالجة تسريب المواسير والوصلات.',    dur:60, price:150, quick:true},
+  {id:'p5', cat:'plumb', ico:'♨️', name:'تركيب/إصلاح سخان',    desc:'تركيب سخان جديد أو صيانة القديم.',        dur:90, price:250},
+  {id:'p6', cat:'plumb', ico:'🚽', name:'إصلاح سيفون الحمام',  desc:'إصلاح أو تغيير طرمبة/سيفون الكرسي.',      dur:45, price:110},
+  {id:'e1', cat:'elec',  ico:'💡', name:'تغيير لمبة/إضاءة',    desc:'تركيب أو تغيير لمبات وإضاءة.',            dur:20, price:50,  quick:true},
+  {id:'e2', cat:'elec',  ico:'✨', name:'تركيب ثريا',          desc:'تركيب ثريا أو نجفة مع التثبيت.',          dur:60, price:180},
+  {id:'e3', cat:'elec',  ico:'⚡', name:'إصلاح قصر/انقطاع',    desc:'كشف وإصلاح انقطاع أو قصر كهربائي.',       dur:60, price:160},
+  {id:'e4', cat:'elec',  ico:'🔌', name:'تغيير مفتاح/بريزة',   desc:'تغيير مفتاح إضاءة أو بريزة كهرباء.',      dur:30, price:70},
+  {id:'e5', cat:'elec',  ico:'🌀', name:'تركيب مروحة سقف',     desc:'تركيب وتوصيل مروحة سقف.',                 dur:75, price:200},
+  {id:'e6', cat:'elec',  ico:'🧰', name:'فحص لوحة الكهرباء',   desc:'فحص الطبلون والقواطع والأحمال.',          dur:45, price:130},
+  {id:'ac1',cat:'ac',    ico:'❄️', name:'تنظيف مكيف سبليت',    desc:'غسيل وتنظيف وحدة السبليت الداخلية.',      dur:45, price:120, quick:true},
+  {id:'ac2',cat:'ac',    ico:'🌀', name:'تعبئة فريون',         desc:'شحن غاز الفريون وفحص التبريد.',           dur:60, price:200, quick:true},
+  {id:'ac3',cat:'ac',    ico:'🧰', name:'صيانة/إصلاح مكيف',    desc:'كشف وإصلاح أعطال المكيف.',                dur:60, price:180, quick:true},
+  {id:'ac4',cat:'ac',    ico:'🔧', name:'تركيب مكيف سبليت',    desc:'تركيب وتوصيل وحدة سبليت جديدة.',          dur:120,price:350},
+  {id:'ac5',cat:'ac',    ico:'🪟', name:'صيانة مكيف شباك',     desc:'صيانة أو تركيب مكيف شباك.',               dur:60, price:150},
+  {id:'c1', cat:'carp',  ico:'🚪', name:'إصلاح باب/مفصلات',    desc:'ضبط أو تغيير مفصلات وأقفال الأبواب.',     dur:45, price:120, quick:true},
+  {id:'c2', cat:'carp',  ico:'🗄️', name:'إصلاح دولاب/مطبخ',    desc:'إصلاح أدراج وأبواب الدواليب والمطبخ.',    dur:60, price:150},
+  {id:'c3', cat:'carp',  ico:'🪟', name:'إصلاح نافذة/شيش',     desc:'إصلاح نوافذ أو شيش حديد/خشب.',            dur:45, price:130},
+  {id:'c4', cat:'carp',  ico:'🛏️', name:'تركيب/تجميع أثاث',    desc:'تجميع وتركيب الأثاث الجاهز.',             dur:60, price:140, quick:true},
+  {id:'pt1',cat:'paint', ico:'🎨', name:'دهان غرفة',           desc:'دهان غرفة كاملة شامل التجهيز.',           dur:180,price:400},
+  {id:'pt2',cat:'paint', ico:'🖌️', name:'ترميم وتلميس دهان',   desc:'معالجة خدوش وتلميس مناطق محددة.',         dur:90, price:200, quick:true},
+  {id:'pt3',cat:'paint', ico:'🧱', name:'معالجة تشققات ورطوبة',desc:'إصلاح الشقوق وعزل الرطوبة قبل الدهان.',   dur:120,price:300},
+  {id:'a1', cat:'appl',  ico:'🧺', name:'إصلاح غسالة',         desc:'كشف وإصلاح أعطال الغسالة.',               dur:60, price:180, quick:true},
+  {id:'a2', cat:'appl',  ico:'🧊', name:'إصلاح ثلاجة',         desc:'كشف وإصلاح أعطال الثلاجة والتبريد.',      dur:60, price:200, quick:true},
+  {id:'a3', cat:'appl',  ico:'🍽️', name:'إصلاح غسالة صحون',    desc:'إصلاح غسالة الأطباق.',                    dur:60, price:180},
+  {id:'a4', cat:'appl',  ico:'🔥', name:'إصلاح فرن/بوتاجاز',   desc:'صيانة الأفران والبوتاجازات.',             dur:60, price:170},
+  {id:'cl1',cat:'clean', ico:'🧽', name:'تنظيف عام للمنزل',    desc:'تنظيف شامل لكامل المنزل.',                dur:180,price:250},
+  {id:'cl2',cat:'clean', ico:'🛋️', name:'تنظيف كنب وسجاد',     desc:'تنظيف عميق للكنب والسجاد بالبخار.',       dur:120,price:200, quick:true},
+  {id:'cl3',cat:'clean', ico:'💧', name:'تنظيف خزان المياه',   desc:'تنظيف وتعقيم خزان المياه.',               dur:90, price:220},
+  {id:'g1', cat:'gen',   ico:'🔨', name:'تعليق/تركيب رفوف',    desc:'تركيب رفوف أو لوحات أو ستائر.',           dur:30, price:60},
+  {id:'g2', cat:'gen',   ico:'🧱', name:'عزل تسرب بسيط',       desc:'معالجة تسرب أو عزل نقطة محددة.',          dur:60, price:180},
+  {id:'g4', cat:'gen',   ico:'🪣', name:'ترويبة بلاط/سيراميك', desc:'تعبئة وتجديد فواصل البلاط والسيراميك.',   dur:90, price:200},
+  {id:'g3', cat:'gen',   ico:'📝', name:'طلب مخصّص',           desc:'مشكلة غير مذكورة؟ نعاينها ونحدد السعر.',  dur:0,  price:0, custom:true},
+];
+
+/* ---- ترجمة أسماء الخدمات (للفنيين) EN / NE ---- */
+const SVC_I18N={
+  p1:{en:'Change bidet sprayer (shattaf)', ne:'शौचालय स्प्रे (शत्ताफ) परिवर्तन'},
+  p2:{en:'Unclog drain / sewer',           ne:'ढल/नाली सफा गर्ने'},
+  p3:{en:'Change water mixer / faucet',    ne:'पानीको मिक्सर/नल परिवर्तन'},
+  p4:{en:'Fix water leak',                 ne:'पानी चुहावट मर्मत'},
+  p5:{en:'Install / repair water heater',  ne:'वाटर हिटर जडान/मर्मत'},
+  p6:{en:'Fix toilet flush / cistern',     ne:'ट्वाइलेट फ्लस मर्मत'},
+  e1:{en:'Change lamp / light',            ne:'बल्ब/बत्ती परिवर्तन'},
+  e2:{en:'Install chandelier',             ne:'झुम्मर जडान'},
+  e3:{en:'Fix short circuit / outage',     ne:'सर्ट सर्किट/बिजुली मर्मत'},
+  e4:{en:'Change switch / socket',         ne:'स्विच/सकेट परिवर्तन'},
+  e5:{en:'Install ceiling fan',            ne:'छतको पंखा जडान'},
+  e6:{en:'Inspect electrical panel',       ne:'बिजुली प्यानल जाँच'},
+  g1:{en:'Mount shelves / fixtures',       ne:'र्‍याक/सेल्फ जडान'},
+  g2:{en:'Simple leak sealing',            ne:'सानो चुहावट सिल गर्ने'},
+  g3:{en:'Custom request',                 ne:'विशेष अनुरोध'},
+};
+function svcName(s,lang){ if(lang==='ar'||!s) return s?s.name:''; const tr=SVC_I18N[s.id]; return (tr&&tr[lang])?tr[lang]:s.name; }
+
+/* ---- نصوص صفحة الفنيين بثلاث لغات ---- */
+const I18N={
+  ne:{ techTitle:'कामहरूको सूची', techSub:'तपाईंका काम — समय, स्थान र आवश्यक काम',
+       when:'समय', location:'स्थान', whatNeeded:'आवश्यक काम', duration:'अनुमानित समय',
+       customer:'ग्राहक', call:'📞 कल', notes:'टिप्पणी', house:'घर नं.', landmark:'चिनो',
+       openMap:'खोल्नुहोस्', start:'काम सुरु गर्नुहोस्', complete:'सम्पन्न भयो', doneLbl:'✓ सम्पन्न',
+       noJobs:'अहिले कुनै काम छैन', byInspection:'निरीक्षणपछि',
+       st:{new:'नयाँ',confirmed:'पुष्टि भयो',progress:'चलिरहेको',done:'सम्पन्न'} },
+  en:{ techTitle:'Job list', techSub:'Your jobs — time, location and work needed',
+       when:'Time', location:'Location', whatNeeded:'Work needed', duration:'Est. time',
+       customer:'Customer', call:'📞 Call', notes:'Notes', house:'House no.', landmark:'Landmark',
+       openMap:'Open map', start:'Start job', complete:'Mark complete', doneLbl:'✓ Completed',
+       noJobs:'No jobs right now', byInspection:'After inspection',
+       st:{new:'New',confirmed:'Confirmed',progress:'In progress',done:'Done'} },
+  ar:{ techTitle:'قائمة المهام', techSub:'مهامك — الوقت والموقع والعمل المطلوب',
+       when:'الوقت', location:'الموقع', whatNeeded:'العمل المطلوب', duration:'المدة التقريبية',
+       customer:'العميل', call:'📞 اتصال', notes:'ملاحظات', house:'منزل رقم', landmark:'علامة',
+       openMap:'افتح الخريطة', start:'بدء العمل', complete:'تم الإنجاز', doneLbl:'✓ مكتمل',
+       noJobs:'لا توجد مهام حالياً', byInspection:'بعد المعاينة',
+       st:{new:'جديد',confirmed:'مؤكد',progress:'قيد التنفيذ',done:'مكتمل'} },
+};
+const WEEK={
+  ar:['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'],
+  en:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+  ne:['आइत','सोम','मंगल','बुध','बिही','शुक्र','शनि'],
+};
+const MON={
+  ar:['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+  en:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  ne:['जनवरी','फेब्रुअरी','मार्च','अप्रिल','मे','जुन','जुलाई','अगस्ट','सेप्टेम्बर','अक्टोबर','नोभेम्बर','डिसेम्बर'],
+};
+
+/* ---- الحالة ---- */
+let state = load();
+function defaultState(){
+  return {
+    cart:{}, orders:[], loyalty:0, myOrderIds:[],
+    customer:{name:'',phone:''},
+    address:{city:'',district:'',street:'',house:'',mark:'',notes:'',lat:'',lng:'',mapUrl:''},
+    problem:{desc:''}, provider:null,
+    booking:{date:null,time:null},
+    seq:1000,
+  };
+}
+function load(){
+  try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&s.orders) return Object.assign(defaultState(),s); }catch(e){}
+  return defaultState();
+}
+function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ============================================================
+   السحابة (Supabase) — الطلبات تتزامن بين كل الأجهزة لحظياً
+   لو ما توفّر اتصال/مكتبة: يشتغل الموقع محلياً بدون مشاكل
+   ============================================================ */
+let sb=null, cloudReady=false, cloudFails=0, cloudLoading=false;
+/* هوية مجهولة للعميل — تربط طلباته بجهازه بدون ما يسجّل حساب.
+   بدونها ما نقدر نقفل قاعدة البيانات (لأن الخادم ما يعرف مين صاحب الطلب). */
+let myUid=null;
+let isVerified=false;   // سجّل برقمه عبر الرمز؟ (يحدّد هل نقاطه تتبعه لأي جهاز)
+async function ensureAnonSession(){
+  if(!sb) return null;
+  try{
+    const { data:{ session } } = await sb.auth.getSession();
+    if(session && session.user){
+      myUid=session.user.id;
+      isVerified = !session.user.is_anonymous;
+      return myUid;
+    }
+    const { data, error } = await sb.auth.signInAnonymously();
+    if(!error && data && data.user){ myUid=data.user.id; isVerified=false; }
+  }catch(e){ console.warn('anon auth:', e.message||e); }
+  return myUid;
+}
+async function initCloud(){
+  if(cloudReady) return;
+  try{
+    if(window.supabase && SUPABASE_URL && SUPABASE_ANON && !/YOUR_/.test(SUPABASE_URL)){
+      sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+      cloudReady=true;
+      await ensureAnonSession();
+      loadPrices();
+      loadOrdersFromCloud();
+      loadMyRef().then(()=>{ if(['account','info','home'].includes(view)) render(); });  // كودي ورصيدي
+      subscribeCloud();
+      initPush();          // إشعارات التطبيق (تعمل داخل التطبيق فقط، تُتجاهل على المتصفح)
+    }
+  }catch(e){ cloudReady=false; }
+}
+
+/* ---------- إشعارات التطبيق (Push) ----------
+   تشتغل بس لما الموقع يكون داخل تطبيق Capacitor.
+   على المتصفح العادي ما يصير شي — بدون أي خطأ. */
+function inApp(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
+
+/* حالة الإشعارات — تُعرض بصفحة «حسابي» عشان نشخّص بدون أدوات مطوّر */
+let pushState='—';
+function setPushState(s){ pushState=s; if(view==='account') renderAccount(); }
+
+/* الطريقة الصحيحة للوصول لإضافة أصلية بدون حزم JS:
+   Capacitor.registerPlugin — أما Capacitor.Plugins فطريقة قديمة قد لا تعمل بالإصدار ٦. */
+function getPushPlugin(){
+  const C=window.Capacitor;
+  if(!C) return null;
+  try{ if(typeof C.registerPlugin==='function') return C.registerPlugin('PushNotifications'); }catch(e){}
+  return (C.Plugins && C.Plugins.PushNotifications) || null;
+}
+let _pn=null, _pnReady=false;
+async function initPush(){
+  if(!inApp()){ setPushState('متصفح — الإشعارات للتطبيق فقط'); return; }
+  try{
+    const PN = _pn || getPushPlugin();
+    if(!PN){ setPushState('❌ إضافة الإشعارات غير مثبّتة'); return; }
+    _pn = PN;
+    if(_pnReady) return void registerNow(PN);   // المستمعات مركّبة — أعد الطلب فقط
+
+    // ⚠️ لازم *ننتظر* تركيب المستمعات قبل register — وإلا يوصل ردّ آبل وما فيه أحد يسمعه
+    await PN.addListener('registration', async (t)=>{
+      try{
+        if(!myUid) await ensureAnonSession();
+        const { error } = await sb.from('khafet_devices').upsert(
+          { token:t.value, user_id:myUid, platform:'ios', updated_at:new Date().toISOString() },
+          { onConflict:'token' }
+        );
+        if(error) throw error;
+        setPushState('✅ الجهاز مسجّل — الإشعارات شغّالة');
+      }catch(e){ setPushState('❌ فشل حفظ الجهاز: '+(e.message||e)); }
+    });
+    await PN.addListener('registrationError', e=> setPushState('❌ رفضتها آبل: '+JSON.stringify(e)));
+    await PN.addListener('pushNotificationActionPerformed', ()=>{ go('mybookings'); });
+    _pnReady = true;
+    await registerNow(PN);
+  }catch(e){ setPushState('❌ خطأ: '+(e.message||e)); }
+}
+async function registerNow(PN){
+  try{
+    let perm = await PN.checkPermissions();
+    if(perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PN.requestPermissions();
+    if(perm.receive !== 'granted'){ setPushState('⚠️ الإذن مرفوض ('+perm.receive+') — فعّله من إعدادات الآيفون'); return; }
+    setPushState('⏳ نسجّل الجهاز…');
+    await PN.register();
+    // لو آبل ما ردّت خلال ١٥ ثانية، قل ذلك بدل ما تعلّق للأبد
+    setTimeout(()=>{ if(pushState.indexOf('⏳')===0) setPushState('⚠️ آبل ما ردّت — تأكد من الإنترنت واضغط «أعد المحاولة»'); }, 15000);
+  }catch(e){ setPushState('❌ خطأ بالتسجيل: '+(e.message||e)); }
+}
+// حمّل الأسعار المعدّلة من لوحة المؤسسة وطبّقها على الكتالوج
+async function loadPrices(){
+  if(!cloudReady) return;
+  try{
+    const { data } = await sb.from('khafet_prices').select('*');
+    if(data && data.length){ const map={}; data.forEach(r=>{ map[r.sid]=Number(r.price); });
+      SERVICES.forEach(s=>{ if(map[s.id]!=null && !s.custom) s.price=map[s.id]; });
+      if(['home','prices','pick'].includes(view)) render();
+    }
+  }catch(e){}
+}
+
+function rowToOrder(r){
+  return {
+    id:'#'+ar(r.order_no), num:r.order_no, dbId:r.id,
+    createdAt: r.created_at ? new Date(r.created_at).getTime() : Date.now(),
+    items: r.items||[],
+    customer:{name:r.customer_name||'', phone:r.customer_phone||''},
+    address: r.address||{city:'',district:'',street:'',house:'',mark:'',notes:''},
+    date:r.service_date, startMin:r.start_min, duration:r.duration, endMin:r.end_min,
+    price:Number(r.price)||0, finalPrice:Number(r.final_price)||0, free:!!r.free,
+    status:r.status||'new', rating:r.rating||0, reminded:!!r.reminded,
+    quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
+    referredBy:r.referred_by||'', creditUsed:+r.credit_used||0,
+  };
+}
+function orderToPayload(o){
+  return {
+    customer_name:o.customer.name, customer_phone:o.customer.phone,
+    address:o.address, items:o.items,
+    service_date:o.date, start_min:o.startMin, duration:o.duration, end_min:o.endMin,
+    price:o.price, final_price:o.finalPrice, free:o.free,
+    status:o.status, rating:o.rating||0, reminded:!!o.reminded,
+    quick:!!o.quick, note:o.note||'', video_url:o.videoUrl||'', invoice:o.invoice||null, provider_phone:o.providerPhone||null, wants_earlier:!!o.wantsEarlier, promo_code:o.promoCode||'', discount_pct:+o.discountPct||0,
+    user_id:myUid,   // صاحب الطلب — عليه يعتمد قفل القراءة
+    // الخادم يعيد التحقق من هذين ويتجاهل أي تلاعب
+    referred_by:o.referredBy||null, credit_used:+o.creditUsed||0,
+  };
+}
+/* رفع مقطع الفيديو إلى Supabase Storage وإرجاع رابطه العام */
+/* ---------- وسائط العملاء (صور/فيديو المنزل) ----------
+   نخزّن *المسار* مو رابطاً عاماً. الرابط يُولَّد موقّعاً وينتهي بعد دقائق،
+   فما أحد يقدر يتصفّح صور بيوت العملاء حتى لو حصل على الرابط لاحقاً. */
+async function uploadVideo(file){
+  const ext=(file.name.split('.').pop()||'mp4').toLowerCase();
+  // اسم طويل عشوائي — ما يُخمّن
+  const rnd=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)).replace(/-/g,'');
+  const path='v_'+Date.now()+'_'+rnd+'.'+ext;
+  const { error } = await sb.storage.from('khafet-videos').upload(path, file, {upsert:false, contentType:file.type||'video/mp4'});
+  if(error) throw error;
+  return path;   // ← المسار، مو الرابط
+}
+/* يقبل المسار الجديد أو الرابط العام القديم */
+function mediaPath(v){
+  if(!v) return '';
+  const s=String(v);
+  const m=s.match(/khafet-videos\/(.+?)(\?|$)/);
+  return m ? decodeURIComponent(m[1]) : s;
+}
+async function openMedia(v){
+  const p=mediaPath(v);
+  if(!p || !sb){ toast('تعذّر فتح الملف'); return; }
+  try{
+    const { data, error } = await sb.storage.from('khafet-videos').createSignedUrl(p, 600);  // ١٠ دقائق
+    if(error || !data) throw error || new Error('no url');
+    window.open(data.signedUrl, '_blank', 'noopener');
+  }catch(e){ console.warn('media:', e.message||e); toast('تعذّر فتح الملف'); }
+}
+async function loadOrdersFromCloud(){
+  if(!cloudReady || cloudLoading) return;
+  cloudLoading=true;
+  try{
+    const { data, error } = await sb.from('khafet_orders').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    cloudFails=0;
+    state.orders = (data||[]).map(rowToOrder);
+    save();
+    if(['home','tech','admin','mybookings'].includes(view)) render();
+  }catch(e){
+    cloudFails++;
+    if(cloudFails===1) console.warn('Supabase load failed:', e.message||e);
+    if(cloudFails>=3){
+      cloudReady=false;
+      try{ sb.removeAllChannels(); }catch(_){}
+      console.warn('خافِت: أوقفت المزامنة السحابية — شغّلي ملف supabase/orders.sql ثم أعيدي تحميل الصفحة. الموقع يعمل محلياً الآن.');
+    }
+  }finally{ cloudLoading=false; }
+}
+async function cloudInsert(order){
+  if(!myUid) await ensureAnonSession();   // ضمان وجود هوية قبل الحفظ
+  const { data, error } = await sb.from('khafet_orders').insert(orderToPayload(order)).select().single();
+  if(error) throw error;
+  loadMyRef();   // الخادم خصم الرصيد — حدّثه عندنا
+  return rowToOrder(data);
+}
+async function cloudPatch(dbId, patch){
+  if(!cloudReady || !dbId) return;
+  try{ await sb.from('khafet_orders').update(patch).eq('id', dbId); }catch(e){ console.warn('Supabase update failed:', e.message||e); }
+}
+function subscribeCloud(){
+  if(!cloudReady) return;
+  try{
+    sb.channel('khafet_orders_rt')
+      .on('postgres_changes', {event:'*', schema:'public', table:'khafet_orders'}, ()=>loadOrdersFromCloud())
+      .subscribe();
+  }catch(e){ console.warn('Supabase realtime failed:', e.message||e); }
+}
+
+let view='home';
+let currentCat='plumb';
+let quickMode=false;        // طلب سريع (بدون اختيار خدمة)
+let adminFilter='all';
+let isAdmin=false;
+let techLang = localStorage.getItem('khafet_techlang') || 'ne';   // نيبالي افتراضياً
+function t(key){ return I18N[techLang][key]; }
+
+/* ---- أدوات ---- */
+const AR_DIG='٠١٢٣٤٥٦٧٨٩';
+function ar(n){ return String(n).replace(/[0-9]/g,d=>AR_DIG[d]); }
+function money(n){ return ar(n)+' ر.س'; }
+function svc(id){ return SERVICES.find(s=>s.id===id); }
+function catCount(k){ return SERVICES.filter(s=>s.cat===k).length; }
+
+function fmtDuration(mins){
+  if(!mins) return 'حسب المعاينة';
+  const h=Math.floor(mins/60), m=mins%60; const parts=[];
+  if(h===1) parts.push('ساعة'); else if(h===2) parts.push('ساعتان'); else if(h>2) parts.push(ar(h)+' ساعات');
+  if(m) parts.push(ar(m)+' دقيقة');
+  return parts.join(' و');
+}
+function fmtTime(mins){
+  let h=Math.floor(mins/60), m=mins%60; const ap=h<12?'ص':'م';
+  let h12=h%12; if(h12===0)h12=12;
+  return ar(h12)+':'+ar(String(m).padStart(2,'0'))+' '+ap;
+}
+const AR_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+const AR_MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function dateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function dayLabel(s){ const d=parseISO(s); return AR_DAYS[d.getDay()]+' '+ar(d.getDate())+' '+AR_MONTHS[d.getMonth()]; }
+function i0(a,b){ return dateISO(a)===dateISO(b); }
+/* صيغ متعددة اللغات (أرقام لاتينية يفهمها الجميع) */
+function jobDate(iso,lang){ const d=parseISO(iso); return WEEK[lang][d.getDay()]+', '+d.getDate()+' '+MON[lang][d.getMonth()]; }
+function jobTime(mins,lang){ let h=Math.floor(mins/60),m=mins%60; const ap=lang==='ar'?(h<12?'ص':'م'):(h<12?'AM':'PM'); let h12=h%12||12; return h12+':'+String(m).padStart(2,'0')+' '+ap; }
+function jobDur(mins,lang){ if(!mins) return t('byInspection'); if(lang==='ar') return fmtDuration(mins); const h=Math.floor(mins/60),m=mins%60; const H=lang==='ne'?'घण्टा':'h',M=lang==='ne'?'मिनेट':'min'; const p=[]; if(h)p.push(h+' '+H); if(m)p.push(m+' '+M); return p.join(' '); }
+
+/* ---- حسابات السلة ---- */
+function cartItems(){ return Object.keys(state.cart).map(id=>({...svc(id),qty:state.cart[id]})); }
+function cartCount(){ return Object.values(state.cart).reduce((a,b)=>a+b,0); }
+function cartPrice(){ return cartItems().reduce((a,i)=>a+i.price*i.qty,0); }
+function cartDuration(){ return cartItems().reduce((a,i)=>a+i.dur*i.qty,0); }
+function hasCustom(){ return cartItems().some(i=>i.custom); }
+/* نقاط الولاء محسوبة برقم الجوال من كل الطلبات (Supabase) */
+function phoneLoyalty(phone){
+  if(!phone) return {done:0, progress:0, freeAvailable:0};
+  const mine=state.orders.filter(o=>o.customer && o.customer.phone===phone && o.status==='done' && o.status!=='cancelled');
+  const paidDone=mine.filter(o=>!o.free).length;   // كل طلب مكتمل (سريع أو عادي) يُحسب
+  const freeDone=mine.filter(o=>o.free).length;
+  const earned=Math.floor(paidDone/LOYALTY_TARGET);
+  return {done:paidDone, progress:paidDone%LOYALTY_TARGET, freeAvailable:Math.max(0, earned-freeDone)};
+}
+/* نقاط الولاء = طلبات *هذه الهوية* المنجزة.
+   القفل يضمن إن state.orders فيها طلبات هذا العميل فقط، فالعدّ عليها مباشرة
+   أدقّ من المطابقة بالجوال — اللي كانت تنكسر بعد القفل (كل جهاز يشوف هويته فقط).
+   ولما يسجّل بالرمز تنربط أجهزته بهوية وحدة وتتجمّع نقاطه تلقائياً. */
+function myLoyalty(){
+  const mine=state.orders.filter(o=>o.status==='done');
+  const paidDone=mine.filter(o=>!o.free).length;
+  const freeDone=mine.filter(o=>o.free).length;
+  const earned=Math.floor(paidDone/LOYALTY_TARGET);
+  return {done:paidDone, progress:paidDone%LOYALTY_TARGET, freeAvailable:Math.max(0, earned-freeDone)};
+}
+function isFreeOrder(){ if(quickMode) return false; return myLoyalty().freeAvailable>0; }
+function finalPrice(){ return isFreeOrder()?0:cartPrice(); }
+
+function addToCart(id){
+  state.cart[id]=(state.cart[id]||0)+1;
+  save(); toast('أُضيفت الخدمة إلى طلبك ✅');
+  render();
+}
+function setQty(id,delta){
+  state.cart[id]=(state.cart[id]||0)+delta;
+  if(state.cart[id]<=0) delete state.cart[id];
+  save(); render();
+}
+function removeFromCart(id){ delete state.cart[id]; save(); render(); }
+
+/* ---- المواعيد المتاحة ---- */
+function bookingsOn(iso,excludeId){ return state.orders.filter(o=>o.date===iso && o.status!=='cancelled' && o.id!==excludeId); }
+function isOffDay(iso){ return OFF_DAYS.includes(parseISO(iso).getDay()); }
+function slotAvailable(iso,startMin,needMin,excludeId){
+  if(isOffDay(iso)) return false;              // إجازة — ما فيه مواعيد
+  const end=startMin+needMin+BUFFER;
+  if(end-BUFFER>WORK_END) return false;
+  if(bookingsOn(iso,excludeId).length >= MAX_JOBS_PER_DAY) return false;  // اليوم ممتلئ
+  const now=new Date();
+  if(iso===dateISO(now)){
+    const nowMin=now.getHours()*60+now.getMinutes();
+    // النافذة تبقى مفتوحة طالما ما انتهت (حسب نهايتها مو بدايتها) — تقفل عند وصول وقتها النهائي
+    if(nowMin >= startMin + ARRIVAL_WINDOW) return false;
+  }
+  for(const o of bookingsOn(iso,excludeId)){
+    const oStart=o.startMin, oEnd=o.startMin+o.duration+BUFFER;
+    if(startMin<oEnd && end>oStart) return false;
+  }
+  return true;
+}
+function scheduleDuration(){ if(quickMode) return QUICK_DURATION; const d=cartDuration(); return d>0?d:60; }
+// نافذة الوصول المعروضة للعميل
+function windowLabel(startMin){ return fmtTime(startMin)+' – '+fmtTime(Math.min(startMin+ARRIVAL_WINDOW, WORK_END)); }
+
+/* ============================================================
+   التنقل / العرض
+   ============================================================ */
+function go(v){ view=v; if(v!=='admin') isAdmin=false; if(v!=='login') otpStep=false; window.scrollTo(0,0); render(); }
+function render(){
+  syncHeader();
+  if(view==='home') return renderHome();
+  if(view==='join') return renderJoin();
+  if(view==='prices') return renderPrices();
+  if(view==='services') return renderServices();
+  if(view==='pick') return renderPick();
+  if(view==='time') return renderTime();
+  if(view==='info') return renderInfo();
+  if(view==='confirm') return renderConfirm();
+  if(view==='mybookings') return renderMyBookings();
+  if(view==='account') return renderAccount();
+  if(view==='login') return renderLogin();
+  if(view==='plans') return renderPlans();
+  if(view==='tech') return renderTech();
+  if(view==='admin') return renderAdmin();
+}
+function myOrders(){ const ids=state.myOrderIds||[]; const ph=state.customer&&state.customer.phone; return state.orders.filter(o=> ids.includes(o.id) || (ph && o.customer && o.customer.phone===ph) ); }
+/* ---------- تسجيل دخول العميل (جوال + رمز تحقق SMS) + روابط الفريق ----------
+   الرمز يُرسل ويُتحقق منه في خادم Supabase — المتصفح ما يقدر يتجاوزه.
+   لو العميل داخل بهوية مجهولة، نربط الرقم بنفس الهوية عشان طلباته القديمة تنتقل معه. */
+/* قناة إرسال الرمز: 'whatsapp' أرخص وما يحتاج تسجيل مُرسِل بـCITC.
+   لو احتجتِ ترجعين للرسائل النصية، غيّريها لـ'sms' — وبس. */
+const OTP_CHANNEL='whatsapp';
+let otpStep=false, otpPhone='', otpMode='';   // otpMode: 'link' | 'signin'
+
+/* 05xxxxxxxx → +9665xxxxxxxx */
+function normPhone(p){
+  let d=String(p||'').replace(/[^0-9]/g,'');
+  if(d.startsWith('00966')) d=d.slice(2);
+  else if(d.startsWith('966')) { /* كما هو */ }
+  else if(d.startsWith('0')) d='966'+d.slice(1);
+  else if(d.startsWith('5')) d='966'+d;
+  return '+'+d;
+}
+function renderLogin(){
+  const ph=(state.customer&&state.customer.phone)||'';
+  const chName = OTP_CHANNEL==='whatsapp' ? 'واتساب' : 'رسالة نصية';
+  const chIco  = OTP_CHANNEL==='whatsapp' ? '💬' : '📩';
+  const body = otpStep ? `
+      <h3>${chIco} رمز التحقق</h3>
+      <p style="color:var(--muted);font-size:.9rem;margin:4px 0 12px">أرسلنا رمزاً إلى <b dir="ltr">${esc(otpPhone)}</b></p>
+      <div class="field"><label>الرمز</label><input id="lg_otp" inputmode="numeric" maxlength="6" placeholder="------" style="letter-spacing:.5em;text-align:center;font-weight:900" onkeydown="if(event.key==='Enter')verifyOtpCode()" /></div>
+      <button class="cta" onclick="verifyOtpCode()">تأكيد ودخول</button>
+      <button class="ghost" style="width:100%;margin-top:8px" onclick="otpStep=false;render()">← تغيير الرقم</button>`
+    : `
+      <h3>👤 حسابي</h3>
+      <p style="color:var(--muted);font-size:.9rem;margin:4px 0 12px">أدخل رقم جوالك ويوصلك رمز على <b>${chName}</b></p>
+      <div class="field"><label>رقم الجوال</label><input id="lg_cust_phone" value="${esc(ph)}" inputmode="tel" placeholder="05xxxxxxxx" onkeydown="if(event.key==='Enter')sendOtp()" /></div>
+      <button class="cta" onclick="sendOtp()">${chIco} أرسل الرمز على ${chName}</button>`;
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('تسجيل الدخول','home')}
+      <div class="panel" style="margin-top:14px">${body}</div>
+      <div class="panel">
+        <h3 style="font-size:1.02rem">👷 فريق العمل</h3>
+        <div class="staff-links" style="border-top:none;margin-top:10px;padding-top:0;justify-content:flex-start">
+          <a href="fanyeen.html">🧑‍🔧 دخول الفنيين</a>
+          <a href="provider.html">🤝 دخول المزوّدين</a>
+        </div>
+      </div>
+      <div style="height:24px"></div>
+    </div>`;
+}
+async function sendOtp(){
+  const raw=((document.getElementById('lg_cust_phone')||{}).value||'').trim();
+  const phone=normPhone(raw);
+  if(!/^\+9665\d{8}$/.test(phone)){ toast('اكتب رقم جوال سعودي صحيح (05xxxxxxxx)'); return; }
+  if(!cloudReady){ toast('لا يوجد اتصال بالخادم'); return; }
+  const btn=document.querySelector('.panel .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نرسل الرمز...'; }
+  otpPhone=phone;
+  try{
+    const { data:{ user } } = await sb.auth.getUser();
+    if(user && user.is_anonymous){
+      // اربط الرقم بالهوية الحالية → طلباته السابقة تنتقل معه
+      const { error } = await sb.auth.updateUser({ phone });
+      if(!error){ otpMode='link'; otpStep=true; render(); return; }
+    }
+    // رقم مسجّل من قبل (أو جهاز جديد) → دخول عادي
+    const { error } = await sb.auth.signInWithOtp({ phone, options:{ channel:OTP_CHANNEL } });
+    if(error) throw error;
+    otpMode='signin'; otpStep=true; render();
+  }catch(e){
+    console.warn('otp send:', e.message||e);
+    toast('تعذّر إرسال الرمز — تأكد من الرقم وحاول مرة ثانية');
+    otpStep=false; render();   // أعد بناء الشاشة (الزر يرجع لنصه الصحيح)
+  }
+}
+async function verifyOtpCode(){
+  const token=((document.getElementById('lg_otp')||{}).value||'').trim();
+  if(!/^\d{4,8}$/.test(token)){ toast('اكتب الرمز المرسل'); return; }
+  const btn=document.querySelector('.panel .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳...'; }
+  try{
+    const { error } = await sb.auth.verifyOtp({
+      phone: otpPhone, token,
+      type: otpMode==='link' ? 'phone_change' : 'sms'
+    });
+    if(error) throw error;
+    const { data:{ user } } = await sb.auth.getUser();
+    if(user){ myUid=user.id; isVerified=true; }
+    state.customer=state.customer||{};
+    state.customer.phone=(document.getElementById('lg_cust_phone')||{}).value || state.customer.phone || otpPhone;
+    save();
+    otpStep=false;
+    await loadOrdersFromCloud();
+    toast('أهلاً بك 👋'); go('account');
+  }catch(e){
+    console.warn('otp verify:', e.message||e);
+    toast('الرمز غير صحيح أو انتهت صلاحيته');
+    if(btn){ btn.disabled=false; btn.textContent='تأكيد ودخول'; }
+  }
+}
+/* ---------- حسابي ---------- */
+/* ---------- الإحالة والرصيد ----------
+   الكود عشوائي ويُولّده الخادم (مو مشتقاً من رقم الجوال — كان يُخمّن بسهولة).
+   الرصيد يُصرف بعد إنجاز الطلب فقط، فما فيه خسارة. */
+let myRef={ code:null, balance:0, referrals:0 };
+async function loadMyRef(){
+  if(!cloudReady || !sb) return;
+  try{
+    const { data:code } = await sb.rpc('my_referral_code');       // ينشئه أول مرة
+    const { data:info } = await sb.rpc('my_credit');
+    myRef = { code: code || (info&&info.code) || null,
+              balance: (info&&+info.balance) || 0,
+              referrals: (info&&+info.referrals) || 0 };
+  }catch(e){ console.warn('ref:', e.message||e); }
+}
+function copyCode(code){ try{ navigator.clipboard.writeText(code); toast('📋 تم نسخ الكود'); }catch(e){ toast(code); } }
+function shareCode(code){
+  const txt=`جرّب خافِت للصيانة المنزلية — استخدم كودي ${code} واحصل على خصم ١٠٪ على أول طلب 🏠`;
+  if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); }
+  else copyCode(txt);
+}
+function saveAccount(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():undefined;};
+  const nm=g('acc_name'), ph=g('acc_phone');
+  state.customer=state.customer||{};
+  if(nm!==undefined) state.customer.name=nm;
+  if(ph!==undefined && ph) state.customer.phone=ph;
+  save(); toast('💾 تم حفظ التعديلات'); renderAccount();
+}
+async function logoutAccount(){
+  if(!confirm('تسجيل الخروج من حسابك؟')) return;
+  // اخرج من جلسة Supabase فعلياً، ثم ارجع لهوية مجهولة جديدة
+  try{ if(sb){ await sb.auth.signOut(); myUid=null; await ensureAnonSession(); } }catch(e){}
+  state.customer=state.customer||{}; state.customer.phone='';
+  state.myOrderIds=[]; state.orders=[];
+  save(); toast('تم تسجيل الخروج'); go('home');
+  if(cloudReady) loadOrdersFromCloud();
+}
+function renderAccount(){
+  if(!(state.customer&&state.customer.phone)){ go('login'); return; }
+  const c=state.customer||{}; const n=myOrders().length; const code=myRef.code;
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('حسابي','home')}
+      <div class="panel" style="margin-top:14px">
+        <div class="acc-head"><div class="acc-avatar">👤</div><div><b style="font-size:1.15rem">${esc(c.name||'عميل خافِت')}</b><div style="color:var(--muted)">📱 ${esc(c.phone||'')}</div></div></div>
+      </div>
+      ${myRef.balance>0?`<div class="panel" style="background:linear-gradient(135deg,#0b7a3b,#0e9950);border:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff">
+          <div><div style="font-size:.85rem;opacity:.9">رصيدك</div>
+            <b style="font-size:1.9rem;line-height:1.2">${ar(myRef.balance)} <span style="font-size:1rem">ر.س</span></b></div>
+          <div style="font-size:2.4rem">💰</div>
+        </div>
+        <p style="color:#fff;opacity:.92;font-size:.84rem;margin-top:8px">يُخصم من طلبك الجاي</p>
+      </div>`:''}
+      <div class="panel"><h3>🎟️ كودك الخاص</h3>
+        ${code?`
+        <div class="ref-code"><b>${esc(code)}</b><button class="sbtn ok" onclick="copyCode('${esc(code)}')">📋 نسخ</button></div>
+        <button class="cta" style="margin-top:10px" onclick="shareCode('${esc(code)}')">📤 شارك كودك</button>
+        <p style="color:var(--muted);font-size:.85rem;margin-top:10px">
+          شاركه مع أصحابك — يحصلون على <b>خصم ١٠٪</b>، ولك <b>٥ ر.س رصيد</b> مقابل كل واحد يخلّص طلبه.</p>
+        ${myRef.referrals>0?`<div style="margin-top:10px;padding:10px 12px;background:var(--gold-tint);border-radius:10px;font-weight:800;font-size:.9rem">
+          🎉 أحلتِ ${ar(myRef.referrals)} ${myRef.referrals===1?'شخص':'أشخاص'} — شكراً لك!</div>`:''}
+        `:`<p style="color:var(--muted);font-size:.88rem">جارٍ تجهيز كودك…</p>`}
+      </div>
+      <button class="services-btn" onclick="go('mybookings')"><span class="sb-ic">📋</span><span class="sb-t"><b>طلباتي</b><small>${ar(n)} طلب — تابع حالتها</small></span><span class="qb-ar">←</span></button>
+      <button class="services-btn" onclick="go('plans')"><span class="sb-ic">🛡️</span><span class="sb-t"><b>باقات الصيانة</b><small>اشترك ووفّر على صيانة منزلك</small></span><span class="qb-ar">←</span></button>
+      ${inApp()?`<div class="panel"><h3>🔔 الإشعارات</h3>
+        <div style="font-size:.88rem;font-weight:700;word-break:break-word">${esc(pushState)}</div>
+        <button class="sbtn" style="margin-top:10px" onclick="initPush()">🔄 أعد المحاولة</button>
+      </div>`:''}
+      <div class="panel"><h3>⚙️ الإعدادات</h3>
+        <div class="field"><label>الاسم</label><input id="acc_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
+        <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+        <button class="cta" onclick="saveAccount()">💾 حفظ التعديلات</button>
+      </div>
+      <button class="sbtn danger" style="width:100%;margin-top:14px;padding:14px" onclick="logoutAccount()">🚪 تسجيل الخروج</button>
+      <div style="height:24px"></div>
+    </div>`;
+}
+/* ---------- باقات الاشتراك ---------- */
+let subPlan=null;
+function renderPlans(){
+  const cards=PLANS.map(p=>{
+    const full=p.avgVisit*p.visits, save=full-p.price, savePct=Math.round(save/full*100);
+    return `<div class="plan-card ${p.badge?'featured':''}">
+    ${p.badge?`<div class="plan-badge">${esc(p.badge)}</div>`:''}
+    <div class="plan-name">${esc(p.name)}</div>
+    <div class="plan-old">لو دفعت لكل زيارة: <s>${money(full)}</s>/سنة</div>
+    <div class="plan-price">${money(p.price)}<span> / سنة</span></div>
+    <div class="plan-save">🎉 توفّر ${money(save)} (${ar(savePct)}٪)</div>
+    <div class="plan-calc">💡 متوسط الزيارة <b>${money(p.avgVisit)}</b> · البيت يحتاج <b>~${ar(p.visits)} زيارات</b> صيانة بالسنة</div>
+    <ul class="plan-feats">${p.features.map(f=>`<li>✅ ${esc(f)}</li>`).join('')}</ul>
+    <button class="cta ${p.badge?'':'gold'}" onclick="openSubscribe('${p.id}')">اشترك الآن</button>
+  </div>`;}).join('');
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('باقات الصيانة','home')}
+      <div class="flow-sum" style="margin-top:14px">🛡️ <span><b>أجرة اليد مجانية طوال السنة</b> — أي صيانة بسيطة، الفني يجيك بلا أجرة، وتدفع الأغراض والقطع فقط. مع فحص دوري وأولوية وخصومات.</span></div>
+      <div class="plans-grid">${cards}</div>
+      <div class="labor-note">🔧 <div><b>الاشتراك يشمل أجرة اليد (شغل الفني) فقط</b><span>الأغراض والقطع — لمبات، مواسير، قطع غيار، مواد... — يشتريها العميل بسعر التكلفة.</span></div></div>
+      <p style="color:var(--muted);font-size:.84rem;text-align:center;margin-top:12px">* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.</p>
+      <div style="height:24px"></div>
+    </div>`;
+}
+function openSubscribe(planId){
+  subPlan=PLANS.find(p=>p.id===planId)||PLANS[0];
+  const c=state.customer||{};
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('طلب اشتراك','plans')}
+      <div class="panel" style="margin-top:14px">
+        <div class="flow-sum" style="margin-top:0">🛡️ <span>الباقة المختارة: <b>${esc(subPlan.name)}</b> · ${money(subPlan.price)}/سنة</span></div>
+        <div class="field"><label>الاسم <span class="req">*</span></label><input id="sub_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
+        <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="sub_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+        <button class="cta" style="margin-top:8px" onclick="submitSubscription()">✅ أرسل طلب الاشتراك</button>
+        <p style="color:var(--muted);font-size:.82rem;margin-top:10px">بنتواصل معك على جوالك لتأكيد الباقة وتفعيلها.</p>
+      </div>
+      <div style="height:24px"></div>
+    </div>`;
+}
+async function submitSubscription(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const name=g('sub_name'), phone=g('sub_phone');
+  if(!name){ toast('اكتب الاسم'); return; }
+  if(!phone){ toast('اكتب رقم الجوال'); return; }
+  const data={ name, phone, plan:subPlan?subPlan.name:'', price:subPlan?subPlan.price:0, status:'new' };
+  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
+  let ok=false;
+  if(cloudReady){ try{ const r=await sb.from('khafet_subscriptions').insert(data); if(!r.error) ok=true; else console.warn('sub insert:',r.error.message); }catch(e){ console.warn(e); } }
+  if(!ok){ try{ const arr=JSON.parse(localStorage.getItem('khafet_subs')||'[]'); arr.push(Object.assign({created_at:Date.now()},data)); localStorage.setItem('khafet_subs',JSON.stringify(arr)); }catch(e){} }
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen"><div class="panel" style="margin-top:30px">
+      <div class="success"><div class="circle">🛡️</div><h2>تم استلام طلبك!</h2>
+      <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنتواصل معك على ${esc(phone)} لتفعيل «${esc(subPlan?subPlan.name:'')}».</p></div>
+      <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
+    </div></div>`;
+}
+function syncHeader(){
+  const n=myOrders().length;
+  document.getElementById('myCount').textContent=ar(n);
+  const loggedIn=!!(state.customer&&state.customer.phone);   // داخل بحسابه؟
+  const ab=document.getElementById('accountBtn'); if(ab) ab.style.display=loggedIn?'':'none';
+  const lb=document.getElementById('loginBtn'); if(lb) lb.style.display=loggedIn?'none':'';
+  const lc=document.getElementById('locCity'); if(lc) lc.textContent=(state.address&&state.address.city)?state.address.city:'حدّد موقعك';
+}
+/* ---- اختيار الموقع (المدينة) ---- */
+const CITIES=['الرياض','جدة','مكة المكرمة','المدينة المنورة','الدمام','الخبر','الظهران','الأحساء','القطيف','الجبيل','الطائف','تبوك','بريدة','حائل','خميس مشيط','أبها','نجران','جازان','ينبع','الخرج'];
+function openLocation(){ renderLocation(); document.getElementById('locModal').classList.add('show'); }
+function closeLocation(){ document.getElementById('locModal').classList.remove('show'); }
+function pickCity(c){ if(view==='info') captureBookingInputs(); state.address.city=c; save(); closeLocation(); syncHeader(); if(view==='home') renderHome(); else if(view==='info') renderInfo(); }
+function pickOther(){ const v=(document.getElementById('loc_other')||{}).value; if(v&&v.trim()){ pickCity(v.trim()); } else { toast('اكتب اسم المدينة'); } }
+function detectCityGPS(){
+  if(!navigator.geolocation){ toast('جهازك لا يدعم تحديد الموقع'); return; }
+  toast('⏳ جارٍ تحديد موقعك...');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    const lat=pos.coords.latitude.toFixed(6), lng=pos.coords.longitude.toFixed(6);
+    state.address.lat=lat; state.address.lng=lng; state.address.mapUrl='https://www.google.com/maps?q='+lat+','+lng;
+    save(); toast('تم تحديد موقعك بدقة ✅ — اختر مدينتك للتوصيل');
+  }, function(){ toast('⚠️ اسمح بإذن الموقع أو اختر مدينتك يدوياً'); }, {enableHighAccuracy:true,timeout:12000});
+}
+function renderLocation(){
+  const cur=(state.address&&state.address.city)||'';
+  const cities=CITIES.map(c=>`<button class="${c===cur?'on':''}" onclick="pickCity('${c}')">${c}</button>`).join('');
+  document.getElementById('locModal').innerHTML=`
+    <div class="loc-sheet">
+      <div class="loc-head"><b>📍 اختر موقعك</b><button onclick="closeLocation()">✕</button></div>
+      <div class="hint">نوصلك بأقرب فني/مزوّد في منطقتك.</div>
+      <button class="loc-gps" onclick="detectCityGPS()">📍 استخدم موقعي الحالي (GPS)</button>
+      <div class="loc-cities">${cities}</div>
+      <div class="loc-other"><input id="loc_other" placeholder="مدينة أخرى..." /><button onclick="pickOther()">تأكيد</button></div>
+    </div>`;
+}
+/* شريط خطوات: ① الخدمة ② الوقت ③ بياناتك */
+function stepBar(n){
+  const labels=['الخدمة','الوقت','بياناتك'];
+  return `<div class="steps">${labels.map((s,i)=>`<div class="step ${i+1===n?'active':''} ${i+1<n?'done':''}"><span class="sd">${i+1<n?'✓':ar(i+1)}</span>${s}</div>`).join('<span class="sline"></span>')}</div>`;
+}
+
+const LOGO_BIG=`<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M8 23 L24 9 L40 23"/><path d="M12 21 V38 a2 2 0 0 0 2 2 H34 a2 2 0 0 0 2-2 V21"/><path d="M33 15 V11 h4 v8"/>
+  <g transform="translate(11,18) scale(0.6)"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></g></svg>`;
+
+/* ---------- الرئيسية: زرّان — طلب سريع / باقي الخدمات ---------- */
+function renderHome(){
+  const L=myLoyalty();
+  const dots=Array.from({length:LOYALTY_TARGET},(_,i)=>`<i class="${i<L.progress?'on':''}"></i>`).join('');
+  const tkTitle=(L.freeAvailable>0) ? 'لديك طلب مجاني بانتظارك 🎉' : 'الطلب السادس مجاني';
+  const tkSub = `أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} طلبات`;
+  const GIFT_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/></svg>';
+
+  // آراء العملاء الإيجابية (٤ نجوم فأكثر + كتبوا ملاحظة)
+  const firstName=s=>String(s||'').trim().split(/\s+/)[0]||'عميل';
+  const reviews=(state.orders||[])
+    .filter(o=>o.rating===5 && o.feedback && o.feedback.trim() && o.customer && !o.reviewHidden)
+    .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,10);
+  const reviewsHtml = reviews.length ? `
+      <div class="reviews">
+        <div class="rv-head">💬 وش قالوا عملاؤنا</div>
+        <div class="rv-strip">
+          ${reviews.map(o=>`<div class="rv-card">
+            <div class="rv-stars">${'⭐'.repeat(o.rating)}</div>
+            <p class="rv-text">${esc(o.feedback.trim())}</p>
+            <div class="rv-name">— ${o.reviewAnon?'عميل':esc(firstName(o.customer.name))}</div>
+          </div>`).join('')}
+        </div>
+      </div>` : '';
+
+  document.getElementById('app').innerHTML=`
+    <div class="hero hero-slim">
+      <div class="hero-in">
+        <h1>اطلب صيانة</h1>
+        <p class="hero-sub"><b>صيانة احترافية تستاهلها</b><span>منزلك في أيادٍ أمينة</span></p>
+      </div>
+      <svg class="hero-wave" viewBox="0 0 1440 40" preserveAspectRatio="none"><path fill="currentColor" d="M0 40 L0 20 Q 360 40 720 20 T 1440 20 L1440 40 Z"/></svg>
+    </div>
+
+    <div class="wrap screen">
+      <button class="quick-btn" onclick="startQuick()">
+        <span class="qb-ic">⚡</span>
+        <span class="qb-t"><b>طلب سريع</b><small>لست متأكداً من العطل؟ احجز موعداً وأرفق فيديو للمشكلة، ويصلك الفني للمعاينة</small></span>
+        <span class="qb-ar">←</span>
+      </button>
+
+      <button class="services-btn" onclick="go('prices')">
+        <span class="sb-ic">💰</span>
+        <span class="sb-t"><b>قائمة الأسعار</b><small>تصفّح الخدمات وأسعارها واطلب ما يناسبك</small></span>
+        <span class="qb-ar">←</span>
+      </button>
+
+      <button class="services-btn" onclick="go('plans')">
+        <span class="sb-ic">🛡️</span>
+        <span class="sb-t"><b>باقات الصيانة السنوية</b><small>أجرة اليد مجانية طوال السنة — تدفع القطع فقط</small></span>
+        <span class="qb-ar">←</span>
+      </button>
+
+      <div class="trust">
+        <div class="trust-item"><span class="ti-ic">🛡️</span><b>${WARRANTY}</b></div>
+        <div class="trust-item"><span class="ti-ic">🧑‍🔧</span><b>فنيون معتمدون</b></div>
+        <div class="trust-item"><span class="ti-ic">🎁</span><b>خدمات مجانية</b></div>
+      </div>
+
+      <div class="lticket">
+        <div class="tk-left">${GIFT_SVG}</div>
+        <div class="tk-body">
+          <b>${tkTitle}</b>
+          <div class="tk-mini">${dots}</div>
+          <span>${tkSub}</span>
+        </div>
+      </div>
+
+      ${reviewsHtml}
+
+      <footer class="site-footer">
+        <div class="foot-brand"><b>${BRAND}</b><span>${TAGLINE} · ${CITY}</span></div>
+        <div class="foot-contact">
+          <span>🕐 ${HOURS}</span>
+          <span>📍 ${CITY}</span>
+        </div>
+        <div style="margin-top:16px"><a class="join-link" onclick="go('join')">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
+      </footer>
+    </div>`;
+}
+
+/* ---------- قائمة الأسعار (تفاعلية: اختر واطلب) ---------- */
+function renderPrices(){
+  quickMode=false;
+  const sections=Object.keys(CATS).map(k=>{
+    const c=CATS[k];
+    const rows=SERVICES.filter(s=>s.cat===k).map(s=>{
+      const sel=!!state.cart[s.id];
+      return `<button class="price-row ${sel?'sel':''}" onclick="toggleService('${s.id}')">
+        <span class="pr-check">${sel?'✓':''}</span>
+        <span class="pr-name">${s.ico} ${s.name}</span>
+        <span class="pr-dur">${fmtDuration(s.dur)}</span>
+        <span class="pr-price">${s.custom?'بعد المعاينة':money(s.price)}</span>
+      </button>`;
+    }).join('');
+    return `<div class="price-cat"><h3>${c.ico} ${c.name}</h3>${rows}</div>`;
+  }).join('');
+  const n=cartCount();
+  const nextbar = n>0 ? `
+    <div class="nextbar"><div class="wrap">
+      <div class="nb-info"><b>${ar(n)} ${n===1?'خدمة':'خدمات'} · ${money(cartPrice())}</b><small>المدة التقريبية ${fmtDuration(cartDuration())}</small></div>
+      <button class="nb-go" onclick="go('time')">التالي <span>←</span></button>
+    </div></div>` : '';
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen" style="padding-bottom:100px">
+      ${pageHead('💰 قائمة الأسعار','home')}
+      <p style="color:var(--muted);text-align:center;margin-top:2px">اختر الخدمة اللي تحتاجها — الأسعار تقديرية وقد تختلف حسب المعاينة.</p>
+      <div class="value-card">
+        <div class="vc-head">✨ ليش خدمة خافِت تستاهل؟</div>
+        <div class="vc-list">
+          <div class="vc-item"><span class="vc-ic">👔</span><span>فنيّون نظيفون بمظهر لائق وتعامل محترم</span></div>
+          <div class="vc-item"><span class="vc-ic">🏅</span><span>جودة عمل عالية ومتقنة</span></div>
+          <div class="vc-item"><span class="vc-ic">🧹</span><span>ننظّف المكان بعد انتهاء العمل</span></div>
+          <div class="vc-item"><span class="vc-ic">🛡️</span><span>ضمان على شغل اليد والقطع — لو رجعت المشكلة نرجع بلا تكلفة</span></div>
+          <div class="vc-item"><span class="vc-ic">✅</span><span>أسعار واضحة، بلا مفاجآت بعد الشغل</span></div>
+        </div>
+      </div>
+      ${sections}
+    </div>
+    ${nextbar}`;
+}
+
+/* ---------- انضمام مزوّد صيانة ---------- */
+function renderJoin(){
+  const p=state.provider||{};
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('انضم كمزوّد صيانة','home')}
+      <div class="flow-sum">🤝 <span>عندك خبرة في السباكة أو الكهرباء؟ سجّل وابدأ استقبال طلبات العملاء في منطقتك.</span></div>
+      <div class="panel" style="margin-top:14px"><h3>👤 بياناتك</h3>
+        <div class="field"><label>الاسم / اسم المؤسسة <span class="req">*</span></label><input id="pv_name" value="${esc(p.name||'')}" placeholder="مثال: مؤسسة النور للصيانة" /></div>
+        <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="pv_phone" value="${esc(p.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+      </div>
+      <div class="panel"><h3>📍 منطقة العمل</h3>
+        <div class="field"><label>المدينة <span class="req">*</span></label><input id="pv_city" value="${esc(p.city||'')}" placeholder="مثال: الخبر" /></div>
+      </div>
+      <div class="panel"><h3>🛠️ نوع الخدمات <span class="req">*</span></h3>
+        <div class="chips-pick">
+          ${Object.keys(CATS).map(k=>`<label><input type="checkbox" value="${CATS[k].name}" /> ${CATS[k].ico} ${CATS[k].name}</label>`).join('')}
+        </div>
+        <div class="field" style="margin-top:14px"><label>ملاحظة (اختياري)</label><textarea id="pv_note" placeholder="أي معلومة تحب تضيفها...">${esc(p.note||'')}</textarea></div>
+      </div>
+      <button class="cta" onclick="submitProvider()">✅ إرسال طلب الانضمام</button>
+      <div style="height:26px"></div>
+    </div>`;
+}
+async function submitProvider(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const name=g('pv_name'), phone=g('pv_phone'), city=g('pv_city');
+  const services=Array.from(document.querySelectorAll('.chips-pick input:checked')).map(c=>c.value);
+  if(!name){ toast('اكتب الاسم'); return; }
+  if(!phone){ toast('اكتب رقم الجوال'); return; }
+  if(!city){ toast('اكتب المدينة'); return; }
+  if(!services.length){ toast('اختر نوع الخدمات'); return; }
+  const data={ name, phone, city, services, note:g('pv_note'), status:'pending' };
+  state.provider=data; save();
+  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
+  let ok=false;
+  if(cloudReady){ try{ const r=await sb.from('khafet_providers').insert(data); if(!r.error) ok=true; else console.warn('provider insert:', r.error.message); }catch(e){ console.warn(e); } }
+  if(!ok){ try{ const arr=JSON.parse(localStorage.getItem('khafet_providers')||'[]'); arr.push(Object.assign({created_at:Date.now()},data)); localStorage.setItem('khafet_providers',JSON.stringify(arr)); ok=true; }catch(e){} }
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      <div class="panel" style="margin-top:30px">
+        <div class="success">
+          <div class="circle">🤝</div>
+          <h2>تم استلام طلبك!</h2>
+          <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنراجع طلبك ونتواصل معك على ${esc(phone)} لتفعيل حسابك واستقبال الطلبات.</p>
+        </div>
+        <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
+      </div>
+    </div>`;
+}
+
+/* ---------- باقي الخدمات: الأقسام ---------- */
+function renderServices(){
+  const cats=Object.keys(CATS).map(k=>{
+    const c=CATS[k];
+    return `<button class="catbtn" onclick="openCat('${k}')">
+      <span class="cb-ic">${c.ico}</span>
+      <span class="cb-t"><b>${c.name}</b></span>
+      <span class="cb-ar">←</span>
+    </button>`;
+  }).join('');
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('باقي الخدمات','home')}
+      <p style="color:var(--muted);text-align:center;margin-top:4px">اختر النوع، وبعدها الخدمة اللي تحتاجها.</p>
+      <div class="cats-big" style="margin-top:18px">${cats}</div>
+      <div style="height:30px"></div>
+    </div>`;
+}
+
+/* ---------- طلب سريع: مباشرة للموعد + وصف/مقطع ---------- */
+function startQuick(){
+  quickMode=true; state.cart={}; state.booking={date:null,time:null};
+  go('time');
+}
+
+/* ---------- خطوة ١: اختر الخدمة ---------- */
+function openCat(k){ quickMode=false; currentCat=k; go('pick'); }
+function toggleService(id){
+  if(state.cart[id]) delete state.cart[id]; else state.cart[id]=1;
+  save(); if(view==='prices') renderPrices(); else renderPick();
+}
+function renderPick(){
+  const list=SERVICES.filter(s=>s.cat===currentCat);
+  const rows=list.map(s=>{
+    const sel=!!state.cart[s.id];
+    return `<button class="srow ${sel?'sel':''}" onclick="toggleService('${s.id}')">
+      <span class="srow-ic">${s.ico}</span>
+      <span class="srow-t"><b>${s.name}</b><small>⏱️ ${fmtDuration(s.dur)} · ${s.custom?'بعد المعاينة':money(s.price)}</small></span>
+      <span class="srow-ck">${sel?'✓':''}</span>
+    </button>`;
+  }).join('');
+  const n=cartCount();
+  const nextbar = n>0 ? `
+    <div class="nextbar"><div class="wrap">
+      <div class="nb-info"><b>${ar(n)} ${n===1?'خدمة':'خدمات'} · ${fmtDuration(cartDuration())}</b><small>المدة التقريبية للتنفيذ</small></div>
+      <button class="nb-go" onclick="go('time')">التالي <span>←</span></button>
+    </div></div>` : '';
+
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen" style="padding-bottom:100px">
+      ${pageHead(CATS[currentCat].ico+' '+CATS[currentCat].name,'home')}
+      ${stepBar(1)}
+      <p style="text-align:center;color:var(--muted);font-size:.9rem;margin-top:6px">اختر اللي تحتاجه — تقدر تختار أكثر من خدمة</p>
+      <div class="srows">${rows}</div>
+      <a class="addmore" onclick="go('home')">＋ أضف من قسم آخر</a>
+    </div>
+    ${nextbar}`;
+}
+
+/* ---------- خطوة ٢: اختر اليوم والوقت ---------- */
+function captureBookingInputs(){
+  const g=id=>{const el=document.getElementById(id);return el?el.value.trim():undefined;};
+  const n=g('f_name'),p=g('f_phone');
+  if(n!==undefined) state.customer.name=n;
+  if(p!==undefined) state.customer.phone=p;
+  ['district','street','house','mark','notes'].forEach(k=>{const v=g('f_'+k); if(v!==undefined) state.address[k]=v;});
+  const d=g('f_desc'); if(d!==undefined){ state.problem=state.problem||{}; state.problem.desc=d; }
+}
+function onVideoPick(el){
+  const f=el.files&&el.files[0];
+  const nm=document.getElementById('vu-name'), wrap=document.getElementById('videoUp');
+  if(f){ nm.textContent='📎 '+f.name; wrap.classList.add('has'); }
+  else { nm.textContent='صوّر المشكلة أو ارفع صورة/فيديو ليشوفها الفني (اختياري)'; wrap.classList.remove('has'); }
+}
+function onHousePhotoPick(el){
+  const f=el.files&&el.files[0];
+  const nm=document.getElementById('hp-name'), wrap=document.getElementById('housePhotoUp');
+  if(f){ if(nm) nm.textContent='📎 '+f.name; if(wrap) wrap.classList.add('has'); }
+  else { if(nm) nm.textContent='صوّر أو ارفع صورة لواجهة المنزل ليعرفه الفني بسهولة'; if(wrap) wrap.classList.remove('has'); }
+}
+function locOkHtml(){
+  return `<div class="loc-ok">✅ تم تحديد موقعك بدقة — <a href="${state.address.mapUrl}" target="_blank" rel="noopener">شوف على الخريطة</a></div>`;
+}
+function detectLocation(){
+  const el=document.getElementById('loc-status');
+  const btn=document.querySelector('.loc-btn');
+  if(!navigator.geolocation){ toast('جهازك ما يدعم تحديد الموقع'); return; }
+  if(el) el.innerHTML='<div class="loc-loading">⏳ جارٍ تحديد موقعك... اسمح بالإذن</div>';
+  if(btn) btn.classList.add('busy');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    const lat=pos.coords.latitude.toFixed(6), lng=pos.coords.longitude.toFixed(6);
+    state.address.lat=lat; state.address.lng=lng;
+    state.address.mapUrl='https://www.google.com/maps?q='+lat+','+lng;
+    save();
+    if(btn){ btn.classList.remove('busy'); btn.classList.add('set');
+      const b=btn.querySelector('b'), s=btn.querySelector('small');
+      if(b) b.textContent='✓ موقعك محدّد'; if(s) s.textContent='تقدر تحدّثه لو تغيّر';
+    }
+    if(el) el.innerHTML=locOkHtml();
+    toast('تم تحديد موقعك ✅');
+    reverseGeocodeCity(lat,lng);   // استنتج المدينة من الموقع (لتوزيع المزوّدين) — بصمت
+  }, function(err){
+    if(btn) btn.classList.remove('busy');
+    if(el) el.innerHTML='<div class="loc-err">⚠️ ما قدرنا نحدد موقعك. اسمح بإذن الموقع، أو اكتب العنوان تحت.</div>';
+  }, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
+}
+// استنتاج اسم المدينة من الإحداثيات (اختياري — لتوزيع الطلب على مزوّدي نفس المدينة)
+async function reverseGeocodeCity(lat,lng){
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ar&zoom=10&lat='+lat+'&lon='+lng);
+    if(!r.ok) return;
+    const j=await r.json(); const ad=j&&j.address;
+    const city = ad && (ad.city||ad.town||ad.village||ad.county||ad.state);
+    if(city){ state.address.city=city; save(); }
+  }catch(e){/* تجاهل بصمت */}
+}
+function pickDate(iso){
+  // يحمي «التاريخ الأبعد» كمان — لأن تقويم الجهاز يسمح باختيار أي يوم
+  if(isOffDay(iso)){ toast('يوم '+AR_DAYS[parseISO(iso).getDay()]+' إجازة — اختر يوماً آخر'); return; }
+  state.booking.date=iso; state.booking.time=null; renderTime();
+}
+function pickTime(min){ state.booking.time=min; renderTime(); }
+function toggleWantsEarlier(){ state.booking.wantsEarlier = state.booking.wantsEarlier===false; renderTime(); }
+// يبحث عن أبكر موعد متاح قبل موعد الطلب الحالي (يظهر إذا ألغى عميل ثاني وفرّغ وقت)
+function earlierSlotFor(o){
+  if(!o || o.status==='cancelled' || o.status==='done') return null;
+  const need = o.duration || 60;
+  const curKey = o.date + String(o.startMin).padStart(4,'0');
+  const today=new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<30;i++){
+    const d=new Date(today); d.setDate(today.getDate()+i); const iso=dateISO(d);
+    if(iso > o.date) break;                       // ما نتجاوز موعده الحالي
+    for(let t=WORK_START;t+need<=WORK_END;t+=ARRIVAL_WINDOW){
+      if(iso+String(t).padStart(4,'0') >= curKey) break;   // وصلنا موعده أو بعده
+      if(slotAvailable(iso,t,need,o.id)) return {date:iso,time:t};
+    }
+  }
+  return null;
+}
+// كم دقيقة متوقّع يتأخر هذا الموعد بسبب طلبات قبله بنفس اليوم أضاف لها الفني وقت إضافي
+function expectedDelayFor(o){
+  if(!o || o.status==='done' || o.status==='cancelled') return 0;
+  return state.orders
+    .filter(x=> x.id!==o.id && x.date===o.date && x.status!=='cancelled' && x.status!=='done' && x.startMin<=o.startMin)
+    .reduce((a,x)=>a+(x.delayMin||0),0);
+}
+async function advanceOrder(id){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const e=earlierSlotFor(o);
+  if(!e){ toast('ما عاد فيه موعد أبكر متاح'); render(); return; }
+  if(!confirm('تقديم موعدك إلى '+dayLabel(e.date)+' · '+windowLabel(e.time)+'؟')) return;
+  o.date=e.date; o.startMin=e.time; o.endMin=e.time+(o.duration||60);
+  save();
+  cloudPatch(o.dbId,{service_date:o.date, start_min:o.startMin, end_min:o.endMin});
+  toast('تم تقديم موعدك ✅');
+  render();
+}
+
+function renderTime(){
+  if(!quickMode && cartCount()===0){ go('home'); return; }
+  const b=state.booking;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const need0=scheduleDuration();
+  // افتراضياً: أقرب يوم فيه وقت متاح فعلاً
+  if(!b.date){
+    for(let i=0;i<14;i++){ const d=new Date(today); d.setDate(today.getDate()+i); const iso=dateISO(d);
+      let has=false; for(let tt=WORK_START;tt+need0<=WORK_END;tt+=ARRIVAL_WINDOW){ if(slotAvailable(iso,tt,need0)){has=true;break;} }
+      if(has){ b.date=iso; break; } }
+    if(!b.date) b.date=dateISO(today);
+  }
+  // نتخطّى أيام الإجازة تماماً — ما تظهر بالشريط
+  const days=[]; for(let i=0;i<16;i++){ const d=new Date(today); d.setDate(today.getDate()+i);
+    if(!OFF_DAYS.includes(d.getDay())) days.push(d); }
+  const dchips=days.map(d=>{
+    const iso=dateISO(d), isToday=i0(d,today), active=b.date===iso;
+    return `<button class="dchip ${active?'active':''}" onclick="pickDate('${iso}')">
+      <small>${isToday?'اليوم':AR_DAYS[d.getDay()]}</small><b>${ar(d.getDate())}</b><span class="mon">${AR_MONTHS[d.getMonth()]}</span></button>`;
+  }).join('');
+  // مربع «تاريخ أبعد» — تقويم لاختيار أي يوم (بعد أسبوعين، شهر...)
+  const farActive = b.date && !days.some(d=>dateISO(d)===b.date);
+  const fd = farActive ? parseISO(b.date) : null;
+  const farChip = `<label class="dchip more-date ${farActive?'active':''}">
+    ${farActive
+      ? `<small>${AR_DAYS[fd.getDay()]}</small><b>${ar(fd.getDate())}</b><span class="mon">${AR_MONTHS[fd.getMonth()]}</span>`
+      : `<small>📅</small><b>＋</b><span class="mon">تاريخ أبعد</span>`}
+    <input type="date" min="${dateISO(today)}" value="${farActive?b.date:''}" onchange="if(this.value)pickDate(this.value)" />
+  </label>`;
+
+  const need=scheduleDuration();
+  const slots=[];
+  for(let t=WORK_START;t+need<=WORK_END;t+=ARRIVAL_WINDOW){
+    const ok=slotAvailable(b.date,t,need), active=b.time===t;
+    slots.push(`<button class="slot win ${active?'active':''}" ${ok?'':'disabled'} onclick="pickTime(${t})">${windowLabel(t)}</button>`);
+  }
+  const anyFree=slots.some(s=>!s.includes('disabled'));
+  const ready=b.time!=null;
+  const we=state.booking.wantsEarlier!==false;
+
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen" style="padding-bottom:100px">
+      ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
+      ${stepBar(2)}
+      <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
+        <span class="nt-check">${we?'✓':''}</span>
+        <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
+      </div>
+      <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
+      <div class="panel"><h3>🕐 اختر نافذة الوصول</h3>
+        ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
+        <div class="slot-note">💡 <span>تختار <b>نافذة وصول</b> (ساعتين) والفني يوصلك خلالها — أدق وأريح للطرفين، وما يتأخر عليك لو طال الطلب اللي قبلك.</span></div>
+      </div>
+    </div>
+    <div class="nextbar"><div class="wrap">
+      <div class="nb-info"><b>${ready?windowLabel(b.time):'اختر نافذة'}</b><small>${dayLabel(b.date)}</small></div>
+      <button class="nb-go" ${ready?'':'disabled'} onclick="go('info')">التالي <span>←</span></button>
+    </div></div>`;
+}
+
+/* ---------- خطوة ٣: بياناتك وموقعك ---------- */
+function renderInfo(){
+  if(!state.booking.date||state.booking.time==null){ go('time'); return; }
+  const c=state.customer,a=state.address,b=state.booking;
+  const svcNames=quickMode?'⚡ طلب سريع (معاينة)':cartItems().map(i=>i.ico+' '+i.name).join('، ');
+  const free=isFreeOrder();
+  const desc=(state.problem&&state.problem.desc)||'';
+  const pPct = (free||quickMode||!refCheck.ok)?0:10;
+  const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
+    : (free ? 'مجاني — مكافأة ولاء 🎁'
+    : (pPct>0 ? `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(finalPrice())}</span> ${money(Math.round(finalPrice()*(1-pPct/100)))} <span style="color:#0b7a3b;font-size:.6em;font-weight:800">خصم ${ar(pPct)}٪ 🎟️</span>`
+    : money(finalPrice())));
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('آخر خطوة','time')}
+      ${stepBar(3)}
+      <div class="flow-sum">📋 <span>${svcNames} · <b>${dayLabel(b.date)} — ${fmtTime(b.time)}</b></span></div>
+
+      <div class="panel" style="margin-top:14px"><h3>🛠️ ${quickMode?'اشرح المشكلة':'وصف المشكلة (اختياري)'}</h3>
+        <div class="field"><textarea id="f_desc" placeholder="مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...">${esc(desc)}</textarea></div>
+        <label class="video-up" id="videoUp">
+          <input type="file" id="f_video" accept="image/*,video/*" onchange="onVideoPick(this)" hidden />
+          <span class="vu-ic">📷</span>
+          <span class="vu-t"><b>أرفق صورة أو مقطع</b><small id="vu-name">صوّر المشكلة أو ارفع صورة/فيديو ليشوفها الفني (اختياري)</small></span>
+        </label>
+      </div>
+
+      <div class="panel"><h3>👤 معلومات التواصل</h3>
+        <div class="grid2">
+          <div class="field"><label>الاسم <span class="req">*</span></label><input id="f_name" value="${esc(c.name)}" placeholder="مثال: أبو محمد" /></div>
+          <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="f_phone" value="${esc(c.phone)}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+        </div>
+      </div>
+
+      <div class="panel"><h3>📍 وين نوصلك؟</h3>
+        <p class="loc-hint">حدّد موقعك بدقة: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط 📌</p>
+        <div id="pickmap" class="pickmap"></div>
+        <button type="button" class="loc-btn" onclick="locateMe()">
+          <span class="lb-ic">📍</span>
+          <span class="lb-t"><b>استخدم موقعي الحالي</b><small>نحدّد موقعك تلقائياً، وتقدر تعدّله على الخريطة</small></span>
+        </button>
+        <div id="loc-status">${a.lat&&a.lng?locOkHtml():''}</div>
+        <div class="field" style="margin-top:14px"><label>رقم المنزل / الشقة</label><input id="f_house" value="${esc(a.house)}" placeholder="مثال: ٢٤٥١ · الدور الأول" /></div>
+        <label class="video-up ${a.photoUrl?'has':''}" id="housePhotoUp" style="margin-top:12px">
+          <input type="file" id="f_housePhoto" accept="image/*" onchange="onHousePhotoPick(this)" hidden />
+          <span class="vu-ic">🏠</span>
+          <span class="vu-t"><b>صورة المنزل (اختياري)</b><small id="hp-name">${a.photoUrl?'📎 تم إرفاق صورة المنزل':'صوّر أو ارفع صورة لواجهة المنزل ليعرفه الفني بسهولة'}</small></span>
+        </label>
+      </div>
+
+      ${free?'':`<div class="panel" style="padding:14px 16px"><div class="field" style="margin:0">
+        <label>🎟️ كود صديق (اختياري)</label>
+        <input id="f_promo" value="${esc(state.promo||'')}" onchange="setPromo(this.value)" placeholder="مثال: خافت-K7F2M9" />
+        ${refCheck.busy?`<div style="color:var(--muted);font-weight:700;font-size:.84rem;margin-top:6px">⏳ نتحقق…</div>`
+          : refCheck.ok?`<div style="color:#0b7a3b;font-weight:800;font-size:.86rem;margin-top:6px">✅ خصم ١٠٪ مطبّق — أهلاً بك في خافِت 🎉</div>`
+          : (state.promo?`<div style="color:#c0392b;font-weight:700;font-size:.84rem;margin-top:6px">${REF_MSG[refCheck.reason]||'❌ الكود غير صحيح'}</div>`:'')}
+      </div></div>
+      ${myRef.balance>0?`<div class="panel" style="padding:14px 16px;background:#e8f7ee;border-color:#0b7a3b">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <b style="color:#0b7a3b">💰 رصيدك ${ar(myRef.balance)} ر.س</b>
+          <span style="color:#0b7a3b;font-weight:800;font-size:.86rem">يُخصم تلقائياً</span>
+        </div></div>`:''}`}
+
+      <div class="est"><span style="font-size:1.5rem">${quickMode?'🔎':(free?'🎁':'💳')}</span>
+        <div><div style="color:var(--muted);font-size:.85rem">الإجمالي التقريبي</div>
+        <div class="big">${priceTxt}</div></div>
+      </div>
+
+      <button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>
+      <div style="height:28px"></div>
+    </div>`;
+  initPickMap();
+}
+/* ---------- كود الخصم ---------- */
+/* التحقّق من كود الإحالة يصير في *الخادم* — المتصفح ما يقرّر خصماً.
+   يرجع سبباً واضحاً: كود غلط / كودك أنت / مو أول طلب. */
+let refCheck={ code:'', ok:false, reason:'', busy:false };
+const REF_MSG={
+  unknown: '❌ الكود غير صحيح',
+  self:    '❌ ما تقدر تستخدم كودك أنت',
+  not_new: 'ℹ️ الخصم لأول طلب فقط — وأنت عميل عندنا من قبل 🙏',
+  not_signed_in: '❌ تعذّر التحقق، حدّث الصفحة'
+};
+async function setPromo(v){
+  state.promo=(v||'').trim();
+  captureBookingInputs();
+  if(!state.promo){ refCheck={code:'',ok:false,reason:'',busy:false}; renderInfo(); return; }
+  refCheck={ code:state.promo, ok:false, reason:'', busy:true }; renderInfo();
+  try{
+    if(!myUid) await ensureAnonSession();
+    const { data, error } = await sb.rpc('check_referral', { p_code: state.promo });
+    if(error) throw error;
+    refCheck={ code:state.promo, ok:!!(data&&data.ok), reason:(data&&data.reason)||'', busy:false };
+  }catch(e){ console.warn('ref check:', e.message||e); refCheck={ code:state.promo, ok:false, reason:'unknown', busy:false }; }
+  renderInfo();
+}
+
+/* ---------- خريطة اختيار الموقع (Leaflet + OpenStreetMap) ---------- */
+let _pmap=null, _pmarker=null;
+function ensureMarker(lat,lng){
+  if(!_pmap) return;
+  if(_pmarker){ _pmarker.setLatLng([lat,lng]); }
+  else{
+    _pmarker=L.marker([lat,lng],{draggable:true}).addTo(_pmap);
+    _pmarker.on('dragend',()=>{ const p=_pmarker.getLatLng(); setPin(p.lat,p.lng); });
+  }
+}
+function initPickMap(){
+  const el=document.getElementById('pickmap'); if(!el) return;
+  if(!window.L){ setTimeout(initPickMap,300); return; }   // انتظر تحميل مكتبة الخريطة
+  const a=state.address;
+  const hasLoc=!!(a.lat&&a.lng);
+  const lat=hasLoc?+a.lat:26.2794, lng=hasLoc?+a.lng:50.2083;   // افتراضي: الخبر
+  if(_pmap){ try{_pmap.remove();}catch(e){} _pmap=null; _pmarker=null; }
+  _pmap=L.map(el,{zoomControl:true}).setView([lat,lng], hasLoc?16:12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_pmap);
+  if(hasLoc) ensureMarker(lat,lng);
+  _pmap.on('click',(e)=>{ ensureMarker(e.latlng.lat,e.latlng.lng); setPin(e.latlng.lat,e.latlng.lng); });
+  setTimeout(()=>{ try{_pmap.invalidateSize();}catch(e){} },220);   // إصلاح حجم الخريطة بعد الرسم
+}
+function setPin(lat,lng){
+  const la=(+lat).toFixed(6), ln=(+lng).toFixed(6);
+  state.address.lat=la; state.address.lng=ln;
+  state.address.mapUrl='https://www.google.com/maps?q='+la+','+ln;
+  save();
+  const st=document.getElementById('loc-status'); if(st) st.innerHTML=locOkHtml();
+  reverseGeocodeCity(la,ln);
+}
+function locateMe(){
+  if(!navigator.geolocation){ toast('جهازك ما يدعم تحديد الموقع'); return; }
+  toast('⏳ جارٍ تحديد موقعك...');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    const lat=pos.coords.latitude, lng=pos.coords.longitude;
+    if(_pmap){ _pmap.setView([lat,lng],17); ensureMarker(lat,lng); }
+    setPin(lat,lng); toast('تم تحديد موقعك ✅ — تقدر تعدّله بسحب الدبوس');
+  }, function(){ toast('اسمح بإذن الموقع أو اضغط على الخريطة يدوياً'); }, {enableHighAccuracy:true,timeout:12000,maximumAge:0});
+}
+
+let lastOrderId=null;
+async function confirmOrder(){
+  captureBookingInputs();
+  const c=state.customer,a=state.address,b=state.booking;
+  if(!c.name){ toast('اكتب الاسم من فضلك'); return; }
+  if(!c.phone){ toast('اكتب رقم الجوال'); return; }
+  if(!(a.lat&&a.lng) && !a.house){ toast('حدّد موقعك على الخريطة أو اكتب رقم المنزل'); return; }
+  if(!b.date||b.time==null){ toast('اختر اليوم والوقت'); return; }
+
+  const items = quickMode
+    ? [{id:'quick', name:'طلب سريع (معاينة)', ico:'⚡', qty:1, dur:scheduleDuration(), price:0, custom:true}]
+    : cartItems().map(i=>({id:i.id,name:i.name,ico:i.ico,qty:i.qty,dur:i.dur,price:i.price,custom:!!i.custom}));
+  const free = quickMode ? false : isFreeOrder();
+  const duration=scheduleDuration();
+  const note=(state.problem&&state.problem.desc)||'';
+  const promoCodeIn=(document.getElementById('f_promo')||{}).value ? document.getElementById('f_promo').value.trim() : (state.promo||'');
+  // الخصم والرصيد يُعاد حسابهما في الخادم — هذي بس للعرض
+  const discPct = (free || !refCheck.ok) ? 0 : 10;
+  const creditUse = (free||quickMode) ? 0 : Math.min(myRef.balance||0, Math.round(cartPrice()*(1-discPct/100)));
+  const videoFile=(document.getElementById('f_video')||{}).files;
+  const houseFile=(document.getElementById('f_housePhoto')||{}).files;
+
+  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
+
+  // ارفع المقطع (إن وُجد) إلى Supabase Storage
+  let videoUrl='';
+  if(videoFile && videoFile[0]){
+    if(cloudReady){
+      if(btn) btn.textContent='⏳ جارٍ رفع المقطع...';
+      try{ videoUrl=await uploadVideo(videoFile[0]); }
+      catch(e){ toast('تعذّر رفع المقطع، بنكمّل الطلب بدونه'); }
+    } else {
+      toast('رفع المقطع يحتاج اتصال بالخادم — بنكمّل بدونه');
+    }
+    if(btn) btn.textContent='⏳ جارٍ الإرسال...';
+  }
+  // ارفع صورة المنزل (إن وُجدت) — تُخزَّن داخل العنوان
+  if(houseFile && houseFile[0] && cloudReady){
+    if(btn) btn.textContent='⏳ جارٍ رفع صورة المنزل...';
+    try{ a.photoUrl=await uploadVideo(houseFile[0]); }
+    catch(e){ toast('تعذّر رفع صورة المنزل، بنكمّل بدونها'); }
+    if(btn) btn.textContent='⏳ جارٍ الإرسال...';
+  }
+
+  const base={
+    createdAt:Date.now(), items, customer:{...c}, address:{...a},
+    date:b.date, startMin:b.time, duration, endMin:b.time+duration,
+    price: quickMode?0:cartPrice(),
+    finalPrice: (quickMode||free)?0:Math.max(0, Math.round(cartPrice()*(1-discPct/100)) - creditUse),
+    referredBy: (discPct>0 ? promoCodeIn : ''), creditUsed: creditUse,
+    free, status:'new', rating:0, reminded:false, quick:quickMode, note, videoUrl, wantsEarlier: state.booking.wantsEarlier!==false,
+    promoCode: discPct>0?promoCodeIn:'', discountPct: discPct,
+  };
+  let order=null;
+  if(cloudReady){
+    try{ order=await cloudInsert(base); }
+    catch(e){
+      // اطبع السبب كامل — لا تبتلعه بصمت
+      console.error('❌ فشل حفظ الطلب في الخادم:', {
+        message: e && e.message, code: e && e.code,
+        details: e && e.details, hint: e && e.hint, raw: e
+      });
+      toast('⚠️ ما وصل الطلب — أعد المحاولة');
+    }
+  }
+  if(!order){ state.seq++; order=Object.assign({id:'#'+ar(state.seq), num:state.seq, dbId:null}, base); }
+  state.orders.unshift(order);
+  state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id);
+  state.cart={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
+  save(); lastOrderId=order.id; go('confirm');
+}
+
+/* ---------- تأكيد ---------- */
+function renderConfirm(){
+  const o=state.orders.find(x=>x.id===lastOrderId)||state.orders[0];
+  if(!o){ go('home'); return; }
+  const itemsList=o.items.map(i=>`${i.ico} ${i.name}${i.qty>1?' ×'+ar(i.qty):''}`).join(' · ');
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      <div class="panel" style="margin-top:26px">
+        <div class="success">
+          <div class="circle">${o.dbId?'✅':'⚠️'}</div>
+          <h2>${o.dbId?'تم استلام طلبك!':'طلبك ما وصلنا بعد'}</h2>
+          <div class="ordno">رقم الطلب ${o.id}</div>
+          <p style="color:var(--muted);margin-top:10px">${o.dbId
+            ? 'وصلنا طلبك، وبنتواصل معك لتأكيد الموعد.'
+            : 'ما وصلنا طلبك — أعد المحاولة أو تواصل معنا.'}</p>
+        </div>
+        ${o.dbId?'':`<a class="cta" style="display:block;text-align:center;text-decoration:none;margin-bottom:14px" href="tel:${PHONE}">📞 اتصل بنا ${PHONE}</a>`}
+        <div class="kv"><span>الخدمات</span><b style="max-width:60%">${itemsList}</b></div>
+        <div class="kv"><span>الموعد</span><b>${dayLabel(o.date)} · ${windowLabel(o.startMin)}</b></div>
+        <div class="kv"><span>المدة التقريبية</span><b>${fmtDuration(o.duration)} (ينتهي ~ ${fmtTime(o.endMin)})</b></div>
+        <div class="kv"><span>الموقع</span><b>${[esc(o.address.city),esc(o.address.district),o.address.house?'منزل '+esc(o.address.house):''].filter(Boolean).join(' · ')||(o.address.lat&&o.address.lng?'📍 موقع محدد على الخريطة':'—')}</b></div>
+        <div class="kv"><span>الإجمالي</span><b>${o.free?'مجاني 🎁 (مكافأة ولاء)':money(o.finalPrice)}${o.discountPct>0?` <span style="color:#0b7a3b;font-size:.8em">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}</b></div>
+        <div class="reminder-note">⏰ <span>بنرسل لك رسالة تذكير قبل الموعد، وتقدر تتابع حالة الطلب من صفحة «طلباتي».</span></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="cta" onclick="go('mybookings')">📋 متابعة طلباتي</button>
+        <button class="cta gold" onclick="go('home')">➕ طلب جديد</button>
+      </div>
+      <div style="height:24px"></div>
+    </div>`;
+}
+
+/* ---------- طلباتي ---------- */
+const STATUS_AR={new:'قيد المراجعة',confirmed:'مؤكد',progress:'قيد التنفيذ',done:'مكتمل',cancelled:'ملغي'};
+const STATUS_CLS={new:'st-new',confirmed:'st-confirmed',progress:'st-progress',done:'st-done',cancelled:'st-cancelled'};
+function renderMyBookings(){
+  const os=myOrders(); let body;
+  if(os.length===0){
+    body=`<div class="empty"><div class="ico">📋</div><h3>ما عندك طلبات بعد</h3><p>احجز أول خدمة صيانة الآن.</p>
+      <button class="cta" style="max-width:260px;margin:18px auto 0" onclick="go('home')">احجز الآن</button></div>`;
+  } else {
+    const todayISO=dateISO(new Date());
+    body=os.map(o=>{
+      const itemsList=o.items.map(i=>`${i.ico} ${i.name}${i.qty>1?' ×'+ar(i.qty):''}`).join('، ');
+      const canCancel=['new','confirmed'].includes(o.status);
+      const arrivedNow = o.arrived && o.date===todayISO;   // «وصل الآن» تظهر فقط يوم الموعد
+      const delay = canCancel && !arrivedNow ? expectedDelayFor(o) : 0;
+      const earlier = canCancel && !arrivedNow && !delay && o.wantsEarlier ? earlierSlotFor(o) : null;
+      const canRate=o.status==='done';
+      const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
+      const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
+      return `<div class="obook">
+        <div class="oh"><div><b>${o.id}</b><div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${STATUS_AR[o.status]}</span></div>
+        <div class="ometa">
+          <span class="pill time">📅 ${dayLabel(o.date)}</span>
+          <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
+          <span class="pill time">⏱️ ${fmtDuration(o.duration)}</span>
+          <span class="pill price">${o.free?'مجاني 🎁':money(o.finalPrice)}</span>
+          ${o.discountPct>0?`<span class="pill" style="color:#0b7a3b;font-weight:800">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}
+        </div>
+        ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
+        ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚗 <span><b>الفني وصل موقعك الآن!</b> استعد لاستقباله.</span></div>`:''}
+        ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>الفني متأخّر قليلاً</b><span>موعدك المتوقّع صار حوالي ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
+        ${earlier?`<div class="advance-note">
+          <span class="an-ic">🎉</span>
+          <div class="an-t"><b>صار فيه موعد أبكر متاح!</b><span>${dayLabel(earlier.date)} · ${windowLabel(earlier.time)} — بدل موعدك الحالي</span></div>
+          <button class="an-btn" onclick="advanceOrder('${o.id}')">قدّم موعدي</button>
+        </div>`:''}
+        ${['new','confirmed'].includes(o.status)?`<div class="reminder-note" style="margin-top:12px">⏰ <span>سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.</span></div>`:''}
+        ${o.invoice&&o.invoice.items&&o.invoice.items.length?`<div class="cust-invoice">
+          <div class="ci-head"><b>🧾 الفاتورة</b><button class="sbtn" onclick="printCustInvoice('${o.id}')">🖨️ طباعة</button></div>
+          ${o.invoice.items.map(it=>`<div class="ci-row"><span>${esc(it.name)}${(it.qty>1)?' ×'+ar(it.qty):''}</span><span>${money((+it.price||0)*(+it.qty||1))}</span></div>`).join('')}
+          ${o.invoice.discountPct>0?`<div class="ci-row" style="color:#0b7a3b;font-weight:800"><span>🎟️ خصم ${ar(o.invoice.discountPct)}٪</span><span>- ${money((o.invoice.subtotal||0)-(o.invoice.total||0))}</span></div>`:''}
+          <div class="ci-row ci-total"><span>الإجمالي</span><span>${money(o.invoice.total||0)}</span></div>
+        </div>`:''}
+        ${canRate?`<div class="rate-box">
+          <div class="rate-row"><span class="rate-lbl">${o.rating?'تقييمك للخدمة':'قيّم الخدمة:'}</span><div class="stars ${rated?'locked':''}">${stars}</div></div>
+          ${o.rating? (o.rating===5
+            ? `<div class="rate-thanks">🙏 شكراً لتقييمك! رأيك يهمّنا ويساعدنا نتحسّن.</div>
+               ${o.feedback
+                 ? `<div class="fb-saved">📝 ملاحظتك: ${esc(o.feedback)}</div>`
+                 : `<div class="fb-box"><textarea placeholder="حاب تضيف كلمة طيبة عن الخدمة؟ (اختياري)"></textarea><button class="sbtn fb-send" onclick="saveFeedback('${o.id}', this)">إرسال</button></div>`}`
+            : `<div class="complaint-note">😔 نعتذر عن عدم رضاك التام — اكتب لنا شكواك وبنتواصل معك ونعالجها.</div>
+               ${o.feedback
+                 ? `<div class="fb-saved">📩 شكواك وصلتنا وبنعالجها: ${esc(o.feedback)}</div>`
+                 : `<div class="fb-box"><textarea placeholder="اكتب رسالتك / شكواك هنا..."></textarea><button class="sbtn complaint-send" onclick="saveFeedback('${o.id}', this)">📩 إرسال الشكوى</button></div>`}`
+          ):''}
+        </div>`:''}
+        ${canCancel?`<div class="oact"><button class="sbtn danger" onclick="cancelOrder('${o.id}')">إلغاء الطلب</button></div>`:''}
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('app').innerHTML=`<div class="wrap screen">${pageHead('طلباتي','home')}${body}<div style="height:24px"></div></div>`;
+}
+function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(!confirm('متأكد من إلغاء الطلب '+o.id+'؟')) return; o.status='cancelled'; save(); cloudPatch(o.dbId,{status:'cancelled'}); toast('تم إلغاء الطلب'); render(); }
+function printCustInvoice(id){ const o=state.orders.find(x=>x.id===id); if(o&&o.invoice) printInvoiceDoc(o); }
+function printInvoiceDoc(o){
+  const inv=o.invoice||{items:[],total:0};
+  const rows=(inv.items||[]).map(it=>`<tr><td>${esc(it.name)}</td><td>${ar(it.qty||1)}</td><td>${money(+it.price||0)}</td><td>${money((+it.price||0)*(+it.qty||1))}</td></tr>`).join('');
+  const d=new Date(); const ds=ar(d.getDate())+'/'+ar(d.getMonth()+1)+'/'+ar(d.getFullYear());
+  const html='<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>فاتورة '+o.id+'</title>'
+   +'<style>body{font-family:Cairo,system-ui,Arial,sans-serif;padding:24px;color:#141414;max-width:520px;margin:0 auto}'
+   +'.h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #F5C518;padding-bottom:12px}'
+   +'.h .b{font-size:1.5rem;font-weight:900}.h .b span{background:#F5C518;padding:2px 10px;border-radius:8px}'
+   +'.meta{color:#555;font-size:.9rem;margin:12px 0}.meta div{margin:3px 0}'
+   +'table{width:100%;border-collapse:collapse;margin-top:8px}th,td{text-align:right;padding:9px 6px;border-bottom:1px solid #eee;font-size:.92rem}'
+   +'th{background:#FBF3D0;font-weight:800}.tot{display:flex;justify-content:space-between;font-weight:900;font-size:1.2rem;margin-top:14px;border-top:2px solid #141414;padding-top:10px}'
+   +'.ft{margin-top:22px;text-align:center;color:#888;font-size:.85rem}@media print{.noprint{display:none}}</style></head><body>'
+   +'<div class="h"><div class="b">🔧 <span>'+BRAND+'</span></div><div style="text-align:left"><b>فاتورة</b><br>'+o.id+'</div></div>'
+   +'<div class="meta"><div>العميل: '+esc(o.customer.name)+' · '+esc(o.customer.phone)+'</div><div>التاريخ: '+ds+'</div></div>'
+   +'<table><thead><tr><th>الخدمة</th><th>العدد</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>'
+   +'<div class="tot"><span>الإجمالي</span><span>'+money(inv.total||0)+'</span></div>'
+   +'<div class="ft">شكراً لتعاملك مع '+BRAND+' · '+PHONE+'</div>'
+   +'<div class="noprint" style="text-align:center;margin-top:18px"><button onclick="print()" style="padding:10px 22px;font-weight:800;border:none;background:#141414;color:#fff;border-radius:10px;cursor:pointer">🖨️ طباعة</button></div>'
+   +'</body></html>';
+  const w=window.open('','_blank'); if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة'); return; } w.document.write(html); w.document.close();
+}
+function rate(id,n){ const o=state.orders.find(x=>x.id===id); if(!o||o.rating) return; o.rating=n; save(); cloudPatch(o.dbId,{rating:n}); toast('شكراً لتقييمك '+'⭐'.repeat(n)); render(); }
+function saveFeedback(id, btn){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const ta = btn && btn.parentElement ? btn.parentElement.querySelector('textarea') : null;
+  const val = ta ? ta.value.trim() : '';
+  if(!val){ toast('اكتب رسالتك أولاً'); return; }
+  if(o.feedback){ return; }   // مقفلة — ما تتغيّر بعد الإرسال
+  o.feedback=val; save(); cloudPatch(o.dbId,{feedback:val}); toast('شكراً — وصلتنا رسالتك 🌟'); render();
+}
+
+/* ============================================================
+   صفحة الفنيين (متعددة اللغات: नेपाली / English / عربي)
+   ============================================================ */
+function openTech(){ view='tech'; window.scrollTo(0,0); render(); }
+function setTechLang(l){ techLang=l; localStorage.setItem('khafet_techlang',l); renderTech(); }
+
+function renderTech(){
+  const lang=techLang;
+  const dir=lang==='ar'?'rtl':'ltr';
+  const back=dir==='rtl'?'→':'←';
+  const jobs=state.orders.filter(o=>o.status!=='cancelled').sort((a,b)=>{
+    const rank=s=>s==='done'?1:0;
+    if(rank(a.status)!==rank(b.status)) return rank(a.status)-rank(b.status);
+    return (a.date+String(a.startMin).padStart(4,'0')).localeCompare(b.date+String(b.startMin).padStart(4,'0'));
+  });
+
+  const langsw=`<div class="langsw">
+    <button class="${lang==='ne'?'active':''}" onclick="setTechLang('ne')">नेपाली</button>
+    <button class="${lang==='en'?'active':''}" onclick="setTechLang('en')">English</button>
+    <button class="${lang==='ar'?'active':''}" onclick="setTechLang('ar')">عربي</button>
+  </div>`;
+
+  let body;
+  if(jobs.length===0){
+    body=`<div class="empty"><div class="ico">🧰</div><h3>${t('noJobs')}</h3></div>`;
+  } else {
+    body=jobs.map(o=>{
+      const a=o.address;
+      const sep=lang==='ar'?'، ':', ';
+      const work=o.items.map(i=>{ const s=svc(i.id); return i.ico+' '+svcName(s,lang)+(i.qty>1?' ×'+i.qty:''); }).join(sep);
+      const addrParts=[a.city,a.district,a.street].filter(Boolean).join(' · ');
+      const mapQ=encodeURIComponent([a.city,a.district,a.street,a.house].filter(Boolean).join(' '));
+      const mapUrl='https://www.google.com/maps/search/?api=1&query='+mapQ;
+      let acts='';
+      if(o.status==='new'||o.status==='confirmed') acts=`<button class="tbtn start" onclick="setStatus('${o.id}','progress')">${t('start')}</button>`;
+      else if(o.status==='progress') acts=`<button class="tbtn done" onclick="setStatus('${o.id}','done')">${t('complete')}</button>`;
+      else if(o.status==='done') acts=`<div class="tbtn donelbl">${t('doneLbl')}</div>`;
+      return `<div class="tjob st-${o.status}">
+        <div class="tj-head">
+          <span class="tj-when">🕐 ${jobTime(o.startMin,lang)} · ${jobDate(o.date,lang)}</span>
+          <span class="status ${STATUS_CLS[o.status]}">${t('st')[o.status]}</span>
+        </div>
+        <div class="tj-body">
+          <div class="tj-row"><span class="tj-k">🔧 ${t('whatNeeded')}</span><span class="tj-v">${work}</span></div>
+          <div class="tj-row"><span class="tj-k">⏱️ ${t('duration')}</span><span class="tj-v">${jobDur(o.duration,lang)}</span></div>
+          <div class="tj-row"><span class="tj-k">📍 ${t('location')}</span><span class="tj-v">${esc(addrParts)} · ${t('house')} ${esc(a.house)}
+            ${a.mark?`<div style="color:var(--muted);font-weight:600;margin-top:2px">🚩 ${esc(a.mark)}</div>`:''}
+            <a class="tmap" href="${mapUrl}" target="_blank" rel="noopener">🗺️ ${t('openMap')}</a></span></div>
+          <div class="tj-row"><span class="tj-k">👤 ${t('customer')}</span><span class="tj-v">${esc(o.customer.name)} · <a href="tel:${esc(o.customer.phone)}">${t('call')} ${esc(o.customer.phone)}</a></span></div>
+          ${a.notes?`<div class="tj-row"><span class="tj-k">📝 ${t('notes')}</span><span class="tj-v">${esc(a.notes)}</span></div>`:''}
+        </div>
+        ${acts?`<div class="tacts">${acts}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen" dir="${dir}" style="text-align:${dir==='rtl'?'right':'left'}">
+      <div class="pagehead"><button class="back" onclick="go('home')">${back}</button><h2>🧑‍🔧 ${t('techTitle')}</h2></div>
+      <div class="tech-sub">${t('techSub')}</div>
+      ${langsw}
+      <div style="height:14px"></div>
+      ${body}
+      <div style="height:30px"></div>
+    </div>`;
+}
+
+/* ============================================================
+   لوحة المؤسسة
+   ============================================================ */
+/* أُزيلت openAdmin() — اللوحة صارت في admin.html بحساب Supabase حقيقي.
+   كانت تُفتح برمز مكتوب في الكود، وهذا خطر أمني. */
+let providersList=null;
+async function loadProviders(){
+  let arr=[];
+  if(cloudReady){ try{ const r=await sb.from('khafet_providers').select('*').order('created_at',{ascending:false}); if(!r.error) arr=r.data||[]; }catch(e){} }
+  try{ const loc=JSON.parse(localStorage.getItem('khafet_providers')||'[]'); arr=arr.concat(loc.filter(l=>!arr.some(a=>a.phone===l.phone))); }catch(e){}
+  providersList=arr;
+  if(view==='admin') renderAdmin();
+}
+async function approveProvider(phone, status){
+  if(cloudReady){ try{ await sb.from('khafet_providers').update({status}).eq('phone',phone); }catch(e){} }
+  if(providersList){ const p=providersList.find(x=>x.phone===phone); if(p) p.status=status; }
+  toast(status==='approved'?'✅ تم اعتماد المزوّد':'تم تحديث الحالة');
+  renderAdmin();
+}
+function setStatus(id,st){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const prev=o.status; o.status=st;
+  if(st==='done' && prev!=='done'){
+    const L=phoneLoyalty(o.customer.phone);
+    toast('تم إكمال الطلب ✅'+(L.freeAvailable>0?' — العميل استحق طلباً مجانياً 🎁':''));
+  } else { toast('تم تحديث الحالة إلى: '+STATUS_AR[st]); }
+  save(); cloudPatch(o.dbId,{status:st}); render();
+}
+function sendReminder(id){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  o.reminded=true; save(); cloudPatch(o.dbId,{reminded:true}); toast('📩 أُرسلت رسالة تذكير إلى '+o.customer.name); render();
+}
+function renderAdmin(){
+  const os=state.orders; const todayISO=dateISO(new Date());
+  const cnt=st=>os.filter(o=>o.status===st).length;
+  const revenue=os.filter(o=>o.status==='done').reduce((a,o)=>a+o.finalPrice,0);
+  const todayOrders=os.filter(o=>o.date===todayISO && o.status!=='cancelled');
+  const filters=[['all','الكل',os.length],['new','قيد المراجعة',cnt('new')],['confirmed','مؤكد',cnt('confirmed')],['progress','قيد التنفيذ',cnt('progress')],['done','مكتمل',cnt('done')],['cancelled','ملغي',cnt('cancelled')]];
+  const fbar=filters.map(([k,l,n])=>`<button class="tab ${adminFilter===k?'active':''}" onclick="setAdminFilter('${k}')">${l} (${ar(n)})</button>`).join('');
+  let list=os.slice(); if(adminFilter!=='all') list=list.filter(o=>o.status===adminFilter);
+  list.sort((a,b)=>(a.date+String(a.startMin).padStart(4,'0')).localeCompare(b.date+String(b.startMin).padStart(4,'0')));
+  const orderCards=list.length?list.map(renderAdminOrder).join(''):`<div class="empty"><div class="ico">🗂️</div><h3>لا توجد طلبات في هذا التصنيف</h3></div>`;
+  const tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const remOrders=os.filter(o=>['new','confirmed'].includes(o.status)&&(o.date===todayISO||o.date===dateISO(tomorrow))).sort((a,b)=>a.startMin-b.startMin);
+  const remHtml=remOrders.length?remOrders.map(o=>`<div class="rline"><span style="font-size:1.4rem">⏰</span>
+    <div class="rl-t"><b>${o.customer.name}</b> — ${o.id}<small>${dayLabel(o.date)} · ${fmtTime(o.startMin)} · ${o.customer.phone}</small></div>
+    <button class="sbtn ${o.reminded?'':'ok'}" onclick="sendReminder('${o.id}')">${o.reminded?'✓ أُرسل':'إرسال تذكير'}</button></div>`).join('')
+    :`<p style="color:var(--muted)">لا توجد مواعيد قريبة تحتاج تذكير.</p>`;
+
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('لوحة المؤسسة','home')}
+      <div class="admin-bar"><span class="ico">${'🏢'}</span>
+        <div style="flex:1"><b>${BRAND}</b><small>إدارة الطلبات والمواعيد والعملاء</small></div>
+        <span class="apill">🎁 المكافآت تُحسب برقم جوال كل عميل</span>
+      </div>
+      <div class="stats">
+        <div class="stat gold"><div class="n">${ar(todayOrders.length)}</div><div class="l">📅 طلبات اليوم</div></div>
+        <div class="stat"><div class="n">${ar(cnt('new'))}</div><div class="l">🆕 بانتظار التأكيد</div></div>
+        <div class="stat"><div class="n">${ar(cnt('confirmed')+cnt('progress'))}</div><div class="l">🔧 قيد التنفيذ</div></div>
+        <div class="stat green"><div class="n">${money(revenue)}</div><div class="l">💰 إيراد مكتمل</div></div>
+      </div>
+      <div class="panel reminders-panel" style="margin-top:18px"><h3>📩 تذكيرات المواعيد القريبة</h3>${remHtml}</div>
+      <div class="panel" style="margin-top:18px"><h3>💰 مستحقات المنصة (عمولة ${ar(COMMISSION)} ر.س/طلب)</h3>${renderCommission()}</div>
+      <div class="panel" style="margin-top:18px"><h3>🤝 مزوّدو الصيانة المسجّلون ${providersList?`(${ar(providersList.length)})`:''}</h3>${renderProviders()}</div>
+      <section>
+        <div class="sec-head"><h2>📥 كل الطلبات</h2></div>
+        <div class="fbar">${fbar}</div>
+        ${orderCards}
+      </section>
+      <div style="height:24px"></div>
+    </div>`;
+}
+function setAdminFilter(f){ adminFilter=f; renderAdmin(); }
+function provName(phone){ const p=(providersList||[]).find(x=>x.phone===phone); return p?p.name:phone; }
+function renderCommission(){
+  const done=state.orders.filter(o=>o.status==='done' && o.providerPhone);
+  if(!done.length) return `<p style="color:var(--muted)">لا توجد طلبات منجزة عبر مزوّدين بعد.</p>`;
+  const byProv={}; done.forEach(o=>{ byProv[o.providerPhone]=(byProv[o.providerPhone]||0)+1; });
+  const total=done.length*COMMISSION;
+  const rows=Object.keys(byProv).map(ph=>`<div class="rline"><div class="rl-t"><b>${esc(provName(ph))}</b><small>${ar(byProv[ph])} طلب · ${esc(ph)}</small></div><span style="font-weight:900;color:var(--gold-deep)">${money(byProv[ph]*COMMISSION)}</span></div>`).join('');
+  return `<div class="reminders-panel">${rows}<div class="rline" style="border-top:2px solid var(--line);margin-top:4px"><div class="rl-t"><b>الإجمالي المستحق</b></div><span style="font-weight:900;font-size:1.15rem">${money(total)}</span></div></div>`;
+}
+function renderProviders(){
+  if(providersList===null) return `<p style="color:var(--muted)">⏳ جارٍ التحميل...</p>`;
+  if(!providersList.length) return `<p style="color:var(--muted)">لا يوجد مزوّدون مسجّلون بعد.</p>`;
+  const stLabel={pending:'قيد المراجعة',approved:'معتمد',rejected:'مرفوض'};
+  const stCls={pending:'st-new',approved:'st-done',rejected:'st-cancelled'};
+  return providersList.map(p=>{
+    const st=p.status||'pending';
+    const services=Array.isArray(p.services)?p.services.join('، '):(p.services||'');
+    return `<div class="prov-card">
+      <div class="pc-top">
+        <div><b>${esc(p.name)}</b> <span class="status ${stCls[st]||'st-new'}">${stLabel[st]||st}</span>
+          <div style="margin-top:3px;font-size:.88rem">📍 ${esc(p.city)}${p.areas?' · '+esc(p.areas):''}</div></div>
+        <a href="tel:${esc(p.phone)}" style="color:var(--ink);font-weight:800;border-bottom:2px solid var(--gold);white-space:nowrap">📞 ${esc(p.phone)}</a>
+      </div>
+      <div style="font-size:.87rem;color:var(--muted);margin-top:6px">🛠️ ${esc(services)}${p.experience?' · خبرة '+esc(p.experience):''}${p.note?' · '+esc(p.note):''}</div>
+      ${st==='pending'?`<div style="display:flex;gap:8px;margin-top:10px">
+        <button class="sbtn ok" onclick="approveProvider('${esc(p.phone)}','approved')">✔️ اعتماد</button>
+        <button class="sbtn danger" onclick="approveProvider('${esc(p.phone)}','rejected')">رفض</button></div>`:''}
+    </div>`;
+  }).join('');
+}
+function renderAdminOrder(o){
+  const itemsRows=o.items.map(i=>`<div class="li"><span>${i.ico} ${i.name}${i.qty>1?' ×'+ar(i.qty):''}</span><span>${i.custom?'—':money(i.price*i.qty)}</span></div>`).join('');
+  const created=new Date(o.createdAt);
+  const createdStr=ar(created.getDate())+' '+AR_MONTHS[created.getMonth()]+' · '+fmtTime(created.getHours()*60+created.getMinutes());
+  let acts='';
+  if(o.status==='new') acts=`<button class="sbtn ok" onclick="setStatus('${o.id}','confirmed')">✔️ تأكيد الموعد</button><button class="sbtn danger" onclick="setStatus('${o.id}','cancelled')">إلغاء</button>`;
+  else if(o.status==='confirmed') acts=`<button class="sbtn ok" onclick="setStatus('${o.id}','progress')">🔧 بدء التنفيذ</button><button class="sbtn danger" onclick="setStatus('${o.id}','cancelled')">إلغاء</button>`;
+  else if(o.status==='progress') acts=`<button class="sbtn ok" onclick="setStatus('${o.id}','done')">✅ إنهاء الطلب</button>`;
+  else if(o.status==='done') acts=`<span style="color:var(--ok);font-weight:800">✅ مكتمل${o.rating?' · '+'⭐'.repeat(o.rating):''}</span>`;
+  else acts=`<span style="color:var(--danger);font-weight:700">ملغي</span>`;
+  return `<div class="aorder ${STATUS_CLS[o.status]}">
+    <div class="ah"><div class="who"><b>${o.id}</b> <span class="status ${STATUS_CLS[o.status]}">${STATUS_AR[o.status]}</span>
+      <div style="margin-top:4px">👤 ${esc(o.customer.name)} · <a href="tel:${esc(o.customer.phone)}">📞 ${esc(o.customer.phone)}</a></div></div>
+      <div style="text-align:left;color:var(--muted);font-size:.8rem">استُلم: ${createdStr}</div></div>
+    <div class="abody">
+      <div><div class="k">📅 الموعد</div>${dayLabel(o.date)} · ${fmtTime(o.startMin)} ← ${fmtTime(o.endMin)}</div>
+      <div><div class="k">⏱️ المدة التقريبية</div>${fmtDuration(o.duration)}</div>
+      <div><div class="k">📍 الموقع</div>${[[o.address.city,o.address.district,o.address.street].filter(Boolean).map(esc).join('، '), o.address.house?'منزل '+esc(o.address.house):''].filter(Boolean).join(' · ')||'📍 موقع محدّد على الخريطة'}${o.address.mapUrl?` · <a href="${esc(o.address.mapUrl)}" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:800">🗺️ الخريطة</a>`:''}</div>
+      <div><div class="k">💰 الإجمالي</div>${o.free?'مجاني 🎁 (مكافأة ولاء)':money(o.finalPrice)}</div>
+      ${o.address.mark?`<div><div class="k">🚩 علامة مميزة</div>${esc(o.address.mark)}</div>`:''}
+      ${o.note?`<div><div class="k">🛠️ وصف المشكلة</div>${esc(o.note)}</div>`:''}
+      ${o.address.notes?`<div><div class="k">📝 ملاحظات</div>${esc(o.address.notes)}</div>`:''}
+      ${o.videoUrl?`<div><div class="k">📹 المقطع</div><button onclick="openMedia('${esc(o.videoUrl)}')" style="color:#7c3aed;font-weight:800;background:none;border:none;padding:0;cursor:pointer;font-family:inherit;font-size:inherit">🎥 مشاهدة الفيديو</button></div>`:''}
+    </div>
+    <div class="aitems">${o.quick?'⚡ طلب سريع (معاينة)':itemsRows}</div>
+    <div class="actions">${acts}</div>
+  </div>`;
+}
+
+/* ---- مكوّنات مشتركة ---- */
+function pageHead(title,backTo){ return `<div class="pagehead"><button class="back" onclick="go('${backTo}')" title="رجوع">→</button><h2>${title}</h2></div>`; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+let toastTimer;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600); }
+
+render();  // تُعرض الصفحة فوراً بدون انتظار أي شيء خارجي
+// تُحمّل السحابة بالخلفية بعد جاهزية مكتبة Supabase (لا تعطّل فتح الصفحة)
+if(window.supabase) initCloud();
+else window.addEventListener('load', initCloud);
+</script>
+</body>
+</html>
