@@ -64,33 +64,29 @@ workflows:
       - name: ربط استقبال توكن الإشعارات
         script: |
           AD="ios/App/App/AppDelegate.swift"
-          echo "════ هل AppDelegate يستقبل ردّ آبل؟ ════"
+          echo "==== هل AppDelegate يستقبل ردّ آبل؟ ===="
           if grep -q "didRegisterForRemoteNotificationsWithDeviceToken" "$AD"; then
-            echo "✅ موجود — لا حاجة للتعديل"
+            echo "موجود - لا حاجة للتعديل"
           else
-            echo "❌ مفقود! iOS يردّ وما فيه أحد يستقبل — نضيفه الآن"
-            # نحقن الدالتين قبل آخر قوس إغلاق للصنف
-            python3 - "$AD" <<'PY'
-import sys, re
-p = sys.argv[1]
-s = open(p, encoding='utf-8').read()
-inject = '''
-    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
-    }
-
-    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
-    }
-'''
-i = s.rstrip().rfind('}')          # آخر قوس = نهاية الصنف
-s = s[:i] + inject + s[i:]
-open(p, 'w', encoding='utf-8').write(s)
-print('✅ أُضيفت دالتا استقبال التوكن')
-PY
+            echo "مفقود! iOS يردّ وما فيه أحد يستقبل - نضيفه الآن"
+            # احذف آخر قوس إغلاق، أضف الدالتين، ثم أعد القوس
+            LAST=$(grep -n '^}' "$AD" | tail -1 | cut -d: -f1)
+            head -n $((LAST-1)) "$AD" > /tmp/ad.swift
+            printf '%s\n' \
+              '' \
+              '    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {' \
+              '        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)' \
+              '    }' \
+              '' \
+              '    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {' \
+              '        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)' \
+              '    }' \
+              '}' >> /tmp/ad.swift
+            cp /tmp/ad.swift "$AD"
+            echo "تمت الإضافة"
           fi
-          echo "════ AppDelegate بعد التعديل ════"
-          grep -n "RemoteNotifications" "$AD" || echo "⚠️ لا يزال مفقوداً!"
+          echo "==== AppDelegate: أسطر الإشعارات ===="
+          grep -n "RemoteNotifications" "$AD" || echo "لا يزال مفقوداً!"
       - name: تجهيز مفتاح آبل
         script: |
           echo "$APP_STORE_CONNECT_KEY_B64" | base64 --decode > /tmp/AuthKey.p8
