@@ -823,15 +823,13 @@ async function initPush(){
     // ⚠️ لازم *ننتظر* تركيب المستمعات قبل register — وإلا يوصل ردّ آبل وما فيه أحد يسمعه
     await PN.addListener('registration', async (t)=>{
       try{
-        if(!myUid) await ensureAnonSession();
-        if(!myUid){ setPushState('❌ ما فيه هوية — حدّث الصفحة'); return; }
-        // .select() إلزامية: بدونها ترجع بلا خطأ حتى لو القفل رفض الصف بصمت
-        const { data, error } = await sb.from('khafet_devices').upsert(
-          { token:t.value, user_id:myUid, platform:'ios', updated_at:new Date().toISOString() },
-          { onConflict:'token' }
-        ).select();
+        // انتظر الهوية — القفل يرفض أي كتابة بلا auth.uid()
+        for(let i=0; i<20 && !myUid; i++){ await ensureAnonSession(); if(!myUid) await new Promise(r=>setTimeout(r,300)); }
+        if(!myUid){ setPushState('❌ تعذّر تجهيز الهوية — حدّث الصفحة'); return; }
+        // التسجيل عبر دالة الخادم (تفرض auth.uid() بنفسها) — أوثق من الكتابة المباشرة
+        const { data, error } = await sb.rpc('register_device', { p_token: t.value, p_platform: 'ios' });
         if(error) throw error;
-        if(!data || !data.length) throw new Error('انرفض الحفظ (ما رجع صف)');
+        if(!data || data.ok !== true) throw new Error(data && data.reason ? data.reason : 'رفض الخادم');
         setPushState('✅ الجهاز مسجّل — الإشعارات شغّالة');
       }catch(e){
         console.error('device save:', e);
