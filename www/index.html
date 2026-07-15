@@ -824,13 +824,19 @@ async function initPush(){
     await PN.addListener('registration', async (t)=>{
       try{
         if(!myUid) await ensureAnonSession();
-        const { error } = await sb.from('khafet_devices').upsert(
+        if(!myUid){ setPushState('❌ ما فيه هوية — حدّث الصفحة'); return; }
+        // .select() إلزامية: بدونها ترجع بلا خطأ حتى لو القفل رفض الصف بصمت
+        const { data, error } = await sb.from('khafet_devices').upsert(
           { token:t.value, user_id:myUid, platform:'ios', updated_at:new Date().toISOString() },
           { onConflict:'token' }
-        );
+        ).select();
         if(error) throw error;
+        if(!data || !data.length) throw new Error('انرفض الحفظ (ما رجع صف)');
         setPushState('✅ الجهاز مسجّل — الإشعارات شغّالة');
-      }catch(e){ setPushState('❌ فشل حفظ الجهاز: '+(e.message||e)); }
+      }catch(e){
+        console.error('device save:', e);
+        setPushState('❌ فشل الحفظ: '+(e.message||e.hint||e.details||JSON.stringify(e)));
+      }
     });
     await PN.addListener('registrationError', e=> setPushState('❌ رفضتها آبل: '+JSON.stringify(e)));
     await PN.addListener('pushNotificationActionPerformed', ()=>{ go('mybookings'); });
