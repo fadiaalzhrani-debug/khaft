@@ -765,14 +765,16 @@ function render(){
     const mapUrl=a.mapUrl || ('https://www.google.com/maps/search/?api=1&query='+encodeURIComponent([a.city,a.district,a.street,a.house].filter(Boolean).join(' ')));
     const gpsPin=!!(a.lat&&a.lng);
     let acts='';
-    if(o.status==='new'||o.status==='confirmed') acts=`<button class="tbtn start" onclick="setJobStatus('${o.id}','progress')">${t('start')}</button>`;
-    else if(o.status==='progress') acts=`<button class="tbtn done" onclick="setJobStatus('${o.id}','done')">${t('complete')}</button>`;
-    else if(o.status==='done') acts=`<div class="tbtn donelbl">${t('doneLbl')}</div>`;
-    // زر «وصلت الموقع» (قبل الإنجاز) — يبلّغ العميل واتساب
-    if(o.status!=='done'){
-      acts += o.arrived
-        ? `<div class="tbtn arrivedlbl">${t('arrivedDone')}</div>`
-        : `<button class="tbtn arrive" onclick="markArrived('${o.id}')">${t('arrived')}</button>`;
+    // التسلسل الإلزامي: وصلت الموقع → بدء العمل → إنهاء
+    if(o.status==='done'){
+      acts=`<div class="tbtn donelbl">${t('doneLbl')}</div>`;
+    } else if(!o.arrived){
+      // الخطوة الأولى دائماً: وصلت الموقع (يبلّغ العميل قبل أي شي)
+      acts=`<button class="tbtn arrive" onclick="markArrived('${o.id}')">${t('arrived')}</button>`;
+    } else if(o.status==='new'||o.status==='confirmed'){
+      acts=`<div class="tbtn arrivedlbl">${t('arrivedDone')}</div><button class="tbtn start" onclick="setJobStatus('${o.id}','progress')">${t('start')}</button>`;
+    } else if(o.status==='progress'){
+      acts=`<div class="tbtn arrivedlbl">${t('arrivedDone')}</div><button class="tbtn done" onclick="setJobStatus('${o.id}','done')">${t('complete')}</button>`;
     }
     // زر الفاتورة (بعد بدء العمل)
     if(['confirmed','progress','done'].includes(o.status)){

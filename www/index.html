@@ -387,6 +387,20 @@
   .lticket .tk-mini i{width:12px;height:12px;border-radius:50%;background:#3A352A}
   .lticket .tk-mini i.on{background:#F5C518;box-shadow:0 0 0 2px rgba(245,197,24,.25)}
   .lticket .tk-body span{color:#A79E88;font-size:.79rem;font-weight:600}
+  .lticket{cursor:pointer;transition:transform .12s,box-shadow .12s}
+  .lticket:hover{transform:translateY(-2px);box-shadow:0 16px 34px rgba(26,23,18,.3)}
+  .lticket .tk-body{padding-inline-end:20px}
+  /* نافذة شرح الولاء */
+  .loy-steps{display:flex;flex-direction:column;gap:14px;margin:16px 0}
+  .loy-step{display:flex;gap:13px;align-items:flex-start}
+  .loy-step .ls-n{flex-shrink:0;width:34px;height:34px;border-radius:11px;background:var(--gold-soft);color:var(--ink);display:grid;place-items:center;font-weight:900}
+  .loy-step .ls-t b{display:block;font-weight:800;margin-bottom:2px}
+  .loy-step .ls-t span{color:var(--muted);font-size:.88rem}
+  .loy-eg{background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:14px;padding:14px 16px;font-size:.9rem;line-height:1.9}
+  .loy-eg b{color:var(--gold-deep,#B8860B)}
+  .loy-prog{display:flex;gap:6px;margin:14px 0}
+  .loy-prog i{flex:1;height:9px;border-radius:6px;background:#eae5d8}
+  .loy-prog i.on{background:var(--gold-strong)}
   /* عناصر الثقة — رقائق تتكيّف مع العرض */
   .trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:26px}
   .trust-item{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow-sm)}
@@ -602,7 +616,7 @@ const LEAD_MIN   = 60;
 const ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «٤–٦م» بدل وقت دقيق)
 const MAX_JOBS_PER_DAY = 8;    // أقصى عدد حجوزات في اليوم (يمنع زحمة الجدول)
 const QUICK_DURATION   = 90;   // مدة افتراضية أكبر للطلب السريع/المعاينة (حجمه مجهول)
-const LOYALTY_TARGET = 5;   // كل ٥ طلبات مدفوعة، السادس مجاني كامل
+const LOYALTY_TARGET = 6;   // كل ٦ طلبات، السابع يُخصم منه متوسط طلباته
 const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل عبر مزوّد (مخفية عن العميل)
 /* أكواد الخصم الثابتة أُلغيت — صار النظام أكواد إحالة شخصية عشوائية
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
@@ -876,7 +890,7 @@ function rowToOrder(r){
     price:Number(r.price)||0, finalPrice:Number(r.final_price)||0, free:!!r.free,
     status:r.status||'new', rating:r.rating||0, reminded:!!r.reminded,
     quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
-    referredBy:r.referred_by||'', creditUsed:+r.credit_used||0,
+    referredBy:r.referred_by||'', creditUsed:+r.credit_used||0, loyaltyDisc:+r.loyalty_disc||0,
   };
 }
 function orderToPayload(o){
@@ -888,8 +902,8 @@ function orderToPayload(o){
     status:o.status, rating:o.rating||0, reminded:!!o.reminded,
     quick:!!o.quick, note:o.note||'', video_url:o.videoUrl||'', invoice:o.invoice||null, provider_phone:o.providerPhone||null, wants_earlier:!!o.wantsEarlier, promo_code:o.promoCode||'', discount_pct:+o.discountPct||0,
     user_id:myUid,   // صاحب الطلب — عليه يعتمد قفل القراءة
-    // الخادم يعيد التحقق من هذين ويتجاهل أي تلاعب
-    referred_by:o.referredBy||null, credit_used:+o.creditUsed||0,
+    // الخادم يعيد التحقق من هذه ويتجاهل أي تلاعب
+    referred_by:o.referredBy||null, credit_used:+o.creditUsed||0, loyalty_disc:+o.loyaltyDisc||0,
   };
 }
 /* رفع مقطع الفيديو إلى Supabase Storage وإرجاع رابطه العام */
@@ -1018,15 +1032,25 @@ function phoneLoyalty(phone){
    القفل يضمن إن state.orders فيها طلبات هذا العميل فقط، فالعدّ عليها مباشرة
    أدقّ من المطابقة بالجوال — اللي كانت تنكسر بعد القفل (كل جهاز يشوف هويته فقط).
    ولما يسجّل بالرمز تنربط أجهزته بهوية وحدة وتتجمّع نقاطه تلقائياً. */
+/* الولاء: كل ٦ طلبات عادية منجزة → الطلب التالي يُخصم منه متوسط أسعار طلباته.
+   المكافأة (طلب فيه خصم ولاء، أو طلب مجاني قديم) لا تُحسب ضمن الـ٦. */
 function myLoyalty(){
   const mine=state.orders.filter(o=>o.status==='done');
-  const paidDone=mine.filter(o=>!o.free).length;
-  const freeDone=mine.filter(o=>o.free).length;
+  const isReward=o=> o.free || (+o.loyaltyDisc>0);
+  const regs=mine.filter(o=>!isReward(o));
+  const rewardDone=mine.filter(isReward).length;
+  const paidDone=regs.length;
   const earned=Math.floor(paidDone/LOYALTY_TARGET);
-  return {done:paidDone, progress:paidDone%LOYALTY_TARGET, freeAvailable:Math.max(0, earned-freeDone)};
+  const avg=regs.length ? Math.round(regs.reduce((a,o)=>a+(+o.price||0),0)/regs.length) : 0;
+  return { done:paidDone, progress:paidDone%LOYALTY_TARGET,
+           rewardAvailable: Math.max(0, earned-rewardDone)>0, rewardAmount: avg };
 }
-function isFreeOrder(){ if(quickMode) return false; return myLoyalty().freeAvailable>0; }
-function finalPrice(){ return isFreeOrder()?0:cartPrice(); }
+/* خصم الولاء المطبّق على الطلب الحالي (بحد أقصى سعر السلة) — الخادم يعيد التحقق */
+function loyaltyDiscFor(){
+  if(quickMode) return 0;
+  const L=myLoyalty();
+  return L.rewardAvailable ? Math.min(L.rewardAmount, cartPrice()) : 0;
+}
 
 function addToCart(id){
   state.cart[id]=(state.cart[id]||0)+1;
@@ -1082,8 +1106,6 @@ function render(){
   if(view==='account') return renderAccount();
   if(view==='login') return renderLogin();
   if(view==='plans') return renderPlans();
-  if(view==='tech') return renderTech();
-  if(view==='admin') return renderAdmin();
 }
 function myOrders(){ const ids=state.myOrderIds||[]; const ph=state.customer&&state.customer.phone; return state.orders.filter(o=> ids.includes(o.id) || (ph && o.customer && o.customer.phone===ph) ); }
 /* ---------- تسجيل دخول العميل (جوال + رمز تحقق SMS) + روابط الفريق ----------
@@ -1367,7 +1389,7 @@ const LOGO_BIG=`<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" 
 function renderHome(){
   const L=myLoyalty();
   const dots=Array.from({length:LOYALTY_TARGET},(_,i)=>`<i class="${i<L.progress?'on':''}"></i>`).join('');
-  const tkTitle=(L.freeAvailable>0) ? 'لديك طلب مجاني بانتظارك 🎉' : 'الطلب السادس مجاني';
+  const tkTitle=(L.rewardAvailable && L.rewardAmount>0) ? `جاهزة! خصم ${money(L.rewardAmount)} على طلبك القادم 🎉` : 'الطلب السابع مكافأتك 🎁';
   const tkSub = `أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} طلبات`;
   const GIFT_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/></svg>';
 
@@ -1422,7 +1444,7 @@ function renderHome(){
         <div class="trust-item"><span class="ti-ic">🎁</span><b>خدمات مجانية</b></div>
       </div>
 
-      <div class="lticket">
+      <div class="lticket" role="button" tabindex="0" onclick="showLoyaltyInfo()">
         <div class="tk-left">${GIFT_SVG}</div>
         <div class="tk-body">
           <b>${tkTitle}</b>
@@ -1443,6 +1465,34 @@ function renderHome(){
       </footer>
     </div>`;
 }
+
+/* ---------- شرح برنامج الولاء (يظهر عند الضغط على الشريط) ---------- */
+function showLoyaltyInfo(){
+  const L=myLoyalty();
+  const left=Math.max(0, LOYALTY_TARGET - L.progress);
+  const prog=Array.from({length:LOYALTY_TARGET},(_,i)=>`<i class="${i<L.progress?'on':''}"></i>`).join('');
+  const statusLine = (L.rewardAvailable && L.rewardAmount>0)
+    ? `<div class="loy-eg" style="background:#e8f7ee;border-color:#0b7a3b;color:#0b7a3b"><b>🎉 مكافأتك جاهزة!</b><br>طلبك القادم يُخصم منه <b>${money(L.rewardAmount)}</b> (متوسط طلباتك).</div>`
+    : (L.done>0
+        ? `<div class="loy-eg"><b>تقدّمك:</b> أنجزت <b>${ar(L.progress)}</b> من <b>${ar(LOYALTY_TARGET)}</b> — باقي لك <b>${ar(left)}</b> ${left===1?'طلب':'طلبات'} للمكافأة.</div>`
+        : `<div class="loy-eg">ابدأ أول طلب، وبعد <b>${ar(LOYALTY_TARGET)}</b> طلبات تجيك مكافأتك 🎁</div>`);
+  const sheet=`<div class="loc-sheet">
+    <div class="loc-head"><h3>🎁 برنامج الولاء</h3><button class="loc-x" onclick="closeLoyaltyInfo()">✕</button></div>
+    <div class="loy-prog">${prog}</div>
+    ${statusLine}
+    <div class="loy-steps">
+      <div class="loy-step"><div class="ls-n">١</div><div class="ls-t"><b>اطلب صيانتك عادي</b><span>كل طلب تُنجزه يُحتسب في رصيد ولائك.</span></div></div>
+      <div class="loy-step"><div class="ls-n">٦</div><div class="ls-t"><b>بعد ٦ طلبات</b><span>تستحق مكافأة على طلبك السابع.</span></div></div>
+      <div class="loy-step"><div class="ls-n">🎁</div><div class="ls-t"><b>خصم = متوسط طلباتك</b><span>يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.</span></div></div>
+    </div>
+    <div class="loy-eg"><b>مثال:</b> لو متوسط طلباتك <b>١٥٠ ر.س</b>، وطلبك السابع بـ<b>٢٠٠ ر.س</b> → تدفع <b>٥٠ ر.س</b> فقط.</div>
+    <div style="color:var(--muted);font-size:.82rem;margin-top:10px;line-height:1.7">💡 الخصم على أجرة اليد (الخدمة) فقط — قطع الغيار والأغراض تبقى على العميل بسعرها.</div>
+    <button class="cta" style="margin-top:16px" onclick="closeLoyaltyInfo()">فهمت 👍</button>
+  </div>`;
+  const m=document.getElementById('locModal');
+  m.innerHTML=sheet; m.classList.add('show');
+}
+function closeLoyaltyInfo(){ const m=document.getElementById('locModal'); m.classList.remove('show'); m.innerHTML=''; }
 
 /* ---------- قائمة الأسعار (تفاعلية: اختر واطلب) ---------- */
 function renderPrices(){
@@ -1759,13 +1809,15 @@ function renderInfo(){
   if(!state.booking.date||state.booking.time==null){ go('time'); return; }
   const c=state.customer,a=state.address,b=state.booking;
   const svcNames=quickMode?'⚡ طلب سريع (معاينة)':cartItems().map(i=>i.ico+' '+i.name).join('، ');
-  const free=isFreeOrder();
   const desc=(state.problem&&state.problem.desc)||'';
-  const pPct = (free||quickMode||!refCheck.ok)?0:10;
+  const base=cartPrice();
+  const loyDisc=loyaltyDiscFor();
+  const pPct = (loyDisc>0||quickMode||!refCheck.ok)?0:10;   // الإحالة لأول طلب، الولاء للسابع — لا يجتمعان
+  const afterAll=Math.max(0, Math.round(base*(1-pPct/100)) - loyDisc);
   const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
-    : (free ? 'مجاني — مكافأة ولاء 🎁'
-    : (pPct>0 ? `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(finalPrice())}</span> ${money(Math.round(finalPrice()*(1-pPct/100)))} <span style="color:#0b7a3b;font-size:.6em;font-weight:800">خصم ${ar(pPct)}٪ 🎟️</span>`
-    : money(finalPrice())));
+    : (loyDisc>0 ? `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(base)}</span> ${money(afterAll)} <span style="color:#0b7a3b;font-size:.6em;font-weight:800">🎁 خصم ولاء ${money(loyDisc)}</span>`
+    : (pPct>0 ? `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(base)}</span> ${money(afterAll)} <span style="color:#0b7a3b;font-size:.6em;font-weight:800">خصم ${ar(pPct)}٪ 🎟️</span>`
+    : money(base)));
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('آخر خطوة','time')}
@@ -1835,7 +1887,8 @@ const REF_MSG={
   unknown: '❌ الكود غير صحيح',
   self:    '❌ ما تقدر تستخدم كودك أنت',
   not_new: 'ℹ️ الخصم لأول طلب فقط — وأنت عميل عندنا من قبل 🙏',
-  not_signed_in: '❌ تعذّر التحقق، حدّث الصفحة'
+  not_signed_in: '❌ تعذّر التحقق، حدّث الصفحة',
+  network: '⚠️ تعذّر التحقق — تأكد من الإنترنت وحاول ثانية'
 };
 async function setPromo(v){
   state.promo=(v||'').trim();
@@ -1847,7 +1900,9 @@ async function setPromo(v){
     const { data, error } = await sb.rpc('check_referral', { p_code: state.promo });
     if(error) throw error;
     refCheck={ code:state.promo, ok:!!(data&&data.ok), reason:(data&&data.reason)||'', busy:false };
-  }catch(e){ console.warn('ref check:', e.message||e); refCheck={ code:state.promo, ok:false, reason:'unknown', busy:false }; }
+  }catch(e){ console.warn('ref check:', e.message||e);
+    // فشل الاتصال ≠ كود خاطئ — نميّزهما فلا نتّهم كود العميل ظلماً
+    refCheck={ code:state.promo, ok:false, reason:'network', busy:false }; }
   renderInfo();
 }
 
@@ -1904,13 +1959,14 @@ async function confirmOrder(){
   const items = quickMode
     ? [{id:'quick', name:'طلب سريع (معاينة)', ico:'⚡', qty:1, dur:scheduleDuration(), price:0, custom:true}]
     : cartItems().map(i=>({id:i.id,name:i.name,ico:i.ico,qty:i.qty,dur:i.dur,price:i.price,custom:!!i.custom}));
-  const free = quickMode ? false : isFreeOrder();
+  const loyDisc = quickMode ? 0 : loyaltyDiscFor();
   const duration=scheduleDuration();
   const note=(state.problem&&state.problem.desc)||'';
   const promoCodeIn=(document.getElementById('f_promo')||{}).value ? document.getElementById('f_promo').value.trim() : (state.promo||'');
-  // الخصم والرصيد يُعاد حسابهما في الخادم — هذي بس للعرض
-  const discPct = (free || !refCheck.ok) ? 0 : 10;
-  const creditUse = (free||quickMode) ? 0 : Math.min(myRef.balance||0, Math.round(cartPrice()*(1-discPct/100)));
+  // الخصم والرصيد والولاء يُعاد حسابهم في الخادم — هذي بس للعرض
+  const discPct = (loyDisc>0 || !refCheck.ok) ? 0 : 10;
+  const afterDisc = Math.max(0, Math.round(cartPrice()*(1-discPct/100)) - loyDisc);
+  const creditUse = quickMode ? 0 : Math.min(myRef.balance||0, afterDisc);
   const videoFile=(document.getElementById('f_video')||{}).files;
   const houseFile=(document.getElementById('f_housePhoto')||{}).files;
 
@@ -1940,9 +1996,10 @@ async function confirmOrder(){
     createdAt:Date.now(), items, customer:{...c}, address:{...a},
     date:b.date, startMin:b.time, duration, endMin:b.time+duration,
     price: quickMode?0:cartPrice(),
-    finalPrice: (quickMode||free)?0:Math.max(0, Math.round(cartPrice()*(1-discPct/100)) - creditUse),
+    finalPrice: quickMode?0:Math.max(0, afterDisc - creditUse),
     referredBy: (discPct>0 ? promoCodeIn : ''), creditUsed: creditUse,
-    free, status:'new', rating:0, reminded:false, quick:quickMode, note, videoUrl, wantsEarlier: state.booking.wantsEarlier!==false,
+    loyaltyDisc: loyDisc,
+    free:false, status:'new', rating:0, reminded:false, quick:quickMode, note, videoUrl, wantsEarlier: state.booking.wantsEarlier!==false,
     promoCode: discPct>0?promoCodeIn:'', discountPct: discPct,
   };
   let order=null;
@@ -1985,7 +2042,7 @@ function renderConfirm(){
         <div class="kv"><span>الموعد</span><b>${dayLabel(o.date)} · ${windowLabel(o.startMin)}</b></div>
         <div class="kv"><span>المدة التقريبية</span><b>${fmtDuration(o.duration)} (ينتهي ~ ${fmtTime(o.endMin)})</b></div>
         <div class="kv"><span>الموقع</span><b>${[esc(o.address.city),esc(o.address.district),o.address.house?'منزل '+esc(o.address.house):''].filter(Boolean).join(' · ')||(o.address.lat&&o.address.lng?'📍 موقع محدد على الخريطة':'—')}</b></div>
-        <div class="kv"><span>الإجمالي</span><b>${o.free?'مجاني 🎁 (مكافأة ولاء)':money(o.finalPrice)}${o.discountPct>0?` <span style="color:#0b7a3b;font-size:.8em">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}</b></div>
+        <div class="kv"><span>الإجمالي</span><b>${money(o.finalPrice)}${+o.loyaltyDisc>0?` <span style="color:#0b7a3b;font-size:.8em">🎁 خصم ولاء ${money(o.loyaltyDisc)}</span>`:(o.discountPct>0?` <span style="color:#0b7a3b;font-size:.8em">🎟️ خصم ${ar(o.discountPct)}٪</span>`:'')}${+o.creditUsed>0?` <span style="color:#0b7a3b;font-size:.8em">💰 رصيد ${money(o.creditUsed)}</span>`:''}</b></div>
         <div class="reminder-note">⏰ <span>بنرسل لك رسالة تذكير قبل الموعد، وتقدر تتابع حالة الطلب من صفحة «طلباتي».</span></div>
       </div>
       <div style="display:flex;gap:10px;margin-top:16px">
@@ -2021,7 +2078,7 @@ function renderMyBookings(){
           <span class="pill time">📅 ${dayLabel(o.date)}</span>
           <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
           <span class="pill time">⏱️ ${fmtDuration(o.duration)}</span>
-          <span class="pill price">${o.free?'مجاني 🎁':money(o.finalPrice)}</span>
+          <span class="pill price">${money(o.finalPrice)}${+o.loyaltyDisc>0?' 🎁':''}</span>
           ${o.discountPct>0?`<span class="pill" style="color:#0b7a3b;font-weight:800">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}
         </div>
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
@@ -2089,206 +2146,6 @@ function saveFeedback(id, btn){
   if(!val){ toast('اكتب رسالتك أولاً'); return; }
   if(o.feedback){ return; }   // مقفلة — ما تتغيّر بعد الإرسال
   o.feedback=val; save(); cloudPatch(o.dbId,{feedback:val}); toast('شكراً — وصلتنا رسالتك 🌟'); render();
-}
-
-/* ============================================================
-   صفحة الفنيين (متعددة اللغات: नेपाली / English / عربي)
-   ============================================================ */
-function openTech(){ view='tech'; window.scrollTo(0,0); render(); }
-function setTechLang(l){ techLang=l; localStorage.setItem('khafet_techlang',l); renderTech(); }
-
-function renderTech(){
-  const lang=techLang;
-  const dir=lang==='ar'?'rtl':'ltr';
-  const back=dir==='rtl'?'→':'←';
-  const jobs=state.orders.filter(o=>o.status!=='cancelled').sort((a,b)=>{
-    const rank=s=>s==='done'?1:0;
-    if(rank(a.status)!==rank(b.status)) return rank(a.status)-rank(b.status);
-    return (a.date+String(a.startMin).padStart(4,'0')).localeCompare(b.date+String(b.startMin).padStart(4,'0'));
-  });
-
-  const langsw=`<div class="langsw">
-    <button class="${lang==='ne'?'active':''}" onclick="setTechLang('ne')">नेपाली</button>
-    <button class="${lang==='en'?'active':''}" onclick="setTechLang('en')">English</button>
-    <button class="${lang==='ar'?'active':''}" onclick="setTechLang('ar')">عربي</button>
-  </div>`;
-
-  let body;
-  if(jobs.length===0){
-    body=`<div class="empty"><div class="ico">🧰</div><h3>${t('noJobs')}</h3></div>`;
-  } else {
-    body=jobs.map(o=>{
-      const a=o.address;
-      const sep=lang==='ar'?'، ':', ';
-      const work=o.items.map(i=>{ const s=svc(i.id); return i.ico+' '+svcName(s,lang)+(i.qty>1?' ×'+i.qty:''); }).join(sep);
-      const addrParts=[a.city,a.district,a.street].filter(Boolean).join(' · ');
-      const mapQ=encodeURIComponent([a.city,a.district,a.street,a.house].filter(Boolean).join(' '));
-      const mapUrl='https://www.google.com/maps/search/?api=1&query='+mapQ;
-      let acts='';
-      if(o.status==='new'||o.status==='confirmed') acts=`<button class="tbtn start" onclick="setStatus('${o.id}','progress')">${t('start')}</button>`;
-      else if(o.status==='progress') acts=`<button class="tbtn done" onclick="setStatus('${o.id}','done')">${t('complete')}</button>`;
-      else if(o.status==='done') acts=`<div class="tbtn donelbl">${t('doneLbl')}</div>`;
-      return `<div class="tjob st-${o.status}">
-        <div class="tj-head">
-          <span class="tj-when">🕐 ${jobTime(o.startMin,lang)} · ${jobDate(o.date,lang)}</span>
-          <span class="status ${STATUS_CLS[o.status]}">${t('st')[o.status]}</span>
-        </div>
-        <div class="tj-body">
-          <div class="tj-row"><span class="tj-k">🔧 ${t('whatNeeded')}</span><span class="tj-v">${work}</span></div>
-          <div class="tj-row"><span class="tj-k">⏱️ ${t('duration')}</span><span class="tj-v">${jobDur(o.duration,lang)}</span></div>
-          <div class="tj-row"><span class="tj-k">📍 ${t('location')}</span><span class="tj-v">${esc(addrParts)} · ${t('house')} ${esc(a.house)}
-            ${a.mark?`<div style="color:var(--muted);font-weight:600;margin-top:2px">🚩 ${esc(a.mark)}</div>`:''}
-            <a class="tmap" href="${mapUrl}" target="_blank" rel="noopener">🗺️ ${t('openMap')}</a></span></div>
-          <div class="tj-row"><span class="tj-k">👤 ${t('customer')}</span><span class="tj-v">${esc(o.customer.name)} · <a href="tel:${esc(o.customer.phone)}">${t('call')} ${esc(o.customer.phone)}</a></span></div>
-          ${a.notes?`<div class="tj-row"><span class="tj-k">📝 ${t('notes')}</span><span class="tj-v">${esc(a.notes)}</span></div>`:''}
-        </div>
-        ${acts?`<div class="tacts">${acts}</div>`:''}
-      </div>`;
-    }).join('');
-  }
-
-  document.getElementById('app').innerHTML=`
-    <div class="wrap screen" dir="${dir}" style="text-align:${dir==='rtl'?'right':'left'}">
-      <div class="pagehead"><button class="back" onclick="go('home')">${back}</button><h2>🧑‍🔧 ${t('techTitle')}</h2></div>
-      <div class="tech-sub">${t('techSub')}</div>
-      ${langsw}
-      <div style="height:14px"></div>
-      ${body}
-      <div style="height:30px"></div>
-    </div>`;
-}
-
-/* ============================================================
-   لوحة المؤسسة
-   ============================================================ */
-/* أُزيلت openAdmin() — اللوحة صارت في admin.html بحساب Supabase حقيقي.
-   كانت تُفتح برمز مكتوب في الكود، وهذا خطر أمني. */
-let providersList=null;
-async function loadProviders(){
-  let arr=[];
-  if(cloudReady){ try{ const r=await sb.from('khafet_providers').select('*').order('created_at',{ascending:false}); if(!r.error) arr=r.data||[]; }catch(e){} }
-  try{ const loc=JSON.parse(localStorage.getItem('khafet_providers')||'[]'); arr=arr.concat(loc.filter(l=>!arr.some(a=>a.phone===l.phone))); }catch(e){}
-  providersList=arr;
-  if(view==='admin') renderAdmin();
-}
-async function approveProvider(phone, status){
-  if(cloudReady){ try{ await sb.from('khafet_providers').update({status}).eq('phone',phone); }catch(e){} }
-  if(providersList){ const p=providersList.find(x=>x.phone===phone); if(p) p.status=status; }
-  toast(status==='approved'?'✅ تم اعتماد المزوّد':'تم تحديث الحالة');
-  renderAdmin();
-}
-function setStatus(id,st){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
-  const prev=o.status; o.status=st;
-  if(st==='done' && prev!=='done'){
-    const L=phoneLoyalty(o.customer.phone);
-    toast('تم إكمال الطلب ✅'+(L.freeAvailable>0?' — العميل استحق طلباً مجانياً 🎁':''));
-  } else { toast('تم تحديث الحالة إلى: '+STATUS_AR[st]); }
-  save(); cloudPatch(o.dbId,{status:st}); render();
-}
-function sendReminder(id){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
-  o.reminded=true; save(); cloudPatch(o.dbId,{reminded:true}); toast('📩 أُرسلت رسالة تذكير إلى '+o.customer.name); render();
-}
-function renderAdmin(){
-  const os=state.orders; const todayISO=dateISO(new Date());
-  const cnt=st=>os.filter(o=>o.status===st).length;
-  const revenue=os.filter(o=>o.status==='done').reduce((a,o)=>a+o.finalPrice,0);
-  const todayOrders=os.filter(o=>o.date===todayISO && o.status!=='cancelled');
-  const filters=[['all','الكل',os.length],['new','قيد المراجعة',cnt('new')],['confirmed','مؤكد',cnt('confirmed')],['progress','قيد التنفيذ',cnt('progress')],['done','مكتمل',cnt('done')],['cancelled','ملغي',cnt('cancelled')]];
-  const fbar=filters.map(([k,l,n])=>`<button class="tab ${adminFilter===k?'active':''}" onclick="setAdminFilter('${k}')">${l} (${ar(n)})</button>`).join('');
-  let list=os.slice(); if(adminFilter!=='all') list=list.filter(o=>o.status===adminFilter);
-  list.sort((a,b)=>(a.date+String(a.startMin).padStart(4,'0')).localeCompare(b.date+String(b.startMin).padStart(4,'0')));
-  const orderCards=list.length?list.map(renderAdminOrder).join(''):`<div class="empty"><div class="ico">🗂️</div><h3>لا توجد طلبات في هذا التصنيف</h3></div>`;
-  const tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
-  const remOrders=os.filter(o=>['new','confirmed'].includes(o.status)&&(o.date===todayISO||o.date===dateISO(tomorrow))).sort((a,b)=>a.startMin-b.startMin);
-  const remHtml=remOrders.length?remOrders.map(o=>`<div class="rline"><span style="font-size:1.4rem">⏰</span>
-    <div class="rl-t"><b>${o.customer.name}</b> — ${o.id}<small>${dayLabel(o.date)} · ${fmtTime(o.startMin)} · ${o.customer.phone}</small></div>
-    <button class="sbtn ${o.reminded?'':'ok'}" onclick="sendReminder('${o.id}')">${o.reminded?'✓ أُرسل':'إرسال تذكير'}</button></div>`).join('')
-    :`<p style="color:var(--muted)">لا توجد مواعيد قريبة تحتاج تذكير.</p>`;
-
-  document.getElementById('app').innerHTML=`
-    <div class="wrap screen">
-      ${pageHead('لوحة المؤسسة','home')}
-      <div class="admin-bar"><span class="ico">${'🏢'}</span>
-        <div style="flex:1"><b>${BRAND}</b><small>إدارة الطلبات والمواعيد والعملاء</small></div>
-        <span class="apill">🎁 المكافآت تُحسب برقم جوال كل عميل</span>
-      </div>
-      <div class="stats">
-        <div class="stat gold"><div class="n">${ar(todayOrders.length)}</div><div class="l">📅 طلبات اليوم</div></div>
-        <div class="stat"><div class="n">${ar(cnt('new'))}</div><div class="l">🆕 بانتظار التأكيد</div></div>
-        <div class="stat"><div class="n">${ar(cnt('confirmed')+cnt('progress'))}</div><div class="l">🔧 قيد التنفيذ</div></div>
-        <div class="stat green"><div class="n">${money(revenue)}</div><div class="l">💰 إيراد مكتمل</div></div>
-      </div>
-      <div class="panel reminders-panel" style="margin-top:18px"><h3>📩 تذكيرات المواعيد القريبة</h3>${remHtml}</div>
-      <div class="panel" style="margin-top:18px"><h3>💰 مستحقات المنصة (عمولة ${ar(COMMISSION)} ر.س/طلب)</h3>${renderCommission()}</div>
-      <div class="panel" style="margin-top:18px"><h3>🤝 مزوّدو الصيانة المسجّلون ${providersList?`(${ar(providersList.length)})`:''}</h3>${renderProviders()}</div>
-      <section>
-        <div class="sec-head"><h2>📥 كل الطلبات</h2></div>
-        <div class="fbar">${fbar}</div>
-        ${orderCards}
-      </section>
-      <div style="height:24px"></div>
-    </div>`;
-}
-function setAdminFilter(f){ adminFilter=f; renderAdmin(); }
-function provName(phone){ const p=(providersList||[]).find(x=>x.phone===phone); return p?p.name:phone; }
-function renderCommission(){
-  const done=state.orders.filter(o=>o.status==='done' && o.providerPhone);
-  if(!done.length) return `<p style="color:var(--muted)">لا توجد طلبات منجزة عبر مزوّدين بعد.</p>`;
-  const byProv={}; done.forEach(o=>{ byProv[o.providerPhone]=(byProv[o.providerPhone]||0)+1; });
-  const total=done.length*COMMISSION;
-  const rows=Object.keys(byProv).map(ph=>`<div class="rline"><div class="rl-t"><b>${esc(provName(ph))}</b><small>${ar(byProv[ph])} طلب · ${esc(ph)}</small></div><span style="font-weight:900;color:var(--gold-deep)">${money(byProv[ph]*COMMISSION)}</span></div>`).join('');
-  return `<div class="reminders-panel">${rows}<div class="rline" style="border-top:2px solid var(--line);margin-top:4px"><div class="rl-t"><b>الإجمالي المستحق</b></div><span style="font-weight:900;font-size:1.15rem">${money(total)}</span></div></div>`;
-}
-function renderProviders(){
-  if(providersList===null) return `<p style="color:var(--muted)">⏳ جارٍ التحميل...</p>`;
-  if(!providersList.length) return `<p style="color:var(--muted)">لا يوجد مزوّدون مسجّلون بعد.</p>`;
-  const stLabel={pending:'قيد المراجعة',approved:'معتمد',rejected:'مرفوض'};
-  const stCls={pending:'st-new',approved:'st-done',rejected:'st-cancelled'};
-  return providersList.map(p=>{
-    const st=p.status||'pending';
-    const services=Array.isArray(p.services)?p.services.join('، '):(p.services||'');
-    return `<div class="prov-card">
-      <div class="pc-top">
-        <div><b>${esc(p.name)}</b> <span class="status ${stCls[st]||'st-new'}">${stLabel[st]||st}</span>
-          <div style="margin-top:3px;font-size:.88rem">📍 ${esc(p.city)}${p.areas?' · '+esc(p.areas):''}</div></div>
-        <a href="tel:${esc(p.phone)}" style="color:var(--ink);font-weight:800;border-bottom:2px solid var(--gold);white-space:nowrap">📞 ${esc(p.phone)}</a>
-      </div>
-      <div style="font-size:.87rem;color:var(--muted);margin-top:6px">🛠️ ${esc(services)}${p.experience?' · خبرة '+esc(p.experience):''}${p.note?' · '+esc(p.note):''}</div>
-      ${st==='pending'?`<div style="display:flex;gap:8px;margin-top:10px">
-        <button class="sbtn ok" onclick="approveProvider('${esc(p.phone)}','approved')">✔️ اعتماد</button>
-        <button class="sbtn danger" onclick="approveProvider('${esc(p.phone)}','rejected')">رفض</button></div>`:''}
-    </div>`;
-  }).join('');
-}
-function renderAdminOrder(o){
-  const itemsRows=o.items.map(i=>`<div class="li"><span>${i.ico} ${i.name}${i.qty>1?' ×'+ar(i.qty):''}</span><span>${i.custom?'—':money(i.price*i.qty)}</span></div>`).join('');
-  const created=new Date(o.createdAt);
-  const createdStr=ar(created.getDate())+' '+AR_MONTHS[created.getMonth()]+' · '+fmtTime(created.getHours()*60+created.getMinutes());
-  let acts='';
-  if(o.status==='new') acts=`<button class="sbtn ok" onclick="setStatus('${o.id}','confirmed')">✔️ تأكيد الموعد</button><button class="sbtn danger" onclick="setStatus('${o.id}','cancelled')">إلغاء</button>`;
-  else if(o.status==='confirmed') acts=`<button class="sbtn ok" onclick="setStatus('${o.id}','progress')">🔧 بدء التنفيذ</button><button class="sbtn danger" onclick="setStatus('${o.id}','cancelled')">إلغاء</button>`;
-  else if(o.status==='progress') acts=`<button class="sbtn ok" onclick="setStatus('${o.id}','done')">✅ إنهاء الطلب</button>`;
-  else if(o.status==='done') acts=`<span style="color:var(--ok);font-weight:800">✅ مكتمل${o.rating?' · '+'⭐'.repeat(o.rating):''}</span>`;
-  else acts=`<span style="color:var(--danger);font-weight:700">ملغي</span>`;
-  return `<div class="aorder ${STATUS_CLS[o.status]}">
-    <div class="ah"><div class="who"><b>${o.id}</b> <span class="status ${STATUS_CLS[o.status]}">${STATUS_AR[o.status]}</span>
-      <div style="margin-top:4px">👤 ${esc(o.customer.name)} · <a href="tel:${esc(o.customer.phone)}">📞 ${esc(o.customer.phone)}</a></div></div>
-      <div style="text-align:left;color:var(--muted);font-size:.8rem">استُلم: ${createdStr}</div></div>
-    <div class="abody">
-      <div><div class="k">📅 الموعد</div>${dayLabel(o.date)} · ${fmtTime(o.startMin)} ← ${fmtTime(o.endMin)}</div>
-      <div><div class="k">⏱️ المدة التقريبية</div>${fmtDuration(o.duration)}</div>
-      <div><div class="k">📍 الموقع</div>${[[o.address.city,o.address.district,o.address.street].filter(Boolean).map(esc).join('، '), o.address.house?'منزل '+esc(o.address.house):''].filter(Boolean).join(' · ')||'📍 موقع محدّد على الخريطة'}${o.address.mapUrl?` · <a href="${esc(o.address.mapUrl)}" target="_blank" rel="noopener" style="color:#7c3aed;font-weight:800">🗺️ الخريطة</a>`:''}</div>
-      <div><div class="k">💰 الإجمالي</div>${o.free?'مجاني 🎁 (مكافأة ولاء)':money(o.finalPrice)}</div>
-      ${o.address.mark?`<div><div class="k">🚩 علامة مميزة</div>${esc(o.address.mark)}</div>`:''}
-      ${o.note?`<div><div class="k">🛠️ وصف المشكلة</div>${esc(o.note)}</div>`:''}
-      ${o.address.notes?`<div><div class="k">📝 ملاحظات</div>${esc(o.address.notes)}</div>`:''}
-      ${o.videoUrl?`<div><div class="k">📹 المقطع</div><button onclick="openMedia('${esc(o.videoUrl)}')" style="color:#7c3aed;font-weight:800;background:none;border:none;padding:0;cursor:pointer;font-family:inherit;font-size:inherit">🎥 مشاهدة الفيديو</button></div>`:''}
-    </div>
-    <div class="aitems">${o.quick?'⚡ طلب سريع (معاينة)':itemsRows}</div>
-    <div class="actions">${acts}</div>
-  </div>`;
 }
 
 /* ---- مكوّنات مشتركة ---- */
