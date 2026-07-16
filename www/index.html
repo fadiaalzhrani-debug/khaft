@@ -1111,9 +1111,12 @@ function myOrders(){ const ids=state.myOrderIds||[]; const ph=state.customer&&st
 /* ---------- تسجيل دخول العميل (جوال + رمز تحقق SMS) + روابط الفريق ----------
    الرمز يُرسل ويُتحقق منه في خادم Supabase — المتصفح ما يقدر يتجاوزه.
    لو العميل داخل بهوية مجهولة، نربط الرقم بنفس الهوية عشان طلباته القديمة تنتقل معه. */
-/* قناة إرسال الرمز: 'whatsapp' أرخص وما يحتاج تسجيل مُرسِل بـCITC.
-   للرجوع للرسائل النصية، غيّرها لـ'sms' — وبس. */
-const OTP_CHANNEL='whatsapp';
+/* قناة إرسال الرمز: 'sms' (رسالة نصية) — آبل ترفض إجبار المستخدم على تثبيت
+   تطبيق ثانٍ مثل واتساب للدخول (Guideline 4.2.3). للرجوع لواتساب، غيّرها لـ'whatsapp'. */
+const OTP_CHANNEL='sms';
+/* حساب مراجعة آبل: يُجبَر على مسار الدخول المباشر (لا «تغيير رقم») ليقبل
+   الرمز التجريبي الثابت المضبوط في Supabase → Auth → Phone → Test OTP. */
+const DEMO_PHONE='+966500000000';
 let otpStep=false, otpPhone='', otpMode='';   // otpMode: 'link' | 'signin'
 
 /* 05xxxxxxxx → +9665xxxxxxxx */
@@ -1137,9 +1140,9 @@ function renderLogin(){
       <button class="ghost" style="width:100%;margin-top:8px" onclick="otpStep=false;render()">← تغيير الرقم</button>`
     : `
       <h3>👤 حسابي</h3>
-      <p style="color:var(--muted);font-size:.9rem;margin:4px 0 12px">أدخل رقم جوالك ويوصلك رمز على <b>${chName}</b></p>
+      <p style="color:var(--muted);font-size:.9rem;margin:4px 0 12px">أدخل رقم جوالك ويوصلك رمز عبر <b>${chName}</b></p>
       <div class="field"><label>رقم الجوال</label><input id="lg_cust_phone" value="${esc(ph)}" inputmode="tel" placeholder="05xxxxxxxx" onkeydown="if(event.key==='Enter')sendOtp()" /></div>
-      <button class="cta" onclick="sendOtp()">${chIco} أرسل الرمز على ${chName}</button>`;
+      <button class="cta" onclick="sendOtp()">${chIco} أرسل الرمز عبر ${chName}</button>`;
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('تسجيل الدخول','home')}
@@ -1163,7 +1166,8 @@ async function sendOtp(){
   otpPhone=phone;
   try{
     const { data:{ user } } = await sb.auth.getUser();
-    if(user && user.is_anonymous){
+    // حساب المراجعة يتخطّى ربط الهوية المجهولة، ويدخل مباشرة ليقبل الرمز التجريبي
+    if(user && user.is_anonymous && phone!==DEMO_PHONE){
       // اربط الرقم بالهوية الحالية → طلباته السابقة تنتقل معه
       const { error } = await sb.auth.updateUser({ phone });
       if(!error){ otpMode='link'; otpStep=true; render(); return; }
