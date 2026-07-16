@@ -39,6 +39,12 @@ workflows:
           setkey NSMicrophoneUsageDescription "لتسجيل مقطع فيديو يوضّح مشكلة الصيانة"
           setkey CFBundleVersion "$BUILD_NUMBER"
           setkey CFBundleDisplayName "خافِت"
+          # آيفون فقط — التطبيق مصمّم للجوال، ودعم آيباد يتطلب تصميماً منفصلاً
+          ruby -e "require 'xcodeproj'; \
+            p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \
+            t = p.targets.find { |x| x.name == 'App' }; \
+            t.build_configurations.each { |c| c.build_settings['TARGETED_DEVICE_FAMILY'] = '1' }; \
+            p.save; puts '✅ التطبيق صار آيفون فقط'"
           # التطبيق يستخدم HTTPS القياسي فقط = تشفير معفى، فلا تسأل آبل كل مرة
           plutil -insert ITSAppUsesNonExemptEncryption -bool false "$PLIST" 2>/dev/null || \
             plutil -replace ITSAppUsesNonExemptEncryption -bool false "$PLIST"
