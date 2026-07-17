@@ -107,6 +107,7 @@
 <body>
 <header class="top"><div class="wrap">
   <div class="brand"><span class="mk">🤝</span><span>خافِت<small>بوابة المزوّد</small></span></div>
+  <a href="index.html" style="display:inline-flex;align-items:center;gap:5px;background:#F5C518;color:#141414;font-weight:800;font-size:.85rem;padding:7px 12px;border-radius:10px;text-decoration:none;white-space:nowrap">🏠 الرئيسية</a>
   <span class="spacer"></span>
   <button class="logout" id="logoutBtn" style="display:none" onclick="logout()">خروج</button>
 </div></header>
@@ -306,7 +307,7 @@ function showLogin(msg, wait){
     <input id="lg_pass" type="password" placeholder="كلمة المرور" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()" />
     <button class="btn" onclick="login()">دخول</button>
     ${msg?`<div class="msg ${wait?'wait':''}">${msg}</div>`:''}
-    <a class="reg" href="index.html">لست مسجّلاً؟ سجّل كمزوّد صيانة</a>
+    <a class="reg" href="https://khaft1.netlify.app/" target="_blank" rel="noopener">لست مسجّلاً؟ سجّل كمزوّد صيانة عبر الموقع</a>
     <a class="reg2" href="fanyeen.html">🧑‍🔧 هل أنت فني؟ دخول الفنيين</a>
   </div>`;
 }

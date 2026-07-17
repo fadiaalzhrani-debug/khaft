@@ -1,15 +1,16 @@
-# إعدادات بناء تطبيق خافِت على Codemagic (iOS)
-# المفتاح الخاص يُحفظ بصيغة Base64 (سطر واحد) لتفادي كسر الأسطر، ثم يُفكّ داخل البناء.
+# إعدادات بناء تطبيق «شركاء خافِت» على Codemagic (iOS)
+# نفس آلية توقيع تطبيق العملاء المجرّبة — Bundle ID مستقل، فلا يؤثر على مراجعة خافِت.
+# (نسخة v1 بدون إشعارات فورية لضمان بناء نظيف؛ الإشعارات تُضاف لاحقاً)
 workflows:
-  ios-khafet:
-    name: خافِت iOS
+  ios-partners:
+    name: رزق iOS
     instance_type: mac_mini_m2
     max_build_duration: 60
     environment:
       groups:
         - appstore
       vars:
-        BUNDLE_ID: "com.khafet.app"
+        BUNDLE_ID: "com.khafet.partners"
       node: 20.19.0
       xcode: latest
       cocoapods: default
@@ -32,67 +33,23 @@ workflows:
           setkey() {
             plutil -insert "$1" -string "$2" "$PLIST" 2>/dev/null || plutil -replace "$1" -string "$2" "$PLIST"
           }
-          setkey NSCameraUsageDescription "لتصوير مشكلة الصيانة في منزلك وإرفاقها مع طلبك"
-          setkey NSPhotoLibraryUsageDescription "لاختيار صورة من معرض صورك توضّح مشكلة الصيانة"
-          setkey NSPhotoLibraryAddUsageDescription "لحفظ صور الصيانة في معرض صورك"
-          setkey NSLocationWhenInUseUsageDescription "نستخدم موقعك لتحديد مكان الخدمة بدقة وربطك بأقرب فنّي"
-          setkey NSMicrophoneUsageDescription "لتسجيل مقطع فيديو يوضّح مشكلة الصيانة"
+          setkey NSCameraUsageDescription "لتصوير حالة العمل أو المشكلة وإرفاقها مع الطلب"
+          setkey NSPhotoLibraryUsageDescription "لاختيار صورة من المعرض توضّح حالة العمل"
+          setkey NSPhotoLibraryAddUsageDescription "لحفظ صور العمل في معرض صورك"
+          setkey NSMicrophoneUsageDescription "لتسجيل مقطع فيديو يوضّح حالة العمل عند الحاجة"
           setkey CFBundleVersion "$BUILD_NUMBER"
-          setkey CFBundleDisplayName "خافِت"
-          # آيفون فقط — التطبيق مصمّم للجوال، ودعم آيباد يتطلب تصميماً منفصلاً
+          setkey CFBundleDisplayName "رزق"
+          # آيفون فقط — التطبيق مصمّم للجوال
           ruby -e "require 'xcodeproj'; \
             p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \
             t = p.targets.find { |x| x.name == 'App' }; \
             t.build_configurations.each { |c| c.build_settings['TARGETED_DEVICE_FAMILY'] = '1' }; \
             p.save; puts '✅ التطبيق صار آيفون فقط'"
-          # التطبيق يستخدم HTTPS القياسي فقط = تشفير معفى، فلا تسأل آبل كل مرة
+          # HTTPS القياسي فقط = تشفير معفى، فلا تسأل آبل كل مرة
           plutil -insert ITSAppUsesNonExemptEncryption -bool false "$PLIST" 2>/dev/null || \
             plutil -replace ITSAppUsesNonExemptEncryption -bool false "$PLIST"
           echo "— الأذونات بعد التعديل —"
-          plutil -p "$PLIST" | grep -i -e usagedescription -e CFBundleVersion
-      - name: صلاحية الإشعارات الفورية
-        script: |
-          # مشروع iOS يتولّد كل بناء، فنضيف صلاحية Push تلقائياً
-          ENT="ios/App/App/App.entitlements"
-          printf '%s\n' \
-            '<?xml version="1.0" encoding="UTF-8"?>' \
-            '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
-            '<plist version="1.0"><dict/></plist>' > "$ENT"
-          /usr/libexec/PlistBuddy -c "Add :aps-environment string production" "$ENT"
-          # اربط الملف بالمشروع (xcodeproj متوفّر مع CocoaPods)
-          ruby -e "require 'xcodeproj'; \
-            p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \
-            t = p.targets.find { |x| x.name == 'App' }; \
-            t.build_configurations.each { |c| c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements' }; \
-            p.save; \
-            puts '✅ تمت إضافة صلاحية الإشعارات'"
-          cat "$ENT"
-      - name: ربط استقبال توكن الإشعارات
-        script: |
-          AD="ios/App/App/AppDelegate.swift"
-          echo "==== هل AppDelegate يستقبل ردّ آبل؟ ===="
-          if grep -q "didRegisterForRemoteNotificationsWithDeviceToken" "$AD"; then
-            echo "موجود - لا حاجة للتعديل"
-          else
-            echo "مفقود! iOS يردّ وما فيه أحد يستقبل - نضيفه الآن"
-            # احذف آخر قوس إغلاق، أضف الدالتين، ثم أعد القوس
-            LAST=$(grep -n '^}' "$AD" | tail -1 | cut -d: -f1)
-            head -n $((LAST-1)) "$AD" > /tmp/ad.swift
-            printf '%s\n' \
-              '' \
-              '    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {' \
-              '        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)' \
-              '    }' \
-              '' \
-              '    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {' \
-              '        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)' \
-              '    }' \
-              '}' >> /tmp/ad.swift
-            cp /tmp/ad.swift "$AD"
-            echo "تمت الإضافة"
-          fi
-          echo "==== AppDelegate: أسطر الإشعارات ===="
-          grep -n "RemoteNotifications" "$AD" || echo "لا يزال مفقوداً!"
+          plutil -p "$PLIST" | grep -i -e usagedescription -e CFBundleVersion -e CFBundleDisplayName
       - name: تجهيز مفتاح آبل
         script: |
           echo "$APP_STORE_CONNECT_KEY_B64" | base64 --decode > /tmp/AuthKey.p8
@@ -103,49 +60,30 @@ workflows:
       - name: إنشاء وإعداد شهادات التوقيع
         script: |
           keychain initialize
+          # المفاتيح متعددة الأسطر تُمرَّر عبر متغيّرات البيئة (الطريقة الموصى بها من Codemagic)
+          export APP_STORE_CONNECT_PRIVATE_KEY="$(cat /tmp/AuthKey.p8)"
+          export CERTIFICATE_PRIVATE_KEY="$(cat /tmp/cert_key.pem)"
+          # --create يُنشئ الشهادة وملف التوقيع تلقائياً؛ المفاتيح تُقرأ من متغيّرات البيئة
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key @file:/tmp/AuthKey.p8 \
-            --certificate-key @file:/tmp/cert_key.pem \
             --create
           keychain add-certificates
           xcode-project use-profiles
-      - name: تثبيت صلاحية الإشعارات بعد التوقيع
-        script: |
-          # use-profiles يعيد كتابة إعدادات التوقيع — نعيد تثبيت مسار الصلاحيات بعده
-          ruby -e "require 'xcodeproj'; \
-            p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \
-            t = p.targets.find { |x| x.name == 'App' }; \
-            t.build_configurations.each { |c| c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements' }; \
-            p.save; puts '✅ أُعيد تثبيت مسار الصلاحيات'"
-          echo "— إعداد الصلاحيات كما سيبني به Xcode —"
-          cd ios/App
-          xcodebuild -workspace App.xcworkspace -scheme App -showBuildSettings 2>/dev/null | grep -i "CODE_SIGN_ENTITLEMENTS\|PROVISIONING_PROFILE" || echo "⚠️ لا يوجد!"
       - name: بناء ملف IPA
         script: |
           cd ios/App
           xcode-project build-ipa --workspace "App.xcworkspace" --scheme "App"
-      - name: فحص صلاحيات التطبيق المبني
-        script: |
-          # الحقيقة النهائية: وش الصلاحيات داخل التطبيق الموقّع فعلاً؟
-          APP=$(find "$CM_BUILD_DIR" -name "App.app" -path "*xcarchive*" | head -1)
-          echo "التطبيق: $APP"
-          echo "════════ الصلاحيات الفعلية ════════"
-          codesign -d --entitlements :- "$APP" 2>/dev/null || echo "⚠️ تعذّر القراءة"
-          echo "════════ ملف التوقيع المستخدم ════════"
-          [ -f "$APP/embedded.mobileprovision" ] && \
-            security cms -D -i "$APP/embedded.mobileprovision" 2>/dev/null | grep -A2 -i "aps-environment\|<key>Name</key>" || echo "⚠️ لا يوجد profile"
       - name: رفع للـ App Store Connect
         script: |
           IPA=$(find "$CM_BUILD_DIR" -name '*.ipa' | head -1)
           echo "الملف: $IPA"
+          export APP_STORE_CONNECT_PRIVATE_KEY="$(cat /tmp/AuthKey.p8)"
           app-store-connect publish \
             --path "$IPA" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key @file:/tmp/AuthKey.p8
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER"
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
