@@ -174,40 +174,7 @@
   .login .btn:hover{background:var(--gold-strong)}
   .login .lgerr{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3);color:#fca5a5;border-radius:12px;padding:12px;margin-top:12px;font-weight:600;font-size:.9rem}
 
-  /* زر الرجوع للرئيسية */
-  .home-link{display:inline-flex;align-items:center;gap:5px;background:var(--gold);color:var(--ink);font-weight:800;font-size:.85rem;padding:7px 12px;border-radius:10px;text-decoration:none;white-space:nowrap;flex-shrink:0}
-  /* أي نص طويل (عنوان/رابط) ينكسر بدل ما يطلع برا الشاشة */
-  .tj-v{overflow-wrap:anywhere;word-break:break-word;min-width:0}
-
-  /* أزرار تواصل واضحة بدل روابط مزحومة بسطر واحد */
-  .contact-btns{display:flex;gap:8px;margin-top:9px;flex-wrap:wrap}
-  .contact-btns a{display:inline-flex;align-items:center;gap:5px;padding:10px 15px;border-radius:11px;font-weight:800;font-size:.92rem;text-decoration:none;white-space:nowrap}
-  .contact-btns .twa{background:#25D366;color:#fff !important}
-  .contact-btns .tcall{background:var(--card);border:1px solid var(--line);color:var(--text) !important}
-  /* الموقع يبرز — أهم معلومة للفني */
-  .tj-row.loc-row .tj-v{background:rgba(245,197,24,.07);border-right:3px solid var(--gold);border-radius:10px;padding:10px 12px}
-
-  /* ===== الجوال: هيدر مدمج + صفوف عمودية بعرض كامل ===== */
-  @media (max-width:600px){
-    .brand small{display:none}
-    .top .wrap{gap:8px;min-height:auto}
-    .brand{font-size:1.02rem;gap:8px}
-    .brand .mk{width:32px;height:32px}
-    .brand .mk svg{width:22px;height:22px}
-    .langsw{gap:3px;padding:3px}
-    .langsw button{padding:5px 8px;font-size:.72rem}
-    .home-link{padding:7px 10px;font-size:1rem}
-    .home-link .ht{display:none}
-    /* العنوان فوق والقيمة تحته — تاخذ عرض الشاشة كامل */
-    .tj-row{flex-direction:column;gap:4px;padding:12px 0;font-size:1rem}
-    .tj-k{min-width:0;font-size:.76rem;font-weight:800;opacity:.75;letter-spacing:.2px}
-    .tj-v{width:100%;font-size:1.06rem;line-height:1.55}
-    .tj-when{font-size:1.08rem}
-    .tj-head{padding:12px 14px}
-    .tj-body{padding:13px 14px}
-    .tacts{padding:0 14px 14px}
-    .tbtn{font-size:1rem;padding:14px}
-  }
+  @media (max-width:600px){ .tj-k{min-width:96px} .brand small{display:none} }
 </style>
 </head>
 <body>
@@ -218,7 +185,6 @@
       <span class="mk"><svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 23 L24 9 L40 23"/><path d="M12 21 V38 a2 2 0 0 0 2 2 H34 a2 2 0 0 0 2-2 V21"/><path d="M33 15 V11 h4 v8"/><g transform="translate(11,18) scale(0.6)"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></g></svg></span>
       <span>خافِت<small>بوابة الفنيين</small></span>
     </div>
-    <a href="index.html" class="home-link">🏠 <span class="ht">الرئيسية</span></a>
     <span class="spacer"></span>
     <div class="langsw">
       <button data-l="ne">नेपाली</button>
@@ -834,15 +800,11 @@ function render(){
         ${o.note?`<div class="tj-row"><span class="tj-k">🛠️ ${t('problem')}</span><span class="tj-v">${esc(o.note)}${lang!=='ar'?` <a class="ttrans" href="https://translate.google.com/?sl=auto&tl=${lang}&text=${encodeURIComponent(o.note)}&op=translate" target="_blank" rel="noopener">${t('translate')}</a>`:''}</span></div>`:''}
         ${o.videoUrl?`<div class="tj-row"><span class="tj-k">📷 ${lang==='ne'?'फोटो/भिडियो':lang==='en'?'Photo/Video':lang==='hi'?'फोटो/वीडियो':lang==='ur'?'تصویر/ویڈیو':'صورة/مقطع'}</span><span class="tj-v"><button class="tvideo" onclick="openMedia('${esc(o.videoUrl)}')">${t('watchVideo')}</button></span></div>`:''}
         <div class="tj-row"><span class="tj-k">⏱️ ${t('duration')}</span><span class="tj-v">${jobDur(o.duration)}</span></div>
-        <div class="tj-row loc-row"><span class="tj-k">📍 ${t('location')}</span><span class="tj-v">${[addr, a.house?t('house')+' '+esc(a.house):''].filter(Boolean).join(' · ')||(gpsPin?'📍 GPS':'')}
+        <div class="tj-row"><span class="tj-k">📍 ${t('location')}</span><span class="tj-v">${[addr, a.house?t('house')+' '+esc(a.house):''].filter(Boolean).join(' · ')||(gpsPin?'📍 GPS':'')}
           ${a.mark?`<div style="color:var(--muted);font-weight:600;margin-top:2px">🚩 ${esc(a.mark)}</div>`:''}
           <a class="tmap" href="${mapUrl}" target="_blank" rel="noopener">🗺️ ${gpsPin?'📍 ':''}${t('openMap')}</a>
           ${a.photoUrl?`<button class="tmap" style="background:#7c3aed;color:#fff" onclick="openMedia('${esc(a.photoUrl)}')">🏠 ${lang==='ne'?'घरको फोटो':lang==='en'?'House photo':lang==='hi'?'घर की फोटो':lang==='ur'?'گھر کی تصویر':'صورة المنزل'}</button>`:''}</span></div>
-        <div class="tj-row"><span class="tj-k">👤 ${t('customer')}</span><span class="tj-v">${esc(o.customer.name)}
-          <div class="contact-btns">
-            <a class="twa" href="${waLink(o.customer.phone,'')}" target="_blank" rel="noopener">💬 ${t('whatsapp')}</a>
-            <a class="tcall" href="tel:${esc(o.customer.phone)}">📞 ${t('call')} ${esc(o.customer.phone)}</a>
-          </div></span></div>
+        <div class="tj-row"><span class="tj-k">👤 ${t('customer')}</span><span class="tj-v">${esc(o.customer.name)} · <a class="twa" href="${waLink(o.customer.phone,'')}" target="_blank" rel="noopener">${t('whatsapp')} ${esc(o.customer.phone)}</a> · <a href="tel:${esc(o.customer.phone)}">${t('call')}</a></span></div>
         ${(o.wantsEarlier && o.status!=='done')?`<div class="tj-row early-row"><span class="tj-k">🔔</span><span class="tj-v">${lang==='ne'?'ग्राहक चाँडो समयमा आउन तयार — रिक्त भए सम्पर्क गर्नुहोस्':lang==='en'?'Customer welcomes an earlier slot — contact them if one frees up':lang==='hi'?'ग्राहक जल्दी समय के लिए तैयार — खाली होने पर संपर्क करें':lang==='ur'?'گاہک جلد وقت کے لیے تیار — خالی ہونے پر رابطہ کریں':'العميل يرحّب بموعد أبكر — لو تيسّر تواصل معه وقدّمه'}</span></div>`:''}
         ${a.notes?`<div class="tj-row"><span class="tj-k">📝 ${t('notes')}</span><span class="tj-v">${esc(a.notes)}</span></div>`:''}
       </div>
