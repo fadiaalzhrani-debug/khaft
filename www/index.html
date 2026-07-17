@@ -13,7 +13,7 @@
 <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
 <style>
   :root{
-    --gold:#F5C518; --gold-strong:#E7B70B; --gold-soft:#FDF3CE;
+    --gold:#F5C518; --gold-strong:#E7B70B;
     --ink:#141414;
     --bg:#0F1115; --panel:#171A20; --card:#1C2027; --line:#2A2F38;
     --text:#EDEEF0; --muted:#9AA0AA;
@@ -25,33 +25,30 @@
   .safe-top{height:env(safe-area-inset-top)}
   .wrap{max-width:560px;margin:0 auto;padding:0 18px 40px}
 
-  /* شعار علوي */
+  /* شعار علوي — ٥ ضغطات عليه تفتح لوحة الإدارة (مخفي) */
   .head{text-align:center;padding:26px 0 10px}
-  .logo{width:92px;height:92px;border-radius:26px;margin:0 auto 14px;background:var(--gold);display:grid;place-items:center;box-shadow:0 10px 30px rgba(245,197,24,.28);font-size:52px;line-height:1}
+  /* الشعار يبدو ثابتاً تماماً — لا مؤشّر ولا حركة ضغط (دخول الإدارة مخفي) */
+  .logo{width:92px;height:92px;border-radius:26px;margin:0 auto 14px;background:var(--gold);display:grid;place-items:center;box-shadow:0 10px 30px rgba(245,197,24,.28);font-size:52px;line-height:1;cursor:default;user-select:none;-webkit-user-select:none}
   .head h1{font-size:2rem;font-weight:900;letter-spacing:1px}
   .head p{color:var(--muted);font-size:.98rem;font-weight:700;margin-top:3px}
   .head .biz{display:inline-block;margin-top:12px;background:rgba(245,197,24,.12);border:1px solid rgba(245,197,24,.35);color:var(--gold);font-weight:800;font-size:.85rem;padding:6px 16px;border-radius:999px}
 
   /* بطاقات الأدوار */
   .cards{margin-top:24px;display:grid;gap:14px}
-  .sec-label{color:var(--muted);font-weight:800;font-size:.85rem;margin:6px 4px 2px;display:flex;align-items:center;gap:8px}
+  .sec-label{color:var(--muted);font-weight:800;font-size:.85rem;margin:10px 4px 2px;display:flex;align-items:center;gap:8px}
   .sec-label::before{content:"";flex:1;height:1px;background:var(--line)}
   .sec-label::after{content:"";flex:1;height:1px;background:var(--line)}
-  .card{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 18px;box-shadow:var(--shadow);transition:.15s;cursor:pointer;position:relative;overflow:hidden}
+  .card{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 18px;box-shadow:var(--shadow);transition:.15s;cursor:pointer;position:relative;overflow:hidden;width:100%;text-align:right;font-family:inherit;color:inherit}
   .card:active{transform:scale(.98)}
   .card .ic{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;font-size:1.9rem;flex-shrink:0;background:rgba(245,197,24,.12)}
   .card .tx{flex:1;min-width:0}
-  .card .tx h3{font-size:1.22rem;font-weight:900;display:flex;align-items:center;gap:8px}
+  .card .tx h3{font-size:1.22rem;font-weight:900;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .card .tx p{color:var(--muted);font-size:.9rem;font-weight:600;margin-top:2px}
   .card .arrow{color:var(--muted);font-size:1.5rem;font-weight:900;flex-shrink:0}
   .card.prov .ic{background:rgba(56,132,255,.14)}
-  .card.admin{border-color:rgba(245,197,24,.28)}
-
-  /* شارة قريباً */
-  .soon{margin-top:22px;background:var(--panel);border:1px dashed var(--line);border-radius:var(--r);padding:18px;text-align:center}
-  .soon .em{font-size:1.7rem}
-  .soon h4{font-weight:900;margin-top:6px;font-size:1.05rem}
-  .soon p{color:var(--muted);font-size:.85rem;font-weight:600;margin-top:2px}
+  .card.sufrah .ic{background:rgba(255,138,61,.15)}
+  .card.soon{opacity:.72;border-style:dashed}
+  .tag{background:rgba(245,197,24,.15);border:1px solid rgba(245,197,24,.35);color:var(--gold);font-size:.68rem;font-weight:800;padding:3px 9px;border-radius:999px}
 
   .foot{text-align:center;color:var(--muted);font-size:.78rem;font-weight:700;margin-top:26px;opacity:.8}
 </style>
@@ -61,7 +58,7 @@
   <div class="wrap">
 
     <div class="head">
-      <div class="logo">🤝</div>
+      <div class="logo" id="logoMark">🤝</div>
       <h1>رزق</h1>
       <p>منصّة الشركاء</p>
       <span class="biz">بوابة العمل — للفريق فقط</span>
@@ -89,25 +86,40 @@
         <div class="arrow">‹</div>
       </a>
 
-      <a class="card admin" href="admin.html">
-        <div class="ic">🛠️</div>
+      <div class="sec-label">🍲 سُفرة — الأكل</div>
+
+      <button class="card sufrah soon" onclick="soonMsg()">
+        <div class="ic">🍲</div>
         <div class="tx">
-          <h3>إدارة خافِت</h3>
-          <p>الطلبات، الأسعار، المخزون — للمالك</p>
+          <h3>أسر سُفرة <span class="tag">قريباً</span></h3>
+          <p>الأسر المنتجة — قيد التجهيز</p>
         </div>
         <div class="arrow">‹</div>
-      </a>
+      </button>
 
-    </div>
-
-    <div class="soon">
-      <div class="em">🍲</div>
-      <h4>قريباً — أسر سُفرة</h4>
-      <p>الأسر المنتجة تنضم لنفس المنصّة</p>
     </div>
 
     <div class="foot">رزق © 2026 — منصّة شركاء الأعمال</div>
 
   </div>
+
+<script>
+  function soonMsg(){
+    alert('🍲 أسر سُفرة — قريباً\n\nجاري التجهيز، وبتكون هنا أول ما تجهز.');
+  }
+
+  /* دخول الإدارة مخفي: اضغط على الشعار ٥ مرات متتالية */
+  (function(){
+    var taps = 0, t = null;
+    var mark = document.getElementById('logoMark');
+    if(!mark) return;
+    mark.addEventListener('click', function(){
+      taps++;
+      clearTimeout(t);
+      t = setTimeout(function(){ taps = 0; }, 1500);
+      if(taps >= 5){ taps = 0; window.location.href = 'admin.html'; }
+    });
+  })();
+</script>
 </body>
 </html>

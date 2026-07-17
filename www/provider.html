@@ -102,12 +102,34 @@
 
   #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(30px);background:var(--gold);color:var(--ink);padding:14px 24px;border-radius:14px;font-weight:800;z-index:80;opacity:0;transition:.3s;box-shadow:var(--shadow);max-width:90%;text-align:center;pointer-events:none}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* زر الرجوع للرئيسية */
+  .home-link{display:inline-flex;align-items:center;gap:5px;background:var(--gold);color:var(--ink);font-weight:800;font-size:.85rem;padding:7px 12px;border-radius:10px;text-decoration:none;white-space:nowrap;flex-shrink:0}
+  /* أي نص طويل (عنوان/رابط) ينكسر بدل ما يطلع برا الشاشة */
+  .tj-v{overflow-wrap:anywhere;word-break:break-word;min-width:0}
+
+  /* ===== الجوال: العنوان فوق والقيمة تحته بعرض كامل ===== */
+  @media (max-width:600px){
+    .top .wrap{gap:8px;min-height:auto}
+    .brand{font-size:1.02rem;gap:8px}
+    .brand small{display:none}
+    .home-link{padding:7px 10px;font-size:1rem}
+    .home-link .ht{display:none}
+    .tj-row{flex-direction:column;gap:3px;padding:11px 0;font-size:1.02rem}
+    .tj-k{min-width:0;font-size:.8rem}
+    .tj-v{width:100%}
+    .tj-when{font-size:1.08rem}
+    .tj-head{padding:12px 14px}
+    .tj-body{padding:13px 14px}
+    .tacts{padding:0 14px 14px}
+    .tbtn{font-size:1rem;padding:14px}
+  }
 </style>
 </head>
 <body>
 <header class="top"><div class="wrap">
   <div class="brand"><span class="mk">🤝</span><span>خافِت<small>بوابة المزوّد</small></span></div>
-  <a href="index.html" style="display:inline-flex;align-items:center;gap:5px;background:#F5C518;color:#141414;font-weight:800;font-size:.85rem;padding:7px 12px;border-radius:10px;text-decoration:none;white-space:nowrap">🏠 الرئيسية</a>
+  <a href="index.html" class="home-link">🏠 <span class="ht">الرئيسية</span></a>
   <span class="spacer"></span>
   <button class="logout" id="logoutBtn" style="display:none" onclick="logout()">خروج</button>
 </div></header>
