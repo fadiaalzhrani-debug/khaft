@@ -458,6 +458,10 @@
   .nextbar .nb-go{background:var(--gold);color:var(--ink);font-weight:900;padding:14px 26px;border-radius:13px;display:flex;gap:8px;align-items:center;font-size:1.02rem;box-shadow:var(--shadow-gold);transition:.15s}
   .nextbar .nb-go:hover{background:#fff}
   .nextbar .nb-go:disabled{opacity:.4;box-shadow:none}
+  .nextbar .nb-go.need{animation:nbpulse 1.5s ease-in-out infinite}
+  @keyframes nbpulse{0%,100%{box-shadow:var(--shadow-gold)}50%{box-shadow:0 0 0 5px rgba(245,197,24,.32)}}
+  .panel.flash{animation:pflash 1.2s ease}
+  @keyframes pflash{0%,100%{box-shadow:none}30%,60%{box-shadow:0 0 0 3px var(--gold)}}
   .flow-sum{background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:var(--r-sm);padding:14px 16px;margin-top:14px;font-size:.92rem;font-weight:600;display:flex;gap:10px;align-items:center}
   /* زر الطلب السريع + قائمة الأسعار */
   .quick-btn{display:flex;align-items:center;gap:15px;width:100%;background:linear-gradient(150deg,#F9D338,#F3C010);color:var(--ink);border-radius:var(--r-lg);padding:22px 20px;box-shadow:var(--shadow-gold), inset 0 1px 0 rgba(255,255,255,.45);margin-top:24px;text-align:right;transition:.2s cubic-bezier(.2,.7,.3,1);position:relative;overflow:hidden}
@@ -1797,15 +1801,25 @@ function renderTime(){
         <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
       </div>
       <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
-      <div class="panel"><h3>🕐 اختر نافذة الوصول</h3>
+      <div class="panel" id="slotsPanel"><h3>🕐 اختر نافذة الوصول</h3>
         ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
         <div class="slot-note">💡 <span>تختار <b>نافذة وصول</b> (ساعتين) والفني يوصلك خلالها — أدق وأريح للطرفين، وما يتأخر عليك لو طال الطلب اللي قبلك.</span></div>
       </div>
     </div>
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${ready?windowLabel(b.time):'اختر نافذة'}</b><small>${dayLabel(b.date)}</small></div>
-      <button class="nb-go" ${ready?'':'disabled'} onclick="go('info')">التالي <span>←</span></button>
+      <div class="nb-info"><b>${ready?windowLabel(b.time):'🕐 اختر نافذة الوصول'}</b><small>${dayLabel(b.date)}</small></div>
+      <button class="nb-go${ready?'':' need'}" onclick="nextFromTime()">التالي <span>←</span></button>
     </div></div>`;
+}
+// عند الضغط على «التالي» بدون اختيار نافذة وصول: نبّه العميل ووجّهه للسلوتات بدل ما يسكت الزر
+function nextFromTime(){
+  if(state.booking.time==null){
+    toast('🕐 اختر نافذة الوصول أولاً');
+    const el=document.getElementById('slotsPanel');
+    if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+    return;
+  }
+  go('info');
 }
 
 /* ---------- خطوة ٣: بياناتك وموقعك ---------- */
@@ -1816,6 +1830,7 @@ function renderInfo(){
   const desc=(state.problem&&state.problem.desc)||'';
   const base=cartPrice();
   const loyDisc=loyaltyDiscFor();
+  const free = loyDisc>0;   // مكافأة ولاء → نخفي كود الإحالة ونعرض 🎁 بدل 💳
   const pPct = (loyDisc>0||quickMode||!refCheck.ok)?0:10;   // الإحالة لأول طلب، الولاء للسابع — لا يجتمعان
   const afterAll=Math.max(0, Math.round(base*(1-pPct/100)) - loyDisc);
   const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
