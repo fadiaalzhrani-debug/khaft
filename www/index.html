@@ -943,7 +943,11 @@ async function loadOrdersFromCloud(){
   if(!cloudReady || cloudLoading) return;
   cloudLoading=true;
   try{
-    const { data, error } = await sb.from('khafet_orders').select('*').order('created_at',{ascending:false});
+    // اقصرها على طلبات صاحب الحساب صراحةً — لا نتّكل على RLS وحدها
+    // (لو كان الحساب من الطاقم، RLS تسمح له بالكل وما نبي تختلط طلبات غيره هنا)
+    let qy = sb.from('khafet_orders').select('*').order('created_at',{ascending:false});
+    if(myUid) qy = qy.eq('user_id', myUid);
+    const { data, error } = await qy;
     if(error) throw error;
     cloudFails=0;
     state.orders = (data||[]).map(rowToOrder);
