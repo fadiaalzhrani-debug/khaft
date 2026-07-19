@@ -1248,6 +1248,48 @@ async function logoutAccount(){
   save(); toast('تم تسجيل الخروج'); go('home');
   if(cloudReady) loadOrdersFromCloud();
 }
+/* ---------- حذف الحساب نهائياً (متطلّب آبل 5.1.1(v)) ---------- */
+function openDeleteAccount(){
+  document.getElementById('locModal').innerHTML=`
+    <div class="loc-sheet">
+      <div class="loc-head"><h3>🗑️ حذف الحساب</h3><button class="loc-x" onclick="closeDeleteAccount()">✕</button></div>
+      <p class="hint">عند تأكيد الحذف سيتم <b>نهائياً</b>:</p>
+      <div class="loy-steps">
+        <div class="loy-step"><div class="ls-n">🗑️</div><div class="ls-t"><b>حذف حسابك</b><span>ما راح تقدر تدخل برقمك مرة ثانية إلا بحساب جديد.</span></div></div>
+        <div class="loy-step"><div class="ls-n">🔒</div><div class="ls-t"><b>حذف بياناتك الشخصية</b><span>اسمك، جوالك، عنوانك، صورك ومقاطعك، ورصيدك وكود الإحالة.</span></div></div>
+        <div class="loy-step"><div class="ls-n">⚠️</div><div class="ls-t"><b>لا يمكن التراجع</b><span>رصيدك ونقاط ولائك تُفقد نهائياً.</span></div></div>
+      </div>
+      <button id="delGo" class="sbtn danger" style="width:100%;margin-top:16px;padding:14px;font-weight:900" onclick="confirmDeleteAccount()">نعم، احذف حسابي نهائياً</button>
+      <button class="cta" style="margin-top:10px" onclick="closeDeleteAccount()">إلغاء</button>
+    </div>`;
+  document.getElementById('locModal').classList.add('show');
+}
+function closeDeleteAccount(){ const m=document.getElementById('locModal'); m.classList.remove('show'); m.innerHTML=''; }
+async function confirmDeleteAccount(){
+  if(!confirm('تأكيد أخير — سيُحذف حسابك وكل بياناتك نهائياً. متابعة؟')) return;
+  const btn=document.getElementById('delGo'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الحذف…'; }
+  try{
+    if(!sb) throw new Error('لا يوجد اتصال بالإنترنت');
+    const { data:{ session } }=await sb.auth.getSession();
+    if(!session) throw new Error('انتهت الجلسة — سجّل الدخول وأعد المحاولة');
+    const r=await fetch(SUPABASE_URL+'/functions/v1/delete-account',{ method:'POST',
+      headers:{ apikey:SUPABASE_ANON, Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
+      body:'{}' });
+    const d=await r.json().catch(()=>({}));
+    if(!d.ok) throw new Error(d.error||'تعذّر حذف الحساب');
+    try{ await sb.auth.signOut(); }catch(e){}
+    myUid=null; isVerified=false;
+    state.customer={}; state.address={}; state.myOrderIds=[]; state.orders=[]; state.cart={}; state.promo='';
+    myRef={ code:null, balance:0, referrals:0 };
+    save(); closeDeleteAccount();
+    try{ await ensureAnonSession(); }catch(e){}
+    toast('✅ تم حذف حسابك نهائياً');
+    go('home');
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.textContent='نعم، احذف حسابي نهائياً'; }
+    toast('⚠️ '+(e.message||'تعذّر حذف الحساب'));
+  }
+}
 function renderAccount(){
   if(!(state.customer&&state.customer.phone)){ go('login'); return; }
   const c=state.customer||{}; const n=myOrders().length; const code=myRef.code;
@@ -1287,6 +1329,11 @@ function renderAccount(){
         <button class="cta" onclick="saveAccount()">💾 حفظ التعديلات</button>
       </div>
       <button class="sbtn danger" style="width:100%;margin-top:14px;padding:14px" onclick="logoutAccount()">🚪 تسجيل الخروج</button>
+      <div class="panel" style="margin-top:14px;border-color:#c0392b">
+        <h3 style="color:#c0392b">🗑️ حذف الحساب</h3>
+        <p style="color:var(--muted);font-size:.88rem;line-height:1.8">تقدر تحذف حسابك وكل بياناتك الشخصية نهائياً من داخل التطبيق. الإجراء لا يمكن التراجع عنه.</p>
+        <button class="sbtn danger" style="width:100%;margin-top:10px;padding:14px;font-weight:900" onclick="openDeleteAccount()">حذف حسابي نهائياً</button>
+      </div>
       <div style="height:24px"></div>
     </div>`;
 }
