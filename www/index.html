@@ -1126,6 +1126,51 @@ function render(){
   if(view==='account') return renderAccount();
   if(view==='login') return renderLogin();
   if(view==='plans') return renderPlans();
+  if(view==='suggest') return renderSuggest();
+}
+/* ---------- 💡 رأيك يهمنا: اقتراح / شكوى / شكر ---------- */
+let sugKind='اقتراح';
+function setSugKind(k){ sugKind=k; renderSuggest(); }
+function renderSuggest(){
+  const c=state.customer||{};
+  const kinds=[['اقتراح','💡'],['شكوى','⚠️'],['شكر','🌟']];
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('رأيك يهمنا','home')}
+      <div class="flow-sum">💬 <span>اكتب لنا وبنقرأ كل كلمة — رأيك يطوّر خدمتنا فعلاً.</span></div>
+      <div class="panel" style="margin-top:14px">
+        <h3>نوع الرسالة</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${kinds.map(([k,ic])=>`<button class="sbtn ${sugKind===k?'ok':''}" onclick="setSugKind('${k}')">${ic} ${k}</button>`).join('')}
+        </div>
+        <div class="field" style="margin-top:16px"><label>رسالتك <span class="req">*</span></label>
+          <textarea id="sug_body" rows="6" placeholder="مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس"></textarea></div>
+        <div class="field"><label>اسمك (اختياري)</label><input id="sug_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
+        <div class="field"><label>جوالك (اختياري — لو تحب نرد عليك)</label><input id="sug_phone" inputmode="tel" value="${esc(c.phone||'')}" placeholder="05xxxxxxxx" /></div>
+        <button class="cta" onclick="sendSuggestion()">📤 أرسل</button>
+        <p style="color:var(--muted);font-size:.84rem;margin-top:10px;line-height:1.7">🔒 رسالتك تصل للإدارة فقط، وما تظهر لأي عميل ثاني.</p>
+      </div>
+      <div style="height:26px"></div>
+    </div>`;
+}
+async function sendSuggestion(){
+  const g=id=>((document.getElementById(id)||{}).value||'').trim();
+  const body=g('sug_body');
+  if(body.length<5){ toast('اكتب رسالتك أولاً'); return; }
+  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
+  try{
+    if(!cloudReady||!sb) throw new Error('لا يوجد اتصال بالإنترنت');
+    if(!myUid) await ensureAnonSession();
+    if(!myUid) throw new Error('تعذّر التجهيز — حدّث الصفحة');
+    const { error }=await sb.from('khafet_suggestions').insert({
+      user_id:myUid, name:g('sug_name')||null, phone:g('sug_phone')||null, kind:sugKind, body });
+    if(error) throw error;
+    toast('✅ وصلتنا رسالتك — شكراً لك 🌟');
+    sugKind='اقتراح'; go('home');
+  }catch(e){
+    if(btn){ btn.disabled=false; btn.textContent='📤 أرسل'; }
+    toast('⚠️ '+(e.message||'تعذّر الإرسال'));
+  }
 }
 function myOrders(){ const ids=state.myOrderIds||[]; const ph=state.customer&&state.customer.phone; return state.orders.filter(o=> ids.includes(o.id) || (ph && o.customer && o.customer.phone===ph) ); }
 /* ---------- تسجيل دخول العميل (جوال + رمز تحقق SMS) + روابط الفريق ----------
@@ -1335,6 +1380,7 @@ function renderAccount(){
       </div>
       <button class="services-btn" onclick="go('mybookings')"><span class="sb-ic">📋</span><span class="sb-t"><b>طلباتي</b><small>${ar(n)} طلب — تابع حالتها</small></span><span class="qb-ar">←</span></button>
       <button class="services-btn" onclick="go('plans')"><span class="sb-ic">🛡️</span><span class="sb-t"><b>باقات الصيانة</b><small>اشترك ووفّر على صيانة منزلك</small></span><span class="qb-ar">←</span></button>
+      <button class="services-btn" onclick="go('suggest')"><span class="sb-ic">💡</span><span class="sb-t"><b>رأيك يهمنا</b><small>اقتراح · شكوى · شكر — نقرأ كل رسالة</small></span><span class="qb-ar">←</span></button>
       ${inApp()?`<div class="panel"><h3>🔔 الإشعارات</h3>
         <div style="font-size:.88rem;font-weight:700;word-break:break-word">${esc(pushState)}</div>
         <button class="sbtn" style="margin-top:10px" onclick="initPush()">🔄 أعد المحاولة</button>
@@ -1532,6 +1578,7 @@ function renderHome(){
           <span>🕐 ${HOURS}</span>
           <span>📍 ${CITY}</span>
         </div>
+        <div style="margin-top:16px"><a class="join-link" onclick="go('suggest')">💡 عندك اقتراح أو ملاحظة؟ اكتب لنا — رأيك يهمنا</a></div>
         <div style="margin-top:16px"><a class="join-link" onclick="go('join')">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
       </footer>
     </div>`;
