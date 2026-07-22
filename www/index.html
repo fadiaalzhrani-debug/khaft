@@ -415,6 +415,25 @@
   .acc-link{display:block;padding:12px 4px;color:var(--ink);text-decoration:none;font-weight:700;font-size:.95rem;border-bottom:1px solid var(--line)}
   .acc-link:last-child{border-bottom:none}
   .acc-link:hover{color:var(--gold)}
+  /* صفحة حسابي — تصميم مرتّب */
+  .acc-hero{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--ink),#2c2c2c);color:#fff;border-radius:18px;padding:18px 20px;margin-top:14px}
+  .acc-hero .av{width:54px;height:54px;border-radius:50%;background:var(--gold);color:var(--ink);display:grid;place-items:center;font-size:1.7rem;flex-shrink:0}
+  .acc-hero b{font-size:1.15rem;display:block}
+  .acc-hero small{opacity:.82;font-size:.9rem}
+  .acc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .acc-tile{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px 10px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink)}
+  .acc-tile:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:var(--shadow-sm)}
+  .acc-tile .ti{font-size:1.7rem;display:block;margin-bottom:6px}
+  .acc-tile b{display:block;font-size:.96rem}
+  .acc-tile small{color:var(--muted);font-size:.75rem}
+  .acc-support{display:flex;gap:10px;margin-top:12px}
+  .acc-sbtn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;font-weight:800;color:var(--ink);text-decoration:none}
+  .acc-sbtn span{font-size:1.2rem}
+  .acc-sbtn:hover{border-color:var(--gold)}
+  .acc-foot{margin-top:22px;text-align:center;padding-top:18px;border-top:1px solid var(--line)}
+  .acc-foot a{color:var(--muted);font-size:.84rem;text-decoration:none;margin:0 6px;font-weight:700}
+  .acc-foot a:hover{color:var(--ink)}
+  .acc-danger{display:block;margin:16px auto 0;color:#c0392b;background:none;border:none;font-weight:700;font-size:.86rem;cursor:pointer;text-decoration:underline;opacity:.85}
   .foot-brand b{display:block;font-size:1.15rem;font-weight:900}
   .foot-brand span{color:var(--muted);font-size:.85rem}
   .foot-contact{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:12px;color:var(--muted);font-size:.9rem;font-weight:600}
@@ -1391,62 +1410,54 @@ function renderAccount(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('حسابي','home')}
-      <div class="panel" style="margin-top:14px">
-        <div class="acc-head"><div class="acc-avatar">👤</div><div><b style="font-size:1.15rem">${esc(c.name||'عميل خافِت')}</b><div style="color:var(--muted)">📱 ${esc(c.phone||'')}</div></div></div>
+
+      <div class="acc-hero">
+        <div class="av">👤</div>
+        <div style="flex:1"><b>${esc(c.name||'عميل خافِت')}</b><small>📱 ${esc(c.phone||'')}</small></div>
       </div>
-      ${myRef.balance>0?`<div class="panel" style="background:linear-gradient(135deg,#0b7a3b,#0e9950);border:none">
+
+      ${myRef.balance>0?`<div class="panel" style="background:linear-gradient(135deg,#0b7a3b,#0e9950);border:none;margin-top:12px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;color:#fff">
           <div><div style="font-size:.85rem;opacity:.9">رصيدك</div>
             <b style="font-size:1.9rem;line-height:1.2">${ar(myRef.balance)} <span style="font-size:1rem">ر.س</span></b></div>
           <div style="font-size:2.4rem">💰</div>
         </div>
-        <p style="color:#fff;opacity:.92;font-size:.84rem;margin-top:8px">يُخصم من طلبك الجاي</p>
+        <p style="color:#fff;opacity:.92;font-size:.84rem;margin-top:8px">يُخصم تلقائياً من طلبك الجاي</p>
       </div>`:''}
-      <div class="panel"><h3>🎟️ كودك الخاص</h3>
-        ${code?`
+
+      <div class="acc-grid">
+        <button class="acc-tile" onclick="go('mybookings')"><span class="ti">📋</span><b>طلباتي</b><small>${ar(n)} ${n===1?'طلب':'طلبات'}</small></button>
+        <button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>باقات الصيانة</b><small>وفّر أكثر</small></button>
+        <button class="acc-tile" onclick="go('suggest')"><span class="ti">💡</span><b>رأيك يهمنا</b><small>اقتراح · شكوى</small></button>
+        <button class="acc-tile" onclick="go('faq')"><span class="ti">❓</span><b>الأسئلة الشائعة</b><small>إجابات سريعة</small></button>
+      </div>
+
+      ${code?`<div class="panel" style="margin-top:12px"><h3>🎟️ كودك — شاركه واكسب</h3>
         <div class="ref-code"><b>${esc(code)}</b><button class="sbtn ok" onclick="copyCode('${esc(code)}')">📋 نسخ</button></div>
         <button class="cta" style="margin-top:10px" onclick="shareCode('${esc(code)}')">📤 شارك كودك</button>
-        <p style="color:var(--muted);font-size:.85rem;margin-top:10px">
-          شاركه مع أصحابك — يحصلون على <b>خصم ١٠٪</b>، ولك <b>٥ ر.س رصيد</b> مقابل كل واحد يخلّص طلبه.</p>
-        ${myRef.referrals>0?`<div style="margin-top:10px;padding:10px 12px;background:var(--gold-tint);border-radius:10px;font-weight:800;font-size:.9rem">
-          🎉 أحلتِ ${ar(myRef.referrals)} ${myRef.referrals===1?'شخص':'أشخاص'} — شكراً لك!</div>`:''}
-        `:`<p style="color:var(--muted);font-size:.88rem">جارٍ تجهيز كودك…</p>`}
-      </div>
-      <button class="services-btn" onclick="go('mybookings')"><span class="sb-ic">📋</span><span class="sb-t"><b>طلباتي</b><small>${ar(n)} طلب — تابع حالتها</small></span><span class="qb-ar">←</span></button>
-      <button class="services-btn" onclick="go('plans')"><span class="sb-ic">🛡️</span><span class="sb-t"><b>باقات الصيانة</b><small>اشترك ووفّر على صيانة منزلك</small></span><span class="qb-ar">←</span></button>
-      <button class="services-btn" onclick="go('suggest')"><span class="sb-ic">💡</span><span class="sb-t"><b>رأيك يهمنا</b><small>اقتراح · شكوى · شكر — نقرأ كل رسالة</small></span><span class="qb-ar">←</span></button>
-      ${inApp()?`<div class="panel"><h3>🔔 الإشعارات</h3>
-        <div style="font-size:.88rem;font-weight:700;word-break:break-word">${esc(pushState)}</div>
-        <button class="sbtn" style="margin-top:10px" onclick="initPush()">🔄 أعد المحاولة</button>
+        <p style="color:var(--muted);font-size:.84rem;margin-top:10px;line-height:1.7">صديقك يحصل على <b>خصم ١٠٪</b>، ولك <b>٥ ر.س رصيد</b> عن كل طلب يُنجزه.${myRef.referrals>0?` <b style="color:#0b7a3b">🎉 أحلتَ ${ar(myRef.referrals)}!</b>`:''}</p>
       </div>`:''}
-      <div class="panel"><h3>⚙️ الإعدادات</h3>
+
+      <div class="panel" style="margin-top:12px"><h3>⚙️ معلوماتي</h3>
         <div class="field"><label>الاسم</label><input id="acc_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
-        <div class="field"><label>🏠 عنواني المحفوظ (يُملأ تلقائياً عند الحجز)</label>
+        <div class="field"><label>🏠 عنواني المحفوظ</label>
           <input id="acc_addr" value="${esc(savedAddrLabel())}" placeholder="مثال: الخبر · حي العقربية · منزل ٢٤٥١" /></div>
         <button class="cta" onclick="saveAccount()">💾 حفظ التعديلات</button>
+        ${inApp()?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)">🔔 الإشعارات: ${esc(pushState)} <a onclick="initPush()" style="color:var(--gold);cursor:pointer;font-weight:800">↻ تحديث</a></div>`:''}
       </div>
 
-      <div class="panel"><h3>💬 المساعدة والدعم</h3>
-        <a class="services-btn" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener" style="text-decoration:none">
-          <span class="sb-ic">💬</span><span class="sb-t"><b>تواصل عبر واتساب</b><small>نرد عليك بأسرع وقت</small></span><span class="qb-ar">←</span></a>
-        <a class="services-btn" href="tel:${PHONE}" style="text-decoration:none;margin-top:8px">
-          <span class="sb-ic">📞</span><span class="sb-t"><b>اتصل بنا</b><small>${PHONE}</small></span><span class="qb-ar">←</span></a>
-        <button class="services-btn" onclick="go('faq')" style="margin-top:8px">
-          <span class="sb-ic">❓</span><span class="sb-t"><b>الأسئلة الشائعة</b><small>إجابات لأكثر ما يُسأل</small></span><span class="qb-ar">←</span></button>
+      <div class="acc-support">
+        <a class="acc-sbtn" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener"><span>💬</span> واتساب</a>
+        <a class="acc-sbtn" href="tel:${PHONE}"><span>📞</span> اتصل بنا</a>
       </div>
 
-      <div class="panel"><h3>📄 عن التطبيق</h3>
-        <a class="acc-link" href="privacy.html" target="_blank" rel="noopener">🔒 سياسة الخصوصية</a>
-        <a class="acc-link" href="privacy.html#terms" target="_blank" rel="noopener">📜 الشروط والأحكام</a>
-        <div style="color:var(--muted);font-size:.82rem;margin-top:12px;text-align:center">${BRAND} · الإصدار ${APP_VER}</div>
-      </div>
-
-      <button class="sbtn danger" style="width:100%;margin-top:14px;padding:14px" onclick="logoutAccount()">🚪 تسجيل الخروج</button>
-      <div class="panel" style="margin-top:14px;border-color:#c0392b">
-        <h3 style="color:#c0392b">🗑️ حذف الحساب</h3>
-        <p style="color:var(--muted);font-size:.88rem;line-height:1.8">تقدر تحذف حسابك وكل بياناتك الشخصية نهائياً من داخل التطبيق. الإجراء لا يمكن التراجع عنه.</p>
-        <button class="sbtn danger" style="width:100%;margin-top:10px;padding:14px;font-weight:900" onclick="openDeleteAccount()">حذف حسابي نهائياً</button>
+      <div class="acc-foot">
+        <a href="privacy.html" target="_blank" rel="noopener">🔒 الخصوصية</a> ·
+        <a href="privacy.html#terms" target="_blank" rel="noopener">📜 الشروط</a>
+        <div style="margin-top:10px;color:var(--muted);font-size:.78rem">${BRAND} · الإصدار ${APP_VER}</div>
+        <button class="cta" style="background:transparent;color:var(--muted);border:1px solid var(--line);margin-top:16px" onclick="logoutAccount()">🚪 تسجيل الخروج</button>
+        <button class="acc-danger" onclick="openDeleteAccount()">حذف حسابي نهائياً</button>
       </div>
       <div style="height:24px"></div>
     </div>`;
