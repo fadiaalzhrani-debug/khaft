@@ -412,6 +412,9 @@
   .staff-links{margin-top:16px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px 18px;padding-top:14px;border-top:1px dashed var(--line)}
   .staff-links a{color:var(--muted);font-weight:700;font-size:.85rem;text-decoration:none}
   .staff-links a:hover{color:var(--ink)}
+  .acc-link{display:block;padding:12px 4px;color:var(--ink);text-decoration:none;font-weight:700;font-size:.95rem;border-bottom:1px solid var(--line)}
+  .acc-link:last-child{border-bottom:none}
+  .acc-link:hover{color:var(--gold)}
   .foot-brand b{display:block;font-size:1.15rem;font-weight:900}
   .foot-brand span{color:var(--muted);font-size:.85rem}
   .foot-contact{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:12px;color:var(--muted);font-size:.9rem;font-weight:600}
@@ -603,6 +606,7 @@
 /* ---- إعدادات المؤسسة (قابلة للتعديل) ---- */
 const BRAND = 'خافِت';
 const TAGLINE = 'صيانة منزلية موثوقة';
+const APP_VER  = '1.0.1';             // إصدار التطبيق (يُعرض في «حسابي» للدعم)
 const PHONE    = '0590497866';        // رقم التواصل (عدّله)
 const WHATSAPP = '966590497866';      // واتساب بصيغة دولية بدون + (عدّله)
 const HOURS    = 'يومياً ٨ ص – ١٠ م'; // ساعات العمل
@@ -1128,6 +1132,34 @@ function render(){
   if(view==='login') return renderLogin();
   if(view==='plans') return renderPlans();
   if(view==='suggest') return renderSuggest();
+  if(view==='faq') return renderFaq();
+}
+/* ---------- ❓ الأسئلة الشائعة ---------- */
+const FAQS=[
+  ['كيف أحجز طلب صيانة؟','اختر الخدمة من القائمة، حدّد اليوم ونافذة الوصول، ثم أدخل موقعك وأكّد. تجيك رسالة تأكيد.'],
+  ['متى يجي الفني؟','تختار «نافذة وصول» (ساعتين) والفني يوصلك خلالها. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».'],
+  ['كيف أدفع؟','الدفع نقداً أو تحويلاً بعد إتمام العمل ومعاينة الفاتورة. تشوف التكلفة التقديرية قبل التأكيد.'],
+  ['وش أسوي لو تأخّر الفني؟','تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.'],
+  ['فيه ضمان على الشغل؟','نعم — ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.'],
+  ['كيف أستفيد من الخصومات؟','احجز قبل ٥ أيام أو أكثر = خصم ٥٪ تلقائي. وكل ٦ طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.'],
+  ['كيف ألغي طلبي؟','من «طلباتي» تقدر تلغي الطلب قبل بدء العمل. لو دفعت رصيداً يرجع لك.'],
+];
+function renderFaq(){
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead('الأسئلة الشائعة','account')}
+      <div style="margin-top:14px">
+        ${FAQS.map(([q,a])=>`<div class="panel" style="margin-bottom:10px">
+          <h3 style="font-size:1rem">❓ ${q}</h3>
+          <p style="color:var(--muted);font-size:.92rem;line-height:1.8;margin-top:6px">${a}</p>
+        </div>`).join('')}
+      </div>
+      <div class="panel" style="text-align:center;background:var(--gold-tint);border-color:var(--gold-soft)">
+        <p style="font-weight:700">ما لقيت جوابك؟</p>
+        <a class="cta" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener" style="text-decoration:none;margin-top:8px">💬 كلّمنا على واتساب</a>
+      </div>
+      <div style="height:24px"></div>
+    </div>`;
 }
 /* ---------- 💡 رأيك يهمنا: اقتراح / شكوى / شكر ---------- */
 let sugKind='اقتراح';
@@ -1286,12 +1318,20 @@ function shareCode(code){
   if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); }
   else copyCode(txt);
 }
+/* عنوان مختصر محفوظ للعرض في «حسابي» — نفضّل المحفوظ يدوياً، وإلا نبنيه من مكوّنات آخر طلب */
+function savedAddrLabel(){
+  const a=state.address||{};
+  if(a.saved) return a.saved;
+  return [a.city,a.district,a.street,a.house?('منزل '+a.house):''].filter(Boolean).join(' · ');
+}
 function saveAccount(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():undefined;};
-  const nm=g('acc_name'), ph=g('acc_phone');
+  const nm=g('acc_name'), ph=g('acc_phone'), ad=g('acc_addr');
   state.customer=state.customer||{};
   if(nm!==undefined) state.customer.name=nm;
   if(ph!==undefined && ph) state.customer.phone=ph;
+  // العنوان المحفوظ: نخزّنه كملاحظة يدوية يستفيد منها الفني (لا يلغي إحداثيات GPS)
+  if(ad!==undefined) { state.address=state.address||{}; state.address.saved=ad; }
   save(); toast('💾 تم حفظ التعديلات'); renderAccount();
 }
 async function logoutAccount(){
@@ -1382,8 +1422,26 @@ function renderAccount(){
       <div class="panel"><h3>⚙️ الإعدادات</h3>
         <div class="field"><label>الاسم</label><input id="acc_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+        <div class="field"><label>🏠 عنواني المحفوظ (يُملأ تلقائياً عند الحجز)</label>
+          <input id="acc_addr" value="${esc(savedAddrLabel())}" placeholder="مثال: الخبر · حي العقربية · منزل ٢٤٥١" /></div>
         <button class="cta" onclick="saveAccount()">💾 حفظ التعديلات</button>
       </div>
+
+      <div class="panel"><h3>💬 المساعدة والدعم</h3>
+        <a class="services-btn" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener" style="text-decoration:none">
+          <span class="sb-ic">💬</span><span class="sb-t"><b>تواصل عبر واتساب</b><small>نرد عليك بأسرع وقت</small></span><span class="qb-ar">←</span></a>
+        <a class="services-btn" href="tel:${PHONE}" style="text-decoration:none;margin-top:8px">
+          <span class="sb-ic">📞</span><span class="sb-t"><b>اتصل بنا</b><small>${PHONE}</small></span><span class="qb-ar">←</span></a>
+        <button class="services-btn" onclick="go('faq')" style="margin-top:8px">
+          <span class="sb-ic">❓</span><span class="sb-t"><b>الأسئلة الشائعة</b><small>إجابات لأكثر ما يُسأل</small></span><span class="qb-ar">←</span></button>
+      </div>
+
+      <div class="panel"><h3>📄 عن التطبيق</h3>
+        <a class="acc-link" href="privacy.html" target="_blank" rel="noopener">🔒 سياسة الخصوصية</a>
+        <a class="acc-link" href="privacy.html#terms" target="_blank" rel="noopener">📜 الشروط والأحكام</a>
+        <div style="color:var(--muted);font-size:.82rem;margin-top:12px;text-align:center">${BRAND} · الإصدار ${APP_VER}</div>
+      </div>
+
       <button class="sbtn danger" style="width:100%;margin-top:14px;padding:14px" onclick="logoutAccount()">🚪 تسجيل الخروج</button>
       <div class="panel" style="margin-top:14px;border-color:#c0392b">
         <h3 style="color:#c0392b">🗑️ حذف الحساب</h3>
