@@ -1414,21 +1414,6 @@ function accLocOkHtml(){
   const a=state.address||{};
   return `<div class="loc-ok">✅ موقع بيتك محفوظ — <a href="${a.mapUrl}" target="_blank" rel="noopener">شوف على الخريطة</a> · بيظهر تلقائياً عند الحجز</div>`;
 }
-// تحديد موقع البيت من صفحة الحساب — يُخزَّن في نفس حقول الحجز (lat/lng) فيظهر تلقائياً
-function locateHome(){
-  if(!navigator.geolocation){ toast('جهازك ما يدعم تحديد الموقع'); return; }
-  toast('⏳ جارٍ تحديد موقعك...');
-  navigator.geolocation.getCurrentPosition(function(pos){
-    const lat=pos.coords.latitude.toFixed(6), lng=pos.coords.longitude.toFixed(6);
-    state.address=state.address||{};
-    state.address.lat=lat; state.address.lng=lng;
-    state.address.mapUrl='https://www.google.com/maps?q='+lat+','+lng;
-    save();
-    const st=document.getElementById('acc-loc-status'); if(st) st.innerHTML=accLocOkHtml();
-    reverseGeocodeCity(lat,lng);   // نستنتج المدينة بصمت (لتوزيع المزوّدين)
-    toast('✅ تم حفظ موقع بيتك — بيظهر تلقائياً عند الحجز');
-  }, function(){ toast('اسمح بإذن الموقع من إعدادات المتصفح وحاول ثانية'); }, {enableHighAccuracy:true,timeout:12000,maximumAge:0});
-}
 function saveAccount(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():undefined;};
   const nm=g('acc_name'), ph=g('acc_phone'), hs=g('acc_house');
@@ -1529,10 +1514,8 @@ function renderAccount(){
         <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
         <div class="field"><label>🏠 رقم المنزل / الشقة</label>
           <input id="acc_house" value="${esc((state.address||{}).house||'')}" placeholder="مثال: ٢٤٥١ · الدور الأول" /></div>
-        <button type="button" class="loc-btn" onclick="locateHome()">
-          <span class="lb-ic">📍</span>
-          <span class="lb-t"><b>حدّد موقع بيتي على الخريطة</b><small>نحفظه مرة وحدة ويظهر تلقائياً عند كل حجز</small></span>
-        </button>
+        <p class="loc-hint" style="margin-top:14px">📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط — ينحفظ ويظهر تلقائياً عند كل حجز</p>
+        <div id="pickmap" class="pickmap"></div>
         <div id="acc-loc-status">${(state.address&&state.address.lat&&state.address.lng)?accLocOkHtml():''}</div>
         <button class="cta" style="margin-top:14px" onclick="saveAccount()">💾 حفظ التعديلات</button>
       </div>
@@ -1546,6 +1529,7 @@ function renderAccount(){
       </div>
       <div style="height:24px"></div>
     </div>`;
+  initPickMap();   // خريطة اختيار موقع البيت — نفس خريطة الحجز
 }
 /* ---------- باقات الاشتراك ---------- */
 let subPlan=null;
@@ -2230,6 +2214,7 @@ function setPin(lat,lng){
   state.address.mapUrl='https://www.google.com/maps?q='+la+','+ln;
   save();
   const st=document.getElementById('loc-status'); if(st) st.innerHTML=locOkHtml();
+  const ast=document.getElementById('acc-loc-status'); if(ast) ast.innerHTML=accLocOkHtml();   // صفحة الحساب
   reverseGeocodeCity(la,ln);
 }
 function locateMe(){
