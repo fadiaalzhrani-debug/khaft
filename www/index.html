@@ -1023,6 +1023,7 @@ function subscribeCloud(){
 }
 
 let view='home';
+try{ if(new URLSearchParams(location.search).has('join')) view='join'; }catch(e){}   /* رابط مباشر لتسجيل المزوّدين */
 let currentCat='plumb';
 let quickMode=false;        // طلب سريع (بدون اختيار خدمة)
 let adminFilter='all';
@@ -1797,49 +1798,102 @@ function renderJoin(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('انضم كمزوّد صيانة','home')}
-      <div class="flow-sum">🤝 <span>عندك خبرة في السباكة أو الكهرباء؟ سجّل وابدأ استقبال طلبات العملاء في منطقتك.</span></div>
+      <div class="flow-sum">🤝 <span>سجّل الآن — <b>التفعيل فوري</b>: أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.</span></div>
       <div class="panel" style="margin-top:14px"><h3>👤 بياناتك</h3>
         <div class="field"><label>الاسم / اسم المؤسسة <span class="req">*</span></label><input id="pv_name" value="${esc(p.name||'')}" placeholder="مثال: مؤسسة النور للصيانة" /></div>
         <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="pv_phone" value="${esc(p.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+        <div class="field"><label>كلمة مرور للدخول <span class="req">*</span></label><input id="pv_pass" type="password" placeholder="٦ أحرف أو أكثر — تدخل بها بوابة المزوّدين" /></div>
       </div>
-      <div class="panel"><h3>📍 منطقة العمل</h3>
-        <div class="field"><label>المدينة <span class="req">*</span></label><input id="pv_city" value="${esc(p.city||'')}" placeholder="مثال: الخبر" /></div>
+      <div class="panel"><h3>📍 مدن الخدمة <span class="req">*</span></h3>
+        <div class="field"><label>اكتب المدن مفصولة بفاصلة — أي طلب من هذه المدن يوصلك وأنت تقبله أو تتركه</label>
+          <input id="pv_cities" value="${esc(Array.isArray(p.cities)?p.cities.join('، '):(p.city||''))}" placeholder="مثال: الخبر، الدمام، الظهران" /></div>
       </div>
       <div class="panel"><h3>🛠️ نوع الخدمات <span class="req">*</span></h3>
         <div class="chips-pick">
-          ${Object.keys(CATS).map(k=>`<label><input type="checkbox" value="${CATS[k].name}" /> ${CATS[k].ico} ${CATS[k].name}</label>`).join('')}
+          ${Object.keys(CATS).map(k=>`<label><input type="checkbox" value="${CATS[k].name}" ${(p.services||[]).includes(CATS[k].name)?'checked':''} /> ${CATS[k].ico} ${CATS[k].name}</label>`).join('')}
         </div>
         <div class="field" style="margin-top:14px"><label>ملاحظة (اختياري)</label><textarea id="pv_note" placeholder="أي معلومة تحب تضيفها...">${esc(p.note||'')}</textarea></div>
       </div>
-      <button class="cta" onclick="submitProvider()">✅ إرسال طلب الانضمام</button>
+      <button class="cta" onclick="submitProvider()">✅ سجّل وفعّل حسابك</button>
+      <p style="color:var(--muted);font-size:.82rem;margin-top:10px;text-align:center">نرسل رمز تحقق لجوالك مرة واحدة لتأكيد الرقم.</p>
       <div style="height:26px"></div>
     </div>`;
 }
+let joinCtx=null;
+function normJoinPhone(v){ let d=String(v||'').replace(/[^0-9]/g,''); if(d.startsWith('00')) d=d.slice(2); if(d.startsWith('0')) d='966'+d.slice(1); if(!d.startsWith('966')) d='966'+d; return '+'+d; }
 async function submitProvider(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
-  const name=g('pv_name'), phone=g('pv_phone'), city=g('pv_city');
+  const name=g('pv_name'), phone=g('pv_phone'), pass=g('pv_pass');
+  const cities=g('pv_cities').split(/[،,\n]+/).map(s=>s.trim()).filter(Boolean);
   const services=Array.from(document.querySelectorAll('.chips-pick input:checked')).map(c=>c.value);
   if(!name){ toast('اكتب الاسم'); return; }
   if(!phone){ toast('اكتب رقم الجوال'); return; }
-  if(!city){ toast('اكتب المدينة'); return; }
+  if(pass.length<6){ toast('كلمة المرور ٦ أحرف على الأقل'); return; }
+  if(!cities.length){ toast('اكتب مدن الخدمة'); return; }
   if(!services.length){ toast('اختر نوع الخدمات'); return; }
-  const data={ name, phone, city, services, note:g('pv_note'), status:'pending' };
-  state.provider=data; save();
-  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
-  let ok=false;
-  if(cloudReady){ try{ const r=await sb.from('khafet_providers').insert(data); if(!r.error) ok=true; else console.warn('provider insert:', r.error.message); }catch(e){ console.warn(e); } }
-  if(!ok){ try{ const arr=JSON.parse(localStorage.getItem('khafet_providers')||'[]'); arr.push(Object.assign({created_at:Date.now()},data)); localStorage.setItem('khafet_providers',JSON.stringify(arr)); ok=true; }catch(e){} }
+  if(!cloudReady){ toast('لا يوجد اتصال — حاول بعد قليل'); return; }
+  const e164=normJoinPhone(phone);
+  joinCtx={ name, phone, pass, cities, services, note:g('pv_note'), e164, mode:'signup' };
+  state.provider={ name, phone, cities, services, note:joinCtx.note }; save();
+  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نرسل رمز التحقق...'; }
+  try{
+    /* ينشئ حساب دخول (جوال + كلمة مرور) — Supabase يرسل رمز تحقق SMS تلقائياً */
+    const { error }=await sb.auth.signUp({ phone:e164, password:pass });
+    if(error){
+      if(/already|registered|exists/i.test(error.message||'')){
+        joinCtx.mode='existing';                       /* رقم له حساب (عميل سابق مثلاً) — نتحقق ثم نضبط كلمة المرور */
+        const r2=await sb.auth.signInWithOtp({ phone:e164 });
+        if(r2.error) throw r2.error;
+      } else throw error;
+    }
+    renderJoinOtp('');
+  }catch(e2){
+    toast('تعذّر إرسال الرمز — تأكد من الرقم وحاول ثانية');
+    if(btn){ btn.disabled=false; btn.textContent='✅ سجّل وفعّل حسابك'; }
+  }
+}
+function renderJoinOtp(msg){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
-      <div class="panel" style="margin-top:30px">
-        <div class="success">
-          <div class="circle">🤝</div>
-          <h2>تم استلام طلبك!</h2>
-          <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنراجع طلبك ونتواصل معك على ${esc(phone)} لتفعيل حسابك واستقبال الطلبات.</p>
-        </div>
-        <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
+      ${pageHead('تأكيد الجوال','join')}
+      <div class="panel" style="margin-top:20px;text-align:center">
+        <div style="font-size:2.4rem">📲</div>
+        <h3 style="margin-top:8px">أدخل رمز التحقق</h3>
+        <p style="color:var(--muted);font-size:.9rem;margin-top:6px">أرسلنا رمزاً إلى ${esc(joinCtx.e164)}</p>
+        <div class="field" style="margin-top:14px"><input id="jn_otp" inputmode="numeric" autocomplete="one-time-code" placeholder="••••" style="text-align:center;letter-spacing:8px;font-size:1.4rem" onkeydown="if(event.key==='Enter')verifyJoinOtp()" /></div>
+        <button class="cta" onclick="verifyJoinOtp()">تأكيد وتفعيل ✅</button>
+        ${msg?`<div style="color:#c0392b;font-weight:700;margin-top:10px">${msg}</div>`:''}
       </div>
+      <div style="height:26px"></div>
     </div>`;
+}
+async function verifyJoinOtp(){
+  const code=((document.getElementById('jn_otp')||{}).value||'').trim();
+  if(code.length<4){ renderJoinOtp('اكتب الرمز كاملاً'); return; }
+  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نتحقق...'; }
+  try{
+    const { error }=await sb.auth.verifyOtp({ phone:joinCtx.e164, token:code, type:'sms' });
+    if(error){ renderJoinOtp('❌ الرمز غير صحيح — حاول ثانية'); return; }
+    if(joinCtx.mode==='existing'){ try{ await sb.auth.updateUser({ password:joinCtx.pass }); }catch(e){} }
+    /* أنشئ ملف المزوّد — الخادم وحده يقرر الحالة: الملف المكتمل يُعتمد فوراً */
+    let already=false;
+    const r=await sb.from('khafet_providers').insert({ name:joinCtx.name, phone:joinCtx.phone, city:joinCtx.cities[0]||'', cities:joinCtx.cities, services:joinCtx.services, note:joinCtx.note });
+    if(r.error){ if((r.error.code||'')==='23505'||/duplicate/i.test(r.error.message||'')) already=true; else throw r.error; }
+    try{ await sb.auth.signOut(); }catch(e){}
+    try{ await ensureAnonSession(); }catch(e){}
+    document.getElementById('app').innerHTML=`
+      <div class="wrap screen">
+        <div class="panel" style="margin-top:30px">
+          <div class="success">
+            <div class="circle">🎉</div>
+            <h2>${already?'رقمك مسجّل مزوّداً من قبل':'تم تفعيل حسابك فوراً!'}</h2>
+            <p style="color:var(--muted);margin-top:10px;line-height:1.9">${already?'ادخل بوابة المزوّدين بجوالك وكلمة مرورك مباشرة.':'حسابك جاهز — افتح بوابة المزوّدين وادخل بجوالك وكلمة المرور وابدأ استقبال طلبات مدنك.'}</p>
+          </div>
+          <a class="cta" style="margin-top:16px;display:block;text-align:center;text-decoration:none" href="https://fadiaalzhrani-debug.github.io/khaft-partners/www/provider.html" target="_blank" rel="noopener">🤝 افتح بوابة المزوّدين</a>
+          <button class="cta gold" style="margin-top:10px" onclick="go('home')">العودة للرئيسية</button>
+        </div>
+      </div>`;
+  }catch(e){ renderJoinOtp('تعذّر الإكمال — حاول مرة ثانية'); }
 }
 
 /* ---------- باقي الخدمات: الأقسام ---------- */
