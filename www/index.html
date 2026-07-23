@@ -664,19 +664,19 @@ const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل 
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي (النموذج الآمن — مو «لا محدودة»)
 const PLANS = [
-  { id:'apartment', name:'باقة الشقة', price:399, badge:'', avgVisit:150, visits:4, features:[
+  { id:'apartment', name:'باقة الشقة', price:649, badge:'', avgVisit:190, visits:5, features:[
       '🔧 أجرة اليد مجانية للصيانات البسيطة',
       '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
       'زيارة فحص وقائي',
       'خصم ١٠٪ على الأعمال الكبيرة',
       'أولوية في الحجز' ] },
-  { id:'home', name:'باقة المنزل', price:699, badge:'الأكثر طلباً', avgVisit:175, visits:6, features:[
+  { id:'home', name:'باقة المنزل', price:999, badge:'الأكثر طلباً', avgVisit:200, visits:7, features:[
       '🔧 أجرة اليد مجانية لكل الصيانات البسيطة طوال السنة',
       '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
       'زيارتان فحص وقائي دورية',
       'خصم ١٥٪ على الأعمال الكبيرة',
       'أولوية في الحجز' ] },
-  { id:'premium', name:'باقة راحة البال', price:999, badge:'', avgVisit:180, visits:8, features:[
+  { id:'premium', name:'باقة راحة البال', price:1449, badge:'', avgVisit:210, visits:10, features:[
       '🔧 أجرة اليد مجانية للصيانات البسيطة والمتوسطة',
       '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
       '٤ زيارات فحص وقائي دورية',
@@ -1407,17 +1407,36 @@ function shareCode(code){
 /* عنوان مختصر محفوظ للعرض في «حسابي» — نفضّل المحفوظ يدوياً، وإلا نبنيه من مكوّنات آخر طلب */
 function savedAddrLabel(){
   const a=state.address||{};
-  if(a.saved) return a.saved;
   return [a.city,a.district,a.street,a.house?('منزل '+a.house):''].filter(Boolean).join(' · ');
+}
+// حالة الموقع المحفوظ في صفحة الحساب
+function accLocOkHtml(){
+  const a=state.address||{};
+  return `<div class="loc-ok">✅ موقع بيتك محفوظ — <a href="${a.mapUrl}" target="_blank" rel="noopener">شوف على الخريطة</a> · بيظهر تلقائياً عند الحجز</div>`;
+}
+// تحديد موقع البيت من صفحة الحساب — يُخزَّن في نفس حقول الحجز (lat/lng) فيظهر تلقائياً
+function locateHome(){
+  if(!navigator.geolocation){ toast('جهازك ما يدعم تحديد الموقع'); return; }
+  toast('⏳ جارٍ تحديد موقعك...');
+  navigator.geolocation.getCurrentPosition(function(pos){
+    const lat=pos.coords.latitude.toFixed(6), lng=pos.coords.longitude.toFixed(6);
+    state.address=state.address||{};
+    state.address.lat=lat; state.address.lng=lng;
+    state.address.mapUrl='https://www.google.com/maps?q='+lat+','+lng;
+    save();
+    const st=document.getElementById('acc-loc-status'); if(st) st.innerHTML=accLocOkHtml();
+    reverseGeocodeCity(lat,lng);   // نستنتج المدينة بصمت (لتوزيع المزوّدين)
+    toast('✅ تم حفظ موقع بيتك — بيظهر تلقائياً عند الحجز');
+  }, function(){ toast('اسمح بإذن الموقع من إعدادات المتصفح وحاول ثانية'); }, {enableHighAccuracy:true,timeout:12000,maximumAge:0});
 }
 function saveAccount(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():undefined;};
-  const nm=g('acc_name'), ph=g('acc_phone'), ad=g('acc_addr');
+  const nm=g('acc_name'), ph=g('acc_phone'), hs=g('acc_house');
   state.customer=state.customer||{};
   if(nm!==undefined) state.customer.name=nm;
   if(ph!==undefined && ph) state.customer.phone=ph;
-  // العنوان المحفوظ: نخزّنه كملاحظة يدوية يستفيد منها الفني (لا يلغي إحداثيات GPS)
-  if(ad!==undefined) { state.address=state.address||{}; state.address.saved=ad; }
+  // رقم المنزل يُخزَّن في نفس حقل الحجز فيظهر تلقائياً عند الطلب
+  if(hs!==undefined) { state.address=state.address||{}; state.address.house=hs; }
   save(); toast('💾 تم حفظ التعديلات'); renderAccount();
 }
 async function logoutAccount(){
@@ -1508,15 +1527,14 @@ function renderAccount(){
       <div class="panel" style="margin-top:12px"><h3>⚙️ معلوماتي</h3>
         <div class="field"><label>الاسم</label><input id="acc_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
-        <div class="field"><label>🏠 عنواني المحفوظ</label>
-          <input id="acc_addr" value="${esc(savedAddrLabel())}" placeholder="مثال: الخبر · حي العقربية · منزل ٢٤٥١" /></div>
-        <button class="cta" onclick="saveAccount()">💾 حفظ التعديلات</button>
-        ${inApp()?`<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)">🔔 الإشعارات: ${esc(pushState)} <a onclick="initPush()" style="color:var(--gold);cursor:pointer;font-weight:800">↻ تحديث</a></div>`:''}
-      </div>
-
-      <div class="acc-support">
-        <a class="acc-sbtn" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener"><span>💬</span> واتساب</a>
-        <a class="acc-sbtn" href="tel:${PHONE}"><span>📞</span> اتصل بنا</a>
+        <div class="field"><label>🏠 رقم المنزل / الشقة</label>
+          <input id="acc_house" value="${esc((state.address||{}).house||'')}" placeholder="مثال: ٢٤٥١ · الدور الأول" /></div>
+        <button type="button" class="loc-btn" onclick="locateHome()">
+          <span class="lb-ic">📍</span>
+          <span class="lb-t"><b>حدّد موقع بيتي على الخريطة</b><small>نحفظه مرة وحدة ويظهر تلقائياً عند كل حجز</small></span>
+        </button>
+        <div id="acc-loc-status">${(state.address&&state.address.lat&&state.address.lng)?accLocOkHtml():''}</div>
+        <button class="cta" style="margin-top:14px" onclick="saveAccount()">💾 حفظ التعديلات</button>
       </div>
 
       <div class="acc-foot">
