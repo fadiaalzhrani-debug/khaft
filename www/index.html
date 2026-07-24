@@ -1900,13 +1900,18 @@ async function submitProvider(){
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نرسل رمز التحقق...'; }
   try{
     /* ينشئ حساب دخول (جوال + كلمة مرور) — Supabase يرسل رمز تحقق SMS تلقائياً */
-    const { error }=await sb.auth.signUp({ phone:e164, password:pass });
+    const { data, error }=await sb.auth.signUp({ phone:e164, password:pass });
     if(error){
       if(/already|registered|exists/i.test(error.message||'')){
         joinCtx.mode='existing';                       /* رقم له حساب (عميل سابق مثلاً) — نتحقق ثم نضبط كلمة المرور */
         const r2=await sb.auth.signInWithOtp({ phone:e164 });
         if(r2.error) throw r2.error;
       } else throw error;
+    } else if(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
+      /* رقم له حساب مسبقاً: signUp يرجّع «نجاحاً وهمياً» بلا رسالة — نرسل رمز دخول فعلياً */
+      joinCtx.mode='existing';
+      const r2=await sb.auth.signInWithOtp({ phone:e164 });
+      if(r2.error) throw r2.error;
     }
     renderJoinOtp('');
   }catch(e2){
