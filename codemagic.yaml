@@ -175,6 +175,8 @@ workflows:
         script: npm install
       - name: تجهيز منصة أندرويد
         script: |
+          # الإشعارات على أندرويد تحتاج Firebase (غير مُعد) — نزيلها من بناء أندرويد فقط لتفادي الانهيار
+          npm uninstall @capacitor/push-notifications 2>/dev/null || true
           npx cap add android || true
           npx cap sync android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
