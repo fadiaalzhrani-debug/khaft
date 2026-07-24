@@ -158,3 +158,59 @@ workflows:
       - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
+
+  # ═══════════ أندرويد (Google Play) — يُشغَّل يدوياً بعد إضافة مفتاح التوقيع ═══════════
+  android-khafet:
+    name: خافِت Android
+    instance_type: linux_x2
+    max_build_duration: 45
+    environment:
+      android_signing:
+        - khafet_upload          # اسم مفتاح التوقيع كما تنشئينه في Codemagic (حرفياً)
+      vars:
+        PACKAGE_NAME: "com.khafet.app"
+      node: 20.19.0
+    scripts:
+      - name: تثبيت الحزم
+        script: npm install
+      - name: تجهيز منصة أندرويد
+        script: |
+          npx cap add android || true
+          npx cap sync android
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+      - name: أيقونة التطبيق
+        script: npx capacitor-assets generate --android || true
+      - name: رقم الإصدار + إعداد التوقيع
+        script: |
+          python3 - <<'PY'
+          import re, os
+          p = 'android/app/build.gradle'
+          s = open(p, encoding='utf-8').read()
+          vc = os.environ.get('BUILD_NUMBER', '1')
+          s = re.sub(r'versionCode\s+\d+', 'versionCode ' + str(vc), s, count=1)
+          s = re.sub(r'versionName\s+"[^"]*"', 'versionName "1.0.0"', s, count=1)
+          s = re.sub(r'(buildTypes\s*\{\s*release\s*\{)', r'\1 signingConfig signingConfigs.release', s, count=1)
+          lines = [
+              '    signingConfigs {',
+              '        release {',
+              '            storeFile file(System.getenv("CM_KEYSTORE_PATH"))',
+              '            storePassword System.getenv("CM_KEYSTORE_PASSWORD")',
+              '            keyAlias System.getenv("CM_KEY_ALIAS")',
+              '            keyPassword System.getenv("CM_KEY_PASSWORD")',
+              '        }',
+              '    }',
+          ]
+          s = s.replace('android {', 'android {\n' + '\n'.join(lines), 1)
+          open(p, 'w', encoding='utf-8').write(s)
+          print('build.gradle updated: versionCode=' + str(vc))
+          PY
+      - name: بناء حزمة AAB موقّعة
+        script: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew bundleRelease
+          echo "— الحزمة الناتجة —"
+          find . -name "*.aab" -exec ls -lh {} \;
+    artifacts:
+      - android/app/build/outputs/bundle/**/*.aab
+      - android/app/build/outputs/**/mapping.txt
