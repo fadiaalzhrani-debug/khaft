@@ -162,7 +162,7 @@ workflows:
   # ═══════════ أندرويد (Google Play) — يُشغَّل يدوياً بعد إضافة مفتاح التوقيع ═══════════
   android-khafet:
     name: خافِت Android
-    instance_type: linux_x2
+    instance_type: mac_mini_m2
     max_build_duration: 45
     environment:
       android_signing:
