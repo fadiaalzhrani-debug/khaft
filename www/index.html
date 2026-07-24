@@ -877,6 +877,8 @@ function getPushPlugin(){
 let _pn=null, _pnReady=false;
 async function initPush(){
   if(!inApp()){ setPushState('متصفح — الإشعارات للتطبيق فقط'); return; }
+  // أندرويد: الإشعارات تحتاج إعداد Firebase (غير مُهيّأ بعد) — نتجاوزها لتفادي انهيار التطبيق عند الفتح
+  try{ const _p=window.Capacitor.getPlatform&&window.Capacitor.getPlatform(); if(_p==='android'){ setPushState('إشعارات أندرويد قريباً'); return; } }catch(e){}
   try{
     const PN = _pn || getPushPlugin();
     if(!PN){ setPushState('❌ إضافة الإشعارات غير مثبّتة'); return; }
