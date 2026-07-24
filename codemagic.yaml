@@ -178,6 +178,24 @@ workflows:
           npx cap add android || true
           npx cap sync android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+          # قوقل يطلب استهداف المستوى 35 — نرفع compile/target ونسمح به مع AGP الحالي
+          python3 - <<'PY'
+          import re
+          p = 'android/variables.gradle'
+          s = open(p, encoding='utf-8').read()
+          s = re.sub(r'compileSdkVersion\s*=\s*\d+', 'compileSdkVersion = 35', s)
+          s = re.sub(r'targetSdkVersion\s*=\s*\d+', 'targetSdkVersion = 35', s)
+          open(p, 'w', encoding='utf-8').write(s)
+          gp = 'android/gradle.properties'
+          g = open(gp, encoding='utf-8').read()
+          if 'suppressUnsupportedCompileSdk' not in g:
+              open(gp, 'a', encoding='utf-8').write('\nandroid.suppressUnsupportedCompileSdk=35\n')
+          print('✅ compileSdk/targetSdk = 35')
+          PY
+          # ثبّت منصة أندرويد 35 (إن لم تكن موجودة على الآلة)
+          (yes | sdkmanager "platforms;android-35" >/dev/null 2>&1) \
+            || (yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" >/dev/null 2>&1) \
+            || true
       - name: أيقونة التطبيق
         script: npx capacitor-assets generate --android || true
       - name: رقم الإصدار + إعداد التوقيع
