@@ -448,6 +448,11 @@
   .tip-content{margin-top:12px;line-height:2;font-size:1rem;color:var(--ink)}
   .tip-content p{margin:0 0 14px}
   .tip-content b{color:var(--ink)}
+  /* أيقونات SVG داخل الأزرار — بدل الإيموجي */
+  .qb-ic svg{color:#1A1712}
+  .sb-ic svg{color:#8a6d00}
+  .trust-item .ti-ic svg{color:#8a6d00}
+  .acc-tile .ti svg{color:#8a6d00;margin:0 auto;display:block}
   .foot-brand b{display:block;font-size:1.15rem;font-weight:900}
   .foot-brand span{color:var(--muted);font-size:.85rem}
   .foot-contact{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;margin-top:12px;color:var(--muted);font-size:.9rem;font-weight:600}
@@ -653,7 +658,7 @@ const OFF_DAYS = [5];
 const WORK_START = 8 * 60;
 const WORK_END   = 22 * 60;
 const SLOT_STEP  = 30;
-const BUFFER     = 15;
+const BUFFER     = 30;   // احتياط تنقّل بين الطلبات — الفني ما يتأخر على اللي بعده
 const LEAD_MIN   = 60;
 const ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «٤–٦م» بدل وقت دقيق)
 const MAX_JOBS_PER_DAY = 8;    // أقصى عدد حجوزات في اليوم (يمنع زحمة الجدول)
@@ -843,6 +848,7 @@ async function initCloud(){
       await ensureAnonSession();
       loadPrices();
       loadArticles();
+      loadBusy();
       loadOrdersFromCloud();
       loadMyRef().then(()=>{ if(['account','info','home'].includes(view)) render(); });  // كودي ورصيدي
       subscribeCloud();
@@ -1127,20 +1133,46 @@ function removeFromCart(id){ delete state.cart[id]; save(); render(); }
 /* ---- المواعيد المتاحة ---- */
 function bookingsOn(iso,excludeId){ return state.orders.filter(o=>o.date===iso && o.status!=='cancelled' && o.id!==excludeId); }
 function isOffDay(iso){ return OFF_DAYS.includes(parseISO(iso).getDay()); }
+/* الجدول المشغول الحقيقي — كل عملاء المنصة، مو بس هذا الجهاز.
+   بدونه كان عميلان يحجزان نفس الوقت والفني يتأخر. البيانات: يوم/وقت/مدة/مدينة فقط. */
+let BUSY=[], busyAt=0;
+async function loadBusy(){
+  if(!cloudReady||!sb) return false;
+  if(Date.now()-busyAt<60000) return false;   // كاش دقيقة
+  busyAt=Date.now();
+  try{
+    const { data }=await sb.rpc('khafet_busy_times');
+    if(Array.isArray(data)){ BUSY=data.map(r=>({date:r.d,start:r.s,dur:r.m||60,city:(r.c||'').trim()})); return true; }
+  }catch(e){}
+  return false;
+}
 function slotAvailable(iso,startMin,needMin,excludeId){
   if(isOffDay(iso)) return false;              // إجازة — ما فيه مواعيد
   const end=startMin+needMin+BUFFER;
   if(end-BUFFER>WORK_END) return false;
-  if(bookingsOn(iso,excludeId).length >= MAX_JOBS_PER_DAY) return false;  // اليوم ممتلئ
   const now=new Date();
   if(iso===dateISO(now)){
     const nowMin=now.getHours()*60+now.getMinutes();
     // النافذة تبقى مفتوحة طالما ما انتهت (حسب نهايتها مو بدايتها) — تقفل عند وصول وقتها النهائي
     if(nowMin >= startMin + ARRIVAL_WINDOW) return false;
   }
-  for(const o of bookingsOn(iso,excludeId)){
-    const oStart=o.startMin, oEnd=o.startMin+o.duration+BUFFER;
-    if(startMin<oEnd && end>oStart) return false;
+  // ندمج حجوزات هذا الجهاز مع الجدول الحقيقي لكل العملاء
+  const ex=excludeId?state.orders.find(o=>o.id===excludeId):null;
+  const myCity=((state.address&&state.address.city)||'').trim();
+  let exSkipped=false;
+  const cloud=BUSY.filter(b=>b.date===iso).filter(b=>{
+    if(ex && !exSkipped && b.start===ex.startMin){ exSkipped=true; return false; }   // الطلب الجاري تعديله
+    if(b.city && myCity && b.city!==myCity) return false;                            // مدينة ثانية = فريق ثاني
+    return true;
+  });
+  const seen=new Set(cloud.map(b=>b.start));
+  const local=bookingsOn(iso,excludeId).map(o=>({start:o.startMin,dur:o.duration||60}))
+    .filter(o=>!seen.has(o.start));   // طلباتي موجودة بالجدولين — بلا تكرار
+  const all=cloud.concat(local);
+  if(all.length >= MAX_JOBS_PER_DAY) return false;   // اليوم ممتلئ
+  for(const o of all){
+    const oEnd=o.start+o.dur+BUFFER;
+    if(startMin<oEnd && end>o.start) return false;
   }
   return true;
 }
@@ -1635,6 +1667,18 @@ const LOGO_BIG=`<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" 
   <path d="M8 23 L24 9 L40 23"/><path d="M12 21 V38 a2 2 0 0 0 2 2 H34 a2 2 0 0 0 2-2 V21"/><path d="M33 15 V11 h4 v8"/>
   <g transform="translate(11,18) scale(0.6)"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></g></svg>`;
 
+/* أيقونات خطّية احترافية (بدل الإيموجي) — نفس أسلوب الشعار */
+const IC={
+  zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
+  tag:'<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/>',
+  shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+  wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  badge:'<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76"/><path d="m9 12 2 2 4-4"/>',
+  gift:'<rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/>'
+};
+function icon(n,s){ return `<svg style="width:${s||22}px;height:${s||22}px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`; }
+
 /* ---------- الرئيسية: زرّان — طلب سريع / باقي الخدمات ---------- */
 function renderHome(){
   const L=myLoyalty();
@@ -1671,33 +1715,26 @@ function renderHome(){
 
     <div class="wrap screen">
       <button class="quick-btn" onclick="startQuick()">
-        <span class="qb-ic">⚡</span>
-        <span class="qb-t"><b>طلب سريع</b><small>لست متأكداً من العطل؟ احجز موعداً وأرفق فيديو للمشكلة، ويصلك الفني للمعاينة</small></span>
+        <span class="qb-ic">${icon('zap',26)}</span>
+        <span class="qb-t"><b>طلب سريع</b><small>لست متأكداً من العطل؟ احجز موعداً ويصلك الفني للمعاينة</small></span>
         <span class="qb-ar">←</span>
       </button>
 
       <button class="services-btn" onclick="go('prices')">
-        <span class="sb-ic">💰</span>
+        <span class="sb-ic">${icon('tag',24)}</span>
         <span class="sb-t"><b>قائمة الأسعار</b><small>تصفّح الخدمات وأسعارها واطلب ما يناسبك</small></span>
         <span class="qb-ar">←</span>
       </button>
 
-      <button class="services-btn" onclick="go('plans')">
-        <span class="sb-ic">🛡️</span>
-        <span class="sb-t"><b>باقات الصيانة السنوية</b><small>أجرة اليد مجانية طوال السنة — تدفع القطع فقط</small></span>
-        <span class="qb-ar">←</span>
-      </button>
-
-      <button class="services-btn" onclick="go('tips')">
-        <span class="sb-ic">📚</span>
-        <span class="sb-t"><b>نصائح السلامة المنزلية</b><small>مقالات مفيدة تحمي بيتك وتوفّر عليك</small></span>
-        <span class="qb-ar">←</span>
-      </button>
+      <div class="acc-grid" style="margin-top:12px">
+        <button class="acc-tile" onclick="go('plans')"><span class="ti">${icon('shield',26)}</span><b>باقات الصيانة</b><small>أجرة اليد مجانية طوال السنة</small></button>
+        <button class="acc-tile" onclick="go('tips')"><span class="ti">${icon('book',26)}</span><b>نصائح السلامة</b><small>مقالات تحمي بيتك</small></button>
+      </div>
 
       <div class="trust">
-        <div class="trust-item"><span class="ti-ic">🛡️</span><b>${WARRANTY}</b></div>
-        <div class="trust-item"><span class="ti-ic">🧑‍🔧</span><b>فنيون معتمدون</b></div>
-        <div class="trust-item"><span class="ti-ic">🎁</span><b>خدمات مجانية</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${WARRANTY}</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('wrench',14)}</span><b>فنيون معتمدون</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('gift',14)}</span><b>خدمات مجانية</b></div>
       </div>
 
       <div class="lticket" role="button" tabindex="0" onclick="showLoyaltyInfo()">
@@ -2056,6 +2093,8 @@ async function advanceOrder(id){
 
 function renderTime(){
   if(!quickMode && cartCount()===0){ go('home'); return; }
+  // حدّث الجدول المشغول الحقيقي — لو تغيّر أعد رسم المواعيد
+  loadBusy().then(ch=>{ if(ch && view==='time') render(); });
   const b=state.booking;
   const today=new Date(); today.setHours(0,0,0,0);
   const need0=scheduleDuration();
@@ -2100,6 +2139,7 @@ function renderTime(){
     <div class="wrap screen" style="padding-bottom:100px">
       ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
       ${stepBar(2)}
+      ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>المدة المتوقعة لطلبك: <b>${fmtDuration(need)}</b> — نحجز لك الفترة كاملة مع احتياط تنقّل، فلا نتأخر عليك ولا على من بعدك.</span></div>`}
       <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
         <span class="nt-check">${we?'✓':''}</span>
         <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
