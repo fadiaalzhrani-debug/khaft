@@ -300,6 +300,12 @@
   .st-progress{background:#FEF0C7;color:#92600A}
   .st-done{background:var(--ok-soft);color:#166534}
   .st-cancelled{background:var(--danger-soft);color:#991B1B}
+  .finding-note{display:flex;gap:11px;align-items:center;margin-top:12px;padding:12px 14px;border-radius:13px;background:#FFF7DA;border:1px solid #F0D68A}
+  .finding-note .fn-ic{font-size:1.5rem;line-height:1;animation:fnpulse 1.4s ease-in-out infinite}
+  .finding-note .fn-t b{display:block;font-weight:800;color:#7a5c00;font-size:.95rem}
+  .finding-note .fn-t span{color:#8a7a55;font-size:.83rem;line-height:1.5}
+  @keyframes fnpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.16);opacity:.55}}
+  @media(prefers-reduced-motion:reduce){.finding-note .fn-ic{animation:none}}
   .obook .oitems{color:var(--muted);font-size:.88rem}
   .obook .ometa{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   .obook .oact{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
@@ -2472,7 +2478,7 @@ function renderMyBookings(){
       const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
-        <div class="oh"><div><b>${o.id}</b><div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${STATUS_AR[o.status]}</span></div>
+        <div class="oh"><div><b>${o.id}</b><div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]}</span></div>
         <div class="ometa">
           <span class="pill time">📅 ${dayLabel(o.date)}</span>
           <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
@@ -2480,6 +2486,7 @@ function renderMyBookings(){
           <span class="pill price">${money(o.finalPrice)}${+o.loyaltyDisc>0?' 🎁':''}</span>
           ${o.discountPct>0?`<span class="pill" style="color:#0b7a3b;font-weight:800">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}
         </div>
+        ${o.status==='new'&&!o.providerPhone?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> — نرجو التكرّم باستقباله.</span></div>`:''}
         ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>الفني متأخّر قليلاً</b><span>موعدك المتوقّع صار حوالي ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
