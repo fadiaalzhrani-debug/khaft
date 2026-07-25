@@ -306,6 +306,10 @@
   .finding-note .fn-t span{color:#8a7a55;font-size:.83rem;line-height:1.5}
   @keyframes fnpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.16);opacity:.55}}
   @media(prefers-reduced-motion:reduce){.finding-note .fn-ic{animation:none}}
+  .warranty-note{display:flex;gap:11px;align-items:center;margin-top:12px;padding:12px 14px;border-radius:13px;background:#E6F4EA;border:1px solid #BCE3C7}
+  .warranty-note .wn-ic{font-size:1.5rem;line-height:1}
+  .warranty-note .wn-t b{display:block;font-weight:800;color:#166534;font-size:.95rem}
+  .warranty-note .wn-t span{color:#3d7a54;font-size:.82rem;line-height:1.5}
   .obook .oitems{color:var(--muted);font-size:.88rem}
   .obook .ometa{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   .obook .oact{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
@@ -946,7 +950,7 @@ function rowToOrder(r){
     date:r.service_date, startMin:r.start_min, duration:r.duration, endMin:r.end_min,
     price:Number(r.price)||0, finalPrice:Number(r.final_price)||0, free:!!r.free,
     status:r.status||'new', rating:r.rating||0, reminded:!!r.reminded,
-    quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
+    quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, warrantyDays:+r.warranty_days||0, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
     referredBy:r.referred_by||'', creditUsed:+r.credit_used||0, loyaltyDisc:+r.loyalty_disc||0, advanceDisc:+r.advance_disc||0,
   };
 }
@@ -2487,6 +2491,7 @@ function renderMyBookings(){
           ${o.discountPct>0?`<span class="pill" style="color:#0b7a3b;font-weight:800">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}
         </div>
         ${o.status==='new'&&!o.providerPhone?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:''}
+        ${o.status==='done'&&o.warrantyDays>0?`<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>خدمتك مضمونة ${ar(o.warrantyDays)} يوم</b><span>لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.</span></div></div>`:''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> — نرجو التكرّم باستقباله.</span></div>`:''}
         ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>الفني متأخّر قليلاً</b><span>موعدك المتوقّع صار حوالي ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
