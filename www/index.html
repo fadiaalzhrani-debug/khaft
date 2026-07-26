@@ -626,6 +626,9 @@
       <span class="brand-txt"><b>خافِت</b><small>للصيانة المنزلية</small></span>
     </a>
     <span class="spacer"></span>
+    <button id="langBtn" class="hbtn ghost" onclick="toggleLang()" title="English / عربي">
+      <span>🌐</span><span class="lbl">EN</span>
+    </button>
     <button id="accountBtn" class="hbtn ghost" onclick="go('account')" style="display:none">
       <span>👤</span><span class="lbl">حسابي</span>
       <span class="badge" id="myCount">0</span>
@@ -1056,17 +1059,22 @@ function money(n){ return ar(n)+' ر.س'; }
 function svc(id){ return SERVICES.find(s=>s.id===id); }
 function catCount(k){ return SERVICES.filter(s=>s.cat===k).length; }
 
+function _uiEN(){ return (typeof UILANG!=='undefined') && UILANG==='en'; }
+function LX(a,e){ return _uiEN()?e:a; }   // اختيار نص حسب اللغة (للجُمل المقسّمة بوسوم)
 function fmtDuration(mins){
-  if(!mins) return 'حسب المعاينة';
-  const h=Math.floor(mins/60), m=mins%60; const parts=[];
+  if(!mins) return _uiEN()?'After inspection':'حسب المعاينة';
+  const h=Math.floor(mins/60), m=mins%60;
+  if(_uiEN()){ const p=[]; if(h)p.push(h+' hr'); if(m)p.push(m+' min'); return p.join(' ')||'0 min'; }
+  const parts=[];
   if(h===1) parts.push('ساعة'); else if(h===2) parts.push('ساعتان'); else if(h>2) parts.push(ar(h)+' ساعات');
   if(m) parts.push(ar(m)+' دقيقة');
   return parts.join(' و');
 }
 function fmtTime(mins){
-  let h=Math.floor(mins/60), m=mins%60; const ap=h<12?'ص':'م';
-  let h12=h%12; if(h12===0)h12=12;
-  return ar(h12)+':'+ar(String(m).padStart(2,'0'))+' '+ap;
+  let h=Math.floor(mins/60), m=mins%60; let h12=h%12; if(h12===0)h12=12;
+  const en=_uiEN(); const ap = h<12 ? (en?'AM':'ص') : (en?'PM':'م');
+  const num = en ? (x=>String(x)) : ar;
+  return num(h12)+':'+num(String(m).padStart(2,'0'))+' '+ap;
 }
 const AR_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 const AR_MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
@@ -1107,7 +1115,7 @@ function advanceDiscFor(iso, base, quick){
   if(quick || !iso) return 0;
   return advanceEligible(iso) ? Math.round((Number(base)||0)*ADVANCE_PCT/100) : 0;
 }
-function dayLabel(s){ const d=parseISO(s); return AR_DAYS[d.getDay()]+' '+ar(d.getDate())+' '+AR_MONTHS[d.getMonth()]; }
+function dayLabel(s){ const d=parseISO(s); if(_uiEN()) return WEEK.en[d.getDay()]+' '+d.getDate()+' '+MON.en[d.getMonth()]; return AR_DAYS[d.getDay()]+' '+ar(d.getDate())+' '+AR_MONTHS[d.getMonth()]; }
 function i0(a,b){ return dateISO(a)===dateISO(b); }
 /* صيغ متعددة اللغات (أرقام لاتينية يفهمها الجميع) */
 function jobDate(iso,lang){ const d=parseISO(iso); return WEEK[lang][d.getDay()]+', '+d.getDate()+' '+MON[lang][d.getMonth()]; }
@@ -1610,14 +1618,14 @@ function renderPlans(){
     <div class="plan-old">لو دفعت لكل زيارة: <s>${money(full)}</s>/سنة</div>
     <div class="plan-price">${money(p.price)}<span> / سنة</span></div>
     <div class="plan-save">🎉 توفّر ${money(save)} (${ar(savePct)}٪)</div>
-    <div class="plan-calc">💡 متوسط الزيارة <b>${money(p.avgVisit)}</b> · البيت يحتاج <b>~${ar(p.visits)} زيارات</b> صيانة بالسنة</div>
+    <div class="plan-calc">💡 ${LX('متوسط الزيارة','Average visit')} <b>${money(p.avgVisit)}</b> · ${LX('البيت يحتاج','home needs')} <b>~${_uiEN()?p.visits:ar(p.visits)} ${LX('زيارات','visits')}</b> ${LX('صيانة بالسنة','a year')}</div>
     <ul class="plan-feats">${p.features.map(f=>`<li>✅ ${esc(f)}</li>`).join('')}</ul>
     <button class="cta ${p.badge?'':'gold'}" onclick="openSubscribe('${p.id}')">اشترك الآن</button>
   </div>`;}).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('باقات الصيانة','home')}
-      <div class="flow-sum" style="margin-top:14px">🛡️ <span><b>أجرة اليد مجانية طوال السنة</b> — أي صيانة بسيطة، الفني يجيك بلا أجرة، وتدفع الأغراض والقطع فقط. مع فحص دوري وأولوية وخصومات.</span></div>
+      <div class="flow-sum" style="margin-top:14px">🛡️ <span>${LX(`<b>أجرة اليد مجانية طوال السنة</b> — أي صيانة بسيطة، الفني يجيك بلا أجرة، وتدفع الأغراض والقطع فقط. مع فحص دوري وأولوية وخصومات.`,`<b>Free labor all year</b> — any simple repair, the technician comes at no labor charge; you only pay for parts and materials. Plus periodic inspections, priority and discounts.`)}</span></div>
       <div class="plans-grid">${cards}</div>
       <div class="labor-note">🔧 <div><b>الاشتراك يشمل أجرة اليد (شغل الفني) فقط</b><span>الأغراض والقطع — لمبات، مواسير، قطع غيار، مواد... — يشتريها العميل بسعر التكلفة.</span></div></div>
       <p style="color:var(--muted);font-size:.84rem;text-align:center;margin-top:12px">* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.</p>
@@ -1719,7 +1727,7 @@ function renderHome(){
   const L=myLoyalty();
   const dots=Array.from({length:LOYALTY_TARGET},(_,i)=>`<i class="${i<L.progress?'on':''}"></i>`).join('');
   const tkTitle=(L.rewardAvailable && L.rewardAmount>0) ? `جاهزة! خصم ${money(L.rewardAmount)} على طلبك القادم 🎉` : 'الطلب السابع مكافأتك 🎁';
-  const tkSub = `أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} طلبات`;
+  const tkSub = LX(`أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} طلبات`, `Completed ${L.progress} of ${LOYALTY_TARGET} orders`);
   const GIFT_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/></svg>';
 
   // آراء العملاء الإيجابية (٤ نجوم فأكثر + كتبوا ملاحظة)
@@ -1803,7 +1811,7 @@ function showLoyaltyInfo(){
   const statusLine = (L.rewardAvailable && L.rewardAmount>0)
     ? `<div class="loy-eg" style="background:#e8f7ee;border-color:#0b7a3b;color:#0b7a3b"><b>🎉 مكافأتك جاهزة!</b><br>طلبك القادم يُخصم منه <b>${money(L.rewardAmount)}</b> (متوسط طلباتك).</div>`
     : (L.done>0
-        ? `<div class="loy-eg"><b>تقدّمك:</b> أنجزت <b>${ar(L.progress)}</b> من <b>${ar(LOYALTY_TARGET)}</b> — باقي لك <b>${ar(left)}</b> ${left===1?'طلب':'طلبات'} للمكافأة.</div>`
+        ? LX(`<div class="loy-eg"><b>تقدّمك:</b> أنجزت <b>${ar(L.progress)}</b> من <b>${ar(LOYALTY_TARGET)}</b> — باقي لك <b>${ar(left)}</b> ${left===1?'طلب':'طلبات'} للمكافأة.</div>`,`<div class="loy-eg"><b>Progress:</b> Completed <b>${L.progress}</b> of <b>${LOYALTY_TARGET}</b> — <b>${left}</b> ${left===1?'order':'orders'} left for the reward.</div>`)
         : `<div class="loy-eg">ابدأ أول طلب، وبعد <b>${ar(LOYALTY_TARGET)}</b> طلبات تجيك مكافأتك 🎁</div>`);
   const sheet=`<div class="loc-sheet">
     <div class="loc-head"><h3>🎁 برنامج الولاء</h3><button class="loc-x" onclick="closeLoyaltyInfo()">✕</button></div>
@@ -1842,7 +1850,7 @@ function renderPrices(){
   const n=cartCount();
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${ar(n)} ${n===1?'خدمة':'خدمات'} · ${money(cartPrice())}</b><small>المدة التقريبية ${fmtDuration(cartDuration())}</small></div>
+      <div class="nb-info"><b>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))} · ${money(cartPrice())}</b><small>${LX('المدة التقريبية ','Est. time ')}${fmtDuration(cartDuration())}</small></div>
       <button class="nb-go" onclick="go('time')">التالي <span>←</span></button>
     </div></div>` : '';
   document.getElementById('app').innerHTML=`
@@ -2017,7 +2025,7 @@ function renderPick(){
   const n=cartCount();
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${ar(n)} ${n===1?'خدمة':'خدمات'} · ${fmtDuration(cartDuration())}</b><small>المدة التقريبية للتنفيذ</small></div>
+      <div class="nb-info"><b>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))} · ${fmtDuration(cartDuration())}</b><small>المدة التقريبية للتنفيذ</small></div>
       <button class="nb-go" onclick="go('time')">التالي <span>←</span></button>
     </div></div>` : '';
 
@@ -2179,7 +2187,7 @@ function renderTime(){
     <div class="wrap screen" style="padding-bottom:100px">
       ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
       ${stepBar(2)}
-      ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>المدة المتوقعة لطلبك: <b>${fmtDuration(need)}</b> — نحجز لك الفترة كاملة مع احتياط تنقّل، فلا نتأخر عليك ولا على من بعدك.</span></div>`}
+      ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>${LX(`المدة المتوقعة لطلبك: <b>${fmtDuration(need)}</b> — نحجز لك الفترة كاملة مع احتياط تنقّل، فلا نتأخر عليك ولا على من بعدك.`,`Estimated time for your order: <b>${fmtDuration(need)}</b> — we reserve the full window with a travel buffer, so we're never late for you or the next customer.`)}</span></div>`}
       <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
         <span class="nt-check">${we?'✓':''}</span>
         <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
@@ -2187,7 +2195,7 @@ function renderTime(){
       <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
       <div class="panel" id="slotsPanel"><h3>🕐 اختر نافذة الوصول</h3>
         ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
-        <div class="slot-note">💡 <span>تختار <b>نافذة وصول</b> (ساعتين) والفني يوصلك خلالها — أدق وأريح للطرفين، وما يتأخر عليك لو طال الطلب اللي قبلك.</span></div>
+        <div class="slot-note">💡 <span>${LX(`تختار <b>نافذة وصول</b> (ساعتين) والفني يوصلك خلالها — أدق وأريح للطرفين، وما يتأخر عليك لو طال الطلب اللي قبلك.`,`You pick a <b>2-hour arrival window</b> and the technician comes within it — more accurate and comfortable for both sides, and never late if the previous job runs long.`)}</span></div>
       </div>
     </div>
     <div class="nextbar"><div class="wrap">
@@ -2563,9 +2571,239 @@ function saveFeedback(id, btn){
 function pageHead(title,backTo){ return `<div class="pagehead"><button class="back" onclick="go('${backTo}')" title="رجوع">→</button><h2>${title}</h2></div>`; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 let toastTimer;
-function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=(typeof TR==='function'?TR(msg):msg); t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600); }
 
+/* ============================================================
+   🌐 ترجمة الواجهة عربي/إنجليزي — طبقة تلقائية على كامل الصفحة
+   تعمل بعد كل رسم عبر مراقب DOM. العربية هي الأصل، والإنجليزية ترجمة.
+   ============================================================ */
+let UILANG = localStorage.getItem('khafet_uilang') || 'ar';
+const T_DICT = {
+  // العلامة والهيدر والتنقّل
+  "خافِت":"Khafet","للصيانة المنزلية":"Home Maintenance","خافِت | صيانة منزلية شاملة":"Khafet | Complete Home Maintenance",
+  "صيانة منزلية موثوقة":"Trusted home maintenance","صيانة منزلية شاملة":"Complete home maintenance",
+  "حسابي":"Account","👤 حسابي":"👤 Account","تسجيل الدخول":"Sign in","🚪 تسجيل الخروج":"🚪 Sign out",
+  "الخدمات":"Services","طلباتي":"My orders","📋 متابعة طلباتي":"📋 My orders","العودة للرئيسية":"Back to home",
+  // الرئيسية
+  "🔧 احجز خدمة صيانة":"🔧 Book a service","احجز الآن":"Book now","احجز أول خدمة صيانة الآن.":"Book your first service now.",
+  "اطلب صيانة":"Request service","اطلب صيانتك عادي":"Request your service normally","اطلب صيانتك عادي — أجرة اليد مجانية":"Request service — free labor",
+  "صيانة احترافية تستاهلها":"Professional service you deserve","منزلك في أيادٍ أمينة":"Your home in trusted hands",
+  "صيانة منزلك بضغطة":"Home maintenance in one tap","تصفّح الخدمات وأسعارها واطلب ما يناسبك":"Browse services and prices and order what suits you",
+  "✨ ليش خدمة خافِت تستاهل؟":"✨ Why choose Khafet?","💬 وش قالوا عملاؤنا":"💬 What our clients said",
+  "🔧 أجرة اليد مجانية لكل الصيانات البسيطة طوال السنة":"🔧 Free labor on all simple repairs, all year",
+  "🔧 أجرة اليد مجانية للصيانات البسيطة":"🔧 Free labor on simple repairs",
+  "🔧 أجرة اليد مجانية للصيانات البسيطة والمتوسطة":"🔧 Free labor on simple & medium repairs",
+  "أجرة اليد مجانية طوال السنة":"Free labor all year","🛒 الأغراض والقطع على العميل (بسعر التكلفة)":"🛒 Parts & materials at cost (paid by client)",
+  "🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك":"🤝 Join as a provider and receive orders in your area",
+  "🤝 افتح بوابة المزوّدين":"🤝 Open providers portal","🤝 انضم كمزوّد":"🤝 Join as a provider",
+  // مزايا الخدمة
+  "فنيون معتمدون":"Certified technicians","فنيّون نظيفون بمظهر لائق وتعامل محترم":"Clean, well-presented and respectful technicians",
+  "أسعار واضحة، بلا مفاجآت بعد الشغل":"Clear prices, no surprises after the work","جودة عمل عالية ومتقنة":"High-quality, precise workmanship",
+  "ننظّف المكان بعد انتهاء العمل":"We clean up after finishing the work","نوصلك بأقرب فني/مزوّد في منطقتك.":"We connect you to the nearest provider in your area.",
+  "نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.":"We send your order to the nearest rated technician and confirm within minutes.",
+  "جاري تعيين أفضل فني لك":"Assigning the best technician for you","ضمان على شغل اليد والقطع — لو رجعت المشكلة نرجع بلا تكلفة":"Warranty on labor and parts — if the problem returns we come back free",
+  // فئات الخدمات
+  "🛠️ نوع الخدمات":"🛠️ Service type","اختر نوع الخدمات":"Choose a service type","نوع الخدمات":"Service type",
+  "اختر النوع، وبعدها الخدمة اللي تحتاجها.":"Choose the type, then the service you need.","اختر اللي تحتاجه — تقدر تختار أكثر من خدمة":"Pick what you need — you can choose more than one service",
+  "اختر الخدمة اللي تحتاجها — الأسعار تقديرية وقد تختلف حسب المعاينة.":"Choose the service you need — prices are estimates and may vary after inspection.",
+  "سباكة":"Plumbing","كهرباء":"Electrical","تكييف وتبريد":"AC & Cooling","نجارة":"Carpentry","دهان":"Painting","تنظيف":"Cleaning","أعمال عامة":"General work","أجهزة منزلية":"Home appliances",
+  // خدمات مفردة
+  "تغيير شطّاف":"Change bidet sprayer","تسليك مجاري/بالوعة":"Unclog drain / sewer","تغيير خلاط ماء":"Change water mixer","إصلاح تسريب مياه":"Fix water leak",
+  "تركيب/إصلاح سخان":"Install / repair water heater","إصلاح سيفون الحمام":"Fix toilet flush","تنظيف خزان المياه":"Clean water tank",
+  "تغيير لمبة/إضاءة":"Change lamp / light","تركيب ثريا":"Install chandelier","إصلاح قصر/انقطاع":"Fix short circuit / outage","تغيير مفتاح/بريزة":"Change switch / socket",
+  "تركيب مروحة سقف":"Install ceiling fan","فحص لوحة الكهرباء":"Inspect electrical panel","تركيب مكيف سبليت":"Install split AC","صيانة/إصلاح مكيف":"AC service / repair",
+  "تعبئة فريون":"Refill freon","تنظيف مكيف سبليت":"Clean split AC","صيانة مكيف شباك":"Window AC service","تعليق/تركيب رفوف":"Mount shelves","إصلاح باب/مفصلات":"Fix door / hinges",
+  "إصلاح دولاب/مطبخ":"Fix cabinet / kitchen","تركيب/تجميع أثاث":"Assemble furniture","إصلاح نافذة/شيش":"Fix window","دهان غرفة":"Paint a room","ترميم وتلميس دهان":"Paint touch-up",
+  "معالجة تشققات ورطوبة":"Fix cracks & damp","ترويبة بلاط/سيراميك":"Tile grouting","عزل تسرب بسيط":"Simple leak sealing","تنظيف عام للمنزل":"General home cleaning",
+  "تنظيف كنب وسجاد":"Sofa & carpet cleaning","إصلاح ثلاجة":"Fix fridge","إصلاح غسالة":"Fix washing machine","إصلاح غسالة صحون":"Fix dishwasher","إصلاح فرن/بوتاجاز":"Fix oven / stove","طلب مخصّص":"Custom request",
+  // أوصاف الخدمات
+  "فك وتركيب شطّاف الحمام مع الخرطوم.":"Remove and install bidet sprayer with hose.","تسليك انسداد المجاري أو البالوعات.":"Unclog drains or sewers.",
+  "تركيب خلاط مغسلة أو مطبخ جديد.":"Install a new sink or kitchen mixer.","كشف ومعالجة تسريب المواسير والوصلات.":"Find and fix pipe and joint leaks.",
+  "تركيب سخان جديد أو صيانة القديم.":"Install a new heater or service the old one.","إصلاح أو تغيير طرمبة/سيفون الكرسي.":"Fix or replace toilet flush / cistern.",
+  "تنظيف وتعقيم خزان المياه.":"Clean and disinfect the water tank.","تركيب أو تغيير لمبات وإضاءة.":"Install or change lamps and lighting.",
+  "تركيب ثريا أو نجفة مع التثبيت.":"Install a chandelier securely.","كشف وإصلاح انقطاع أو قصر كهربائي.":"Find and fix outage or short circuit.",
+  "تغيير مفتاح إضاءة أو بريزة كهرباء.":"Change a light switch or power socket.","تركيب وتوصيل مروحة سقف.":"Install and wire a ceiling fan.",
+  "فحص الطبلون والقواطع والأحمال.":"Inspect the panel, breakers and loads.","تركيب وتوصيل وحدة سبليت جديدة.":"Install and connect a new split unit.",
+  "كشف وإصلاح أعطال المكيف.":"Diagnose and fix AC faults.","شحن غاز الفريون وفحص التبريد.":"Recharge freon and check cooling.",
+  "غسيل وتنظيف وحدة السبليت الداخلية.":"Wash and clean the indoor split unit.","صيانة أو تركيب مكيف شباك.":"Service or install a window AC.",
+  "تركيب رفوف أو لوحات أو ستائر.":"Mount shelves, boards or curtains.","ضبط أو تغيير مفصلات وأقفال الأبواب.":"Adjust or replace door hinges and locks.",
+  "إصلاح أدراج وأبواب الدواليب والمطبخ.":"Fix drawers and cabinet/kitchen doors.","تجميع وتركيب الأثاث الجاهز.":"Assemble and install flat-pack furniture.",
+  "إصلاح نوافذ أو شيش حديد/خشب.":"Fix metal/wood windows or shutters.","دهان غرفة كاملة شامل التجهيز.":"Paint a full room including prep.",
+  "معالجة خدوش وتلميس مناطق محددة.":"Fix scratches and touch up specific areas.","إصلاح الشقوق وعزل الرطوبة قبل الدهان.":"Fix cracks and seal damp before painting.",
+  "تعبئة وتجديد فواصل البلاط والسيراميك.":"Refill and renew tile/ceramic grout.","معالجة تسرب أو عزل نقطة محددة.":"Seal a leak or waterproof a specific point.",
+  "تنظيف شامل لكامل المنزل.":"Full cleaning of the whole home.","تنظيف عميق للكنب والسجاد بالبخار.":"Deep steam cleaning for sofas and carpets.",
+  "كشف وإصلاح أعطال الثلاجة والتبريد.":"Diagnose and fix fridge and cooling faults.","كشف وإصلاح أعطال الغسالة.":"Diagnose and fix washing machine faults.",
+  "إصلاح غسالة الأطباق.":"Fix the dishwasher.","صيانة الأفران والبوتاجازات.":"Service ovens and stoves.","مشكلة غير مذكورة؟ نعاينها ونحدد السعر.":"Not listed? We inspect and set the price.",
+  // الحجز والوقت
+  "اختر اليوم والوقت":"Choose day and time","📅 اختر اليوم":"📅 Choose a day","🕐 اختر نافذة الوصول":"🕐 Choose arrival window","🕐 اختر نافذة الوصول أولاً":"🕐 Choose an arrival window first",
+  "نافذة وصول":"Arrival window","تاريخ أبعد":"Later date","إجازة — اختر يوماً آخر":"Day off — choose another day","لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.":"No slots available this day, try another.",
+  "المدة المتوقعة لطلبك:":"Estimated time for your order:","المدة التقريبية للتنفيذ":"Approx. duration","المدة التقريبية":"Approx. duration","💡 متوسط الزيارة":"💡 Average visit",
+  "ممتلئ":"Full","حسب المعاينة":"After inspection","يُحدد بعد المعاينة":"Set after inspection","بعد المعاينة":"After inspection",
+  // الموقع
+  "📍 وين نوصلك؟":"📍 Where do we come?","📍 اختر موقعك":"📍 Choose your location","حدّد موقعك":"Set your location","✓ موقعك محدّد":"✓ Location set",
+  "📍 استخدم موقعي الحالي (GPS)":"📍 Use my current location (GPS)","استخدم موقعي الحالي":"Use my current location","شوف على الخريطة":"View on map","افتح الخريطة":"Open map",
+  "حدّد موقعك على الخريطة أو اكتب رقم المنزل":"Set your location on the map or enter the house number","حدّد موقعك بدقة: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط 📌":"Pin your exact location: tap the map or drag the pin 📌",
+  "نحدّد موقعك تلقائياً، وتقدر تعدّله على الخريطة":"We locate you automatically, and you can adjust it on the map","اسمح بإذن الموقع أو اضغط على الخريطة يدوياً":"Allow location access or tap the map manually",
+  "تم تحديد موقعك ✅":"Location set ✅","تم تحديد موقعك ✅ — تقدر تعدّله بسحب الدبوس":"Location set ✅ — drag the pin to adjust","تم تحديد موقعك بدقة ✅ — اختر مدينتك للتوصيل":"Location pinned ✅ — choose your city for delivery",
+  "⚠️ اسمح بإذن الموقع أو اختر مدينتك يدوياً":"⚠️ Allow location access or choose your city manually","جهازك لا يدعم تحديد الموقع":"Your device doesn't support location","جهازك ما يدعم تحديد الموقع":"Your device doesn't support location",
+  "⏳ جارٍ تحديد موقعك...":"⏳ Locating you...","⏳ جارٍ تحديد موقعك... اسمح بالإذن":"⏳ Locating you... allow permission","🏠 رقم المنزل / الشقة":"🏠 House / apartment no.","رقم المنزل / الشقة":"House / apartment no.","منزل رقم":"House no.",
+  "📍 مدن الخدمة":"📍 Service cities","اكتب اسم المدينة":"Type the city name","اكتب مدن الخدمة":"Type your service cities","اكتب المدن مفصولة بفاصلة — أي طلب من هذه المدن يوصلك وأنت تقبله أو تتركه":"Type cities separated by commas — any order from them reaches you to accept or skip",
+  // المدن
+  "الرياض":"Riyadh","جدة":"Jeddah","مكة المكرمة":"Makkah","المدينة المنورة":"Madinah","الدمام":"Dammam","الخبر":"Khobar","الظهران":"Dhahran","القطيف":"Qatif","الجبيل":"Jubail","الأحساء":"Al-Ahsa",
+  "الطائف":"Taif","تبوك":"Tabuk","أبها":"Abha","خميس مشيط":"Khamis Mushait","حائل":"Hail","نجران":"Najran","جازان":"Jazan","ينبع":"Yanbu","بريدة":"Buraidah","الخرج":"Al-Kharj",
+  // البيانات وتسجيل الدخول
+  "👤 بياناتك":"👤 Your details","بياناتك":"Your details","👤 معلومات التواصل":"👤 Contact info","الاسم":"Name","الاسم / اسم المؤسسة":"Name / business name","اسمك (اختياري)":"Your name (optional)",
+  "اكتب الاسم":"Enter the name","اكتب الاسم من فضلك":"Please enter the name","رقم الجوال":"Mobile number","اكتب رقم الجوال":"Enter mobile number","اكتب رقم جوال سعودي صحيح (05xxxxxxxx)":"Enter a valid Saudi mobile (05xxxxxxxx)",
+  "جوالك (اختياري — لو تحب نرد عليك)":"Your mobile (optional — if you'd like a reply)","أدخل رقم جوالك ويوصلك رمز عبر":"Enter your mobile and a code will be sent via","نرسل رمز تحقق لجوالك مرة واحدة لتأكيد الرقم.":"We send a one-time code to verify your number.",
+  "أدخل رمز التحقق":"Enter the verification code","اكتب الرمز المرسل":"Enter the sent code","اكتب الرمز كاملاً":"Enter the full code","أرسلنا رمزاً إلى":"We sent a code to","الرمز":"Code","الرمز غير صحيح أو انتهت صلاحيته":"Code is wrong or expired",
+  "كلمة مرور للدخول":"Password to sign in","كلمة المرور ٦ أحرف على الأقل":"Password at least 6 characters","تأكيد ودخول":"Confirm and sign in","← تغيير الرقم":"← Change number",
+  "رسالة نصية":"SMS","واتساب":"WhatsApp","سجّل وفعّل حسابك":"Register and activate your account","✅ سجّل وفعّل حسابك":"✅ Register and activate your account",
+  // الأزرار العامة
+  "التالي":"Next","تأكيد":"Confirm","إلغاء":"Cancel","إرسال":"Send","📤 أرسل":"📤 Send","تأكيد وتفعيل ✅":"Confirm and activate ✅","✅ أكّد الطلب":"✅ Confirm order","➕ طلب جديد":"➕ New order","فهمت 👍":"Got it 👍",
+  "حفظ التعديلات":"Save changes","💾 حفظ التعديلات":"💾 Save changes","💾 تم حفظ التعديلات":"💾 Changes saved","🖨️ طباعة":"🖨️ Print","📋 نسخ":"📋 Copy","📋 تم نسخ الكود":"📋 Code copied",
+  // الطلب / الفاتورة
+  "🧾 الفاتورة":"🧾 Invoice","الفاتورة":"Invoice","فاتورة":"Invoice","الإجمالي":"Total","الإجمالي التقريبي":"Approx. total","السعر":"Price","العدد":"Qty","الخدمة":"Service","الموعد":"Appointment","الموقع":"Location","الوقت":"Time","التاريخ":"Date",
+  "＋ أضف من قسم آخر":"＋ Add from another category","صورة المنزل (اختياري)":"House photo (optional)","صوّر أو ارفع صورة لواجهة المنزل ليعرفه الفني بسهولة":"Take or upload a photo of the house front so the technician finds it easily",
+  "أرفق صورة أو مقطع":"Attach a photo or clip","صوّر المشكلة أو ارفع صورة/فيديو ليشوفها الفني (اختياري)":"Photograph the issue or upload a photo/video for the technician (optional)","ملاحظة (اختياري)":"Note (optional)","ملاحظات":"Notes",
+  "⚡ طلب سريع (معاينة)":"⚡ Quick request (inspection)","طلب سريع (معاينة)":"Quick request (inspection)","طلب سريع":"Quick request","لست متأكداً من العطل؟ احجز موعداً ويصلك الفني للمعاينة":"Not sure of the fault? Book a visit and a technician will come to inspect",
+  "تم استلام طلبك!":"Your order was received!","أُضيفت الخدمة إلى طلبك ✅":"Service added to your order ✅",
+  // الحالات
+  "جديد":"New","مؤكد":"Confirmed","قيد التنفيذ":"In progress","مكتمل":"Completed","ملغي":"Cancelled","قيد المراجعة":"Under review","تم الإنجاز":"Completed","بدء العمل":"Start work",
+  "الفني وصل الموقع":"Technician arrived","الفني متأخّر قليلاً":"Technician is slightly late","اعتذر الفني عن تنفيذ الطلب":"Technician declined the order","تم إلغاء الطلب":"Order cancelled",
+  // طلباتي
+  "ما عندك طلبات بعد":"You have no orders yet","إلغاء الطلب":"Cancel order","متأكد من إلغاء الطلب":"Cancel this order?","من «طلباتي» تقدر تلغي الطلب قبل بدء العمل. لو دفعت رصيداً يرجع لك.":"From \"My orders\" you can cancel before work starts. Any paid credit is refunded.",
+  "🔔 بلّغوني لو صار موعد أبكر":"🔔 Notify me if an earlier slot opens","صار فيه موعد أبكر متاح!":"An earlier slot is now available!","قدّم موعدي":"Move my appointment earlier","تقديم موعدك إلى":"Move your appointment to","قدّم موعدي":"Bring my appointment forward",
+  "ما عاد فيه موعد أبكر متاح":"No earlier slot available anymore","تم تقديم موعدك ✅":"Your appointment was moved earlier ✅","لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك":"If someone cancels and an earlier time opens, we'll contact you to move it up",
+  // حسابي
+  "أهلاً بك 👋":"Welcome 👋","⚙️ معلوماتي":"⚙️ My info","🎟️ كودك — شاركه واكسب":"🎟️ Your code — share and earn","📤 شارك كودك":"📤 Share your code","رصيدك":"Your balance","🚪 تسجيل الخروج":"🚪 Sign out","تسجيل الخروج من حسابك؟":"Sign out of your account?","تم تسجيل الخروج":"Signed out",
+  "🗑️ حذف الحساب":"🗑️ Delete account","حذف حسابك":"Delete your account","حذف حسابي نهائياً":"Delete my account permanently","نعم، احذف حسابي نهائياً":"Yes, delete my account permanently","حذف بياناتك الشخصية":"Delete your personal data",
+  "تأكيد أخير — سيُحذف حسابك وكل بياناتك نهائياً. متابعة؟":"Final confirmation — your account and all data will be permanently deleted. Continue?","عند تأكيد الحذف سيتم":"On confirming deletion, the following happens","لا يمكن التراجع":"Cannot be undone","نهائياً":"permanently",
+  "اسمك، جوالك، عنوانك، صورك ومقاطعك، ورصيدك وكود الإحالة.":"Your name, mobile, address, photos and clips, balance and referral code.","رصيدك ونقاط ولائك تُفقد نهائياً.":"Your balance and loyalty points are lost permanently.","ما راح تقدر تدخل برقمك مرة ثانية إلا بحساب جديد.":"You won't be able to sign in with your number again except with a new account.",
+  "✅ تم حذف حسابك نهائياً":"✅ Your account was permanently deleted","تعذّر حذف الحساب":"Couldn't delete the account",
+  // الولاء
+  "🎁 برنامج الولاء":"🎁 Loyalty program","الطلب السابع مكافأتك 🎁":"Your 7th order is your reward 🎁","🎉 مكافأتك جاهزة!":"🎉 Your reward is ready!","تقدّمك:":"Your progress:","كل طلب تُنجزه يُحتسب في رصيد ولائك.":"Every completed order counts toward your loyalty.",
+  "تستحق مكافأة على طلبك السابع.":"You earn a reward on your 7th order.","يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.":"Your 7th order is discounted by the average of your previous six orders.","طلبك القادم يُخصم منه":"Your next order is discounted by","يُخصم تلقائياً":"Applied automatically","يُخصم تلقائياً من طلبك الجاي":"Applied automatically to your next order",
+  "🎟️ كود صديق (اختياري)":"🎟️ Friend code (optional)","صديقك يحصل على":"Your friend gets","خصم = متوسط طلباتك":"Discount = your average order",
+  // التقييم والشكاوى
+  "قيّم الخدمة:":"Rate the service:","تقييمك للخدمة":"Your service rating","تقييمك للخدمة":"Rate the service","حاب تضيف كلمة طيبة عن الخدمة؟ (اختياري)":"Want to add a kind word about the service? (optional)","🙏 شكراً لتقييمك! رأيك يهمّنا ويساعدنا نتحسّن.":"🙏 Thanks for your rating! Your feedback helps us improve.","شكراً لتقييمك":"Thanks for your rating",
+  "😔 نعتذر عن عدم رضاك التام — اكتب لنا شكواك وبنتواصل معك ونعالجها.":"😔 Sorry you're not fully satisfied — write your complaint and we'll contact you to resolve it.","📩 إرسال الشكوى":"📩 Send complaint","🔒 رسالتك تصل للإدارة فقط، وما تظهر لأي عميل ثاني.":"🔒 Your message goes to management only and isn't shown to any other client.",
+  "💡 عندك اقتراح أو ملاحظة؟ اكتب لنا — رأيك يهمنا":"💡 Have a suggestion or note? Write to us — your opinion matters","اكتب لنا وبنقرأ كل كلمة — رأيك يطوّر خدمتنا فعلاً.":"Write to us and we read every word — your feedback truly improves our service.","رأيك يهمنا":"Your opinion matters",
+  "اكتب رسالتك / شكواك هنا...":"Write your message / complaint here...","اكتب رسالتك أولاً":"Write your message first","نوع الرسالة":"Message type","رسالتك":"Your message","شكوى":"Complaint","اقتراح":"Suggestion","شكر":"Thanks","اقتراح · شكوى":"Suggestion · Complaint",
+  "شكراً — وصلتنا رسالتك 🌟":"Thanks — we received your message 🌟","✅ وصلتنا رسالتك — شكراً لك 🌟":"✅ We received your message — thank you 🌟",
+  // الأسئلة الشائعة
+  "الأسئلة الشائعة":"FAQ","إجابات سريعة":"Quick answers","ما لقيت جوابك؟":"Didn't find your answer?","محتاج مساعدة فني؟":"Need help from a technician?","💬 كلّمنا على واتساب":"💬 Chat with us on WhatsApp","📞 اتصال":"📞 Call",
+  "كيف أحجز طلب صيانة؟":"How do I book a service?","متى يجي الفني؟":"When does the technician come?","كيف أدفع؟":"How do I pay?","فيه ضمان على الشغل؟":"Is there a warranty on the work?","كيف ألغي طلبي؟":"How do I cancel my order?","كيف أستفيد من الخصومات؟":"How do I benefit from discounts?","وش أسوي لو تأخّر الفني؟":"What if the technician is late?",
+  // الباقات
+  "باقات الصيانة":"Maintenance plans","باقة الشقة":"Apartment plan","باقة المنزل":"House plan","باقة راحة البال":"Peace-of-mind plan","اشترك الآن":"Subscribe now","✅ أرسل طلب الاشتراك":"✅ Send subscription request","الباقة المختارة:":"Selected plan:","التفعيل فوري":"Instant activation",
+  "الاشتراك يشمل أجرة اليد (شغل الفني) فقط":"The subscription covers labor (technician work) only","أولوية في الحجز":"Booking priority","أولوية قصوى + دعم واتساب مباشر":"Top priority + direct WhatsApp support","ضمان ممتد على الأعمال":"Extended warranty on work","صيانة بالسنة":"Yearly maintenance","زيارة فحص وقائي":"Preventive inspection visit","زيارتان فحص وقائي دورية":"Two periodic preventive visits","٤ زيارات فحص وقائي دورية":"Four periodic preventive visits",
+  "خصم ١٠٪ على الأعمال الكبيرة":"10% off major work","خصم ١٥٪ على الأعمال الكبيرة":"15% off major work","خصم ٢٥٪ على الأعمال الكبيرة":"25% off major work","بنتواصل معك على جوالك لتأكيد الباقة وتفعيلها.":"We'll contact you on your mobile to confirm and activate the plan.","* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.":"* Major work is discounted per plan · we'll contact you to activate.",
+  "وفّر أكثر":"Save more","خدمات مجانية":"Free services","الأكثر طلباً":"Most popular","الأكثر طلباً":"Most requested",
+  // النصائح
+  "نصائح السلامة":"Safety tips","مقالات تحمي بيتك":"Articles that protect your home","نصائح مفيدة تحمي بيتك وتوفّر عليك — من خبرة فنيّي خافِت.":"Useful tips that protect your home and save you money — from Khafet technicians' experience.","قريباً نصائح مفيدة":"Useful tips coming soon","جارٍ التحميل…":"Loading…",
+  // رسائل التحميل والأخطاء
+  "⏳ جارٍ الإرسال...":"⏳ Sending...","⏳ جارٍ الحذف…":"⏳ Deleting…","⏳ جارٍ رفع المقطع...":"⏳ Uploading clip...","⏳ جارٍ رفع صورة المنزل...":"⏳ Uploading house photo...","⏳ نتحقق...":"⏳ Verifying...","⏳ نرسل الرمز...":"⏳ Sending code...","⏳ نرسل رمز التحقق...":"⏳ Sending verification code...","⏳ نسجّل الجهاز…":"⏳ Registering device…",
+  "❌ الرمز غير صحيح — حاول ثانية":"❌ Wrong code — try again","❌ الكود غير صحيح":"❌ Wrong code","❌ تعذّر التحقق، حدّث الصفحة":"❌ Couldn't verify, refresh the page","❌ ما تقدر تستخدم كودك أنت":"❌ You can't use your own code","تعذّر إرسال الرمز — تأكد من الرقم وحاول ثانية":"Couldn't send code — check the number and try again","تعذّر إرسال الرمز — تأكد من الرقم وحاول مرة ثانية":"Couldn't send code — check the number and try again",
+  "⚠️ تعذّر التحقق — تأكد من الإنترنت وحاول ثانية":"⚠️ Couldn't verify — check your internet and try again","لا يوجد اتصال بالإنترنت":"No internet connection","لا يوجد اتصال بالخادم":"No server connection","لا يوجد اتصال — حاول بعد قليل":"No connection — try again shortly","انتهت الجلسة — سجّل الدخول وأعد المحاولة":"Session expired — sign in and try again",
+  "تعذّر الإرسال":"Couldn't send","تعذّر الإكمال — حاول مرة ثانية":"Couldn't complete — try again","تعذّر التجهيز — حدّث الصفحة":"Couldn't initialize — refresh the page","تعذّر فتح الملف":"Couldn't open the file","تعذّر رفع المقطع، بنكمّل الطلب بدونه":"Couldn't upload the clip, we'll continue without it","تعذّر رفع صورة المنزل، بنكمّل بدونها":"Couldn't upload the house photo, we'll continue without it","اسمح بالنوافذ المنبثقة للطباعة":"Allow pop-ups to print",
+  // المزوّد / الانضمام
+  "سجّل الآن —":"Register now —",": أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.":": Complete your details and start receiving orders in your cities.","الاسم / اسم المؤسسة":"Name / business name","مثال: خافت-K7F2M9":"e.g. Khafet-K7F2M9","مثال:":"e.g.",
+  // برامج/عناصر متفرقة
+  "ضمان ٧ أيام":"7-day warranty","ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Warranty on labor and parts. If the same issue returns, we come back at no extra cost.","لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.":"If the same issue recurs within the period, contact us and we'll fix it.",
+  "قائمة الأسعار":"Price list","قائمة المهام":"Job list","العمل المطلوب":"Work needed","العميل":"Customer","عميل":"Customer","علامة":"Landmark","المدة التقريبية":"Est. time","مهامك — الوقت والموقع والعمل المطلوب":"Your jobs — time, location and work needed","لا توجد مهام حالياً":"No jobs right now",
+  // الوحدات والوقت
+  "دقيقة":"min","ساعة":"hour","ساعتان":"2 hours","ساعتين":"2 hours","ساعات":"hours","يوم":"day","ر.س":"SAR",
+  // أيام الأسبوع
+  "الأحد":"Sunday","الإثنين":"Monday","الثلاثاء":"Tuesday","الأربعاء":"Wednesday","الخميس":"Thursday","الجمعة":"Friday","السبت":"Saturday",
+  // الأشهر
+  "يناير":"January","فبراير":"February","مارس":"March","أبريل":"April","مايو":"May","يونيو":"June","يوليو":"July","أغسطس":"August","سبتمبر":"September","أكتوبر":"October","نوفمبر":"November","ديسمبر":"December",
+  // إشعارات
+  "✅ الجهاز مسجّل — الإشعارات شغّالة":"✅ Device registered — notifications on","إشعارات أندرويد قريباً":"Android notifications coming soon","متصفح — الإشعارات للتطبيق فقط":"Browser — notifications are for the app only","سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.":"We'll remind you an hour before by SMS.",
+  // متفرقات
+  "خصم ١٠٪":"10% off","✅ خصم ١٠٪ مطبّق — أهلاً بك في خافِت 🎉":"✅ 10% off applied — welcome to Khafet 🎉","ℹ️ الخصم لأول طلب فقط — وأنت عميل عندنا من قبل 🙏":"ℹ️ The discount is for first orders only — you're already our client 🙏","يومياً ٨ ص – ١٠ م":"Daily 8 AM – 10 PM",
+  // إضافات المسح
+  "باقي الخدمات":"All services","أرسل الرمز عبر رسالة نصية":"Send code via SMS","أرسل الرمز عبر واتساب":"Send code via WhatsApp","انضم كمزوّد صيانة":"Join as a provider",
+  "لو دفعت لكل زيارة:":"If you paid per visit:","صيانة منزلية موثوقة · الخبر":"Trusted home maintenance · Khobar","تكييف":"AC","سلامة":"Safety","تركيب مكيف سبليت":"Install split AC",
+  "أرسل الرمز":"Send code","تغيير الرقم":"Change number","نافذة الوصول":"Arrival window","اختر مدينتك":"Choose your city","المدينة":"City","اختر مدينتك للتوصيل":"Choose your city for delivery",
+  "متى يناسبك؟":"When suits you?","اليوم":"Today","المدة":"Duration","الرصيد":"Balance","نقاط الولاء":"Loyalty points","الحالة":"Status","رقم الطلب":"Order no.","تفاصيل الطلب":"Order details","إجمالي":"Total",
+  "الأغراض والقطع — لمبات، مواسير، قطع غيار، مواد... — يشتريها العميل بسعر التكلفة.":"Parts & materials — bulbs, pipes, spare parts, supplies... — are bought by the client at cost.",
+  "زيارات":"visits","البيت يحتاج":"home needs"
+};
+/* ---- محرّك الترجمة ---- */
+function _west(s){ return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)); }
+const _TOK=[["/ سنة","/ year"],["/سنة","/year"],["توفّر","Save "],["ريال","SAR"],["ر.س","SAR"],["٪","%"]];
+const T_DICT_N={}; for(const _k in T_DICT){ T_DICT_N[_west(_k).trim()]=T_DICT[_k]; }
+const _EMO=/^((?:[←-⯿️‍\u{1F000}-\u{1FAFF}]+\s*)+)([\s\S]+)$/u;
+function _tr(raw){
+  if(raw==null) return raw;
+  const s=String(raw);
+  const m0=s.match(/^(\s*)([\s\S]*?)(\s*)$/); const lead=m0[1], core=m0[2], trail=m0[3];
+  if(!core) return raw;
+  // مطابقة كاملة (غير حسّاسة لشكل الأرقام العربية/الغربية)
+  const h=T_DICT_N[_west(core)];
+  if(h!=null && h!=='') return lead+h+trail;
+  // مطابقة بعد إزالة رمز تعبيري/سهم بادئ (مثل: 🔧 سباكة → 🔧 Plumbing)
+  const em=core.match(_EMO);
+  if(em){ const r=T_DICT_N[_west(em[2].trim())]; if(r!=null && r!=='') return lead+em[1]+r+trail; }
+  // لا مطابقة كاملة: طبّق بدائل الكلمات ثم حوّل الأرقام للغربية
+  let out=core, ch=false;
+  for(const [a,b] of _TOK){ if(out.indexOf(a)>=0){ out=out.split(a).join(b); ch=true; } }
+  const w=_west(out); if(w!==out){ out=w; ch=true; }
+  return ch? lead+out+trail : raw;
+}
+function TR(s){ return UILANG==='en'? _tr(s): s; }   // للاستخدام في التوست ونحوه
+const _SKIP='.tip-card,.tip-body,.tip-content,.tip-hero,.tip-cat,.tip-img,.notr';  // محتوى ديناميكي (مقالات) لا يُترجم
+function _translateEl(root){
+  if(!root) return;
+  const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  const nodes=[]; let n; while(n=w.nextNode()) nodes.push(n);
+  for(const node of nodes){
+    if(node.parentElement && node.parentElement.closest(_SKIP)) continue;   // تجاوز محتوى المقالات
+    if(node.__o===undefined) node.__o=node.nodeValue;   // خزّن الأصل مرة واحدة
+    const t=_tr(node.__o);
+    if(t!==node.nodeValue) node.nodeValue=t;
+  }
+  root.querySelectorAll('[placeholder]').forEach(el=>{ if(el.__po===undefined) el.__po=el.getAttribute('placeholder'); const t=T_DICT_N[_west((el.__po||'').trim())]; if(t) el.setAttribute('placeholder',t); });
+}
+function _restoreEl(root){
+  if(!root) return;
+  const w=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+  let n; while(n=w.nextNode()){ if(n.__o!==undefined && n.nodeValue!==n.__o) n.nodeValue=n.__o; }
+  root.querySelectorAll('[placeholder]').forEach(el=>{ if(el.__po!=null) el.setAttribute('placeholder',el.__po); });
+}
+let _mo=null;
+function _startI18n(){
+  if(!_mo) _mo=new MutationObserver(()=>{ if(UILANG==='en') applyLang(); });
+  try{ _mo.disconnect(); }catch(e){}
+  const app=document.getElementById('app'), hd=document.querySelector('header.top');
+  if(app) _mo.observe(app,{childList:true,subtree:true,characterData:true});
+  if(hd)  _mo.observe(hd,{childList:true,subtree:true,characterData:true});
+}
+function applyLang(){
+  if(UILANG!=='en') return;
+  if(_mo){ try{_mo.disconnect();}catch(e){} }
+  _translateEl(document.querySelector('header.top'));
+  _translateEl(document.getElementById('app'));
+  _startI18n();
+}
+function syncLangBtn(){ const b=document.getElementById('langBtn'); if(b){ const s=b.querySelector('.lbl'); if(s) s.textContent = UILANG==='en'?'ع':'EN'; } }
+function setUILang(l){
+  UILANG=l; try{localStorage.setItem('khafet_uilang',l);}catch(e){}
+  document.documentElement.lang = l==='en'?'en':'ar';
+  document.documentElement.dir  = l==='en'?'ltr':'rtl';
+  render();                                   // يعيد البناء بالعربي
+  if(l==='en') applyLang(); else _restoreEl(document.querySelector('header.top'));
+  syncLangBtn();
+  window.scrollTo(0,0);
+}
+function toggleLang(){ setUILang(UILANG==='en'?'ar':'en'); }
+
+/* ---- الإقلاع ---- */
+document.documentElement.lang = UILANG==='en'?'en':'ar';
+document.documentElement.dir  = UILANG==='en'?'ltr':'rtl';
 render();  // تُعرض الصفحة فوراً بدون انتظار أي شيء خارجي
+_startI18n();
+if(UILANG==='en') applyLang();
+syncLangBtn();
 // تُحمّل السحابة بالخلفية بعد جاهزية مكتبة Supabase (لا تعطّل فتح الصفحة)
 if(window.supabase) initCloud();
 else window.addEventListener('load', initCloud);
