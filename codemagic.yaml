@@ -214,7 +214,7 @@ workflows:
           import re, os
           p = 'android/app/build.gradle'
           s = open(p, encoding='utf-8').read()
-          vc = os.environ.get('BUILD_NUMBER', '1')
+          vc = str(int(os.environ.get('PROJECT_BUILD_NUMBER') or os.environ.get('BUILD_NUMBER') or '1') + 1000)
           s = re.sub(r'versionCode\s+\d+', 'versionCode ' + str(vc), s, count=1)
           s = re.sub(r'versionName\s+"[^"]*"', 'versionName "1.0.0"', s, count=1)
           s = re.sub(r'(buildTypes\s*\{\s*release\s*\{)', r'\1 signingConfig signingConfigs.release', s, count=1)
