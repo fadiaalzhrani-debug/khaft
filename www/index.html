@@ -269,6 +269,50 @@
   .labor-note b{display:block;color:#8a4b00;font-weight:900;font-size:.98rem}
   .labor-note span{display:block;color:#b26a00;font-weight:600;font-size:.88rem;margin-top:3px}
   .plans-grid{display:grid;gap:14px;margin-top:16px}
+  /* ── شاشة العقود: نفس تصميم موقع العقود ── */
+  .ct-wrap{background:#F2E7CF;border-radius:18px;padding:12px;margin-top:14px}
+  .ct-tiers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 2px 10px;border-bottom:2px solid #F5C518}
+  .ct-tier{background:#FAF3E3;border-radius:12px;padding:9px 5px;text-align:center;border:1px solid #E2D3B0}
+  .ct-tier.hl{background:#FBF0DA;outline:1.5px solid #F5C518;border-color:#F5C518}
+  .ct-tier .nm{font-size:.86rem;font-weight:800;color:#2E2618;line-height:1.35}
+  .ct-tier .was{font-size:.63rem;font-weight:700;color:#6E5F44;margin-top:3px}
+  .ct-tier .was s{color:#B3261E;text-decoration-thickness:2px;font-weight:800}
+  .ct-tier .pr{font-size:1rem;font-weight:800;color:#9C7A0A;margin-top:2px}
+  .ct-tier .pr small{display:block;font-size:.58rem;color:#6E5F44;font-weight:600}
+  .ct-tier .mo{font-size:.63rem;font-weight:800;color:#15803D;margin-top:2px}
+  .ct-row{border-bottom:1px solid #E2D3B0;padding:9px 4px 11px}
+  .ct-row:last-child{border-bottom:0}
+  .ct-lbl{font-size:.92rem;font-weight:800;color:#2E2618;padding:0 4px 7px}
+  .ct-lbl small{display:block;font-size:.7rem;font-weight:600;color:#6E5F44}
+  .ct-vals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+  .ct-v{background:#F6EEDC;border-radius:10px;padding:6px 2px;text-align:center;font-size:.82rem;font-weight:700;color:#2E2618}
+  .ct-v.hl{background:#FBF0DA}
+  .ct-v i{display:block;font-style:normal;font-size:.6rem;font-weight:800;color:#6E5F44;margin-bottom:2px}
+  .ct-v .y{color:#15803D;font-weight:800}
+  .ct-v .n2{color:#847356;opacity:.55}
+  .ct-v small{display:block;font-size:.66rem;color:#6E5F44;font-weight:600}
+  .ct-wide{background:#FBF0D8;border-radius:10px;padding:8px;text-align:center;font-size:.86rem;font-weight:700;color:#2E2618}
+  .ct-anchor{background:#FFF4D6;border:1.5px solid #F5C518;border-radius:12px;padding:11px 14px;margin:14px 0}
+  .ct-anchor .a1{font-size:.9rem;font-weight:800;color:#5A4506}
+  .ct-anchor .a2{font-size:.82rem;font-weight:700;color:#6E5F44;margin-top:4px}
+  .ct-anchor b{color:#9C7A0A}
+  .ct-svc{background:#FAF3E3;border:1px solid #E2D3B0;border-radius:14px;padding:14px 16px;margin-top:12px}
+  .ct-svc h4{font-size:.95rem;font-weight:800;color:#9C7A0A;margin:12px 0 7px}
+  .ct-svc h4:first-child{margin-top:0}
+  .ct-svc ul{list-style:none;padding:0;margin:0}
+  .ct-svc li{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:.86rem;
+    font-weight:600;color:#2E2618;padding:5px 0;border-bottom:1px dashed #EDE2C8}
+  .ct-svc li:last-child{border-bottom:0}
+  .ct-svc li::before{content:"\2713";color:#15803D;font-weight:800;margin-inline-end:2px}
+  .ct-svc li>span{flex:1;text-align:start}
+  .ct-svc .spr{color:#6B5205;font-size:.76rem;font-weight:800;white-space:nowrap;background:#FFF9EA;
+    border:1px solid #EBD9A8;border-radius:7px;padding:0 7px}
+  .ct-sub{display:grid;gap:8px;margin-top:14px}
+  .ct-sub button{width:100%;padding:13px;border:1.5px solid #E2D3B0;border-radius:13px;background:#FAF3E3;
+    font:inherit;font-weight:800;font-size:.98rem;color:#2E2618;cursor:pointer;display:flex;
+    flex-direction:column;gap:2px;align-items:center}
+  .ct-sub button.hl{background:#F5C518;border-color:#F5C518;color:#1C1813}
+  .ct-sub button span{font-size:.78rem;font-weight:700;opacity:.8}
   .plan-card{position:relative;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:20px 18px;box-shadow:var(--shadow-sm)}
   .plan-card.featured{border-color:var(--gold-strong);box-shadow:0 10px 30px rgba(245,197,24,.2)}
   .plan-badge{position:absolute;top:-11px;right:18px;background:var(--gold-strong);color:var(--ink);font-weight:900;font-size:.78rem;padding:5px 13px;border-radius:999px}
@@ -682,25 +726,49 @@ const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل 
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي (النموذج الآمن — مو «لا محدودة»)
 const PLANS = [
-  { id:'apartment', name:'باقة الشقة', price:649, badge:'', avgVisit:190, visits:5, features:[
-      '🔧 أجرة اليد مجانية للصيانات البسيطة',
-      '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
-      'زيارة فحص وقائي',
-      'خصم ١٠٪ على الأعمال الكبيرة',
-      'أولوية في الحجز' ] },
-  { id:'home', name:'باقة المنزل', price:999, badge:'الأكثر طلباً', avgVisit:200, visits:7, features:[
-      '🔧 أجرة اليد مجانية لكل الصيانات البسيطة طوال السنة',
-      '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
-      'زيارتان فحص وقائي دورية',
-      'خصم ١٥٪ على الأعمال الكبيرة',
-      'أولوية في الحجز' ] },
-  { id:'premium', name:'باقة راحة البال', price:1449, badge:'', avgVisit:210, visits:10, features:[
-      '🔧 أجرة اليد مجانية للصيانات البسيطة والمتوسطة',
-      '🛒 الأغراض والقطع على العميل (بسعر التكلفة)',
-      '٤ زيارات فحص وقائي دورية',
-      'خصم ٢٥٪ على الأعمال الكبيرة',
-      'أولوية قصوى + دعم واتساب مباشر',
-      'ضمان ممتد على الأعمال' ] },
+  { id:'basic', name:'باقة أساسي', nameEn:'Basic Plan', price:799, badge:'', was:1450, monthly:67, visits:8, visitsTxt:'8 زيارات', features:[
+      '🔧 أجرة اليد مجانية — 64 خدمة سباكة وكهرباء وتركيبات',
+      '🚚 التوصيل مجاني (رسوم المشوار)',
+      '🔔 تذكيرات الصيانة بالتطبيق',
+      '🔁 نقل العقد للمستأجر الجديد',
+      '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان',
+      '🛒 الأغراض والقطع على العميل' ] },
+  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1499, badge:'الأكثر طلباً', was:3000, monthly:125, visits:12, visitsTxt:'زيارات لا محدودة', features:[
+      '♾️ زيارات لا محدودة — أجرة اليد مجانية بالكامل',
+      '❄️ تنظيف كل مكيفات البيت مرة بالسنة',
+      '💧 كشف تسريب المياه بالأجهزة بدون تكسير',
+      '🏠 فحص شامل للبيت + فحص أمان الكهرباء مرة بالسنة',
+      '🔥 فحص السخان المركزي قبل الشتاء',
+      '🚚 توصيل مجاني · 🔔 تذكيرات · 🔁 نقل العقد',
+      '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
+  { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:1899, badge:'', was:3700, monthly:158, visits:12, visitsTxt:'زيارات لا محدودة', features:[
+      '♾️ زيارات لا محدودة — أجرة اليد مجانية بالكامل',
+      '❄️ تنظيف كل مكيفات البيت مرتين بالسنة',
+      '💧 كشف تسريب المياه بالأجهزة بدون تكسير',
+      '🏠 فحص شامل + فحص أمان الكهرباء مرتين بالسنة',
+      '🔥 فحص السخان المركزي مع صيانة شاملة',
+      '🚚 توصيل مجاني · 🔔 تذكيرات · 🔁 نقل العقد',
+      '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
+];
+
+const CT_ROWS=[
+ {l:'عدد الزيارات',le:'Visits',s:'اليد العاملة مجانية',se:'Labor is free',v:['8 زيارات','لا محدودة','لا محدودة'],ve:['8 visits','Unlimited','Unlimited']},
+ {l:'سباكة وكهرباء وتركيبات',le:'Plumbing, electrical & installs',s:'كل الخدمات بالأسفل — 64 خدمة',se:'All services below — 64 services',v:['YES','YES','YES']},
+ {l:'التوصيل',le:'Delivery',s:'رسوم المشوار',se:'Trip charge',v:['مجاني','مجاني','مجاني'],ve:['Free','Free','Free'],ok:1},
+ {l:'تذكيرات الصيانة',le:'Maintenance reminders',s:'بالتطبيق — نذكّرك بمواعيدك',se:'In-app — we remind you',v:['YES','YES','YES']},
+ {l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['YES','YES','YES']},
+ {l:'تنظيف المكيفات',le:'AC cleaning',s:'كل مكيفات البيت',se:'Every AC in the home',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
+ {l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','YES','YES']},
+ {l:'فحص شامل للبيت',le:'Full home inspection',s:'',se:'',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
+ {l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
+ {l:'فحص السخان المركزي',le:'Central heater check',s:'قبل الشتاء',se:'Before winter',v:['NO','YES','YES'],note:['','','مع صيانة شاملة'],noteE:['','','with full service']},
+ {l:'ضمان الإصلاح',le:'Repair warranty',s:'',se:'',wide:'365 يوماً — مضمون طول مدة العقد',wideE:'365 days — covered for the whole contract'},
+ {l:'ضمان الأغراض',le:'Parts warranty',s:'قطع الغيار',se:'Spare parts',wide:'سنتان على جميع القطع',wideE:'Two years on all parts'}
+];
+const CT_SVC=[
+ {t:'🚿 السباكة',te:'🚿 Plumbing',i:[['تركيب وتغيير الشطافات',25,'Bidet spray install/replace'],['تغيير المحابس بأنواعها',25,'Valve replacement (all types)'],['تركيب وتغيير الخلاطات',60,'Mixer tap install/replace'],['إصلاح السيفون والعوامة',35,'Cistern & float repair'],['تغيير عوامة الخزان',35,'Tank float replacement'],['إصلاح تسريبات الحمام والمطبخ',50,'Bath & kitchen leak repair'],['إصلاح كرسي الحمام',120,'Toilet repair'],['تركيب وتغيير رأس الدش',25,'Shower head install/replace'],['تغيير خراطيم الغسالة والمغاسل',15,'Washer & sink hose replacement'],['تركيب محبس الغسالة',40,'Washer valve install'],['تسليك الانسدادات البسيطة',50,'Clearing simple blockages'],['تغيير صفايات الأرضية',25,'Floor drain replacement'],['عزل سيليكون للمغاسل والأحواض',20,'Silicone sealing for sinks'],['تركيب فلاتر الماء',50,'Water filter install'],['معالجة ضعف ضغط الماء',50,'Fixing low water pressure'],['تنظيف مصافي الخلاطات',15,'Tap aerator cleaning'],['تغيير جلد وجوانات الحنفيات',30,'Tap washer & gasket replacement'],['ضبط عوامة الخزان العلوي',35,'Roof tank float adjustment'],['فحص خزان الماء العلوي',50,'Roof water tank check'],['تركيب موزعات الدش',25,'Shower diverter install'],['تغيير سيفون المغسلة الظاهر',55,'Exposed sink trap replacement'],['تركيب فلتر الغسالة',15,'Washer filter install']]},
+ {t:'💡 الكهرباء',te:'💡 Electrical',i:[['تغيير اللمبات والسبوت لايت',7,'Bulb & spotlight replacement'],['تركيب الإضاءة والليد',30,'Lighting & LED install'],['تركيب شرائط الليد الديكورية',30,'Decorative LED strip install'],['تركيب الثريات',50,'Chandelier install'],['تركيب إضاءة الحوش والحديقة',50,'Yard & garden lighting'],['إصلاح المفاتيح والأفياش',25,'Switch & socket repair'],['تغيير الدوايات (رأس اللمبة)',7,'Lamp holder replacement'],['تغيير القواطع (البريكرات)',100,'Breaker replacement'],['تركيب الشفاطات والمراوح',50,'Extractor & fan install'],['إصلاح مراوح السقف',80,'Ceiling fan repair'],['إصلاح وتركيب جرس الباب',25,'Doorbell repair/install'],['تركيب حساسات الإضاءة',25,'Light sensor install'],['تغيير بطاريات الإنذار والريموت',7,'Alarm & remote battery change'],['فحص لوحة الكهرباء',50,'Electrical panel check'],['فحص التأريض والحماية',50,'Earthing & protection check'],['تركيب مشتركات وموزعات الكهرباء',25,'Power strip & splitter install'],['تركيب إضاءة المرايا',30,'Mirror lighting install'],['تركيب لمبات الطوارئ',15,'Emergency light install'],['تركيب مفاتيح المكيفات',25,'AC switch install'],['إخفاء الأسلاك الظاهرة بالليستات',25,'Hiding exposed wires in trunking'],['تركيب خافت الإضاءة (دمر)',25,'Dimmer install'],['كشف سبب ارتفاع فاتورة الكهرباء',50,'Finding a high power bill cause']]},
+ {t:'🔨 التركيبات المنزلية',te:'🔨 Home installations',i:[['تركيب المرايا والرفوف',50,'Mirror & shelf mounting'],['تعليق البراويز واللوحات',30,'Hanging frames & artwork'],['تركيب وتعديل الستائر',50,'Curtain install & adjustment'],['تعليق الشاشات على الجدار',50,'Wall-mounting TVs'],['تركيب المقابض والأقفال',25,'Handle & lock install'],['تركيب كباس ومصدات الأبواب',25,'Door closer & stopper install'],['تركيب علاقات المناشف والإكسسوارات',20,'Towel rail & accessory install'],['تركيب ستاندات الكاميرات',25,'Camera mount install'],['تركيب صناديق البريد',25,'Mailbox install'],['تركيب الليستات الديكورية',25,'Decorative trim install'],['تجميع الأثاث البسيط',50,'Simple furniture assembly'],['تثبيت الأثاث بالجدار',25,'Anchoring furniture to walls'],['توصيل الغسالات',40,'Washing machine hookup'],['تركيب الساعات الجدارية والديكورات',20,'Wall clock & decor mounting'],['تركيب أرفف وحوامل المطبخ الصغيرة',20,'Small kitchen shelf & rack install'],['تركيب حواجز أمان الأطفال',25,'Child safety gate install'],['تشحيم وضبط مفصلات الأبواب',20,'Door hinge lubrication'],['ضبط أبواب الخزائن المايلة',20,'Realigning cabinet doors'],['تركيب عتبات وفواصل الأرضيات اللاصقة',25,'Adhesive floor threshold install'],['تركيب الشماعات خلف الأبواب',20,'Over-door hook install']]}
 ];
 const SAVE_KEY = 'siyanah_v1';
 
@@ -1056,6 +1124,7 @@ function t(key){ return I18N[techLang][key]; }
 const AR_DIG='٠١٢٣٤٥٦٧٨٩';
 function ar(n){ return String(n).replace(/[0-9]/g,d=>AR_DIG[d]); }
 function money(n){ return ar(n)+' ر.س'; }
+function en(n){ return Number(n).toLocaleString('en-US'); }
 function svc(id){ return SERVICES.find(s=>s.id===id); }
 function catCount(k){ return SERVICES.filter(s=>s.cat===k).length; }
 
@@ -1610,25 +1679,45 @@ function renderAccount(){
 /* ---------- باقات الاشتراك ---------- */
 let subPlan=null;
 function renderPlans(){
-  const cards=PLANS.map(p=>{
-    const full=p.avgVisit*p.visits, save=full-p.price, savePct=Math.round(save/full*100);
-    return `<div class="plan-card ${p.badge?'featured':''}">
-    ${p.badge?`<div class="plan-badge">${esc(p.badge)}</div>`:''}
-    <div class="plan-name">${esc(p.name)}</div>
-    <div class="plan-old">لو دفعت لكل زيارة: <s>${money(full)}</s>/سنة</div>
-    <div class="plan-price">${money(p.price)}<span> / سنة</span></div>
-    <div class="plan-save">🎉 توفّر ${money(save)} (${ar(savePct)}٪)</div>
-    <div class="plan-calc">💡 ${LX('متوسط الزيارة','Average visit')} <b>${money(p.avgVisit)}</b> · ${LX('البيت يحتاج','home needs')} <b>~${_uiEN()?p.visits:ar(p.visits)} ${LX('زيارات','visits')}</b> ${LX('صيانة بالسنة','a year')}</div>
-    <ul class="plan-feats">${p.features.map(f=>`<li>✅ ${esc(f)}</li>`).join('')}</ul>
-    <button class="cta ${p.badge?'':'gold'}" onclick="openSubscribe('${p.id}')">اشترك الآن</button>
-  </div>`;}).join('');
+  const E=_uiEN();
+  const T=(ar,en)=>E?en:ar;
+  const tiers=PLANS.map(p=>`<div class="ct-tier ${p.badge?'hl':''}">
+    <div class="nm">${esc(T(p.name,p.nameEn))}${p.badge?' ⭐':''}</div>
+    <div class="was">${T('بدون عقد','Without contract')} <s>${en(p.was)}</s> ${T('ريال','SAR')}</div>
+    <div class="pr">${en(p.price)}<small>${T('ريال/سنة','SAR / year')}</small></div>
+    <div class="mo">${T('شهري','Monthly')} ${en(p.monthly)} ${T('ريال','SAR')}</div>
+  </div>`).join('');
+  const cell=(r,k)=>{
+    const raw=r.v[k];
+    let inner;
+    if(raw==='YES') inner='<b class="y">✓</b>';
+    else if(raw==='NO') inner='<span class="n2">—</span>';
+    else inner='<b'+(r.ok?' class="y"':'')+'>'+esc(E&&r.ve?r.ve[k]:raw)+'</b>';
+    const nt=r.note?(E&&r.noteE?r.noteE[k]:r.note[k]):'';
+    return `<div class="ct-v ${k===1?'hl':''}"><i>${esc(T(PLANS[k].name.replace('باقة ',''),PLANS[k].nameEn.replace(' Plan','')))}</i>${inner}${nt?`<small>${esc(nt)}</small>`:''}</div>`;
+  };
+  const rows=CT_ROWS.map(r=>{
+    const body = r.wide
+      ? `<div class="ct-wide">${esc(T(r.wide,r.wideE))}</div>`
+      : `<div class="ct-vals">${r.v.map((_,k)=>cell(r,k)).join('')}</div>`;
+    const sub=T(r.s,r.se);
+    return `<div class="ct-row"><div class="ct-lbl">${esc(T(r.l,r.le))}${sub?`<small>${esc(sub)}</small>`:''}</div>${body}</div>`;
+  }).join('');
+  const svc=CT_SVC.map(g=>`<h4>${esc(T(g.t,g.te))}</h4><ul>${g.i.map(x=>`<li><span>${esc(T(x[0],x[2]||x[0]))}</span><b class="spr">${en(x[1])} ${T('ريال','SAR')}</b></li>`).join('')}</ul>`).join('');
+  const subs=PLANS.map(p=>`<button class="${p.badge?'hl':''}" onclick="openSubscribe('${p.id}')">${T('اشترك بـ'+p.name,'Subscribe — '+p.nameEn)}${p.badge?' ⭐':''}<span>${en(p.price)} ${T('ريال/سنة','SAR/year')} · ${T('شهري','monthly')} ${en(p.monthly)}</span></button>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
-      ${pageHead('باقات الصيانة','home')}
-      <div class="flow-sum" style="margin-top:14px">🛡️ <span>${LX(`<b>أجرة اليد مجانية طوال السنة</b> — أي صيانة بسيطة، الفني يجيك بلا أجرة، وتدفع الأغراض والقطع فقط. مع فحص دوري وأولوية وخصومات.`,`<b>Free labor all year</b> — any simple repair, the technician comes at no labor charge; you only pay for parts and materials. Plus periodic inspections, priority and discounts.`)}</span></div>
-      <div class="plans-grid">${cards}</div>
-      <div class="labor-note">🔧 <div><b>الاشتراك يشمل أجرة اليد (شغل الفني) فقط</b><span>الأغراض والقطع — لمبات، مواسير، قطع غيار، مواد... — يشتريها العميل بسعر التكلفة.</span></div></div>
-      <p style="color:var(--muted);font-size:.84rem;text-align:center;margin-top:12px">* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.</p>
+      ${pageHead(T('العقود السنوية','Annual Contracts'),'home')}
+      <div class="ct-wrap">
+        <div class="ct-tiers">${tiers}</div>
+        ${rows}
+      </div>
+      <div class="ct-sub">${subs}</div>
+      <div class="ct-anchor">
+        <div class="a1">${T('⚠️ الرقم جنب كل خدمة = <b>أجرة اليد فقط</b> — بدون عقد يضاف عليها رسوم الزيارة','⚠️ The price next to each service is <b>labor only</b> — without a contract a trip charge is added')}</div>
+        <div class="a2">${T('متوسط الفاتورة الوحدة بدون عقد <b>225</b> ريال · ومع العقد <b>كل هذي الخدمات مجانية</b> مهما تكررت','A single invoice without a contract averages <b>225</b> SAR · with a contract <b>all of these are free</b>, however often you need them')}</div>
+      </div>
+      <div class="ct-svc"><h4 style="color:#2E2618;font-size:1rem">${T('🛠 64 خدمة مشمولة — بكل الباقات','🛠 64 services included — in every plan')}</h4>${svc}</div>
       <div style="height:24px"></div>
     </div>`;
 }
@@ -2726,7 +2815,123 @@ const T_DICT = {
   "أرسل الرمز":"Send code","تغيير الرقم":"Change number","نافذة الوصول":"Arrival window","اختر مدينتك":"Choose your city","المدينة":"City","اختر مدينتك للتوصيل":"Choose your city for delivery",
   "متى يناسبك؟":"When suits you?","اليوم":"Today","المدة":"Duration","الرصيد":"Balance","نقاط الولاء":"Loyalty points","الحالة":"Status","رقم الطلب":"Order no.","تفاصيل الطلب":"Order details","إجمالي":"Total",
   "الأغراض والقطع — لمبات، مواسير، قطع غيار، مواد... — يشتريها العميل بسعر التكلفة.":"Parts & materials — bulbs, pipes, spare parts, supplies... — are bought by the client at cost.",
-  "زيارات":"visits","البيت يحتاج":"home needs"
+  "زيارات":"visits","البيت يحتاج":"home needs",
+  /* ── شاشة العقود السنوية ── */
+  "العقود السنوية":"Annual Contracts",
+  "باقة أساسي":"Basic Plan",
+  "باقة البيت":"Home Plan",
+  "باقة بريميوم":"Premium Plan",
+  "أساسي":"Basic",
+  "البيت":"Home",
+  "بريميوم":"Premium",
+  "بدون عقد":"Without contract",
+  "ريال/سنة":"SAR/year",
+  "شهري":"Monthly",
+  "اشترك بـباقة أساسي":"Subscribe — Basic",
+  "اشترك بـباقة البيت":"Subscribe — Home",
+  "اشترك بـباقة بريميوم":"Subscribe — Premium",
+  "عدد الزيارات":"Visits",
+  "اليد العاملة مجانية":"Labor is free",
+  "زيارات":"visits",
+  "لا محدودة":"Unlimited",
+  "سباكة وكهرباء وتركيبات":"Plumbing, electrical & installs",
+  "كل الخدمات بالأسفل — 64 خدمة":"All services below — 64 services",
+  "التوصيل":"Delivery",
+  "رسوم المشوار":"Trip charge",
+  "مجاني":"Free",
+  "تذكيرات الصيانة":"Maintenance reminders",
+  "بالتطبيق — نذكّرك بمواعيدك":"In-app — we remind you",
+  "نقل العقد للمستأجر الجديد":"Transfer to new tenant",
+  "لو أجّرت بيتك، العقد ينتقل":"Rent out your home — the contract moves with it",
+  "تنظيف المكيفات":"AC cleaning",
+  "كل مكيفات البيت":"Every AC in the home",
+  "مرة بالسنة":"Once a year",
+  "مرتان بالسنة":"Twice a year",
+  "كشف تسريب المياه":"Water leak detection",
+  "بالأجهزة، بدون تكسير":"With devices, no breaking",
+  "فحص شامل للبيت":"Full home inspection",
+  "فحص أمان الكهرباء":"Electrical safety check",
+  "اللوحة والتأريض والحماية":"Panel, earthing & protection",
+  "فحص السخان المركزي":"Central heater check",
+  "قبل الشتاء":"Before winter",
+  "مع صيانة شاملة":"with full service",
+  "ضمان الإصلاح":"Repair warranty",
+  "365 يوماً — مضمون طول مدة العقد":"365 days — covered for the whole contract",
+  "ضمان الأغراض":"Parts warranty",
+  "قطع الغيار":"Spare parts",
+  "سنتان على جميع القطع":"Two years on all parts",
+  "⚠️ الرقم جنب كل خدمة = أجرة اليد فقط — بدون عقد يضاف عليها رسوم الزيارة":"⚠️ The price next to each service is labor only — without a contract a trip charge is added",
+  "أجرة اليد فقط":"labor only",
+  "متوسط الفاتورة الوحدة بدون عقد 225 ريال · ومع العقد كل هذي الخدمات مجانية مهما تكررت":"Average single invoice without a contract is 225 SAR · with a contract all these services are free, however often you need them",
+  "كل هذي الخدمات مجانية":"all these services are free",
+  "🛠 64 خدمة مشمولة — بكل الباقات":"🛠 64 services included — in every plan",
+  "🚿 السباكة":"🚿 Plumbing",
+  "💡 الكهرباء":"💡 Electrical",
+  "🔨 التركيبات المنزلية":"🔨 Home installations",
+  "تركيب وتغيير الشطافات":"Bidet spray install/replace",
+  "تغيير المحابس بأنواعها":"Valve replacement (all types)",
+  "تركيب وتغيير الخلاطات":"Mixer tap install/replace",
+  "إصلاح السيفون والعوامة":"Cistern & float repair",
+  "تغيير عوامة الخزان":"Tank float replacement",
+  "إصلاح تسريبات الحمام والمطبخ":"Bath & kitchen leak repair",
+  "إصلاح كرسي الحمام":"Toilet repair",
+  "تركيب وتغيير رأس الدش":"Shower head install/replace",
+  "تغيير خراطيم الغسالة والمغاسل":"Washer & sink hose replacement",
+  "تركيب محبس الغسالة":"Washer valve install",
+  "تسليك الانسدادات البسيطة":"Clearing simple blockages",
+  "تغيير صفايات الأرضية":"Floor drain replacement",
+  "عزل سيليكون للمغاسل والأحواض":"Silicone sealing for sinks",
+  "تركيب فلاتر الماء":"Water filter install",
+  "معالجة ضعف ضغط الماء":"Fixing low water pressure",
+  "تنظيف مصافي الخلاطات":"Tap aerator cleaning",
+  "تغيير جلد وجوانات الحنفيات":"Tap washer & gasket replacement",
+  "ضبط عوامة الخزان العلوي":"Roof tank float adjustment",
+  "فحص خزان الماء العلوي":"Roof water tank check",
+  "تركيب موزعات الدش":"Shower diverter install",
+  "تغيير سيفون المغسلة الظاهر":"Exposed sink trap replacement",
+  "تركيب فلتر الغسالة":"Washer filter install",
+  "تغيير اللمبات والسبوت لايت":"Bulb & spotlight replacement",
+  "تركيب الإضاءة والليد":"Lighting & LED install",
+  "تركيب شرائط الليد الديكورية":"Decorative LED strip install",
+  "تركيب الثريات":"Chandelier install",
+  "تركيب إضاءة الحوش والحديقة":"Yard & garden lighting install",
+  "إصلاح المفاتيح والأفياش":"Switch & socket repair",
+  "تغيير الدوايات (رأس اللمبة)":"Lamp holder replacement",
+  "تغيير القواطع (البريكرات)":"Breaker replacement",
+  "تركيب الشفاطات والمراوح":"Extractor & fan install",
+  "إصلاح مراوح السقف":"Ceiling fan repair",
+  "إصلاح وتركيب جرس الباب":"Doorbell repair/install",
+  "تركيب حساسات الإضاءة":"Light sensor install",
+  "تغيير بطاريات الإنذار والريموت":"Alarm & remote battery change",
+  "فحص لوحة الكهرباء":"Electrical panel check",
+  "فحص التأريض والحماية":"Earthing & protection check",
+  "تركيب مشتركات وموزعات الكهرباء":"Power strip & splitter install",
+  "تركيب إضاءة المرايا":"Mirror lighting install",
+  "تركيب لمبات الطوارئ":"Emergency light install",
+  "تركيب مفاتيح المكيفات":"AC switch install",
+  "إخفاء الأسلاك الظاهرة بالليستات":"Hiding exposed wires in trunking",
+  "تركيب خافت الإضاءة (دمر)":"Dimmer install",
+  "كشف سبب ارتفاع فاتورة الكهرباء":"Finding the cause of a high power bill",
+  "تركيب المرايا والرفوف":"Mirror & shelf mounting",
+  "تعليق البراويز واللوحات":"Hanging frames & artwork",
+  "تركيب وتعديل الستائر":"Curtain install & adjustment",
+  "تعليق الشاشات على الجدار":"Wall-mounting TVs",
+  "تركيب المقابض والأقفال":"Handle & lock install",
+  "تركيب كباس ومصدات الأبواب":"Door closer & stopper install",
+  "تركيب علاقات المناشف والإكسسوارات":"Towel rail & accessory install",
+  "تركيب ستاندات الكاميرات":"Camera mount install",
+  "تركيب صناديق البريد":"Mailbox install",
+  "تركيب الليستات الديكورية":"Decorative trim install",
+  "تجميع الأثاث البسيط":"Simple furniture assembly",
+  "تثبيت الأثاث بالجدار":"Anchoring furniture to the wall",
+  "توصيل الغسالات":"Washing machine hookup",
+  "تركيب الساعات الجدارية والديكورات":"Wall clock & decor mounting",
+  "تركيب أرفف وحوامل المطبخ الصغيرة":"Small kitchen shelf & rack install",
+  "تركيب حواجز أمان الأطفال":"Child safety gate install",
+  "تشحيم وضبط مفصلات الأبواب":"Door hinge lubrication & adjustment",
+  "ضبط أبواب الخزائن المايلة":"Realigning cabinet doors",
+  "تركيب عتبات وفواصل الأرضيات اللاصقة":"Adhesive floor threshold install",
+  "تركيب الشماعات خلف الأبواب":"Over-door hook install"
 };
 /* ---- محرّك الترجمة ---- */
 function _west(s){ return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)); }
