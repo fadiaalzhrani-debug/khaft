@@ -269,6 +269,50 @@
   .labor-note b{display:block;color:#8a4b00;font-weight:900;font-size:.98rem}
   .labor-note span{display:block;color:#b26a00;font-weight:600;font-size:.88rem;margin-top:3px}
   .plans-grid{display:grid;gap:14px;margin-top:16px}
+  /* ── الموافقة على الشروط ── */
+  .agree{display:flex;align-items:flex-start;gap:10px;background:var(--gold-tint);border:1.5px solid var(--gold-soft);
+    border-radius:13px;padding:12px 13px;margin-top:12px;cursor:pointer}
+  .agree.on{border-color:var(--gold-strong);background:#FDF3D3}
+  .agree input{width:22px;height:22px;accent-color:var(--gold-deep);flex:none;margin-top:1px;cursor:pointer}
+  .agree .t{font-size:.9rem;font-weight:700;color:var(--ink);line-height:1.6}
+  .agree a{color:var(--gold-deep);font-weight:800;text-decoration:underline}
+  .tmodal{position:fixed;inset:0;background:rgba(20,16,8,.55);display:none;z-index:9999;
+    align-items:flex-end;justify-content:center}
+  .tmodal.on{display:flex}
+  .tsheet{background:var(--bg);width:100%;max-width:640px;max-height:88vh;border-radius:20px 20px 0 0;
+    display:flex;flex-direction:column;overflow:hidden}
+  .thead{background:var(--brand);color:#F3EDE0;padding:15px 18px;display:flex;justify-content:space-between;align-items:center;flex:none}
+  .thead h3{font-size:1rem;font-weight:800;color:var(--gold)}
+  .thead button{background:transparent;border:0;color:#F3EDE0;font-size:1.5rem;cursor:pointer;line-height:1}
+  .tbody{overflow-y:auto;padding:14px 16px;-webkit-overflow-scrolling:touch}
+  .tsec{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:9px}
+  .tsec h4{font-size:.95rem;font-weight:800;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+  .tsec h4 i{background:var(--gold);color:var(--ink);border-radius:7px;min-width:24px;height:24px;
+    display:inline-grid;place-items:center;font-size:.78rem;font-weight:800;font-style:normal}
+  .tsec ol{padding-inline-start:19px;display:flex;flex-direction:column;gap:6px;font-size:.87rem;line-height:1.75}
+  .tsec li::marker{color:var(--gold-deep);font-weight:800}
+  .tsec b{color:var(--gold-deep)}
+  .tfoot{flex:none;padding:12px 16px;border-top:1px solid var(--line);background:var(--card)}
+  .tfoot button{width:100%;padding:14px;border:0;border-radius:13px;background:var(--gold);color:#1C1813;
+    font:inherit;font-weight:800;font-size:1rem;cursor:pointer}
+  /* ── الدفع ── */
+  .paybox{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
+  .paybox h4{font-size:.95rem;font-weight:800;margin-bottom:9px;color:var(--ink)}
+  .payopt{display:grid;gap:9px}
+  .payopt label{display:flex;align-items:flex-start;gap:10px;border:1.5px solid var(--line);border-radius:13px;
+    padding:12px 13px;cursor:pointer;background:var(--bg)}
+  .payopt label.on{border-color:var(--gold-strong);background:var(--gold-tint);box-shadow:0 4px 14px rgba(245,197,24,.16)}
+  .payopt input{margin-top:3px;accent-color:var(--gold-deep);width:19px;height:19px;flex:none}
+  .payopt .t{font-weight:800;font-size:.95rem;color:var(--ink)}
+  .payopt .d{font-size:.8rem;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.5}
+  .payopt .badges{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+  .payopt .badges span{background:#fff;border:1px solid var(--line);border-radius:7px;padding:2px 7px;
+    font-size:.68rem;font-weight:800;color:var(--ink-soft)}
+  .paynote{font-size:.78rem;color:var(--muted);font-weight:600;margin-top:9px;line-height:1.6}
+  .payresult{text-align:center;padding:26px 18px}
+  .payresult .ic{font-size:3rem;margin-bottom:8px}
+  .payresult h2{font-size:1.25rem;font-weight:900;color:var(--ink)}
+  .payresult p{color:var(--muted);font-weight:600;margin-top:8px;line-height:1.7}
   /* ── شاشة العقود: نفس تصميم موقع العقود ── */
   .ct-wrap{background:#F2E7CF;border-radius:18px;padding:12px;margin-top:14px}
   .ct-tiers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 2px 10px;border-bottom:2px solid #F5C518}
@@ -463,6 +507,8 @@
   .trust-item b{font-size:.87rem;font-weight:800;white-space:nowrap;letter-spacing:-.01em}
   /* فوتر احترافي بمعلومات التواصل */
   .site-footer{margin:32px 0 40px;border-top:1px solid var(--line);padding-top:24px;text-align:center}
+  .footlang{padding:11px 26px;border:1.5px solid var(--line-strong);border-radius:12px;background:var(--card);
+    font:inherit;font-weight:800;font-size:.95rem;color:var(--ink);cursor:pointer;box-shadow:var(--shadow-sm)}
   .staff-links{margin-top:16px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px 18px;padding-top:14px;border-top:1px dashed var(--line)}
   .staff-links a{color:var(--muted);font-weight:700;font-size:.85rem;text-decoration:none}
   .staff-links a:hover{color:var(--ink)}
@@ -726,42 +772,43 @@ const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل 
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي (النموذج الآمن — مو «لا محدودة»)
 const PLANS = [
-  { id:'basic', name:'باقة أساسي', nameEn:'Basic Plan', price:799, badge:'', was:1450, monthly:67, visits:8, visitsTxt:'8 زيارات', features:[
+  { id:'basic', name:'باقة أساسي', nameEn:'Basic Plan', price:999, badge:'', was:1450, monthly:83, visits:8, visitsTxt:'8 زيارات', features:[
       '🔧 أجرة اليد مجانية — 64 خدمة سباكة وكهرباء وتركيبات',
       '🚚 التوصيل مجاني (رسوم المشوار)',
       '🔔 تذكيرات الصيانة بالتطبيق',
-      '🔁 نقل العقد للمستأجر الجديد',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان',
       '🛒 الأغراض والقطع على العميل' ] },
-  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1499, badge:'الأكثر طلباً', was:3000, monthly:125, visits:12, visitsTxt:'زيارات لا محدودة', features:[
-      '♾️ زيارات لا محدودة — أجرة اليد مجانية بالكامل',
-      '❄️ تنظيف كل مكيفات البيت مرة بالسنة',
-      '💧 كشف تسريب المياه بالأجهزة بدون تكسير',
-      '🏠 فحص شامل للبيت + فحص أمان الكهرباء مرة بالسنة',
+  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1799, badge:'الأكثر طلباً', was:3000, monthly:150, visits:12, visitsTxt:'12 زيارة', features:[
+      '🔧 12 زيارة بالسنة — أجرة اليد مجانية',
+      '❄️ تنظيف كل مكيفات البيت مرة بالسنة (سبليت · حتى 12)',
+      '🏠 فحص شامل للبيت مرة بالسنة',
       '🔥 فحص السخان المركزي قبل الشتاء',
-      '🚚 توصيل مجاني · 🔔 تذكيرات · 🔁 نقل العقد',
+      '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
-  { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:1899, badge:'', was:3700, monthly:158, visits:12, visitsTxt:'زيارات لا محدودة', features:[
+  { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:2299, badge:'', was:3700, monthly:192, visits:12, visitsTxt:'زيارات لا محدودة', features:[
       '♾️ زيارات لا محدودة — أجرة اليد مجانية بالكامل',
       '❄️ تنظيف كل مكيفات البيت مرتين بالسنة',
       '💧 كشف تسريب المياه بالأجهزة بدون تكسير',
-      '🏠 فحص شامل + فحص أمان الكهرباء مرتين بالسنة',
+      '🏠 فحص شامل مرتين + فحص أمان الكهرباء مرة بالسنة',
       '🔥 فحص السخان المركزي مع صيانة شاملة',
-      '🚚 توصيل مجاني · 🔔 تذكيرات · 🔁 نقل العقد',
+      '🏷️ خصم 10% على قطع الغيار — لأول 200 عقد',
+      '🔁 نقل العقد للمستأجر الجديد',
+      '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
 ];
 
 const CT_ROWS=[
- {l:'عدد الزيارات',le:'Visits',s:'اليد العاملة مجانية',se:'Labor is free',v:['8 زيارات','لا محدودة','لا محدودة'],ve:['8 visits','Unlimited','Unlimited']},
+ {l:'عدد الزيارات',le:'Visits',s:'اليد العاملة مجانية',se:'Labor is free',v:['8 زيارات','12 زيارة','لا محدودة'],ve:['8 visits','12 visits','Unlimited']},
  {l:'سباكة وكهرباء وتركيبات',le:'Plumbing, electrical & installs',s:'كل الخدمات بالأسفل — 64 خدمة',se:'All services below — 64 services',v:['YES','YES','YES']},
  {l:'التوصيل',le:'Delivery',s:'رسوم المشوار',se:'Trip charge',v:['مجاني','مجاني','مجاني'],ve:['Free','Free','Free'],ok:1},
  {l:'تذكيرات الصيانة',le:'Maintenance reminders',s:'بالتطبيق — نذكّرك بمواعيدك',se:'In-app — we remind you',v:['YES','YES','YES']},
- {l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['YES','YES','YES']},
- {l:'تنظيف المكيفات',le:'AC cleaning',s:'كل مكيفات البيت',se:'Every AC in the home',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
- {l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','YES','YES']},
+ {l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['NO','NO','YES']},
+ {l:'تنظيف المكيفات',le:'AC cleaning',s:'سبليت فقط · حتى 12 مكيفاً',se:'Split units · up to 12',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
+ {l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','NO','YES']},
  {l:'فحص شامل للبيت',le:'Full home inspection',s:'',se:'',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
- {l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
+ {l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','NO','مرة بالسنة'],ve:['NO','NO','Once a year']},
  {l:'فحص السخان المركزي',le:'Central heater check',s:'قبل الشتاء',se:'Before winter',v:['NO','YES','YES'],note:['','','مع صيانة شاملة'],noteE:['','','with full service']},
+ {l:'خصم قطع الغيار',le:'Spare parts discount',s:'أرخص من سعر السوق · لأول 200 عقد',se:'Below market price · first 200 contracts',v:['NO','NO','10%'],ve:['NO','NO','10%']},
  {l:'ضمان الإصلاح',le:'Repair warranty',s:'',se:'',wide:'365 يوماً — مضمون طول مدة العقد',wideE:'365 days — covered for the whole contract'},
  {l:'ضمان الأغراض',le:'Parts warranty',s:'قطع الغيار',se:'Spare parts',wide:'سنتان على جميع القطع',wideE:'Two years on all parts'}
 ];
@@ -1298,6 +1345,8 @@ function windowLabel(startMin){ return fmtTime(startMin)+' – '+fmtTime(Math.mi
 function go(v){ view=v; if(v!=='admin') isAdmin=false; if(v!=='login') otpStep=false; window.scrollTo(0,0); render(); }
 function render(){
   syncHeader();
+  /* رجوع من صفحة الدفع؟ نعرض النتيجة بدل الشاشة العادية */
+  if(!_payChecked && /[?&]pay=/.test(location.search)){ _payChecked=true; checkPaymentReturn(); return; }
   if(view==='home') return renderHome();
   if(view==='join') return renderJoin();
   if(view==='prices') return renderPrices();
@@ -1369,7 +1418,7 @@ function renderTipDetail(){
 const FAQS=[
   ['كيف أحجز طلب صيانة؟','اختر الخدمة من القائمة، حدّد اليوم ونافذة الوصول، ثم أدخل موقعك وأكّد. تجيك رسالة تأكيد.'],
   ['متى يجي الفني؟','تختار «نافذة وصول» (ساعتين) والفني يوصلك خلالها. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».'],
-  ['كيف أدفع؟','الدفع نقداً أو تحويلاً بعد إتمام العمل ومعاينة الفاتورة. تشوف التكلفة التقديرية قبل التأكيد.'],
+  ['كيف أدفع؟','بطريقتين: <b>ادفع أونلاين</b> بمدى أو البطاقة أو Apple Pay من التطبيق، أو <b>بجهاز الدفع مع الفني</b> عند إتمام العمل. ما نستقبل نقداً.'],
   ['وش أسوي لو تأخّر الفني؟','تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.'],
   ['فيه ضمان على الشغل؟','نعم — ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.'],
   ['كيف أستفيد من الخصومات؟','احجز قبل ٥ أيام أو أكثر = خصم ٥٪ تلقائي. وكل ٦ طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.'],
@@ -1723,6 +1772,7 @@ function renderPlans(){
 }
 function openSubscribe(planId){
   subPlan=PLANS.find(p=>p.id===planId)||PLANS[0];
+  termsOK=false;
   const c=state.customer||{};
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
@@ -1731,29 +1781,201 @@ function openSubscribe(planId){
         <div class="flow-sum" style="margin-top:0">🛡️ <span>الباقة المختارة: <b>${esc(subPlan.name)}</b> · ${money(subPlan.price)}/سنة</span></div>
         <div class="field"><label>الاسم <span class="req">*</span></label><input id="sub_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="sub_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
-        <button class="cta" style="margin-top:8px" onclick="submitSubscription()">✅ أرسل طلب الاشتراك</button>
-        <p style="color:var(--muted);font-size:.82rem;margin-top:10px">بنتواصل معك على جوالك لتأكيد الباقة وتفعيلها.</p>
+        ${payBox(subPlan?subPlan.price:0)}
+        ${agreeBox()}
+        <button class="cta" id="payCta" style="margin-top:12px" onclick="submitSubscription()">💳 ادفع الآن</button>
+        <p style="color:var(--muted);font-size:.82rem;margin-top:10px">دفعة سنوية واحدة · العقد يتفعّل فوراً بعد الدفع.</p>
       </div>
       <div style="height:24px"></div>
     </div>`;
+  syncAgree();
 }
 async function submitSubscription(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
   const name=g('sub_name'), phone=g('sub_phone');
   if(!name){ toast('اكتب الاسم'); return; }
   if(!phone){ toast('اكتب رقم الجوال'); return; }
-  const data={ name, phone, plan:subPlan?subPlan.name:'', price:subPlan?subPlan.price:0, status:'new' };
+  if(!termsOK){ toast(LX('لازم توافق على الشروط والأحكام','Please accept the terms')); openTerms(); return; }
+  const data={ name, phone, plan:subPlan?subPlan.name:'', price:subPlan?subPlan.price:0, status:'new',
+                plan_id: subPlan?subPlan.id:'', pay_method: payMethod, pay_status:'unpaid',
+                terms_accepted: true, terms_version: TERMS_VERSION, terms_at: new Date().toISOString() };
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
   let ok=false;
-  if(cloudReady){ try{ const r=await sb.from('khafet_subscriptions').insert(data); if(!r.error) ok=true; else console.warn('sub insert:',r.error.message); }catch(e){ console.warn(e); } }
+  /* نولّد الرقم هنا — لأن قراءة الصف بعد الإدراج ممنوعة (حماية خصوصية المشتركين) */
+  const subId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+              : ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
+                  const r=Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); }));
+  data.id = subId;
+  if(cloudReady){ try{ const r=await sb.from('khafet_subscriptions').insert(data);
+      if(!r.error) ok=true; else console.warn('sub insert:',r.error.message); }catch(e){ console.warn(e); } }
+
+  /* الدفع الإلكتروني: نفتح صفحة ميسر */
+  if(payMethod==='online' && ok){
+    const started = await startPayment('subscription', subId, data.price, name, phone);
+    if(started) return;                       // ننتقل لصفحة الدفع
+    if(btn){ btn.disabled=false; btn.textContent='💳 ادفع الآن'; }
+  }
   if(!ok){ try{ const arr=JSON.parse(localStorage.getItem('khafet_subs')||'[]'); arr.push(Object.assign({created_at:Date.now()},data)); localStorage.setItem('khafet_subs',JSON.stringify(arr)); }catch(e){} }
   document.getElementById('app').innerHTML=`
     <div class="wrap screen"><div class="panel" style="margin-top:30px">
       <div class="success"><div class="circle">🛡️</div><h2>تم استلام طلبك!</h2>
-      <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنتواصل معك على ${esc(phone)} لتفعيل «${esc(subPlan?subPlan.name:'')}».</p></div>
+      <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنتواصل معك على ${esc(phone)} لتفعيل «${esc(subPlan?subPlan.name:'')}»، والدفع بجهاز الفني عند أول زيارة.</p></div>
       <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
     </div></div>`;
 }
+
+/* ══════════ الدفع عبر ميسر ══════════ */
+let _payChecked = false;
+const PAY_FN = (typeof SUPABASE_URL!=='undefined' && SUPABASE_URL) ? (SUPABASE_URL+'/functions/v1/pay') : '';
+let payMethod = 'online';   // online | device
+
+function setPayMethod(m){
+  payMethod = m;
+  document.querySelectorAll('.payopt label').forEach(l=>l.classList.toggle('on', l.dataset.m===m));
+  const b=document.getElementById('payCta');
+  if(b) b.textContent = m==='online' ? LX('💳 ادفع الآن','💳 Pay now') : LX('✅ أكّد الطلب','✅ Confirm order');
+}
+
+/* صندوق اختيار طريقة الدفع */
+function payBox(amount, opts){
+  opts = opts || {};
+  const bnpl = amount>=200 ? `<div class="paynote">${LX('تقدر تقسّطها على 4 دفعات عبر تابي أو تمارا — بدون فوائد.','Split it over 4 payments with Tabby or Tamara — interest free.')}</div>` : '';
+  return `<div class="paybox">
+    <h4>💳 ${LX('طريقة الدفع','Payment method')}</h4>
+    <div class="payopt">
+      <label data-m="online" class="on" onclick="setPayMethod('online')">
+        <input type="radio" name="paym" value="online" checked>
+        <div><div class="t">${LX('ادفع الآن — إلكتروني','Pay now — online')}</div>
+        <div class="d">${LX('دفعة آمنة، ويتفعّل طلبك فوراً','Secure payment, activated instantly')}</div>
+        <div class="badges"><span>mada</span><span>Visa</span><span>Apple&nbsp;Pay</span><span>STC&nbsp;Pay</span></div>
+        </div>
+      </label>
+      <label data-m="device" onclick="setPayMethod('device')">
+        <input type="radio" name="paym" value="device">
+        <div><div class="t">${LX('بجهاز الدفع مع الفني','Card machine with the technician')}</div>
+        <div class="d">${LX('تدفع بمدى أو البطاقة عند إتمام العمل — الفني معه جهاز','Pay by card when the work is done — the technician carries a terminal')}</div></div>
+      </label>
+    </div>
+    ${bnpl}
+    <div class="paynote">${LX('ما نستقبل مبالغ نقدية — حرصاً على سلامة الجميع ودقة الفواتير.','We do not accept cash — for everyone\'s safety and accurate invoicing.')}</div>
+  </div>`;
+}
+
+/* إنشاء رابط الدفع وفتحه */
+async function startPayment(kind, refId, amount, name, phone, orderNo){
+  if(!PAY_FN){ toast(LX('الدفع الإلكتروني غير مفعّل','Online payment is not enabled')); return false; }
+  try{
+    const r = await fetch(PAY_FN, {
+      method:'POST',
+      headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+SUPABASE_ANON, 'apikey':SUPABASE_ANON},
+      body: JSON.stringify({kind, ref_id:refId, amount, name, phone, order_no:orderNo||null})
+    });
+    const j = await r.json();
+    if(!j.ok || !j.url){ console.warn('pay:', j); toast(LX('تعذّر فتح صفحة الدفع','Could not open the payment page')); return false; }
+    try{ localStorage.setItem('khafet_pay_pending', j.payment_id); }catch(e){}
+    location.href = j.url;      // صفحة ميسر الآمنة
+    return true;
+  }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return false; }
+}
+
+/* بعد رجوع العميل من ميسر: ?pay=<id> */
+async function checkPaymentReturn(){
+  const q = new URLSearchParams(location.search);
+  const id = q.get('pay') || (function(){try{return localStorage.getItem('khafet_pay_pending')}catch(e){return null}})();
+  if(!q.get('pay')) return false;
+  try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){}
+  history.replaceState({}, '', location.pathname);
+
+  document.getElementById('app').innerHTML = `<div class="wrap screen"><div class="panel" style="margin-top:30px">
+    <div class="payresult"><div class="ic">⏳</div><h2>${LX('نتحقق من الدفع…','Verifying payment…')}</h2></div></div></div>`;
+
+  let paid=false, src='';
+  for(let i=0;i<6 && !paid;i++){
+    try{
+      const r = await fetch(PAY_FN+'/status?id='+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+SUPABASE_ANON,'apikey':SUPABASE_ANON}});
+      const j = await r.json();
+      if(j.ok && j.payment && j.payment.status==='paid'){ paid=true; src=j.payment.moyasar_src||''; break; }
+    }catch(e){}
+    await new Promise(r=>setTimeout(r, 1500));
+  }
+
+  document.getElementById('app').innerHTML = paid
+    ? `<div class="wrap screen"><div class="panel" style="margin-top:30px">
+        <div class="payresult"><div class="ic">✅</div>
+        <h2>${LX('تم الدفع بنجاح','Payment successful')}</h2>
+        <p>${LX('وصلك إيصال على جوالك. تقدر تتابع من «طلباتي».','A receipt was sent to your phone. Track it from "My orders".')}</p></div>
+        <button class="cta gold" style="margin-top:14px" onclick="go('mybookings')">${LX('طلباتي','My orders')}</button>
+        <button class="cta" style="margin-top:8px" onclick="go('home')">${LX('الرئيسية','Home')}</button>
+      </div></div>`
+    : `<div class="wrap screen"><div class="panel" style="margin-top:30px">
+        <div class="payresult"><div class="ic">⚠️</div>
+        <h2>${LX('ما وصلنا تأكيد الدفع','Payment not confirmed')}</h2>
+        <p>${LX('لو خُصم المبلغ فسيتأكد خلال دقائق وبنتواصل معك. ولا تعيد الدفع.','If you were charged it will confirm shortly and we will contact you. Do not pay again.')}</p></div>
+        <button class="cta" style="margin-top:14px" onclick="go('home')">${LX('الرئيسية','Home')}</button>
+      </div></div>`;
+  return true;
+}
+
+
+/* ══════════ الشروط والأحكام ══════════ */
+const TERMS_VERSION = '1.0';
+const TERMS_SEC = [{"n":"1","t":"التعريفات","i":["<b>«المزوّد»</b>: مؤسسة خافت للسباكة والكهرباء، سجل تجاري رقم <b>2052105014</b>، الرقم الموحد 7042751284.","<b>«المشترك»</b>: الشخص أو الجهة المسجّلة باسمها العقد والمذكور رقم جوالها عند الاشتراك.","<b>«العقار المشمول»</b>: وحدة سكنية <b>واحدة</b> فقط، بالعنوان المسجّل وقت الاشتراك.","<b>«الخدمات المشمولة»</b>: قائمة الـ64 خدمة المنشورة في التطبيق وقت الاشتراك، وهي جزء لا يتجزأ من هذا العقد.","<b>«أجرة اليد»</b>: قيمة عمل الفني فقط، دون قطع الغيار أو المواد."]},{"n":"2","t":"مدة العقد وسريانه","i":["يبدأ سريان العقد من <b>تاريخ سداد قيمته كاملة</b>، ولمدة <b>سنة ميلادية واحدة</b>.","لا يبدأ السريان بمجرد تقديم الطلب أو الحجز، بل بالسداد فقط.","لا يُجدَّد العقد تلقائياً؛ يُرسل للمشترك إشعار قبل انتهائه بـ30 يوماً لتجديده باختياره.","الزيارات غير المستخدمة <b>لا تُرحَّل</b> للسنة التالية ولا تُستبدل بمبالغ نقدية."]},{"n":"3","t":"نطاق التغطية","i":["يغطي العقد <b>أجرة اليد فقط</b> للأعمال البسيطة الواردة في قائمة الخدمات المشمولة.","الأعمال المشمولة هي أعمال إصلاح وتركيب بسيطة لا تتطلب تكسيراً أو تمديدات جديدة أو معدات ثقيلة.","باقة أساسي: <b>8 زيارات</b> بالسنة. باقتا البيت وبريميوم: زيارات غير محددة العدد وفق بند «الاستخدام العادل» أدناه.","الخدمات الإضافية (تنظيف المكيفات، الفحوصات الدورية، فحص السخان) تُنفَّذ بعدد المرات المحدد في الباقة وبمواعيد يُتفق عليها مسبقاً.","<b>تنظيف المكيفات يشمل حتى 12 مكيفاً كحد أقصى</b> في العقار المشمول لكل مرة؛ وما زاد على ذلك يُحتسب بأجرة منفصلة وفق قائمة الأسعار المعتمدة.","يقتصر التنظيف على <b>مكيفات السبليت فقط</b> سهلة الوصول؛ ولا يشمل المكيفات الشباك أو المركزية أو الوحدات التي يتطلب الوصول إليها رافعات أو سقالات أو فك تمديدات."]},{"n":"4","t":"الاستثناءات — ما لا يشمله العقد","i":["<b>قطع الغيار والمواد بجميع أنواعها</b> — تُحتسب على المشترك وفق البند التاسع.","أي عمل يتطلب <b>تكسيراً أو ترميماً أو تمديدات جديدة</b> أو تغيير مسارات المواسير والأسلاك.","الأعمال الإنشائية، العزل، الأسطح، الخزانات الأرضية، وشبكات الصرف الرئيسية خارج حدود العقار.","صيانة أو إصلاح <b>المكيفات</b> (العقد يشمل التنظيف فقط)، والسخانات المركزية (يشمل الفحص فقط).","<b>كل ما لم يرد صراحةً</b> في قائمة الخدمات المشمولة من أجهزة أو أنظمة أو أعمال.","الأعطال الناتجة عن: سوء الاستخدام، الإهمال، العبث، أعمال طرف آخر غير المزوّد، ارتفاع الجهد، انقطاع أو رداءة الخدمات العامة.","الأضرار الناتجة عن <b>القوة القاهرة</b>: الأمطار والسيول والحرائق والزلازل والحوادث والقرارات الحكومية.","الأعطال <b>القائمة قبل بدء العقد</b> أو الناتجة عن عيوب إنشائية بالعقار.","الاستخدام <b>التجاري</b> للعقار أو تأجيره المفروش قصير المدى، ما لم يُتفق على ذلك كتابةً."]},{"n":"5","t":"الاستخدام العادل (مهم)","i":["عبارة «زيارات غير محدودة» تعني عدم تحديد سقف سنوي للأعطال <b>الطبيعية</b> للعقار المشمول، ولا تعني استخداماً بلا ضوابط.","الحد الأعلى: <b>4 زيارات شهرياً</b>، وزيارة واحدة يومياً كحد أقصى.","تُجمع الطلبات المتعددة في العقار الواحد بزيارة واحدة كلما أمكن فنياً.","يحق للمزوّد الاعتراض كتابةً على الاستخدام غير المعتاد أو المتكرر بشكل غير طبيعي، ومنح المشترك مهلة 15 يوماً لتصحيح الاستخدام قبل إيقاف الخدمة.","العقد <b>شخصي</b> ويقتصر على العقار المسجّل؛ ولا يجوز استخدامه لعقار آخر أو لطرف ثالث."]},{"n":"6","t":"المواعيد والاستجابة","i":["الحجز يتم عبر تطبيق خافِت. تُبذل العناية لتقديم الخدمة خلال المدة المعلنة في الباقة.","المواعيد المعلنة <b>أهداف خدمة</b> يلتزم المزوّد ببذل عناية معقولة لتحقيقها، وليست ضماناً مطلقاً، ولا يترتب على تجاوزها تعويض.","يُعذر التأخير الناتج عن الظروف الجوية، ازدحام الطلبات، تعذّر الوصول، أو أي سبب خارج إرادة المزوّد.","إلغاء الموعد أو تعذّر الدخول بعد وصول الفني دون إشعار قبل 3 ساعات يُحتسب <b>زيارة مستهلكة</b> من رصيد الباقة."]},{"n":"7","t":"التزامات المشترك","i":["تمكين الفني من الوصول الآمن للموقع، ووجود شخص بالغ طوال مدة العمل.","توفير الكهرباء والماء وإخلاء محيط العمل من الأثاث والمقتنيات الثمينة.","الإفصاح عن أي عطل سابق أو إصلاح سابق يخص موضوع الطلب.","سداد قيمة قطع الغيار عند التركيب.","معاملة الفنيين باحترام؛ وأي إساءة لفظية أو جسدية تُنهي العقد فوراً دون استرداد."]},{"n":"8","t":"توريد قطع الغيار — حصري للمزوّد","i":["يلتزم المزوّد بتوفير جميع قطع الغيار والمواد اللازمة لتنفيذ الأعمال المشمولة، وهو <b>الجهة الوحيدة المخوّلة</b> بتوريدها وتركيبها ضمن هذا العقد.","توريد القطع من المزوّد <b>شرط أساسي</b> لسريان العقد وضماناته، وقد رُوعي ذلك عند تحديد قيمة الاشتراك.","تُحتسب قيمة القطع على المشترك وفق <b>قائمة أسعار المزوّد المعتمدة</b> السارية وقت التنفيذ، وتُدرج في فاتورة مستقلة.","<b>لا يجوز</b> للمشترك توريد قطع من خارج المزوّد، ولا مطالبة الفني بتركيب قطع لم يوردها المزوّد.","إذا أصرّ المشترك على تركيب قطعة من خارج المزوّد: يُنفَّذ العمل على <b>مسؤوليته الكاملة</b>، ويسقط الضمان عن العمل والقطعة معاً، وتُحتسب أجرة يد كاملة خارج نطاق العقد.","ضمان القطع الموردة من المزوّد: <b>سنتان</b> ضد عيوب الصناعة فقط، ولا يشمل الكسر أو سوء الاستخدام أو التآكل الطبيعي.","جميع الأسعار المعلنة <b>شاملة ضريبة القيمة المضافة</b>."]},{"n":"9","t":"ضمان العمل — 365 يوماً","i":["يضمن المزوّد أعمال اليد لمدة <b>365 يوماً</b> من تاريخ التنفيذ، وضمن مدة سريان العقد.","يسقط الضمان إذا: عبث بالإصلاح طرف آخر · تغيّرت ظروف التشغيل · نتج العطل عن سبب مختلف · استُخدمت قطعة من خارج المزوّد.","الضمان يقتصر على <b>إعادة التنفيذ</b> دون مقابل، ولا يشمل تعويضاً نقدياً."]},{"n":"10","t":"حدود المسؤولية","i":["مسؤولية المزوّد تقتصر على الأضرار <b>المباشرة</b> الناتجة عن خطأ جسيم مثبت من فنييه.","<b>الحد الأقصى للتعويض في جميع الأحوال = قيمة العقد المدفوعة</b>، مهما تعددت الحوادث خلال السنة.","لا يتحمّل المزوّد أي مسؤولية عن: الأضرار غير المباشرة أو التبعية، فوات المنفعة، فقد الأرباح، تلف المقتنيات غير المعلن عنها، أو الأعطال المترتبة على عيوب سابقة بالعقار.","لا يتحمّل المزوّد مسؤولية أي عمل نفّذه طرف آخر بناءً على توصيته أو ترشيحه."]},{"n":"11","t":"الإلغاء والاسترداد","i":["يحق للمشترك الإلغاء خلال <b>7 أيام</b> من السداد وقبل تنفيذ أي زيارة، ويُسترد المبلغ كاملاً بعد خصم رسوم التحويل البنكي.","بعد تنفيذ أول زيارة: يُحتسب المستحق على أساس <b>قيمة الخدمات المنفّذة بأسعار الأفراد المعلنة</b> ويُسترد الفارق إن وُجد، ولا يُسترد شيء إذا تجاوزت قيمتها قيمة العقد.","لا استرداد بعد مضي 30 يوماً من بدء العقد.","يحق للمزوّد إنهاء العقد فوراً ودون استرداد في حال: التلاعب أو تقديم بيانات غير صحيحة، استخدام العقد لعقار غير مسجّل، الإساءة للفنيين، أو مخالفة بند الاستخدام العادل بعد الإنذار."]},{"n":"12","t":"نقل العقد","i":["يجوز نقل العقد للمستأجر الجديد <b>لنفس العقار</b> بإشعار المزوّد وتحديث بيانات التواصل.","لا يجوز نقل العقد <b>لعقار آخر</b> إلا بموافقة المزوّد الكتابية وضمن نطاق التغطية الجغرافي.","نطاق التغطية: <b>الخبر · الظهران · الدمام</b> — وأي موقع خارجه قد يستوجب رسوم انتقال إضافية أو رفض الطلب."]},{"n":"13","t":"البيانات والخصوصية","i":["يوافق المشترك على معالجة بياناته (الاسم، الجوال، العنوان، سجل الطلبات) لأغراض تنفيذ العقد وفق نظام حماية البيانات الشخصية بالمملكة.","قد يُصوَّر موقع العمل قبل وبعد التنفيذ لأغراض التوثيق والضمان فقط."]},{"n":"14","t":"تعديل الشروط","i":["يحق للمزوّد تعديل هذه الشروط للعقود <b>الجديدة</b> في أي وقت.","العقود السارية تبقى خاضعة للشروط المتفق عليها وقت الاشتراك حتى انتهاء مدتها."]},{"n":"15","t":"الأنظمة والاختصاص","i":["يخضع هذا العقد لأنظمة المملكة العربية السعودية.","يُسعى لتسوية أي خلاف ودياً خلال 30 يوماً، وإلا فالاختصاص <b>للمحاكم المختصة بالمنطقة الشرقية</b>.","النسخة العربية من هذه الشروط هي المعتمدة عند أي اختلاف في الترجمة."]}];
+let termsOK = false;
+
+function termsHtml(){
+  return TERMS_SEC.map(s=>`<div class="tsec"><h4><i>${s.n}</i>${esc(s.t)}</h4>
+    <ol>${s.i.map(x=>'<li>'+x+'</li>').join('')}</ol></div>`).join('');
+}
+function openTerms(){
+  let m=document.getElementById('termsModal');
+  if(!m){
+    m=document.createElement('div');
+    m.id='termsModal'; m.className='tmodal';
+    m.innerHTML=`<div class="tsheet">
+      <div class="thead"><h3>📜 ${LX('شروط وأحكام العقد السنوي','Annual Contract Terms')}</h3>
+        <button onclick="closeTerms()" aria-label="إغلاق">×</button></div>
+      <div class="tbody">${termsHtml()}</div>
+      <div class="tfoot"><button onclick="acceptTerms()">${LX('قرأت ووافقت','I have read and agree')}</button></div>
+    </div>`;
+    m.addEventListener('click', e=>{ if(e.target===m) closeTerms(); });
+    document.body.appendChild(m);
+  }
+  m.classList.add('on');
+  document.body.style.overflow='hidden';
+}
+function closeTerms(){
+  const m=document.getElementById('termsModal');
+  if(m) m.classList.remove('on');
+  document.body.style.overflow='';
+}
+function acceptTerms(){
+  termsOK = true;
+  const c=document.getElementById('agreeChk'); if(c) c.checked=true;
+  syncAgree();
+  closeTerms();
+}
+function toggleAgree(ev){
+  /* الضغط على الرابط يفتح الشروط ولا يغيّر الصح */
+  if(ev && ev.target && ev.target.tagName==='A') return;
+  const c=document.getElementById('agreeChk');
+  if(!c) return;
+  if(ev && ev.target!==c) c.checked=!c.checked;
+  termsOK=c.checked;
+  syncAgree();
+}
+function syncAgree(){
+  const w=document.getElementById('agreeBox'), b=document.getElementById('payCta');
+  if(w) w.classList.toggle('on', termsOK);
+  if(b){ b.disabled=!termsOK; b.style.opacity=termsOK?'1':'.55'; }
+}
+function agreeBox(){
+  return `<div class="agree" id="agreeBox" onclick="toggleAgree(event)">
+    <input type="checkbox" id="agreeChk" onclick="event.stopPropagation();toggleAgree()">
+    <div class="t">${LX('أوافق على','I agree to the')} <a onclick="event.stopPropagation();openTerms()">${LX('شروط وأحكام العقد السنوي','annual contract terms')}</a>
+    ${LX('وأقرّ بأني اطّلعت عليها.','and confirm I have read them.')}</div>
+  </div>`;
+}
+
 function syncHeader(){
   const n=myOrders().length;
   document.getElementById('myCount').textContent=ar(n);
@@ -1888,6 +2110,7 @@ function renderHome(){
         </div>
         <div style="margin-top:16px"><a class="join-link" onclick="go('suggest')">💡 عندك اقتراح أو ملاحظة؟ اكتب لنا — رأيك يهمنا</a></div>
         <div style="margin-top:16px"><a class="join-link" onclick="go('join')">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
+        <div style="margin-top:20px"><button class="footlang" onclick="toggleLang()">🌐 ${_uiEN()?'العربية':'English'}</button></div>
       </footer>
     </div>`;
 }
