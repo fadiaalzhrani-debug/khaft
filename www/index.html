@@ -269,6 +269,46 @@
   .labor-note b{display:block;color:#8a4b00;font-weight:900;font-size:.98rem}
   .labor-note span{display:block;color:#b26a00;font-weight:600;font-size:.88rem;margin-top:3px}
   .plans-grid{display:grid;gap:14px;margin-top:16px}
+  /* ── بناء مجلس ساندوتش بانل ── */
+  .mj-hero{background:var(--brand);color:#F3EDE0;border-radius:18px;padding:18px 20px;margin-top:14px}
+  .mj-hero h3{font-size:1.15rem;font-weight:900;color:var(--gold)}
+  .mj-hero p{font-size:.86rem;color:#DCD2BB;margin-top:5px;font-weight:600;line-height:1.6}
+  .mj-card{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:15px 16px;margin-top:12px}
+  .mj-card h4{font-size:.98rem;font-weight:800;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .mj-row{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .mj-row3{grid-template-columns:1fr 1fr 1fr;gap:8px}
+  @media(max-width:420px){.mj-row{grid-template-columns:1fr}}
+  .mj-f label{display:block;font-size:.82rem;font-weight:800;color:var(--muted);margin-bottom:5px}
+  .mj-f input[type=number]{width:100%;padding:12px;border:1.5px solid var(--line-strong);border-radius:12px;
+    font:inherit;font-weight:800;font-size:1.05rem;text-align:center;background:#fff;color:var(--ink)}
+  .mj-opts{display:flex;gap:7px;flex-wrap:wrap}
+  .mj-opts button{flex:1;min-width:78px;padding:11px 8px;border:1.5px solid var(--line-strong);border-radius:12px;
+    background:var(--bg);font:inherit;font-weight:800;font-size:.88rem;color:var(--ink);cursor:pointer;line-height:1.35}
+  .mj-opts button small{display:block;font-size:.68rem;font-weight:700;color:var(--muted);margin-top:2px}
+  .mj-opts button.on{border-color:var(--gold-strong);background:var(--gold-tint);box-shadow:0 3px 12px rgba(245,197,24,.18)}
+  .mj-opts button.on small{color:var(--ink-soft)}
+  .mj-add{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;
+    background:var(--bg);cursor:pointer;margin-bottom:8px}
+  .mj-add:last-child{margin-bottom:0}
+  .mj-add.on{border-color:var(--gold-strong);background:var(--gold-tint)}
+  .mj-add input{width:21px;height:21px;accent-color:var(--gold-deep);flex:none}
+  .mj-add .t{flex:1}
+  .mj-add .t b{display:block;font-size:.92rem;font-weight:800}
+  .mj-add .t small{color:var(--muted);font-size:.76rem;font-weight:600}
+  .mj-sum{background:var(--brand);color:#F3EDE0;border-radius:16px;padding:16px 18px;margin-top:12px}
+  .mj-sum .l{display:flex;justify-content:space-between;font-size:.88rem;font-weight:700;padding:5px 0;
+    border-bottom:1px dashed #5a4d33;color:#DCD2BB}
+  .mj-sum .l:last-of-type{border-bottom:0}
+  .mj-sum .l b{color:#F3EDE0}
+  .mj-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:11px;padding-top:11px;
+    border-top:2px solid var(--gold)}
+  .mj-total span{font-size:.95rem;font-weight:800;color:var(--gold)}
+  .mj-total b{font-size:1.7rem;font-weight:900;color:var(--gold)}
+  .mj-note{font-size:.78rem;color:#BFB49A;font-weight:600;margin-top:9px;line-height:1.6}
+  .mj-vis{background:var(--bg);border:1.5px dashed var(--line-strong);border-radius:14px;padding:14px;margin-top:10px;text-align:center}
+  .mj-vis .box{display:inline-block;border:3px solid var(--gold-deep);border-radius:8px;background:var(--gold-tint);
+    position:relative;min-width:70px;min-height:50px}
+  .mj-vis .dim{font-size:.78rem;font-weight:800;color:var(--muted);margin-top:7px}
   /* ── الموافقة على الشروط ── */
   .agree{display:flex;align-items:flex-start;gap:10px;background:var(--gold-tint);border:1.5px solid var(--gold-soft);
     border-radius:13px;padding:12px 13px;margin-top:12px;cursor:pointer}
@@ -1350,6 +1390,7 @@ function render(){
   if(view==='home') return renderHome();
   if(view==='join') return renderJoin();
   if(view==='prices') return renderPrices();
+  if(view==='majlis') return renderMajlis();
   if(view==='services') return renderServices();
   if(view==='pick') return renderPick();
   if(view==='time') return renderTime();
@@ -1976,6 +2017,157 @@ function agreeBox(){
   </div>`;
 }
 
+
+/* ══════════ بناء مجلس — ساندوتش بانل ══════════ */
+/* ⚠️ الأسعار للمراجعة — عدّليها بأسعارك الفعلية */
+const MJ_RATE = {
+  panel: { 5:150, 7.5:165, 10:185 },   // ريال/م² للجدران والسقف حسب السماكة (سم)
+  door:  { steel:850, glass:1400 },     // باب حديد / زجاج سيكوريت
+  window: 550,                          // شباك ألمنيوم بزجاج مزدوج
+  elec:   1200,                         // كهرباء: إنارة + بريزات + لوحة فرعية
+  ac:     600,                          // تأسيس وتركيب سبليت (بدون الجهاز)
+  floor:  110,                          // ريال/م² أرضية
+  paint:  55,                           // ريال/م² تشطيب وعزل خارجي
+  minPrice: 4000,                       // أقل قيمة مشروع
+};
+
+let MJ = { L:5, W:4, H:2.7, th:7.5, doors:1, doorType:'steel', windows:2,
+           elec:true, ac:false, floor:true, paint:false };
+
+function mjCalc(){
+  const area = MJ.L * MJ.W;                                  // مساحة الأرضية
+  const perim = 2 * (MJ.L + MJ.W);
+  const openings = MJ.doors*2.0 + MJ.windows*1.5;            // م² الفتحات
+  const walls = Math.max(0, perim * MJ.H - openings);
+  const roof = area;
+  const rate = MJ_RATE.panel[MJ.th] || MJ_RATE.panel[7.5];
+  const panelCost = (walls + roof) * rate;
+  const doorCost  = MJ.doors * (MJ_RATE.door[MJ.doorType] || MJ_RATE.door.steel);
+  const winCost   = MJ.windows * MJ_RATE.window;
+  const elecCost  = MJ.elec  ? MJ_RATE.elec : 0;
+  const acCost    = MJ.ac    ? MJ_RATE.ac   : 0;
+  const floorCost = MJ.floor ? area * MJ_RATE.floor : 0;
+  const paintCost = MJ.paint ? (walls+roof) * MJ_RATE.paint : 0;
+  const sub = panelCost + doorCost + winCost + elecCost + acCost + floorCost + paintCost;
+  const total = Math.max(MJ_RATE.minPrice, Math.round(sub/50)*50);
+  const days = Math.max(2, Math.ceil(area/12) + (MJ.elec?1:0) + (MJ.ac?1:0));
+  return {area,walls,roof,panelCost,doorCost,winCost,elecCost,acCost,floorCost,paintCost,total,days};
+}
+
+function mjSet(k,v){ MJ[k] = v; renderMajlis(); }
+function mjNum(k,el){ const v=parseFloat(el.value); if(!isNaN(v)) MJ[k]=Math.max(0,v); mjUpdate(); }
+function mjTog(k){ MJ[k]=!MJ[k]; renderMajlis(); }
+
+function mjUpdate(){
+  const c = mjCalc(), E=_uiEN();
+  const g=id=>document.getElementById(id);
+  const set=(id,t)=>{ const e=g(id); if(e) e.textContent=t; };
+  set('mjArea', en(Math.round(c.area)));
+  set('mjWalls', en(Math.round(c.walls+c.roof)));
+  set('mjPanel', en(Math.round(c.panelCost)));
+  set('mjDoors', en(Math.round(c.doorCost+c.winCost)));
+  set('mjExtra', en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost)));
+  set('mjTotal', en(c.total));
+  set('mjDays', en(c.days));
+  const b=g('mjBox');
+  if(b){ const sc=Math.min(150, Math.max(60, MJ.L*16)); const sc2=Math.min(120, Math.max(45, MJ.W*16));
+    b.style.width=sc+'px'; b.style.height=sc2+'px'; }
+}
+
+function renderMajlis(){
+  const E=_uiEN(), T=(a,b)=>E?b:a;
+  const c = mjCalc();
+  const opt=(k,val,label,sub)=>`<button class="${MJ[k]===val?'on':''}" onclick="mjSet('${k}',${typeof val==='string'?"'"+val+"'":val})">${label}${sub?'<small>'+sub+'</small>':''}</button>`;
+  const add=(k,t,d)=>`<div class="mj-add ${MJ[k]?'on':''}" onclick="mjTog('${k}')">
+      <input type="checkbox" ${MJ[k]?'checked':''} onclick="event.stopPropagation();mjTog('${k}')">
+      <div class="t"><b>${t}</b><small>${d}</small></div></div>`;
+
+  document.getElementById('app').innerHTML=`
+  <div class="wrap screen">
+    ${pageHead(T('ابنِ مجلسك','Build your majlis'),'home')}
+
+    <div class="mj-hero">
+      <h3>🏗️ ${T('مجلس ساندوتش بانل','Sandwich panel majlis')}</h3>
+      <p>${T('حدّد المقاس والخيارات وتطلع لك التكلفة التقديرية فوراً — عزل حراري ممتاز، تنفيذ سريع، ونظافة بالموقع.','Set the size and options and get an instant estimate — excellent insulation, fast and clean installation.')}</p>
+    </div>
+
+    <div class="mj-card">
+      <h4>📐 ${T('المقاس','Dimensions')}</h4>
+      <div class="mj-row mj-row3">
+        <div class="mj-f"><label>${T('الطول (م)','Length (m)')}</label>
+          <input type="number" min="2" max="30" step="0.5" value="${MJ.L}" oninput="mjNum('L',this)"></div>
+        <div class="mj-f"><label>${T('العرض (م)','Width (m)')}</label>
+          <input type="number" min="2" max="30" step="0.5" value="${MJ.W}" oninput="mjNum('W',this)"></div>
+        <div class="mj-f"><label>${T('الارتفاع (م)','Height (m)')}</label>
+          <input type="number" min="2" max="6" step="0.1" value="${MJ.H}" oninput="mjNum('H',this)"></div>
+      </div>
+      <div class="mj-vis"><div class="box" id="mjBox"></div>
+        <div class="dim">${T('المساحة','Area')}: <b class="num" id="mjArea">${en(Math.round(c.area))}</b> ${T('م²','m²')}</div></div>
+    </div>
+
+    <div class="mj-card">
+      <h4>🧱 ${T('سماكة البانل','Panel thickness')}</h4>
+      <div class="mj-opts">
+        ${opt('th',5,'5 '+T('سم','cm'),T('عزل جيد','Good'))}
+        ${opt('th',7.5,'7.5 '+T('سم','cm'),T('الأنسب','Best value'))}
+        ${opt('th',10,'10 '+T('سم','cm'),T('عزل ممتاز','Premium'))}
+      </div>
+    </div>
+
+    <div class="mj-card">
+      <h4>🚪 ${T('الأبواب والشبابيك','Doors & windows')}</h4>
+      <div class="mj-row">
+        <div class="mj-f"><label>${T('عدد الأبواب','Doors')}</label>
+          <input type="number" min="0" max="6" step="1" value="${MJ.doors}" oninput="mjNum('doors',this)"></div>
+        <div class="mj-f"><label>${T('عدد الشبابيك','Windows')}</label>
+          <input type="number" min="0" max="12" step="1" value="${MJ.windows}" oninput="mjNum('windows',this)"></div>
+      </div>
+      <div class="mj-f" style="margin-top:11px"><label>${T('نوع الباب','Door type')}</label>
+        <div class="mj-opts">
+          ${opt('doorType','steel',T('حديد','Steel'))}
+          ${opt('doorType','glass',T('زجاج سيكوريت','Tempered glass'))}
+        </div></div>
+    </div>
+
+    <div class="mj-card">
+      <h4>✨ ${T('إضافات','Add-ons')}</h4>
+      ${add('elec', T('تأسيس الكهرباء','Electrical'), T('إنارة + بريزات + لوحة فرعية','Lighting + sockets + sub-panel'))}
+      ${add('ac',   T('تأسيس التكييف','AC preparation'), T('تمديد وتركيب سبليت (الجهاز غير مشمول)','Split install — unit not included'))}
+      ${add('floor',T('الأرضية','Flooring'), T('عزل وتغطية أرضية','Insulated floor covering'))}
+      ${add('paint',T('تشطيب خارجي','Exterior finish'), T('عزل ودهان خارجي','Sealing and exterior paint'))}
+    </div>
+
+    <div class="mj-sum">
+      <div class="l"><span>${T('الجدران والسقف','Walls & roof')} (<b class="num" id="mjWalls">${en(Math.round(c.walls+c.roof))}</b> ${T('م²','m²')})</span><b class="num" id="mjPanel">${en(Math.round(c.panelCost))}</b></div>
+      <div class="l"><span>${T('الأبواب والشبابيك','Doors & windows')}</span><b class="num" id="mjDoors">${en(Math.round(c.doorCost+c.winCost))}</b></div>
+      <div class="l"><span>${T('الإضافات','Add-ons')}</span><b class="num" id="mjExtra">${en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost))}</b></div>
+      <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}</span><b><span class="num" id="mjTotal">${en(c.total)}</span> ${T('ريال','SAR')}</b></div>
+      <div class="mj-note">⏱ ${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="mjDays">${en(c.days)}</b> ${T('أيام','days')}<br>
+        ${T('السعر تقديري ويُعتمد نهائياً بعد المعاينة المجانية بالموقع.','Estimate only — confirmed after the free on-site visit.')}</div>
+    </div>
+
+    <button class="cta gold" style="margin-top:12px" onclick="mjBook()">📋 ${T('احجز معاينة مجانية','Book a free site visit')}</button>
+    <div style="height:24px"></div>
+  </div>`;
+  mjUpdate();
+}
+
+/* حجز المعاينة — يفتح الطلب السريع مع ملاحظة تلقائية */
+function mjBook(){
+  const c=mjCalc();
+  const note='طلب بناء مجلس ساندوتش بانل — '+MJ.L+'×'+MJ.W+' م · ارتفاع '+MJ.H+' م · بانل '+MJ.th+' سم · '
+    +MJ.doors+' باب ('+(MJ.doorType==='steel'?'حديد':'زجاج')+') · '+MJ.windows+' شباك'
+    +(MJ.elec?' · كهرباء':'')+(MJ.ac?' · تكييف':'')+(MJ.floor?' · أرضية':'')+(MJ.paint?' · تشطيب خارجي':'')
+    +' — التقدير '+c.total+' ريال';
+  try{ localStorage.setItem('khafet_majlis_note', note); }catch(e){}
+  state.quickNote = note;
+  startQuick();
+  setTimeout(function(){
+    const t=document.getElementById('q_note')||document.getElementById('note');
+    if(t && !t.value) t.value=note;
+  },350);
+}
+
 function syncHeader(){
   const n=myOrders().length;
   document.getElementById('myCount').textContent=ar(n);
@@ -2077,6 +2269,12 @@ function renderHome(){
       <button class="services-btn" onclick="go('prices')">
         <span class="sb-ic">${icon('tag',24)}</span>
         <span class="sb-t"><b>قائمة الأسعار</b><small>تصفّح الخدمات وأسعارها واطلب ما يناسبك</small></span>
+        <span class="qb-ar">←</span>
+      </button>
+
+      <button class="services-btn" onclick="go('majlis')">
+        <span class="sb-ic">🏗️</span>
+        <span class="sb-t"><b>ابنِ مجلسك</b><small>مجلس ساندوتش بانل — حدّد المقاس واعرف التكلفة فوراً</small></span>
         <span class="qb-ar">←</span>
       </button>
 
