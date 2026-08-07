@@ -52,8 +52,12 @@ workflows:
           ruby -e "require 'xcodeproj'; \
             p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \
             t = p.targets.find { |x| x.name == 'App' }; \
-            t.build_configurations.each { |c| c.build_settings['TARGETED_DEVICE_FAMILY'] = '1' }; \
-            p.save; puts '✅ التطبيق صار آيفون فقط'"
+            t.build_configurations.each { |c| c.build_settings['TARGETED_DEVICE_FAMILY'] = '1'; \
+              c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' }; \
+            p.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' }; \
+            p.save; puts '✅ آيفون فقط + الحد الأدنى iOS 15'"
+          # رفع الحد الأدنى بملفات Capacitor/Pods كذلك (آبل تحذّر تحت 15.0)
+          find ios -name Podfile -maxdepth 3 -exec sed -i '' "s/platform :ios, '1[0-4][^']*'/platform :ios, '15.0'/" {} \; 2>/dev/null || true
           # التطبيق يستخدم HTTPS القياسي فقط = تشفير معفى، فلا تسأل آبل كل مرة
           plutil -insert ITSAppUsesNonExemptEncryption -bool false "$PLIST" 2>/dev/null || \
             plutil -replace ITSAppUsesNonExemptEncryption -bool false "$PLIST"
