@@ -2135,7 +2135,9 @@ function renderMajlis(){
       ${add('ac',   T('تأسيس التكييف','AC preparation'), T('تمديد وتركيب سبليت (الجهاز غير مشمول)','Split install — unit not included'))}
       ${add('floor',T('الأرضية','Flooring'), T('عزل وتغطية أرضية','Insulated floor covering'))}
       ${add('paint',T('تشطيب خارجي','Exterior finish'), T('عزل ودهان خارجي','Sealing and exterior paint'))}
-      ${add('key',  T('🔑 تسليم مفتاح','🔑 Turnkey'), T('تجهيز المجلس بالكامل جاهز للاستخدام: الأثاث والجلسات، الستائر، السجاد، الإضاءة الديكورية وتعليق الشاشة — يُسعّر حسب اختيارك بعد المعاينة','Fully furnished and ready to use: seating, curtains, carpet, decorative lighting and TV mounting — priced per your selection after the site visit'))}
+      <div class="mj-add" style="opacity:.62;cursor:default">
+        <input type="checkbox" disabled>
+        <div class="t"><b>🔑 ${T('تسليم مفتاح','Turnkey')} <span style="background:var(--gold,#F5C518);color:#1a1408;font-size:.68rem;font-weight:800;padding:2px 8px;border-radius:20px;margin-inline-start:6px;vertical-align:middle">${T('قريباً','Soon')}</span></b><small>${T('تجهيز المجلس بالكامل جاهز للاستخدام: الأثاث والجلسات، الستائر، السجاد، الإضاءة الديكورية وتعليق الشاشة','Fully furnished and ready to use: seating, curtains, carpet, decorative lighting and TV mounting')}</small></div></div>
     </div>
 
     <div class="mj-sum">
