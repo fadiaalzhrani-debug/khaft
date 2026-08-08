@@ -154,11 +154,22 @@ workflows:
         script: |
           IPA=$(find "$CM_BUILD_DIR" -name '*.ipa' | head -1)
           echo "الملف: $IPA"
+          set +e
           app-store-connect publish \
             --path "$IPA" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$(cat /tmp/AuthKey.p8)"
+            --private-key "$(cat /tmp/AuthKey.p8)" 2>&1 | tee /tmp/publish.log
+          CODE=${PIPESTATUS[0]}
+          if [ "$CODE" -ne 0 ]; then
+            echo ""
+            echo "═════════ ❌ سبب فشل الرفع (مستخرج تلقائياً) ═════════"
+            grep -oE '"(message|NSLocalizedDescription|NSLocalizedFailureReason)" : "[^"]*"' /tmp/publish.log | sort -u
+            grep -oE '"code" : [0-9-]+' /tmp/publish.log | sort -u
+            grep -iE 'ERROR|invalid|denied|unauthorized' /tmp/publish.log | grep -v '"' | head -10
+            echo "═══════════════════════════════════════════════════"
+          fi
+          exit $CODE
     artifacts:
       - ios/App/build/ios/ipa/*.ipa
       - build/ios/ipa/*.ipa
