@@ -2032,7 +2032,7 @@ const MJ_RATE = {
 };
 
 let MJ = { L:5, W:4, H:2.7, th:7.5, doors:1, doorType:'steel', windows:2,
-           elec:true, ac:false, floor:true, paint:false };
+           elec:true, ac:false, floor:true, paint:false, key:false };
 
 function mjCalc(){
   const area = MJ.L * MJ.W;                                  // مساحة الأرضية
@@ -2135,13 +2135,15 @@ function renderMajlis(){
       ${add('ac',   T('تأسيس التكييف','AC preparation'), T('تمديد وتركيب سبليت (الجهاز غير مشمول)','Split install — unit not included'))}
       ${add('floor',T('الأرضية','Flooring'), T('عزل وتغطية أرضية','Insulated floor covering'))}
       ${add('paint',T('تشطيب خارجي','Exterior finish'), T('عزل ودهان خارجي','Sealing and exterior paint'))}
+      ${add('key',  T('🔑 تسليم مفتاح','🔑 Turnkey'), T('تجهيز المجلس بالكامل جاهز للاستخدام: الأثاث والجلسات، الستائر، السجاد، الإضاءة الديكورية وتعليق الشاشة — يُسعّر حسب اختيارك بعد المعاينة','Fully furnished and ready to use: seating, curtains, carpet, decorative lighting and TV mounting — priced per your selection after the site visit'))}
     </div>
 
     <div class="mj-sum">
       <div class="l"><span>${T('الجدران والسقف','Walls & roof')} (<b class="num" id="mjWalls">${en(Math.round(c.walls+c.roof))}</b> ${T('م²','m²')})</span><b class="num" id="mjPanel">${en(Math.round(c.panelCost))}</b></div>
       <div class="l"><span>${T('الأبواب والشبابيك','Doors & windows')}</span><b class="num" id="mjDoors">${en(Math.round(c.doorCost+c.winCost))}</b></div>
       <div class="l"><span>${T('الإضافات','Add-ons')}</span><b class="num" id="mjExtra">${en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost))}</b></div>
-      <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}</span><b><span class="num" id="mjTotal">${en(c.total)}</span> ${T('ريال','SAR')}</b></div>
+      ${MJ.key?`<div class="l"><span>🔑 ${T('تسليم مفتاح — الأثاث والتجهيز','Turnkey — furniture & fit-out')}</span><b>${T('حسب التصميم','per design')}</b></div>`:''}
+      <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}${MJ.key?T(' (بدون التجهيز)',' (excl. fit-out)'):''}</span><b><span class="num" id="mjTotal">${en(c.total)}</span> ${T('ريال','SAR')}</b></div>
       <div class="mj-note">⏱ ${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="mjDays">${en(c.days)}</b> ${T('أيام','days')}<br>
         ${T('السعر تقديري ويُعتمد نهائياً بعد المعاينة المجانية بالموقع.','Estimate only — confirmed after the free on-site visit.')}</div>
     </div>
@@ -2158,7 +2160,8 @@ function mjBook(){
   const note='طلب بناء مجلس ساندوتش بانل — '+MJ.L+'×'+MJ.W+' م · ارتفاع '+MJ.H+' م · بانل '+MJ.th+' سم · '
     +MJ.doors+' باب ('+(MJ.doorType==='steel'?'حديد':'زجاج')+') · '+MJ.windows+' شباك'
     +(MJ.elec?' · كهرباء':'')+(MJ.ac?' · تكييف':'')+(MJ.floor?' · أرضية':'')+(MJ.paint?' · تشطيب خارجي':'')
-    +' — التقدير '+c.total+' ريال';
+    +(MJ.key?' · 🔑 تسليم مفتاح (تجهيز كامل بالأثاث — يُسعّر بعد المعاينة)':'')
+    +' — التقدير '+c.total+' ريال'+(MJ.key?' (بدون التجهيز)':'');
   try{ localStorage.setItem('khafet_majlis_note', note); }catch(e){}
   state.quickNote = note;
   startQuick();
