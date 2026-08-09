@@ -754,6 +754,8 @@
   color:#8A7A55;border-radius:8px;-webkit-tap-highlight-color:transparent}
 .pweye:hover{background:rgba(0,0,0,.05)}
 .pweye svg{width:21px;height:21px;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+.tamara-badge{background:#4F008C !important;color:#fff !important;font-weight:800;letter-spacing:.3px}
 </style>
 </head>
 <body>
@@ -1859,8 +1861,8 @@ async function submitSubscription(){
   if(cloudReady){ try{ const r=await sb.from('khafet_subscriptions').insert(data);
       if(!r.error) ok=true; else console.warn('sub insert:',r.error.message); }catch(e){ console.warn(e); } }
 
-  /* الدفع الإلكتروني: نفتح صفحة ميسر */
-  if(payMethod==='online' && ok){
+  /* الدفع الإلكتروني أو تمارا: نفتح صفحة الدفع */
+  if((payMethod==='online' || payMethod==='tamara') && ok){
     const started = await startPayment('subscription', subId, data.price, name, phone);
     if(started) return;                       // ننتقل لصفحة الدفع
     if(btn){ btn.disabled=false; btn.textContent='💳 ادفع الآن'; }
@@ -1883,13 +1885,23 @@ function setPayMethod(m){
   payMethod = m;
   document.querySelectorAll('.payopt label').forEach(l=>l.classList.toggle('on', l.dataset.m===m));
   const b=document.getElementById('payCta');
-  if(b) b.textContent = m==='online' ? LX('💳 ادفع الآن','💳 Pay now') : LX('✅ أكّد الطلب','✅ Confirm order');
+  if(b) b.textContent = m==='online' ? LX('💳 ادفع الآن','💳 Pay now')
+                      : m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara')
+                      : LX('✅ أكّد الطلب','✅ Confirm order');
 }
 
 /* صندوق اختيار طريقة الدفع */
 function payBox(amount, opts){
   opts = opts || {};
-  const bnpl = amount>=200 ? `<div class="paynote">${LX('تقدر تقسّطها على 4 دفعات عبر تابي أو تمارا — بدون فوائد.','Split it over 4 payments with Tabby or Tamara — interest free.')}</div>` : '';
+  // تمارا: التقسيط متاح من 200 ريال — الدفعة الأولى تقريبية (المبلغ ÷ 4)
+  const tamara = amount>=200 ? `
+      <label data-m="tamara" onclick="setPayMethod('tamara')">
+        <input type="radio" name="paym" value="tamara">
+        <div><div class="t">${LX('قسّطها مع تمارا','Split it with Tamara')}</div>
+        <div class="d">${LX('ادفع '+money(Math.round(amount/4))+' اليوم والباقي على دفعات — بدون فوائد','Pay '+en(Math.round(amount/4))+' SAR today, rest in instalments — interest free')}</div>
+        <div class="badges"><span class="tamara-badge">tamara</span><span>${LX('بدون فوائد','No interest')}</span></div>
+        </div>
+      </label>` : '';
   return `<div class="paybox">
     <h4>💳 ${LX('طريقة الدفع','Payment method')}</h4>
     <div class="payopt">
@@ -1900,13 +1912,13 @@ function payBox(amount, opts){
         <div class="badges"><span>mada</span><span>Visa</span><span>Apple&nbsp;Pay</span><span>STC&nbsp;Pay</span></div>
         </div>
       </label>
+      ${tamara}
       <label data-m="device" onclick="setPayMethod('device')">
         <input type="radio" name="paym" value="device">
         <div><div class="t">${LX('بجهاز الدفع مع الفني','Card machine with the technician')}</div>
         <div class="d">${LX('تدفع بمدى أو البطاقة عند إتمام العمل — الفني معه جهاز','Pay by card when the work is done — the technician carries a terminal')}</div></div>
       </label>
     </div>
-    ${bnpl}
     <div class="paynote">${LX('ما نستقبل مبالغ نقدية — حرصاً على سلامة الجميع ودقة الفواتير.','We do not accept cash — for everyone\'s safety and accurate invoicing.')}</div>
   </div>`;
 }
@@ -1914,16 +1926,25 @@ function payBox(amount, opts){
 /* إنشاء رابط الدفع وفتحه */
 async function startPayment(kind, refId, amount, name, phone, orderNo){
   if(!PAY_FN){ toast(LX('الدفع الإلكتروني غير مفعّل','Online payment is not enabled')); return false; }
+  // تمارا لها مسار خاص بنفس الدالة
+  const viaTamara = (payMethod==='tamara');
+  const url = viaTamara ? PAY_FN+'/tamara' : PAY_FN;
   try{
-    const r = await fetch(PAY_FN, {
+    const r = await fetch(url, {
       method:'POST',
       headers:{'Content-Type':'application/json', 'Authorization':'Bearer '+SUPABASE_ANON, 'apikey':SUPABASE_ANON},
-      body: JSON.stringify({kind, ref_id:refId, amount, name, phone, order_no:orderNo||null})
+      body: JSON.stringify({kind, ref_id:refId, amount, name, phone, order_no:orderNo||null,
+        city:(state.address&&state.address.city)||'', address:(state.address&&state.address.details)||''})
     });
     const j = await r.json();
-    if(!j.ok || !j.url){ console.warn('pay:', j); toast(LX('تعذّر فتح صفحة الدفع','Could not open the payment page')); return false; }
+    if(!j.ok || !j.url){
+      console.warn('pay:', j);
+      toast(viaTamara ? LX('تعذّر فتح صفحة تمارا — جرّب الدفع الإلكتروني','Could not open Tamara — try online payment')
+                      : LX('تعذّر فتح صفحة الدفع','Could not open the payment page'));
+      return false;
+    }
     try{ localStorage.setItem('khafet_pay_pending', j.payment_id); }catch(e){}
-    location.href = j.url;      // صفحة ميسر الآمنة
+    location.href = j.url;      // صفحة ميسر / تمارا الآمنة
     return true;
   }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return false; }
 }
