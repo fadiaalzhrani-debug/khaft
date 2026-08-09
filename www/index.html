@@ -355,15 +355,18 @@
   .payresult p{color:var(--muted);font-weight:600;margin-top:8px;line-height:1.7}
   /* ── شاشة العقود: نفس تصميم موقع العقود ── */
   .ct-wrap{background:#F2E7CF;border-radius:18px;padding:12px;margin-top:14px}
-  .ct-tiers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:8px 2px 10px;border-bottom:2px solid #F5C518}
-  .ct-tier{background:#FAF3E3;border-radius:12px;padding:9px 5px;text-align:center;border:1px solid #E2D3B0}
+  .ct-tiers{display:flex;flex-direction:column;gap:11px;padding:10px 2px 14px;border-bottom:2px solid #F5C518}
+  .ct-tier{background:#FAF3E3;border-radius:15px;padding:14px 16px;text-align:start;border:1px solid #E2D3B0}
   .ct-tier.hl{background:#FBF0DA;outline:1.5px solid #F5C518;border-color:#F5C518}
-  .ct-tier .nm{font-size:.86rem;font-weight:800;color:#2E2618;line-height:1.35}
-  .ct-tier .was{font-size:.63rem;font-weight:700;color:#6E5F44;margin-top:3px}
+  .ct-tier .t-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .ct-tier .nm{font-size:1.05rem;font-weight:800;color:#2E2618;line-height:1.35}
+  .ct-tier .pr{font-size:1.3rem;font-weight:800;color:#9C7A0A;white-space:nowrap}
+  .ct-tier .pr small{font-size:.68rem;color:#6E5F44;font-weight:700;margin-inline-start:3px}
+  .ct-tier .t-sub{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:7px}
+  .ct-tier .was{font-size:.78rem;font-weight:700;color:#6E5F44}
   .ct-tier .was s{color:#B3261E;text-decoration-thickness:2px;font-weight:800}
-  .ct-tier .pr{font-size:1rem;font-weight:800;color:#9C7A0A;margin-top:2px}
-  .ct-tier .pr small{display:block;font-size:.58rem;color:#6E5F44;font-weight:600}
-  .ct-tier .mo{font-size:.63rem;font-weight:800;color:#15803D;margin-top:2px}
+  .ct-tier .mo{font-size:.8rem;font-weight:800;color:#15803D;white-space:nowrap}
+  .ct-tier .t-tamara{margin-top:9px;font-size:.78rem;font-weight:800;color:#4F008C;background:rgba(79,0,140,.07);border:1px solid rgba(79,0,140,.14);border-radius:9px;padding:7px 10px;line-height:1.5}
   .ct-row{border-bottom:1px solid #E2D3B0;padding:9px 4px 11px}
   .ct-row:last-child{border-bottom:0}
   .ct-lbl{font-size:.92rem;font-weight:800;color:#2E2618;padding:0 4px 7px}
@@ -756,6 +759,14 @@
 .pweye svg{width:21px;height:21px;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 .tamara-badge{background:#4F008C !important;color:#fff !important;font-weight:800;letter-spacing:.3px}
+
+  .tamara-banner{display:flex;align-items:center;gap:14px;width:100%;background:linear-gradient(135deg,#4F008C,#7A1FA2);border:0;border-radius:var(--r-lg);padding:16px 18px;margin-top:14px;text-align:right;color:#fff;cursor:pointer;transition:.2s;box-shadow:var(--shadow-sm)}
+  .tamara-banner:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .tamara-banner .tb-badge{background:#fff;color:#4F008C;font-weight:800;font-size:.82rem;padding:5px 12px;border-radius:20px;letter-spacing:.3px;flex-shrink:0}
+  .tamara-banner .tb-t{flex:1}
+  .tamara-banner .tb-t b{display:block;font-size:1rem;font-weight:800}
+  .tamara-banner .tb-t small{display:block;font-size:.78rem;opacity:.85;margin-top:2px}
+  .tamara-banner .qb-ar{color:#fff;opacity:.8}
 </style>
 </head>
 <body>
@@ -1783,10 +1794,15 @@ function renderPlans(){
   const E=_uiEN();
   const T=(ar,en)=>E?en:ar;
   const tiers=PLANS.map(p=>`<div class="ct-tier ${p.badge?'hl':''}">
-    <div class="nm">${esc(T(p.name,p.nameEn))}${p.badge?' ⭐':''}</div>
-    <div class="was">${T('بدون عقد','Without contract')} <s>${en(p.was)}</s> ${T('ريال','SAR')}</div>
-    <div class="pr">${en(p.price)}<small>${T('ريال/سنة','SAR / year')}</small></div>
-    <div class="mo">${T('شهري','Monthly')} ${en(p.monthly)} ${T('ريال','SAR')}</div>
+    <div class="t-top">
+      <span class="nm">${esc(T(p.name,p.nameEn))}${p.badge?' ⭐':''}</span>
+      <span class="pr">${en(p.price)}<small>${T('ريال/سنة','SAR/yr')}</small></span>
+    </div>
+    <div class="t-sub">
+      <span class="was">${T('بدون عقد','Without contract')} <s>${en(p.was)}</s> ${T('ريال','SAR')}</span>
+      <span class="mo">${T('شهري','Monthly')} ${en(p.monthly)} ${T('ريال','SAR')}</span>
+    </div>
+    <div class="t-tamara">🛍️ ${T('أو 4 دفعات × '+en(Math.round(p.price/4))+' ريال مع تمارا — بدون فوائد','or 4 payments × '+en(Math.round(p.price/4))+' SAR with Tamara — interest free')}</div>
   </div>`).join('');
   const cell=(r,k)=>{
     const raw=r.v[k];
@@ -2098,6 +2114,7 @@ function mjUpdate(){
   set('mjDoors', en(Math.round(c.doorCost+c.winCost)));
   set('mjExtra', en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost)));
   set('mjTotal', en(c.total));
+  set('mjTamara', en(Math.round(c.total/4)));
   set('mjDays', en(c.days));
   const b=g('mjBox');
   if(b){ const sc=Math.min(150, Math.max(60, MJ.L*16)); const sc2=Math.min(120, Math.max(45, MJ.W*16));
@@ -2176,6 +2193,7 @@ function renderMajlis(){
       <div class="l"><span>${T('الإضافات','Add-ons')}</span><b class="num" id="mjExtra">${en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost))}</b></div>
       ${MJ.key?`<div class="l"><span>🔑 ${T('تسليم مفتاح — الأثاث والتجهيز','Turnkey — furniture & fit-out')}</span><b>${T('حسب التصميم','per design')}</b></div>`:''}
       <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}${MJ.key?T(' (بدون التجهيز)',' (excl. fit-out)'):''}</span><b><span class="num" id="mjTotal">${en(c.total)}</span> ${T('ريال','SAR')}</b></div>
+      <div class="t-tamara" style="margin-top:10px">🛍️ ${T('تقدر تقسّطها مع تمارا — ','You can split it with Tamara — ')}≈ <b class="num" id="mjTamara">${en(Math.round(c.total/4))}</b> ${T('ريال × 4 دفعات، بدون فوائد','SAR × 4 payments, interest free')}</div>
       <div class="mj-note">⏱ ${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="mjDays">${en(c.days)}</b> ${T('أيام','days')}<br>
         ${T('السعر تقديري ويُعتمد نهائياً بعد المعاينة المجانية بالموقع.','Estimate only — confirmed after the free on-site visit.')}</div>
     </div>
@@ -2317,6 +2335,12 @@ function renderHome(){
         <button class="acc-tile" onclick="go('plans')"><span class="ti">${icon('shield',26)}</span><b>باقات الصيانة</b><small>أجرة اليد مجانية طوال السنة</small></button>
         <button class="acc-tile" onclick="go('tips')"><span class="ti">${icon('book',26)}</span><b>نصائح السلامة</b><small>مقالات تحمي بيتك</small></button>
       </div>
+
+      <button class="tamara-banner" onclick="go('plans')">
+        <span class="tb-badge">tamara</span>
+        <span class="tb-t"><b>${LX('قسّط عقد صيانتك على دفعات','Split your maintenance contract')}</b><small>${LX('بدون فوائد وبدون رسوم تأخير — يتفعّل فوراً','No interest, no late fees — activates instantly')}</small></span>
+        <span class="qb-ar">←</span>
+      </button>
 
       <div class="trust">
         <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${WARRANTY}</b></div>
