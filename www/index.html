@@ -355,18 +355,16 @@
   .payresult p{color:var(--muted);font-weight:600;margin-top:8px;line-height:1.7}
   /* ── شاشة العقود: نفس تصميم موقع العقود ── */
   .ct-wrap{background:#F2E7CF;border-radius:18px;padding:12px;margin-top:14px}
-  .ct-tiers{display:flex;flex-direction:column;gap:11px;padding:10px 2px 14px;border-bottom:2px solid #F5C518}
-  .ct-tier{background:#FAF3E3;border-radius:15px;padding:14px 16px;text-align:start;border:1px solid #E2D3B0}
+  /* رؤوس الباقات: ٣ أعمدة فوق مكانها، وتثبت وهي تنزل معك مثل الموقع */
+  .ct-tiers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;padding:10px 2px 12px;border-bottom:2px solid #F5C518;position:sticky;top:0;z-index:20;background:#F2E7CF}
+  .ct-tier{background:#FAF3E3;border-radius:13px;padding:11px 5px 10px;text-align:center;border:1px solid #E2D3B0}
   .ct-tier.hl{background:#FBF0DA;outline:1.5px solid #F5C518;border-color:#F5C518}
-  .ct-tier .t-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .ct-tier .nm{font-size:1.05rem;font-weight:800;color:#2E2618;line-height:1.35}
-  .ct-tier .pr{font-size:1.3rem;font-weight:800;color:#9C7A0A;white-space:nowrap}
-  .ct-tier .pr small{font-size:.68rem;color:#6E5F44;font-weight:700;margin-inline-start:3px}
-  .ct-tier .t-sub{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:7px}
-  .ct-tier .was{font-size:.78rem;font-weight:700;color:#6E5F44}
+  .ct-tier .nm{font-size:.85rem;font-weight:800;color:#2E2618;line-height:1.35}
+  .ct-tier .pr{font-size:1.14rem;font-weight:800;color:#9C7A0A;margin-top:3px}
+  .ct-tier .pr small{display:block;font-size:.6rem;color:#6E5F44;font-weight:600}
+  .ct-tier .was{font-size:.67rem;font-weight:700;color:#6E5F44;margin-top:4px}
   .ct-tier .was s{color:#B3261E;text-decoration-thickness:2px;font-weight:800}
-  .ct-tier .mo{font-size:.8rem;font-weight:800;color:#15803D;white-space:nowrap}
-  .ct-tier .t-tamara{margin-top:9px;font-size:.78rem;font-weight:800;color:#4F008C;background:rgba(79,0,140,.07);border:1px solid rgba(79,0,140,.14);border-radius:9px;padding:7px 10px;line-height:1.5}
+  .t-tamara{margin-top:9px;font-size:.78rem;font-weight:800;color:#4F008C;background:rgba(79,0,140,.07);border:1px solid rgba(79,0,140,.14);border-radius:9px;padding:7px 10px;line-height:1.5}
   .ct-row{border-bottom:1px solid #E2D3B0;padding:9px 4px 11px}
   .ct-row:last-child{border-bottom:0}
   .ct-lbl{font-size:.92rem;font-weight:800;color:#2E2618;padding:0 4px 7px}
@@ -374,7 +372,7 @@
   .ct-vals{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
   .ct-v{background:#F6EEDC;border-radius:10px;padding:6px 2px;text-align:center;font-size:.82rem;font-weight:700;color:#2E2618}
   .ct-v.hl{background:#FBF0DA}
-  .ct-v i{display:block;font-style:normal;font-size:.6rem;font-weight:800;color:#6E5F44;margin-bottom:2px}
+  .ct-v i{display:none}  /* أسماء الباقات صارت برؤوس ثابتة فوق كل عمود */
   .ct-v .y{color:#15803D;font-weight:800}
   .ct-v .n2{color:#847356;opacity:.55}
   .ct-v small{display:block;font-size:.66rem;color:#6E5F44;font-weight:600}
@@ -1794,14 +1792,9 @@ function renderPlans(){
   const E=_uiEN();
   const T=(ar,en)=>E?en:ar;
   const tiers=PLANS.map(p=>`<div class="ct-tier ${p.badge?'hl':''}">
-    <div class="t-top">
-      <span class="nm">${esc(T(p.name,p.nameEn))}${p.badge?' ⭐':''}</span>
-      <span class="pr">${en(p.price)}<small>${T('ريال/سنة','SAR/yr')}</small></span>
-    </div>
-    <div class="t-sub">
-      <span class="was">${T('بدون عقد','Without contract')} <s>${en(p.was)}</s> ${T('ريال','SAR')}</span>
-    </div>
-    <div class="t-tamara">🛍️ ${T('أو 4 دفعات × '+en(Math.round(p.price/4))+' ريال مع تمارا — بدون فوائد','or 4 payments × '+en(Math.round(p.price/4))+' SAR with Tamara — interest free')}</div>
+    <div class="nm">${esc(T(p.name,p.nameEn))}${p.badge?' ⭐':''}</div>
+    <div class="pr">${en(p.price)}<small>${T('ريال/سنة','SAR / year')}</small></div>
+    <div class="was">${T('بدون عقد','No contract')} <s>${en(p.was)}</s> ${T('ريال','SAR')}</div>
   </div>`).join('');
   const cell=(r,k)=>{
     const raw=r.v[k];
