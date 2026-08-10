@@ -1800,7 +1800,6 @@ function renderPlans(){
     </div>
     <div class="t-sub">
       <span class="was">${T('بدون عقد','Without contract')} <s>${en(p.was)}</s> ${T('ريال','SAR')}</span>
-      <span class="mo">${T('شهري','Monthly')} ${en(p.monthly)} ${T('ريال','SAR')}</span>
     </div>
     <div class="t-tamara">🛍️ ${T('أو 4 دفعات × '+en(Math.round(p.price/4))+' ريال مع تمارا — بدون فوائد','or 4 payments × '+en(Math.round(p.price/4))+' SAR with Tamara — interest free')}</div>
   </div>`).join('');
@@ -1821,7 +1820,7 @@ function renderPlans(){
     return `<div class="ct-row"><div class="ct-lbl">${esc(T(r.l,r.le))}${sub?`<small>${esc(sub)}</small>`:''}</div>${body}</div>`;
   }).join('');
   const svc=CT_SVC.map(g=>`<h4>${esc(T(g.t,g.te))}</h4><ul>${g.i.map(x=>`<li><span>${esc(T(x[0],x[2]||x[0]))}</span><b class="spr">${en(x[1])} ${T('ريال','SAR')}</b></li>`).join('')}</ul>`).join('');
-  const subs=PLANS.map(p=>`<button class="${p.badge?'hl':''}" onclick="openSubscribe('${p.id}')">${T('اشترك بـ'+p.name,'Subscribe — '+p.nameEn)}${p.badge?' ⭐':''}<span>${en(p.price)} ${T('ريال/سنة','SAR/year')} · ${T('شهري','monthly')} ${en(p.monthly)}</span></button>`).join('');
+  const subs=PLANS.map(p=>`<button class="${p.badge?'hl':''}" onclick="openSubscribe('${p.id}')">${T('اشترك بـ'+p.name,'Subscribe — '+p.nameEn)}${p.badge?' ⭐':''}<span>${en(p.price)} ${T('ريال/سنة','SAR/year')}</span></button>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead(T('العقود السنوية','Annual Contracts'),'home')}
