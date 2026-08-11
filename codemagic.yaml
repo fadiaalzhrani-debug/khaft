@@ -30,10 +30,14 @@ workflows:
           npx cap sync ios
       - name: أيقونة التطبيق وشاشة البداية
         script: |
-          # يولّد كل مقاسات الأيقونة من assets/icon.png داخل مشروع iOS
-          npx capacitor-assets generate --ios
+          # يولّد الأيقونة وشاشة البداية من assets/ بخلفية خافِت الذهبية
+          npx capacitor-assets generate --ios \
+            --iosSplashBackgroundColor '#F5C518' \
+            --iosSplashDarkBackgroundColor '#1a1408'
           echo "— الأيقونات المولّدة —"
           ls ios/App/App/Assets.xcassets/AppIcon.appiconset/ | head -20
+          echo "— شاشة البداية (لازم تكون فيها صور) —"
+          ls -la ios/App/App/Assets.xcassets/Splash.imageset/ || echo "⚠️ شاشة البداية لم تتولّد!"
       - name: أذونات الجهاز ورقم الإصدار
         script: |
           PLIST="ios/App/App/Info.plist"
