@@ -765,6 +765,9 @@
   .tamara-banner .tb-t b{display:block;font-size:1rem;font-weight:800}
   .tamara-banner .tb-t small{display:block;font-size:.78rem;opacity:.85;margin-top:2px}
   .tamara-banner .qb-ar{color:#fff;opacity:.8}
+
+  .tamara-strip{display:flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,#4F008C,#7A1FA2);color:#fff;border-radius:12px;padding:9px 13px;margin-top:12px;font-size:.82rem;font-weight:800;line-height:1.5;text-align:center}
+  .tamara-strip .ts-badge{background:#fff;color:#4F008C;font-weight:800;font-size:.74rem;padding:3px 10px;border-radius:20px;letter-spacing:.3px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -1817,6 +1820,7 @@ function renderPlans(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead(T('العقود السنوية','Annual Contracts'),'home')}
+      <div class="tamara-strip"><span class="ts-badge">tamara</span> ${T('قسّط عقدك على 4 دفعات — بدون فوائد وبدون رسوم تأخير','Split your contract over 4 payments — no interest, no late fees')}</div>
       <div class="ct-wrap">
         <div class="ct-tiers">${tiers}</div>
         ${rows}
@@ -1829,6 +1833,11 @@ function renderPlans(){
       <div class="ct-svc"><h4 style="color:#2E2618;font-size:1rem">${T('🛠 64 خدمة مشمولة — بكل الباقات','🛠 64 services included — in every plan')}</h4>${svc}</div>
       <div style="height:24px"></div>
     </div>`;
+  // الرؤوس الثابتة تلتصق تحت هيدر التطبيق مباشرة (حسب ارتفاعه الفعلي مع النوتش)
+  requestAnimationFrame(function(){
+    var h=document.querySelector('header.top'), t=document.querySelector('.ct-tiers');
+    if(h&&t) t.style.top=(h.getBoundingClientRect().height-1)+'px';
+  });
 }
 function openSubscribe(planId){
   subPlan=PLANS.find(p=>p.id===planId)||PLANS[0];
@@ -2311,9 +2320,9 @@ function renderHome(){
         <span class="qb-ar">←</span>
       </button>
 
-      <button class="services-btn" onclick="go('prices')">
-        <span class="sb-ic">${icon('tag',24)}</span>
-        <span class="sb-t"><b>قائمة الأسعار</b><small>تصفّح الخدمات وأسعارها واطلب ما يناسبك</small></span>
+      <button class="services-btn" onclick="go('plans')">
+        <span class="sb-ic">${icon('shield',24)}</span>
+        <span class="sb-t"><b>باقات الصيانة</b><small>أجرة اليد مجانية طوال السنة — وفّر أكثر</small></span>
         <span class="qb-ar">←</span>
       </button>
 
@@ -2324,15 +2333,9 @@ function renderHome(){
       </button>
 
       <div class="acc-grid" style="margin-top:12px">
-        <button class="acc-tile" onclick="go('plans')"><span class="ti">${icon('shield',26)}</span><b>باقات الصيانة</b><small>أجرة اليد مجانية طوال السنة</small></button>
+        <button class="acc-tile" onclick="go('prices')"><span class="ti">${icon('tag',26)}</span><b>قائمة الأسعار</b><small>تصفّح الخدمات واطلب</small></button>
         <button class="acc-tile" onclick="go('tips')"><span class="ti">${icon('book',26)}</span><b>نصائح السلامة</b><small>مقالات تحمي بيتك</small></button>
       </div>
-
-      <button class="tamara-banner" onclick="go('plans')">
-        <span class="tb-badge">tamara</span>
-        <span class="tb-t"><b>${LX('قسّط عقد صيانتك على دفعات','Split your maintenance contract')}</b><small>${LX('بدون فوائد وبدون رسوم تأخير — يتفعّل فوراً','No interest, no late fees — activates instantly')}</small></span>
-        <span class="qb-ar">←</span>
-      </button>
 
       <div class="trust">
         <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${WARRANTY}</b></div>
