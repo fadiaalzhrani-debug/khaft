@@ -841,7 +841,7 @@ const PLANS = [
       '🔔 تذكيرات الصيانة بالتطبيق',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان',
       '🛒 الأغراض والقطع على العميل' ] },
-  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1799, badge:'الأكثر طلباً', was:3000, monthly:150, visits:12, visitsTxt:'12 زيارة', features:[
+  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1599, badge:'الأكثر طلباً', was:3000, monthly:133, visits:12, visitsTxt:'12 زيارة', features:[
       '🔧 12 زيارة بالسنة — أجرة اليد مجانية',
       '❄️ تنظيف كل مكيفات البيت مرة بالسنة (سبليت · حتى 12)',
       '🏠 فحص شامل للبيت مرة بالسنة',
@@ -1820,7 +1820,7 @@ function renderPlans(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead(T('العقود السنوية','Annual Contracts'),'home')}
-      <div class="tamara-strip"><span class="ts-badge">tamara</span> ${T('قسّط عقدك على 4 دفعات — بدون فوائد وبدون رسوم تأخير','Split your contract over 4 payments — no interest, no late fees')}</div>
+      <div class="tamara-strip"><span class="ts-badge">tamara</span> ${T('باقة بريميوم تُقسَّط على 4 دفعات — بدون فوائد وبدون رسوم تأخير','Premium plan splits over 4 payments — no interest, no late fees')}</div>
       <div class="ct-wrap">
         <div class="ct-tiers">${tiers}</div>
         ${rows}
@@ -1850,7 +1850,7 @@ function openSubscribe(planId){
         <div class="flow-sum" style="margin-top:0">🛡️ <span>الباقة المختارة: <b>${esc(subPlan.name)}</b> · ${money(subPlan.price)}/سنة</span></div>
         <div class="field"><label>الاسم <span class="req">*</span></label><input id="sub_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="sub_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
-        ${payBox(subPlan?subPlan.price:0)}
+        ${payBox(subPlan?subPlan.price:0, {tamara: !!(subPlan&&subPlan.id==='premium')})}
         ${agreeBox()}
         <button class="cta" id="payCta" style="margin-top:12px" onclick="submitSubscription()">💳 ادفع الآن</button>
         <p style="color:var(--muted);font-size:.82rem;margin-top:10px">دفعة سنوية واحدة · العقد يتفعّل فوراً بعد الدفع.</p>
@@ -1910,8 +1910,8 @@ function setPayMethod(m){
 /* صندوق اختيار طريقة الدفع */
 function payBox(amount, opts){
   opts = opts || {};
-  // تمارا: التقسيط متاح من 200 ريال — الدفعة الأولى تقريبية (المبلغ ÷ 4)
-  const tamara = amount>=200 ? `
+  // تمارا: التقسيط حصري لباقة بريميوم فقط
+  const tamara = (opts.tamara && amount>=200) ? `
       <label data-m="tamara" onclick="setPayMethod('tamara')">
         <input type="radio" name="paym" value="tamara">
         <div><div class="t">${LX('قسّطها مع تمارا','Split it with Tamara')}</div>
@@ -2115,7 +2115,6 @@ function mjUpdate(){
   set('mjDoors', en(Math.round(c.doorCost+c.winCost)));
   set('mjExtra', en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost)));
   set('mjTotal', en(c.total));
-  set('mjTamara', en(Math.round(c.total/4)));
   set('mjDays', en(c.days));
   const b=g('mjBox');
   if(b){ const sc=Math.min(150, Math.max(60, MJ.L*16)); const sc2=Math.min(120, Math.max(45, MJ.W*16));
@@ -2194,7 +2193,6 @@ function renderMajlis(){
       <div class="l"><span>${T('الإضافات','Add-ons')}</span><b class="num" id="mjExtra">${en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost))}</b></div>
       ${MJ.key?`<div class="l"><span>🔑 ${T('تسليم مفتاح — الأثاث والتجهيز','Turnkey — furniture & fit-out')}</span><b>${T('حسب التصميم','per design')}</b></div>`:''}
       <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}${MJ.key?T(' (بدون التجهيز)',' (excl. fit-out)'):''}</span><b><span class="num" id="mjTotal">${en(c.total)}</span> ${T('ريال','SAR')}</b></div>
-      <div class="t-tamara" style="margin-top:10px">🛍️ ${T('تقدر تقسّطها مع تمارا — ','You can split it with Tamara — ')}≈ <b class="num" id="mjTamara">${en(Math.round(c.total/4))}</b> ${T('ريال × 4 دفعات، بدون فوائد','SAR × 4 payments, interest free')}</div>
       <div class="mj-note">⏱ ${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="mjDays">${en(c.days)}</b> ${T('أيام','days')}<br>
         ${T('السعر تقديري ويُعتمد نهائياً بعد المعاينة المجانية بالموقع.','Estimate only — confirmed after the free on-site visit.')}</div>
     </div>
