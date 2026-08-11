@@ -841,14 +841,14 @@ const PLANS = [
       '🔔 تذكيرات الصيانة بالتطبيق',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان',
       '🛒 الأغراض والقطع على العميل' ] },
-  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1599, badge:'الأكثر طلباً', was:3000, monthly:133, visits:12, visitsTxt:'12 زيارة', features:[
+  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1799, badge:'', was:3000, monthly:150, visits:12, visitsTxt:'12 زيارة', features:[
       '🔧 12 زيارة بالسنة — أجرة اليد مجانية',
       '❄️ تنظيف كل مكيفات البيت مرة بالسنة (سبليت · حتى 12)',
       '🏠 فحص شامل للبيت مرة بالسنة',
       '🔥 فحص السخان المركزي قبل الشتاء',
       '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
-  { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:2399, badge:'', was:3700, monthly:200, visits:12, visitsTxt:'زيارات لا محدودة', features:[
+  { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:2399, badge:'الأفضل قيمة', was:3700, monthly:200, visits:12, visitsTxt:'زيارات لا محدودة', features:[
       '♾️ زيارات لا محدودة — أجرة اليد مجانية بالكامل',
       '❄️ تنظيف كل مكيفات البيت مرتين بالسنة',
       '💧 كشف تسريب المياه بالأجهزة بدون تكسير',
@@ -1806,7 +1806,7 @@ function renderPlans(){
     else if(raw==='NO') inner='<span class="n2">—</span>';
     else inner='<b'+(r.ok?' class="y"':'')+'>'+esc(E&&r.ve?r.ve[k]:raw)+'</b>';
     const nt=r.note?(E&&r.noteE?r.noteE[k]:r.note[k]):'';
-    return `<div class="ct-v ${k===1?'hl':''}"><i>${esc(T(PLANS[k].name.replace('باقة ',''),PLANS[k].nameEn.replace(' Plan','')))}</i>${inner}${nt?`<small>${esc(nt)}</small>`:''}</div>`;
+    return `<div class="ct-v ${PLANS[k].badge?'hl':''}"><i>${esc(T(PLANS[k].name.replace('باقة ',''),PLANS[k].nameEn.replace(' Plan','')))}</i>${inner}${nt?`<small>${esc(nt)}</small>`:''}</div>`;
   };
   const rows=CT_ROWS.map(r=>{
     const body = r.wide
@@ -1827,7 +1827,6 @@ function renderPlans(){
       </div>
       <div class="ct-sub">${subs}</div>
       <div class="ct-anchor">
-        <div class="a1">${T('⚠️ الرقم جنب كل خدمة = <b>أجرة اليد فقط</b> — بدون عقد يضاف عليها رسوم الزيارة','⚠️ The price next to each service is <b>labor only</b> — without a contract a trip charge is added')}</div>
         <div class="a2">${T('متوسط الفاتورة الوحدة بدون عقد <b>225</b> ريال · ومع العقد <b>كل هذي الخدمات مجانية</b> مهما تكررت','A single invoice without a contract averages <b>225</b> SAR · with a contract <b>all of these are free</b>, however often you need them')}</div>
       </div>
       <div class="ct-svc"><h4 style="color:#2E2618;font-size:1rem">${T('🛠 64 خدمة مشمولة — بكل الباقات','🛠 64 services included — in every plan')}</h4>${svc}</div>
@@ -2320,13 +2319,13 @@ function renderHome(){
 
       <button class="services-btn" onclick="go('plans')">
         <span class="sb-ic">${icon('shield',24)}</span>
-        <span class="sb-t"><b>باقات الصيانة</b><small>أجرة اليد مجانية طوال السنة — وفّر أكثر</small></span>
+        <span class="sb-t"><b>باقات الصيانة السنوية</b><small>أجرة اليد مجانية طوال السنة — وفّر أكثر</small></span>
         <span class="qb-ar">←</span>
       </button>
 
       <button class="services-btn" onclick="go('majlis')">
         <span class="sb-ic">🏗️</span>
-        <span class="sb-t"><b>ابنِ مجلسك</b><small>مجلس ساندوتش بانل — حدّد المقاس واعرف التكلفة فوراً</small></span>
+        <span class="sb-t"><b>ابنِ مجلسك <span style="background:var(--gold);color:#1a1408;font-size:.68rem;font-weight:800;padding:2px 9px;border-radius:20px;margin-inline-start:6px;vertical-align:middle">قريباً</span></b><small>مجلس ساندوتش بانل — حدّد المقاس واعرف التكلفة فوراً</small></span>
         <span class="qb-ar">←</span>
       </button>
 
@@ -2360,7 +2359,6 @@ function renderHome(){
         </div>
         <div style="margin-top:16px"><a class="join-link" onclick="go('suggest')">💡 عندك اقتراح أو ملاحظة؟ اكتب لنا — رأيك يهمنا</a></div>
         <div style="margin-top:16px"><a class="join-link" onclick="go('join')">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
-        <div style="margin-top:20px"><button class="footlang" onclick="toggleLang()">🌐 ${_uiEN()?'العربية':'English'}</button></div>
       </footer>
     </div>`;
 }
