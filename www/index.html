@@ -861,19 +861,19 @@ const PLANS = [
 ];
 
 const CT_ROWS=[
- {l:'عدد الزيارات',le:'Visits',s:'اليد العاملة مجانية',se:'Labor is free',v:['8 زيارات','12 زيارة','لا محدودة'],ve:['8 visits','12 visits','Unlimited']},
- {l:'سباكة وكهرباء وتركيبات',le:'Plumbing, electrical & installs',s:'كل الخدمات بالأسفل — 64 خدمة',se:'All services below — 64 services',v:['YES','YES','YES']},
- {l:'التوصيل',le:'Delivery',s:'رسوم المشوار',se:'Trip charge',v:['مجاني','مجاني','مجاني'],ve:['Free','Free','Free'],ok:1},
- {l:'تذكيرات الصيانة',le:'Maintenance reminders',s:'بالتطبيق — نذكّرك بمواعيدك',se:'In-app — we remind you',v:['YES','YES','YES']},
- {l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['NO','NO','YES']},
- {l:'تنظيف المكيفات',le:'AC cleaning',s:'سبليت فقط · حتى 12 مكيفاً',se:'Split units · up to 12',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
- {l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','NO','YES']},
- {l:'فحص شامل للبيت',le:'Full home inspection',s:'',se:'',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
- {l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','NO','مرة بالسنة'],ve:['NO','NO','Once a year']},
- {l:'فحص السخان المركزي',le:'Central heater check',s:'قبل الشتاء',se:'Before winter',v:['NO','YES','YES'],note:['','','مع صيانة شاملة'],noteE:['','','with full service']},
- {l:'خصم قطع الغيار',le:'Spare parts discount',s:'أرخص من سعر السوق · لأول 200 عقد',se:'Below market price · first 200 contracts',v:['NO','NO','10%'],ve:['NO','NO','10%']},
- {l:'ضمان الإصلاح',le:'Repair warranty',s:'',se:'',wide:'365 يوماً — مضمون طول مدة العقد',wideE:'365 days — covered for the whole contract'},
- {l:'ضمان الأغراض',le:'Parts warranty',s:'قطع الغيار',se:'Spare parts',wide:'سنتان على جميع القطع',wideE:'Two years on all parts'}
+{l:'عدد الزيارات',le:'Visits',s:'اليد العاملة مجانية',se:'Labor is free',v:['8 زيارات','12 زيارة','لا محدودة'],ve:['8 visits','12 visits','Unlimited']},
+{l:'تنظيف المكيفات',le:'AC cleaning',s:'سبليت فقط · حتى 12 مكيفاً',se:'Split units · up to 12',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
+{l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','NO','YES']},
+{l:'فحص السخان المركزي',le:'Central heater check',s:'قبل الشتاء',se:'Before winter',v:['NO','YES','YES'],note:['','','مع صيانة شاملة'],noteE:['','','with full service']},
+{l:'التوصيل',le:'Delivery',s:'رسوم المشوار',se:'Trip charge',v:['مجاني','مجاني','مجاني'],ve:['Free','Free','Free'],ok:1},
+{l:'خصم قطع الغيار',le:'Spare parts discount',s:'أرخص من سعر السوق · لأول 200 عقد',se:'Below market price · first 200 contracts',v:['NO','NO','10%'],ve:['NO','NO','10%']},
+{l:'سباكة وكهرباء وتركيبات',le:'Plumbing, electrical & installs',s:'كل الخدمات بالأسفل — 64 خدمة',se:'All services below — 64 services',v:['YES','YES','YES']},
+{l:'تذكيرات الصيانة',le:'Maintenance reminders',s:'بالتطبيق — نذكّرك بمواعيدك',se:'In-app — we remind you',v:['YES','YES','YES']},
+{l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['NO','NO','YES']},
+{l:'فحص شامل للبيت',le:'Full home inspection',s:'',se:'',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
+{l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','NO','مرة بالسنة'],ve:['NO','NO','Once a year']},
+{l:'ضمان الإصلاح',le:'Repair warranty',s:'',se:'',wide:'365 يوماً — مضمون طول مدة العقد',wideE:'365 days — covered for the whole contract'},
+{l:'ضمان الأغراض',le:'Parts warranty',s:'قطع الغيار',se:'Spare parts',wide:'سنتان على جميع القطع',wideE:'Two years on all parts'}
 ];
 const CT_SVC=[
  {t:'🚿 السباكة',te:'🚿 Plumbing',i:[['تركيب وتغيير الشطافات',25,'Bidet spray install/replace'],['تغيير المحابس بأنواعها',25,'Valve replacement (all types)'],['تركيب وتغيير الخلاطات',60,'Mixer tap install/replace'],['إصلاح السيفون والعوامة',35,'Cistern & float repair'],['تغيير عوامة الخزان',35,'Tank float replacement'],['إصلاح تسريبات الحمام والمطبخ',50,'Bath & kitchen leak repair'],['إصلاح كرسي الحمام',120,'Toilet repair'],['تركيب وتغيير رأس الدش',25,'Shower head install/replace'],['تغيير خراطيم الغسالة والمغاسل',15,'Washer & sink hose replacement'],['تركيب محبس الغسالة',40,'Washer valve install'],['تسليك الانسدادات البسيطة',50,'Clearing simple blockages'],['تغيير صفايات الأرضية',25,'Floor drain replacement'],['عزل سيليكون للمغاسل والأحواض',20,'Silicone sealing for sinks'],['تركيب فلاتر الماء',50,'Water filter install'],['معالجة ضعف ضغط الماء',50,'Fixing low water pressure'],['تنظيف مصافي الخلاطات',15,'Tap aerator cleaning'],['تغيير جلد وجوانات الحنفيات',30,'Tap washer & gasket replacement'],['ضبط عوامة الخزان العلوي',35,'Roof tank float adjustment'],['فحص خزان الماء العلوي',50,'Roof water tank check'],['تركيب موزعات الدش',25,'Shower diverter install'],['تغيير سيفون المغسلة الظاهر',55,'Exposed sink trap replacement'],['تركيب فلتر الغسالة',15,'Washer filter install']]},
