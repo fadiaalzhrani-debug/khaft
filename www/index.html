@@ -849,12 +849,6 @@ const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل 
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي (النموذج الآمن — مو «لا محدودة»)
 const PLANS = [
-  { id:'basic', name:'باقة أساسي', nameEn:'Basic Plan', price:999, badge:'', was:1450, monthly:83, visits:8, visitsTxt:'8 زيارات', features:[
-      '🔧 أجرة اليد مجانية — 64 خدمة سباكة وكهرباء وتركيبات',
-      '🚚 التوصيل مجاني (رسوم المشوار)',
-      '🔔 تذكيرات الصيانة بالتطبيق',
-      '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان',
-      '🛒 الأغراض والقطع على العميل' ] },
   { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1799, badge:'', was:3000, monthly:150, visits:12, visitsTxt:'12 زيارة', features:[
       '🔧 12 زيارة بالسنة — أجرة اليد مجانية',
       '❄️ تنظيف كل مكيفات البيت مرة بالسنة (سبليت · حتى 12)',
@@ -872,20 +866,31 @@ const PLANS = [
       '🔁 نقل العقد للمستأجر الجديد',
       '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
+  { id:'plat', name:'باقة بلاتينيوم', nameEn:'Platinum Plan', price:2999, badge:'', was:4600, monthly:250, visits:12, visitsTxt:'زيارات لا محدودة', features:[
+      '👑 كل مزايا بريميوم — زيارات لا محدودة وأجرة يد مجانية',
+      '🌀 تنظيف مراوح دورات المياه مرة بالسنة',
+      '🧱 تجديد ترويبة البلاط لـ4 دورات مياه',
+      '❄️ تنظيف كل مكيفات البيت مرتين بالسنة',
+      '💧 كشف التسريب · 🏠 فحص شامل مرتين · ⚡ أمان الكهرباء',
+      '🏷️ خصم 10% على قطع الغيار — لأول 200 عقد',
+      '🔁 نقل العقد للمستأجر الجديد',
+      '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
 ];
 
 const CT_ROWS=[
-{l:'عدد الزيارات',le:'Visits',s:'اليد العاملة مجانية',se:'Labor is free',v:['8 زيارات','12 زيارة','لا محدودة'],ve:['8 visits','12 visits','Unlimited']},
-{l:'تنظيف المكيفات',le:'AC cleaning',s:'سبليت فقط · حتى 12 مكيفاً',se:'Split units · up to 12',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
-{l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','NO','YES']},
-{l:'فحص السخان المركزي',le:'Central heater check',s:'قبل الشتاء',se:'Before winter',v:['NO','YES','YES'],note:['','','مع صيانة شاملة'],noteE:['','','with full service']},
+{l:'عدد الزيارات',le:'Visits',s:'اليد العاملة مجانية',se:'Labor is free',v:['12 زيارة','لا محدودة','لا محدودة'],ve:['12 visits','Unlimited','Unlimited']},
+{l:'تنظيف المكيفات',le:'AC cleaning',s:'سبليت فقط · حتى 12 مكيفاً',se:'Split units · up to 12',v:['مرة بالسنة','مرتان بالسنة','مرتان بالسنة'],ve:['Once a year','Twice a year','Twice a year']},
+{l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','YES','YES']},
+{l:'فحص السخان المركزي',le:'Central heater check',s:'قبل الشتاء',se:'Before winter',v:['YES','YES','YES'],note:['','مع صيانة شاملة','مع صيانة شاملة'],noteE:['','with full service','with full service']},
+{l:'تنظيف مراوح دورات المياه',le:'Bathroom exhaust fan cleaning',s:'مراوح الشفط',se:'Extractor fans',v:['NO','NO','مرة بالسنة'],ve:['NO','NO','Once a year']},
+{l:'تجديد ترويبة البلاط',le:'Tile grout renewal',s:'لـ4 دورات مياه',se:'For 4 bathrooms',v:['NO','NO','4 دورات مياه'],ve:['NO','NO','4 bathrooms']},
 {l:'التوصيل',le:'Delivery',s:'رسوم المشوار',se:'Trip charge',v:['مجاني','مجاني','مجاني'],ve:['Free','Free','Free'],ok:1},
-{l:'خصم قطع الغيار',le:'Spare parts discount',s:'أرخص من سعر السوق · لأول 200 عقد',se:'Below market price · first 200 contracts',v:['NO','NO','10%'],ve:['NO','NO','10%']},
+{l:'خصم قطع الغيار',le:'Spare parts discount',s:'أرخص من سعر السوق · لأول 200 عقد',se:'Below market price · first 200 contracts',v:['NO','10%','10%'],ve:['NO','10%','10%']},
 {l:'سباكة وكهرباء وتركيبات',le:'Plumbing, electrical & installs',s:'كل الخدمات بالأسفل — 64 خدمة',se:'All services below — 64 services',v:['YES','YES','YES']},
 {l:'تذكيرات الصيانة',le:'Maintenance reminders',s:'بالتطبيق — نذكّرك بمواعيدك',se:'In-app — we remind you',v:['YES','YES','YES']},
-{l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['NO','NO','YES']},
-{l:'فحص شامل للبيت',le:'Full home inspection',s:'',se:'',v:['NO','مرة بالسنة','مرتان بالسنة'],ve:['NO','Once a year','Twice a year']},
-{l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','NO','مرة بالسنة'],ve:['NO','NO','Once a year']},
+{l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['NO','YES','YES']},
+{l:'فحص شامل للبيت',le:'Full home inspection',s:'',se:'',v:['مرة بالسنة','مرتان بالسنة','مرتان بالسنة'],ve:['Once a year','Twice a year','Twice a year']},
+{l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','مرة بالسنة','مرة بالسنة'],ve:['NO','Once a year','Once a year']},
 {l:'ضمان الإصلاح',le:'Repair warranty',s:'',se:'',wide:'365 يوماً — مضمون طول مدة العقد',wideE:'365 days — covered for the whole contract'},
 {l:'ضمان الأغراض',le:'Parts warranty',s:'قطع الغيار',se:'Spare parts',wide:'سنتان على جميع القطع',wideE:'Two years on all parts'}
 ];
@@ -1837,7 +1842,7 @@ function renderPlans(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead(T('العقود السنوية','Annual Contracts'),'home')}
-      <div class="tamara-strip"><span class="ts-badge">tamara</span> ${T('باقة بريميوم تُقسَّط على 4 دفعات — بدون فوائد وبدون رسوم تأخير','Premium plan splits over 4 payments — no interest, no late fees')}</div>
+      <div class="tamara-strip"><span class="ts-badge">tamara</span> ${T('بريميوم وبلاتينيوم تُقسَّط على 4 دفعات — بدون فوائد وبدون رسوم تأخير','Premium & Platinum split over 4 payments — no interest, no late fees')}</div>
       <div class="ct-wrap">
         <div class="ct-tiers">${tiers}</div>
         ${rows}
@@ -1871,7 +1876,7 @@ function openSubscribe(planId){
           <button type="button" class="cta" style="background:var(--card);color:var(--ink);border:1.5px solid var(--line-strong)" onclick="subGPS()">📍 حدّد موقع منزلك (GPS)</button>
           <div id="sub_loc_ok" style="font-size:.85rem;font-weight:700;color:var(--muted);margin-top:6px">لم يُحدَّد بعد — اضغط الزر وأنت في المنزل أو قريباً منه</div>
         </div>
-        ${payBox(subPlan?subPlan.price:0, {tamara: !!(subPlan&&subPlan.id==='premium')})}
+        ${payBox(subPlan?subPlan.price:0, {tamara: !!(subPlan&&(subPlan.id==='premium'||subPlan.id==='plat'))})}
         ${agreeBox()}
         <button class="cta" id="payCta" style="margin-top:12px" onclick="submitSubscription()">💳 ادفع الآن</button>
         <p style="color:var(--muted);font-size:.82rem;margin-top:10px">دفعة سنوية واحدة · العقد يتفعّل فوراً بعد الدفع.</p>
@@ -1933,12 +1938,14 @@ function subGPS(){
 
 /* ══════════ صيانتي السنوية — خدمات المشترك وعدّاداتها ══════════ */
 const SUB_SVCS=[
-  {k:'visit',  n:'زيارة صيانة — سباكة وكهرباء وتركيبات', ic:'🔧', qty:{basic:8,  home:12, premium:-1}},
-  {k:'ac',     n:'تنظيف المكيفات (حتى 12 سبليت)',        ic:'❄️', qty:{basic:0,  home:1,  premium:2}},
-  {k:'leak',   n:'كشف تسريب المياه بالأجهزة',            ic:'💧', qty:{basic:0,  home:0,  premium:1}},
-  {k:'heater', n:'فحص السخان المركزي',                   ic:'♨️', qty:{basic:0,  home:1,  premium:1}},
-  {k:'full',   n:'فحص شامل للبيت',                       ic:'📋', qty:{basic:0,  home:1,  premium:2}},
-  {k:'safety', n:'فحص أمان الكهرباء',                    ic:'⚡', qty:{basic:0,  home:0,  premium:1}},
+  {k:'visit',  n:'زيارة صيانة — سباكة وكهرباء وتركيبات', ic:'🔧', qty:{home:12, premium:-1, plat:-1}},
+  {k:'ac',     n:'تنظيف المكيفات (حتى 12 سبليت)',        ic:'❄️', qty:{home:1,  premium:2,  plat:2}},
+  {k:'leak',   n:'كشف تسريب المياه بالأجهزة',            ic:'💧', qty:{home:0,  premium:1,  plat:1}},
+  {k:'heater', n:'فحص السخان المركزي',                   ic:'♨️', qty:{home:1,  premium:1,  plat:1}},
+  {k:'fans',   n:'تنظيف مراوح دورات المياه',             ic:'🌀', qty:{home:0,  premium:0,  plat:1}},
+  {k:'grout',  n:'تجديد ترويبة البلاط (4 دورات مياه)',   ic:'🧱', qty:{home:0,  premium:0,  plat:1}},
+  {k:'full',   n:'فحص شامل للبيت',                       ic:'📋', qty:{home:1,  premium:2,  plat:2}},
+  {k:'safety', n:'فحص أمان الكهرباء',                    ic:'⚡', qty:{home:0,  premium:1,  plat:1}},
 ];
 function mySubLocal(){ try{ return JSON.parse(localStorage.getItem('khafet_mysub')||'null'); }catch(e){ return null; } }
 let _subSrv=null;   // نسخة الخادم (فيها الاستهلاك الفعلي)
