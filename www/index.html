@@ -769,6 +769,19 @@
 
   .tamara-strip{display:flex;align-items:center;justify-content:center;gap:9px;background:linear-gradient(135deg,#4F008C,#7A1FA2);color:#fff;border-radius:12px;padding:9px 13px;margin-top:12px;font-size:.82rem;font-weight:800;line-height:1.5;text-align:center}
   .tamara-strip .ts-badge{background:#fff;color:#4F008C;font-weight:800;font-size:.74rem;padding:3px 10px;border-radius:20px;letter-spacing:.3px;flex-shrink:0}
+
+  /* صيانتي السنوية */
+  .mysub-btn{border:1.5px solid var(--gold);background:linear-gradient(135deg,var(--gold-tint),var(--card))}
+  .mysub-head{background:var(--ink);color:#F3EDE0;border-radius:16px;padding:16px 18px;margin-top:14px;text-align:center}
+  .mysub-head b{font-size:1.2rem;font-weight:800;color:var(--gold);display:block}
+  .mysub-head small{display:block;font-size:.85rem;opacity:.85;margin-top:4px}
+  .mysub-row{display:flex;align-items:center;gap:13px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px}
+  .mysub-row .ms-ic{width:46px;height:46px;border-radius:13px;background:var(--gold-tint);display:grid;place-items:center;font-size:1.4rem;flex-shrink:0}
+  .mysub-row .ms-t{flex:1}
+  .mysub-row .ms-t b{font-size:.98rem;font-weight:800;display:block}
+  .mysub-row .ms-t small{color:var(--muted);font-size:.82rem;display:block;margin-top:2px}
+  .mysub-row .ms-btn{background:var(--gold);color:#1a1408;border:0;border-radius:11px;padding:10px 18px;font-weight:800;font-family:inherit;font-size:.92rem;cursor:pointer}
+  .mysub-row .ms-btn:disabled{background:var(--line);color:var(--muted);cursor:default}
 </style>
 </head>
 <body>
@@ -1145,6 +1158,7 @@ function orderToPayload(o){
     status:o.status, rating:o.rating||0, reminded:!!o.reminded,
     quick:!!o.quick, note:o.note||'', video_url:o.videoUrl||'', invoice:o.invoice||null, provider_phone:o.providerPhone||null, wants_earlier:!!o.wantsEarlier, promo_code:o.promoCode||'', discount_pct:+o.discountPct||0,
     user_id:myUid,   // صاحب الطلب — عليه يعتمد قفل القراءة
+    sub_id:(state.subReq&&state.subReq.id)||null, sub_svc:(state.subReq&&state.subReq.svc)||null,   // طلب مشمول بعقد الصيانة
     // الخادم يعيد التحقق من هذه ويتجاهل أي تلاعب
     referred_by:o.referredBy||null, credit_used:+o.creditUsed||0, loyalty_disc:+o.loyaltyDisc||0, advance_disc:+o.advanceDisc||0,
   };
@@ -1205,6 +1219,7 @@ async function loadOrdersFromCloud(){
 async function cloudInsert(order){
   if(!myUid) await ensureAnonSession();   // ضمان وجود هوية قبل الحفظ
   const { data, error } = await sb.from('khafet_orders').insert(orderToPayload(order)).select().single();
+  if(!error) state.subReq=null;   // استُهلك ربط العقد بهذا الطلب
   if(error) throw error;
   loadMyRef();   // الخادم خصم الرصيد — حدّثه عندنا
   return rowToOrder(data);
@@ -1415,6 +1430,7 @@ function render(){
   if(view==='join') return renderJoin();
   if(view==='prices') return renderPrices();
   if(view==='majlis') return renderMajlis();
+  if(view==='mysub') return renderMySub();
   if(view==='services') return renderServices();
   if(view==='pick') return renderPick();
   if(view==='time') return renderTime();
@@ -1850,6 +1866,11 @@ function openSubscribe(planId){
         <div class="flow-sum" style="margin-top:0">🛡️ <span>الباقة المختارة: <b>${esc(subPlan.name)}</b> · ${money(subPlan.price)}/سنة</span></div>
         <div class="field"><label>الاسم <span class="req">*</span></label><input id="sub_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="sub_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+        <div class="field"><label>رقم المنزل <span class="req">*</span></label><input id="sub_home" placeholder="مثال: فيلا 12 / شقة 3 — حي الروضة" /></div>
+        <div class="field"><label>موقع المنزل <span class="req">*</span></label>
+          <button type="button" class="cta" style="background:var(--card);color:var(--ink);border:1.5px solid var(--line-strong)" onclick="subGPS()">📍 حدّد موقع منزلك (GPS)</button>
+          <div id="sub_loc_ok" style="font-size:.85rem;font-weight:700;color:var(--muted);margin-top:6px">لم يُحدَّد بعد — اضغط الزر وأنت في المنزل أو قريباً منه</div>
+        </div>
         ${payBox(subPlan?subPlan.price:0, {tamara: !!(subPlan&&subPlan.id==='premium')})}
         ${agreeBox()}
         <button class="cta" id="payCta" style="margin-top:12px" onclick="submitSubscription()">💳 ادفع الآن</button>
@@ -1861,12 +1882,15 @@ function openSubscribe(planId){
 }
 async function submitSubscription(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
-  const name=g('sub_name'), phone=g('sub_phone');
+  const name=g('sub_name'), phone=g('sub_phone'), homeNo=g('sub_home');
   if(!name){ toast('اكتب الاسم'); return; }
   if(!phone){ toast('اكتب رقم الجوال'); return; }
+  if(!homeNo){ toast('اكتب رقم المنزل'); return; }
+  if(!_subLoc){ toast('📍 حدّد موقع منزلك بالزر'); return; }
   if(!termsOK){ toast(LX('لازم توافق على الشروط والأحكام','Please accept the terms')); openTerms(); return; }
   const data={ name, phone, plan:subPlan?subPlan.name:'', price:subPlan?subPlan.price:0, status:'new',
                 plan_id: subPlan?subPlan.id:'', pay_method: payMethod, pay_status:'unpaid',
+                home_no: homeNo, home_loc: _subLoc,
                 terms_accepted: true, terms_version: TERMS_VERSION, terms_at: new Date().toISOString() };
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
   let ok=false;
@@ -1877,6 +1901,8 @@ async function submitSubscription(){
   data.id = subId;
   if(cloudReady){ try{ const r=await sb.from('khafet_subscriptions').insert(data);
       if(!r.error) ok=true; else console.warn('sub insert:',r.error.message); }catch(e){ console.warn(e); } }
+  /* نحفظ اشتراكه محلياً — عليه تُبنى صفحة «صيانتي السنوية» */
+  try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:subId, plan_id:data.plan_id, plan:data.plan, name, phone, home_no:homeNo, ts:Date.now()})); }catch(e){}
 
   /* الدفع الإلكتروني أو تمارا: نفتح صفحة الدفع */
   if((payMethod==='online' || payMethod==='tamara') && ok){
@@ -1891,6 +1917,86 @@ async function submitSubscription(){
       <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنتواصل معك على ${esc(phone)} لتفعيل «${esc(subPlan?subPlan.name:'')}»، والدفع بجهاز الفني عند أول زيارة.</p></div>
       <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
     </div></div>`;
+}
+
+/* ══════════ موقع المنزل عند الاشتراك ══════════ */
+let _subLoc=null;
+function subGPS(){
+  if(!navigator.geolocation){ toast('جهازك لا يدعم تحديد الموقع'); return; }
+  const el=document.getElementById('sub_loc_ok'); if(el) el.textContent='⏳ جارٍ تحديد موقعك...';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    const lat=pos.coords.latitude.toFixed(6), lng=pos.coords.longitude.toFixed(6);
+    _subLoc={lat,lng,mapUrl:'https://www.google.com/maps?q='+lat+','+lng};
+    if(el){ el.textContent='✅ تم تحديد موقع منزلك بدقة'; el.style.color='var(--good,#15803D)'; }
+  }, function(){ if(el) el.textContent='⚠️ اسمح بإذن الموقع وحاول ثانية'; }, {enableHighAccuracy:true,timeout:12000});
+}
+
+/* ══════════ صيانتي السنوية — خدمات المشترك وعدّاداتها ══════════ */
+const SUB_SVCS=[
+  {k:'visit',  n:'زيارة صيانة — سباكة وكهرباء وتركيبات', ic:'🔧', qty:{basic:8,  home:12, premium:-1}},
+  {k:'ac',     n:'تنظيف المكيفات (حتى 12 سبليت)',        ic:'❄️', qty:{basic:0,  home:1,  premium:2}},
+  {k:'leak',   n:'كشف تسريب المياه بالأجهزة',            ic:'💧', qty:{basic:0,  home:0,  premium:1}},
+  {k:'heater', n:'فحص السخان المركزي',                   ic:'♨️', qty:{basic:0,  home:1,  premium:1}},
+  {k:'full',   n:'فحص شامل للبيت',                       ic:'📋', qty:{basic:0,  home:1,  premium:2}},
+  {k:'safety', n:'فحص أمان الكهرباء',                    ic:'⚡', qty:{basic:0,  home:0,  premium:1}},
+];
+function mySubLocal(){ try{ return JSON.parse(localStorage.getItem('khafet_mysub')||'null'); }catch(e){ return null; } }
+let _subSrv=null;   // نسخة الخادم (فيها الاستهلاك الفعلي)
+async function fetchMySub(){
+  if(!cloudReady) return null;
+  try{ const { data }=await sb.rpc('my_subscription');
+    if(data && data.found){ _subSrv=data;
+      /* لو الخادم يعرف اشتراكاً وما عندنا محلي — نبنيه */
+      if(!mySubLocal()) try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:data.id, plan_id:data.plan_id, plan:data.plan, home_no:data.home_no, ts:Date.now()})); }catch(e){}
+      return data; }
+  }catch(e){}
+  return null;
+}
+async function renderMySub(){
+  const local=mySubLocal();
+  document.getElementById('app').innerHTML=`<div class="wrap screen">${pageHead('🛡️ صيانتي السنوية','home')}
+    <div class="panel" style="margin-top:16px;text-align:center;color:var(--muted)">⏳ جارٍ تحميل عقدك...</div></div>`;
+  const srv=await fetchMySub();
+  const sub=srv||local;
+  if(!sub){ document.getElementById('app').innerHTML=`<div class="wrap screen">${pageHead('🛡️ صيانتي السنوية','home')}
+    <div class="empty"><div class="ico">🛡️</div><h3>ما عندك عقد صيانة بعد</h3></div>
+    <button class="cta gold" onclick="go('plans')">شوف الباقات واشترك</button></div>`; return; }
+  const planId=sub.plan_id||'home';
+  const usage=(srv&&srv.usage)||{};
+  const active=srv? (srv.status==='active'||srv.pay_status==='paid') : false;
+  const ends=srv&&srv.ends_at? new Date(srv.ends_at) : null;
+  const rows=SUB_SVCS.filter(s=>s.qty[planId]!==0).map(s=>{
+    const total=s.qty[planId], used=+(usage[s.k]||0);
+    const unlimited=total===-1;
+    const left=unlimited? 1 : Math.max(0,total-used);
+    const cnt=unlimited? 'غير محدودة' : `${ar(used)} / ${ar(total)}`;
+    return `<div class="mysub-row">
+      <span class="ms-ic">${s.ic}</span>
+      <span class="ms-t"><b>${s.n}</b><small>المستخدم: <b class="num">${cnt}</b></small></span>
+      <button class="ms-btn" ${left?'':'disabled'} onclick="subRequest('${s.k}')">${left?'اطلب':'اكتمل'}</button>
+    </div>`;
+  }).join('');
+  document.getElementById('app').innerHTML=`<div class="wrap screen">
+    ${pageHead('🛡️ صيانتي السنوية','home')}
+    <div class="mysub-head">
+      <b>${esc(sub.plan||('باقة '+planId))}</b>
+      <small>${active? (ends? 'سارٍ حتى '+ends.toLocaleDateString('ar-SA') : 'عقدك مفعّل ✅')
+                    : 'بانتظار تفعيل الدفع — تقدر تتصفح خدماتك'}</small>
+      ${sub.home_no?`<small>🏠 ${esc(sub.home_no)}</small>`:''}
+    </div>
+    <div style="margin-top:14px">${rows}</div>
+    <p style="color:var(--muted);font-size:.85rem;margin-top:12px;text-align:center">اضغط «اطلب» ونحجز لك زيارة مشمولة بعقدك — بدون أي رسوم.</p>
+    <div style="height:24px"></div>
+  </div>`;
+}
+/* طلب خدمة من العقد: يفتح الحجز السريع بملاحظة جاهزة ويربط الطلب بالعقد */
+function subRequest(k){
+  const s=SUB_SVCS.find(x=>x.k===k); const local=mySubLocal();
+  const subId=(_subSrv&&_subSrv.id)||(local&&local.id)||null;
+  state.subReq={ id:subId, svc:k };
+  state.quickNote='🛡️ طلب مشمول بعقد الصيانة السنوي — '+(s?s.n:k)+(local&&local.home_no?(' · المنزل: '+local.home_no):'');
+  startQuick();
+  setTimeout(function(){ const t=document.getElementById('q_note')||document.getElementById('note'); if(t && !t.value) t.value=state.quickNote; },350);
 }
 
 /* ══════════ الدفع عبر ميسر ══════════ */
@@ -2318,11 +2424,17 @@ function renderHome(){
         <span class="qb-ar">←</span>
       </button>
 
+      ${mySubLocal()?`
+      <button class="services-btn mysub-btn" onclick="go('mysub')">
+        <span class="sb-ic">🛡️</span>
+        <span class="sb-t"><b>صيانتي السنوية</b><small>خدمات عقدك — اطلب منها بضغطة، بدون رسوم</small></span>
+        <span class="qb-ar">←</span>
+      </button>`:`
       <button class="services-btn" onclick="go('plans')">
         <span class="sb-ic">${icon('shield',24)}</span>
         <span class="sb-t"><b>باقات الصيانة السنوية</b><small>أجرة اليد مجانية طوال السنة — وفّر أكثر</small></span>
         <span class="qb-ar">←</span>
-      </button>
+      </button>`}
 
       <button class="services-btn" onclick="go('majlis')">
         <span class="sb-ic" style="color:var(--gold-deep)">${catIcon('majlis',26)}</span>
