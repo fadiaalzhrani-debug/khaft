@@ -2947,6 +2947,12 @@ function renderInfo(){
       ${stepBar(3)}
       <div class="flow-sum">📋 <span>${svcNames} · <b>${dayLabel(b.date)} — ${fmtTime(b.time)}</b></span></div>
 
+      ${state.subReq?`
+      <div class="panel" style="margin-top:14px;border-color:var(--gold);background:var(--gold-tint)">
+        <h3>🛡️ خدمة مشمولة بعقدك</h3>
+        <div style="font-weight:800;font-size:1.02rem;margin-top:2px">${esc((SUB_SVCS.find(x=>x.k===state.subReq.svc)||{}).n||'خدمة العقد')}</div>
+        <div style="color:var(--muted);font-size:.85rem;font-weight:700;margin-top:4px">بدون رسوم — الخدمة معروفة وما تحتاج شرح ✓</div>
+      </div>`:`
       <div class="panel" style="margin-top:14px"><h3>🛠️ ${quickMode?'اشرح المشكلة':'وصف المشكلة (اختياري)'}</h3>
         <div class="field"><textarea id="f_desc" placeholder="مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...">${esc(desc)}</textarea></div>
         <label class="video-up" id="videoUp">
@@ -2954,7 +2960,7 @@ function renderInfo(){
           <span class="vu-ic">📷</span>
           <span class="vu-t"><b>أرفق صورة أو مقطع</b><small id="vu-name">صوّر المشكلة أو ارفع صورة/فيديو ليشوفها الفني (اختياري)</small></span>
         </label>
-      </div>
+      </div>`}
 
       <div class="panel"><h3>👤 معلومات التواصل</h3>
         <div class="grid2">
@@ -3085,7 +3091,7 @@ async function confirmOrder(){
     : cartItems().map(i=>({id:i.id,name:i.name,ico:i.ico,qty:i.qty,dur:i.dur,price:i.price,custom:!!i.custom}));
   const loyDisc = quickMode ? 0 : loyaltyDiscFor();
   const duration=scheduleDuration();
-  const note=(state.problem&&state.problem.desc)||'';
+  const note=state.subReq ? (state.quickNote||'') : ((state.problem&&state.problem.desc)||'');
   const promoCodeIn=(document.getElementById('f_promo')||{}).value ? document.getElementById('f_promo').value.trim() : (state.promo||'');
   // الخصم والرصيد والولاء يُعاد حسابهم في الخادم — هذي بس للعرض
   const discPct = (loyDisc>0 || !refCheck.ok) ? 0 : 10;
