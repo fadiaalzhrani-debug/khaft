@@ -1870,10 +1870,10 @@ function openSubscribe(planId){
         <div class="flow-sum" style="margin-top:0">🛡️ <span>الباقة المختارة: <b>${esc(subPlan.name)}</b> · ${money(subPlan.price)}/سنة</span></div>
         <div class="field"><label>الاسم <span class="req">*</span></label><input id="sub_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="sub_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
-        <div class="field"><label>رقم المنزل <span class="req">*</span></label><input id="sub_home" placeholder="مثال: فيلا 12 / شقة 3 — حي الروضة" /></div>
+        <div class="field"><label>رقم المنزل <span class="req">*</span></label><input id="sub_home" value="${esc((state.address&&state.address.house)||'')}" placeholder="مثال: فيلا 12 / شقة 3 — حي الروضة" /></div>
         <div class="field"><label>موقع المنزل <span class="req">*</span></label>
           <button type="button" class="cta" style="background:var(--card);color:var(--ink);border:1.5px solid var(--line-strong)" onclick="subGPS()">📍 حدّد موقع منزلك (GPS)</button>
-          <div id="sub_loc_ok" style="font-size:.85rem;font-weight:700;color:var(--muted);margin-top:6px">لم يُحدَّد بعد — اضغط الزر وأنت في المنزل أو قريباً منه</div>
+          <div id="sub_loc_ok" style="font-size:.85rem;font-weight:700;color:${(state.address&&state.address.lat)?'var(--good,#15803D)':'var(--muted)'};margin-top:6px">${(state.address&&state.address.lat)?'✅ موقعك محفوظ من قبل — اضغط الزر فقط لو تبي تحدّثه':'لم يُحدَّد بعد — اضغط الزر وأنت في المنزل أو قريباً منه'}</div>
         </div>
         ${payBox(subPlan?subPlan.price:0, {tamara: !!(subPlan&&(subPlan.id==='premium'||subPlan.id==='plat'))})}
         ${agreeBox()}
@@ -1890,6 +1890,9 @@ async function submitSubscription(){
   if(!name){ toast('اكتب الاسم'); return; }
   if(!phone){ toast('اكتب رقم الجوال'); return; }
   if(!homeNo){ toast('اكتب رقم المنزل'); return; }
+  /* موقعه محفوظ من طلباته السابقة؟ نستخدمه تلقائياً بدون ما يعيد التحديد */
+  if(!_subLoc && state.address && state.address.lat && state.address.lng)
+    _subLoc={lat:state.address.lat, lng:state.address.lng, mapUrl:state.address.mapUrl||('https://www.google.com/maps?q='+state.address.lat+','+state.address.lng)};
   if(!_subLoc){ toast('📍 حدّد موقع منزلك بالزر'); return; }
   if(!termsOK){ toast(LX('لازم توافق على الشروط والأحكام','Please accept the terms')); openTerms(); return; }
   const data={ name, phone, plan:subPlan?subPlan.name:'', price:subPlan?subPlan.price:0, status:'new',
@@ -1907,6 +1910,14 @@ async function submitSubscription(){
       if(!r.error) ok=true; else console.warn('sub insert:',r.error.message); }catch(e){ console.warn(e); } }
   /* نحفظ اشتراكه محلياً — عليه تُبنى صفحة «صيانتي السنوية» */
   try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:subId, plan_id:data.plan_id, plan:data.plan, name, phone, home_no:homeNo, ts:Date.now()})); }catch(e){}
+  /* بيانات منزله تنحفظ بحسابه — تتعبّى تلقائياً بكل طلب بعدين */
+  try{
+    state.customer.name = state.customer.name||name;
+    state.customer.phone = state.customer.phone||phone;
+    state.address.house = homeNo;
+    if(_subLoc){ state.address.lat=_subLoc.lat; state.address.lng=_subLoc.lng; state.address.mapUrl=_subLoc.mapUrl; }
+    save();
+  }catch(e){}
 
   /* الدفع الإلكتروني أو تمارا: نفتح صفحة الدفع (وضع التجربة: السعر 0 = بدون دفع) */
   if(data.price>0 && (payMethod==='online' || payMethod==='tamara') && ok){
