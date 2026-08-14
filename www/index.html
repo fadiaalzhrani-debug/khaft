@@ -1941,8 +1941,8 @@ async function submitSubscription(){
   if(!ok){ try{ const arr=JSON.parse(localStorage.getItem('khafet_subs')||'[]'); arr.push(Object.assign({created_at:Date.now()},data)); localStorage.setItem('khafet_subs',JSON.stringify(arr)); }catch(e){} }
   document.getElementById('app').innerHTML=`
     <div class="wrap screen"><div class="panel" style="margin-top:30px">
-      <div class="success"><div class="circle">🛡️</div><h2>تم استلام طلبك!</h2>
-      <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنتواصل معك على ${esc(phone)} لتفعيل «${esc(subPlan?subPlan.name:'')}»، والدفع بجهاز الفني عند أول زيارة.</p></div>
+      <div class="success"><div class="circle">🛡️</div><h2>شكراً لاشتراكك 🎉</h2>
+      <p style="color:var(--muted);margin-top:10px">أهلاً ${esc(name)} — «${esc(subPlan?subPlan.name:'')}» صارت جاهزة. من الحين، صيانة بيتك علينا — ارتَح 👌</p></div>
       <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
     </div></div>`;
 }
@@ -3205,7 +3205,8 @@ function renderConfirm(){
       <div class="panel" style="margin-top:26px">
         <div class="success">
           <div class="circle">${o.dbId?'✅':'⚠️'}</div>
-          <h2>${o.dbId?'تم استلام طلبك!':'طلبك ما وصلنا بعد'}</h2>
+          <h2>${o.dbId?'تم تأكيد طلبك':'طلبك ما وصلنا بعد'}</h2>
+          ${o.dbId?`<p style="color:var(--muted);margin-top:6px;font-weight:700">ارتَح — خلّ الباقي علينا 👌</p>`:''}
           <div class="ordno">رقم الطلب ${o.id}</div>
           ${o.dbId?'':`<p style="color:var(--muted);margin-top:10px">ما وصلنا طلبك — أعد المحاولة أو تواصل معنا.</p>`}
         </div>
