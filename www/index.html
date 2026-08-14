@@ -1881,6 +1881,9 @@ function openSubscribe(planId){
           <button type="button" class="cta" style="background:var(--card);color:var(--ink);border:1.5px solid var(--line-strong)" onclick="subGPS()">📍 حدّد موقع منزلك (GPS)</button>
           <div id="sub_loc_ok" style="font-size:.85rem;font-weight:700;color:${(state.address&&state.address.lat)?'var(--good,#15803D)':'var(--muted)'};margin-top:6px">${(state.address&&state.address.lat)?'✅ محفوظ':'لم يُحدَّد'}</div>
         </div>
+        <div class="field"><label>🎟️ كود خصم (اختياري)</label><input id="sub_promo" oninput="subPromoCheck(this.value)" />
+          <div id="sub_promo_msg" style="font-size:.85rem;font-weight:800;margin-top:5px"></div>
+        </div>
         ${payBox(subPlan?subPlan.price:0, {tamara: !!(subPlan&&(subPlan.id==='premium'||subPlan.id==='plat'))})}
         ${agreeBox()}
         <button class="cta" id="payCta" style="margin-top:12px" onclick="submitSubscription()">💳 ادفع الآن</button>
@@ -1901,9 +1904,13 @@ async function submitSubscription(){
     _subLoc={lat:state.address.lat, lng:state.address.lng, mapUrl:state.address.mapUrl||('https://www.google.com/maps?q='+state.address.lat+','+state.address.lng)};
   if(!_subLoc){ toast('📍 حدّد موقع منزلك بالزر'); return; }
   if(!termsOK){ toast(LX('لازم توافق على الشروط والأحكام','Please accept the terms')); openTerms(); return; }
-  const data={ name, phone, plan:subPlan?subPlan.name:'', price:subPlan?subPlan.price:0, status:'new',
+  const _p0=subPlan?subPlan.price:0;
+  const _pf=_subDisc? Math.round(_p0*(100-_subDisc)/100) : _p0;
+  if(_subDisc && payMethod==='tamara') payMethod='online';
+  const data={ name, phone, plan:subPlan?subPlan.name:'', price:_pf, status:'new',
                 plan_id: subPlan?subPlan.id:'', pay_method: payMethod, pay_status:'unpaid',
                 home_no: homeNo, home_loc: _subLoc,
+                promo_code: _subPromo||null, discount_pct: _subDisc||0,
                 terms_accepted: true, terms_version: TERMS_VERSION, terms_at: new Date().toISOString() };
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
   let ok=false;
@@ -1938,6 +1945,26 @@ async function submitSubscription(){
       <p style="color:var(--muted);margin-top:10px">شكراً ${esc(name)} — بنتواصل معك على ${esc(phone)} لتفعيل «${esc(subPlan?subPlan.name:'')}»، والدفع بجهاز الفني عند أول زيارة.</p></div>
       <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
     </div></div>`;
+}
+
+/* ══════════ كود خصم الاشتراك — الخصم يلغي خيار تمارا ══════════ */
+const SUB_PROMOS={ 'خافت10':10 };
+let _subDisc=0,_subPromo='';
+function subPromoCheck(v){
+  v=(v||'').trim();
+  const m=document.getElementById('sub_promo_msg');
+  const pct=SUB_PROMOS[v]||0;
+  _subDisc=pct; _subPromo=pct?v:'';
+  const tam=document.querySelector('.payopt label[data-m="tamara"]');
+  if(pct){
+    if(tam) tam.style.display='none';
+    if(payMethod==='tamara') setPayMethod('online');
+    const p=subPlan?Math.round(subPlan.price*(100-pct)/100):0;
+    if(m){ m.style.color='var(--good,#15803D)'; m.textContent='✅ خصم '+en(pct)+'% — الإجمالي '+en(p)+' ريال'; }
+  }else{
+    if(tam) tam.style.display='';
+    if(m){ if(v){ m.style.color='#c0392b'; m.textContent='الكود غير صحيح'; } else m.textContent=''; }
+  }
 }
 
 /* ══════════ موقع المنزل عند الاشتراك ══════════ */
