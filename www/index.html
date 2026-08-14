@@ -782,6 +782,12 @@
   .mysub-row .ms-t small{color:var(--muted);font-size:.82rem;display:block;margin-top:2px}
   .mysub-row .ms-btn{background:var(--gold);color:#1a1408;border:0;border-radius:11px;padding:10px 18px;font-weight:800;font-family:inherit;font-size:.92rem;cursor:pointer}
   .mysub-row .ms-btn:disabled{background:var(--line);color:var(--muted);cursor:default}
+
+  .ci-toggle{display:flex;align-items:center;gap:12px;width:100%;background:var(--card);border:1px solid var(--line);border-radius:var(--r,14px);padding:15px 17px;margin-top:12px;text-align:right;cursor:pointer;font-family:inherit}
+  .ci-toggle .ci-t{flex:1}
+  .ci-toggle .ci-t b{display:block;font-size:.98rem;font-weight:800}
+  .ci-toggle .ci-t small{display:block;color:var(--muted);font-size:.8rem;font-weight:700;margin-top:2px}
+  .ci-toggle .ci-ar{color:var(--muted);font-size:1.1rem;font-weight:800}
 </style>
 </head>
 <body>
@@ -1873,7 +1879,7 @@ function openSubscribe(planId){
         <div class="field"><label>رقم المنزل <span class="req">*</span></label><input id="sub_home" value="${esc((state.address&&state.address.house)||'')}" placeholder="مثال: فيلا 12 / شقة 3 — حي الروضة" /></div>
         <div class="field"><label>موقع المنزل <span class="req">*</span></label>
           <button type="button" class="cta" style="background:var(--card);color:var(--ink);border:1.5px solid var(--line-strong)" onclick="subGPS()">📍 حدّد موقع منزلك (GPS)</button>
-          <div id="sub_loc_ok" style="font-size:.85rem;font-weight:700;color:${(state.address&&state.address.lat)?'var(--good,#15803D)':'var(--muted)'};margin-top:6px">${(state.address&&state.address.lat)?'✅ موقعك محفوظ من قبل — اضغط الزر فقط لو تبي تحدّثه':'لم يُحدَّد بعد — اضغط الزر وأنت في المنزل أو قريباً منه'}</div>
+          <div id="sub_loc_ok" style="font-size:.85rem;font-weight:700;color:${(state.address&&state.address.lat)?'var(--good,#15803D)':'var(--muted)'};margin-top:6px">${(state.address&&state.address.lat)?'✅ محفوظ':'لم يُحدَّد'}</div>
         </div>
         ${payBox(subPlan?subPlan.price:0, {tamara: !!(subPlan&&(subPlan.id==='premium'||subPlan.id==='plat'))})}
         ${agreeBox()}
@@ -1997,12 +2003,10 @@ async function renderMySub(){
     ${pageHead('🛡️ صيانتي السنوية','home')}
     <div class="mysub-head">
       <b>${esc(sub.plan||('باقة '+planId))}</b>
-      <small>${active? (ends? 'سارٍ حتى '+ends.toLocaleDateString('ar-SA') : 'عقدك مفعّل ✅')
-                    : 'بانتظار تفعيل الدفع — تقدر تتصفح خدماتك'}</small>
+      ${active? `<small>${ends? 'سارٍ حتى '+ends.toLocaleDateString('ar-SA') : 'عقدك مفعّل ✅'}</small>` : ''}
       ${sub.home_no?`<small>🏠 ${esc(sub.home_no)}</small>`:''}
     </div>
     <div style="margin-top:14px">${rows}</div>
-    <p style="color:var(--muted);font-size:.85rem;margin-top:12px;text-align:center">اضغط «اطلب» ونحجز لك زيارة مشمولة بعقدك — بدون أي رسوم.</p>
     <div style="height:24px"></div>
   </div>`;
 }
@@ -2059,7 +2063,6 @@ function payBox(amount, opts){
         <div class="d">${LX('تدفع بمدى أو البطاقة عند إتمام العمل — الفني معه جهاز','Pay by card when the work is done — the technician carries a terminal')}</div></div>
       </label>
     </div>
-    <div class="paynote">${LX('ما نستقبل مبالغ نقدية — حرصاً على سلامة الجميع ودقة الفواتير.','We do not accept cash — for everyone\'s safety and accurate invoicing.')}</div>
   </div>`;
 }
 
@@ -2951,7 +2954,6 @@ function renderInfo(){
       <div class="panel" style="margin-top:14px;border-color:var(--gold);background:var(--gold-tint)">
         <h3>🛡️ خدمة مشمولة بعقدك</h3>
         <div style="font-weight:800;font-size:1.02rem;margin-top:2px">${esc((SUB_SVCS.find(x=>x.k===state.subReq.svc)||{}).n||'خدمة العقد')}</div>
-        <div style="color:var(--muted);font-size:.85rem;font-weight:700;margin-top:4px">بدون رسوم — الخدمة معروفة وما تحتاج شرح ✓</div>
       </div>`:`
       <div class="panel" style="margin-top:14px"><h3>🛠️ ${quickMode?'اشرح المشكلة':'وصف المشكلة (اختياري)'}</h3>
         <div class="field"><textarea id="f_desc" placeholder="مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...">${esc(desc)}</textarea></div>
@@ -2962,6 +2964,12 @@ function renderInfo(){
         </label>
       </div>`}
 
+      ${state.subReq?`
+      <button type="button" class="ci-toggle" onclick="var b=document.getElementById('ci_body');var open=b.style.display!=='none';b.style.display=open?'none':'block';document.getElementById('ci_ar').textContent=open?'▾':'▴';if(!open){try{initPickMap();}catch(e){}}">
+        <span class="ci-t"><b>👤 بياناتك ومكان الخدمة</b><small>${esc(c.name||'')}${a.house?' · 🏠 '+esc(a.house):''} — اضغط للتعديل</small></span>
+        <span id="ci_ar" class="ci-ar">▾</span>
+      </button>
+      <div id="ci_body" style="display:none">`:''}
       <div class="panel"><h3>👤 معلومات التواصل</h3>
         <div class="grid2">
           <div class="field"><label>الاسم <span class="req">*</span></label><input id="f_name" value="${esc(c.name)}" placeholder="مثال: أبو محمد" /></div>
@@ -2984,8 +2992,9 @@ function renderInfo(){
           <span class="vu-t"><b>صورة المنزل (اختياري)</b><small id="hp-name">${a.photoUrl?'📎 تم إرفاق صورة المنزل':'صوّر أو ارفع صورة لواجهة المنزل ليعرفه الفني بسهولة'}</small></span>
         </label>
       </div>
+      ${state.subReq?'</div>':''}
 
-      ${free?'':`<div class="panel" style="padding:14px 16px"><div class="field" style="margin:0">
+      ${(free||state.subReq)?'':`<div class="panel" style="padding:14px 16px"><div class="field" style="margin:0">
         <label>🎟️ كود صديق (اختياري)</label>
         <input id="f_promo" value="${esc(state.promo||'')}" onchange="setPromo(this.value)" placeholder="مثال: خافت-K7F2M9" />
         ${refCheck.busy?`<div style="color:var(--muted);font-weight:700;font-size:.84rem;margin-top:6px">⏳ نتحقق…</div>`
@@ -2998,10 +3007,10 @@ function renderInfo(){
           <span style="color:#0b7a3b;font-weight:800;font-size:.86rem">يُخصم تلقائياً</span>
         </div></div>`:''}`}
 
-      <div class="est"><span style="font-size:1.5rem">${quickMode?'🔎':(free?'🎁':'💳')}</span>
+      ${state.subReq?'':`<div class="est"><span style="font-size:1.5rem">${quickMode?'🔎':(free?'🎁':'💳')}</span>
         <div><div style="color:var(--muted);font-size:.85rem">الإجمالي التقريبي</div>
         <div class="big">${priceTxt}</div></div>
-      </div>
+      </div>`}
 
       <button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>
       <div style="height:28px"></div>
