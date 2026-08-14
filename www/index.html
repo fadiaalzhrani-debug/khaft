@@ -849,14 +849,14 @@ const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل 
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي (النموذج الآمن — مو «لا محدودة»)
 const PLANS = [
-  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1799, badge:'', was:3000, monthly:150, visits:12, visitsTxt:'12 زيارة', features:[
+  { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:0, badge:'', was:3000, monthly:150, visits:12, visitsTxt:'12 زيارة', features:[
       '🔧 12 زيارة بالسنة — أجرة اليد مجانية',
       '❄️ تنظيف كل مكيفات البيت مرة بالسنة (سبليت · حتى 12)',
       '🏠 فحص شامل للبيت مرة بالسنة',
       '🔥 فحص السخان المركزي قبل الشتاء',
       '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
-  { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:2399, badge:'الأفضل قيمة', was:3700, monthly:200, visits:12, visitsTxt:'زيارات لا محدودة', features:[
+  { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:0, badge:'الأفضل قيمة', was:3700, monthly:200, visits:12, visitsTxt:'زيارات لا محدودة', features:[
       '♾️ زيارات لا محدودة — أجرة اليد مجانية بالكامل',
       '❄️ تنظيف كل مكيفات البيت مرتين بالسنة',
       '💧 كشف تسريب المياه بالأجهزة بدون تكسير',
@@ -866,7 +866,7 @@ const PLANS = [
       '🔁 نقل العقد للمستأجر الجديد',
       '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
-  { id:'plat', name:'باقة بلاتينيوم', nameEn:'Platinum Plan', price:2999, badge:'', was:4600, monthly:250, visits:12, visitsTxt:'زيارات لا محدودة', features:[
+  { id:'plat', name:'باقة بلاتينيوم', nameEn:'Platinum Plan', price:0, badge:'', was:4600, monthly:250, visits:12, visitsTxt:'زيارات لا محدودة', features:[
       '👑 كل مزايا بريميوم — زيارات لا محدودة وأجرة يد مجانية',
       '🌀 تنظيف مراوح دورات المياه مرة بالسنة',
       '🧱 تجديد ترويبة البلاط لـ4 دورات مياه',
@@ -1908,8 +1908,8 @@ async function submitSubscription(){
   /* نحفظ اشتراكه محلياً — عليه تُبنى صفحة «صيانتي السنوية» */
   try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:subId, plan_id:data.plan_id, plan:data.plan, name, phone, home_no:homeNo, ts:Date.now()})); }catch(e){}
 
-  /* الدفع الإلكتروني أو تمارا: نفتح صفحة الدفع */
-  if((payMethod==='online' || payMethod==='tamara') && ok){
+  /* الدفع الإلكتروني أو تمارا: نفتح صفحة الدفع (وضع التجربة: السعر 0 = بدون دفع) */
+  if(data.price>0 && (payMethod==='online' || payMethod==='tamara') && ok){
     const started = await startPayment('subscription', subId, data.price, name, phone);
     if(started) return;                       // ننتقل لصفحة الدفع
     if(btn){ btn.disabled=false; btn.textContent='💳 ادفع الآن'; }
