@@ -30,10 +30,12 @@ workflows:
           npx cap sync ios
       - name: أيقونة التطبيق وشاشة البداية
         script: |
-          # يولّد الأيقونة وشاشة البداية من assets/ بخلفية خافِت الذهبية
+          # يولّد الأيقونة وشاشة البداية من assets/ بخلفية خافِت الذهبية (أسماء الخيارات الرسمية)
           npx capacitor-assets generate --ios \
-            --iosSplashBackgroundColor '#F5C518' \
-            --iosSplashDarkBackgroundColor '#1a1408'
+            --iconBackgroundColor '#F5C518' \
+            --iconBackgroundColorDark '#F5C518' \
+            --splashBackgroundColor '#F5C518' \
+            --splashBackgroundColorDark '#1a1408'
           echo "— الأيقونات المولّدة —"
           ls ios/App/App/Assets.xcassets/AppIcon.appiconset/ | head -20
           echo "— شاشة البداية (لازم تكون فيها صور) —"
