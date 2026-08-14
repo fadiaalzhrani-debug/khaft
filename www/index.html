@@ -3211,9 +3211,7 @@ function renderConfirm(){
           <div class="circle">${o.dbId?'✅':'⚠️'}</div>
           <h2>${o.dbId?'تم استلام طلبك!':'طلبك ما وصلنا بعد'}</h2>
           <div class="ordno">رقم الطلب ${o.id}</div>
-          <p style="color:var(--muted);margin-top:10px">${o.dbId
-            ? 'وصلنا طلبك، وبنتواصل معك لتأكيد الموعد.'
-            : 'ما وصلنا طلبك — أعد المحاولة أو تواصل معنا.'}</p>
+          ${o.dbId?'':`<p style="color:var(--muted);margin-top:10px">ما وصلنا طلبك — أعد المحاولة أو تواصل معنا.</p>`}
         </div>
         ${o.dbId?'':`<a class="cta" style="display:block;text-align:center;text-decoration:none;margin-bottom:14px" href="tel:${PHONE}">📞 اتصل بنا ${PHONE}</a>`}
         <div class="kv"><span>الخدمات</span><b style="max-width:60%">${itemsList}</b></div>
