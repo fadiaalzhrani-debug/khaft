@@ -2015,6 +2015,14 @@ function subRequest(k){
   const s=SUB_SVCS.find(x=>x.k===k); const local=mySubLocal();
   const subId=(_subSrv&&_subSrv.id)||(local&&local.id)||null;
   state.subReq={ id:subId, svc:k };
+  /* بيانات العقد المسجّلة تُعتمد للطلب — ما تتعدل من شاشة الحجز */
+  try{
+    if(local&&local.name) state.customer.name=local.name;
+    if(local&&local.phone) state.customer.phone=local.phone;
+    const hn=(_subSrv&&_subSrv.home_no)||(local&&local.home_no);
+    if(hn) state.address.house=hn;
+    save();
+  }catch(e){}
   state.quickNote='🛡️ طلب مشمول بعقد الصيانة السنوي — '+(s?s.n:k)+(local&&local.home_no?(' · المنزل: '+local.home_no):'');
   startQuick();
   setTimeout(function(){ const t=document.getElementById('q_note')||document.getElementById('note'); if(t && !t.value) t.value=state.quickNote; },350);
@@ -2965,10 +2973,9 @@ function renderInfo(){
       </div>`}
 
       ${state.subReq?`
-      <button type="button" class="ci-toggle" onclick="var b=document.getElementById('ci_body');var open=b.style.display!=='none';b.style.display=open?'none':'block';document.getElementById('ci_ar').textContent=open?'▾':'▴';if(!open){try{initPickMap();}catch(e){}}">
-        <span class="ci-t"><b>👤 بياناتك ومكان الخدمة</b><small>${esc(c.name||'')}${a.house?' · 🏠 '+esc(a.house):''} — اضغط للتعديل</small></span>
-        <span id="ci_ar" class="ci-ar">▾</span>
-      </button>
+      <div class="ci-toggle" style="cursor:default">
+        <span class="ci-t"><b>👤 ${esc(c.name||'')}${a.house?' · 🏠 '+esc(a.house):''}</b><small>بيانات عقدك المسجّلة 🔒</small></span>
+      </div>
       <div id="ci_body" style="display:none">`:''}
       <div class="panel"><h3>👤 معلومات التواصل</h3>
         <div class="grid2">
@@ -3012,6 +3019,10 @@ function renderInfo(){
         <div class="big">${priceTxt}</div></div>
       </div>`}
 
+      ${state.subReq?`<div class="panel" style="margin-top:12px"><div class="field" style="margin:0">
+        <label>📝 ملاحظات (اختياري)</label>
+        <textarea id="f_subnote" placeholder="أي شي تحب الفني يعرفه..."></textarea>
+      </div></div>`:''}
       <button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>
       <div style="height:28px"></div>
     </div>`;
@@ -3100,7 +3111,8 @@ async function confirmOrder(){
     : cartItems().map(i=>({id:i.id,name:i.name,ico:i.ico,qty:i.qty,dur:i.dur,price:i.price,custom:!!i.custom}));
   const loyDisc = quickMode ? 0 : loyaltyDiscFor();
   const duration=scheduleDuration();
-  const note=state.subReq ? (state.quickNote||'') : ((state.problem&&state.problem.desc)||'');
+  const _subnote=(document.getElementById('f_subnote')||{}).value||'';
+  const note=state.subReq ? ((state.quickNote||'')+(_subnote.trim()?(' — ملاحظات العميل: '+_subnote.trim()):'')) : ((state.problem&&state.problem.desc)||'');
   const promoCodeIn=(document.getElementById('f_promo')||{}).value ? document.getElementById('f_promo').value.trim() : (state.promo||'');
   // الخصم والرصيد والولاء يُعاد حسابهم في الخادم — هذي بس للعرض
   const discPct = (loyDisc>0 || !refCheck.ok) ? 0 : 10;
