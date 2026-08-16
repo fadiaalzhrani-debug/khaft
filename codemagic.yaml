@@ -53,7 +53,7 @@ workflows:
           setkey NSMicrophoneUsageDescription "لتسجيل مقطع فيديو يوضّح مشكلة الصيانة"
           setkey CFBundleVersion "$BUILD_NUMBER"
           setkey CFBundleShortVersionString "1.0.3"
-          setkey CFBundleDisplayName "خافت للصيانة المنزلية"
+          setkey CFBundleDisplayName "خافت للصيانة"
           # آيفون فقط — التطبيق مصمّم للجوال، ودعم آيباد يتطلب تصميماً منفصلاً
           ruby -e "require 'xcodeproj'; \
             p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \

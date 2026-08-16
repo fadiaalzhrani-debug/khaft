@@ -1,6 +1,6 @@
 {
   "appId": "com.khafet.app",
-  "appName": "خافت للصيانة المنزلية",
+  "appName": "خافت للصيانة",
   "webDir": "www",
   "server": {
     "iosScheme": "https"
