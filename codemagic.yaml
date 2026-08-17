@@ -208,13 +208,9 @@ workflows:
           npx cap add android || true
           npx cap sync android
           echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
-          # ملف google-services.json من سرّ Codemagic (Base64) — إشعارات أندرويد
-          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
-            echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > android/app/google-services.json
-            echo "✅ وُضع google-services.json"
-          else
-            echo "⚠️ لا يوجد GOOGLE_SERVICES_JSON_B64 — إشعارات أندرويد لن تعمل حتى يُضاف السرّ"
-          fi
+          # ملف google-services.json مضمّن مباشرة (يشمل خافت ورزق من مشروع khaft1)
+          echo 'ewogICJwcm9qZWN0X2luZm8iOiB7CiAgICAicHJvamVjdF9udW1iZXIiOiAiODI1NjEzMzE3NzYiLAogICAgInByb2plY3RfaWQiOiAia2hhZnQxIiwKICAgICJzdG9yYWdlX2J1Y2tldCI6ICJraGFmdDEuZmlyZWJhc2VzdG9yYWdlLmFwcCIKICB9LAogICJjbGllbnQiOiBbCiAgICB7CiAgICAgICJjbGllbnRfaW5mbyI6IHsKICAgICAgICAibW9iaWxlc2RrX2FwcF9pZCI6ICIxOjgyNTYxMzMxNzc2OmFuZHJvaWQ6MjdhY2M5MmU3MDNlMmUyMmI3YTVhNSIsCiAgICAgICAgImFuZHJvaWRfY2xpZW50X2luZm8iOiB7CiAgICAgICAgICAicGFja2FnZV9uYW1lIjogImNvbS5raGFmZXQuYXBwIgogICAgICAgIH0KICAgICAgfSwKICAgICAgIm9hdXRoX2NsaWVudCI6IFtdLAogICAgICAiYXBpX2tleSI6IFsKICAgICAgICB7CiAgICAgICAgICAiY3VycmVudF9rZXkiOiAiQUl6YVN5QTRmSWxNMy0tU2FZLXY3QzNldG5jenRmWkdGb0hfS0VBIgogICAgICAgIH0KICAgICAgXSwKICAgICAgInNlcnZpY2VzIjogewogICAgICAgICJhcHBpbnZpdGVfc2VydmljZSI6IHsKICAgICAgICAgICJvdGhlcl9wbGF0Zm9ybV9vYXV0aF9jbGllbnQiOiBbXQogICAgICAgIH0KICAgICAgfQogICAgfQogIF0sCiAgImNvbmZpZ3VyYXRpb25fdmVyc2lvbiI6ICIxIgp9' | base64 --decode > android/app/google-services.json
+          echo "✅ وُضع google-services.json"
           # قوقل يطلب استهداف المستوى 36 + إضافة Google Services Gradle plugin + firebase-messaging
           python3 - <<'PY'
           import re
