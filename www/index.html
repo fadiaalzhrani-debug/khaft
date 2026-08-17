@@ -1081,7 +1081,7 @@ function inApp(){ return !!(window.Capacitor && window.Capacitor.isNativePlatfor
 
 /* حالة الإشعارات — تُعرض بصفحة «حسابي» عشان نشخّص بدون أدوات مطوّر */
 let pushState='—';
-function setPushState(s){ pushState=s; if(view==='account') renderAccount(); }
+function setPushState(s){ pushState=s; try{ const el=document.getElementById('push-status'); if(el) el.textContent=s; }catch(e){} }
 
 /* الطريقة الصحيحة للوصول لإضافة أصلية بدون حزم JS:
    Capacitor.registerPlugin — أما Capacitor.Plugins فطريقة قديمة قد لا تعمل بالإصدار ٦. */
@@ -1806,6 +1806,12 @@ function renderAccount(){
         <div id="acc-loc-status">${(state.address&&state.address.lat&&state.address.lng)?accLocOkHtml():''}</div>
         <button class="cta" style="margin-top:14px" onclick="saveAccount()">💾 حفظ التعديلات</button>
       </div>
+
+      ${inApp()?`<div class="panel" style="margin-top:12px"><h3>🔔 الإشعارات</h3>
+        <p style="color:var(--muted);font-size:.86rem;line-height:1.7">نبلّغك أول ما ينطلق الفني إليك، ووصوله لبابك، وجاهزية فاتورتك.</p>
+        <div id="push-status" style="margin-top:10px;font-weight:800;font-size:.92rem">${esc(LX(pushState,pushState))}</div>
+        <button class="cta" style="margin-top:12px" onclick="initPush()">🔄 تفعيل / إعادة المحاولة</button>
+      </div>`:''}
 
       <div class="acc-foot">
         <a href="privacy.html" target="_blank" rel="noopener">🔒 الخصوصية</a> ·
