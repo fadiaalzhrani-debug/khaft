@@ -1092,10 +1092,9 @@ function getPushPlugin(){
   return (C.Plugins && C.Plugins.PushNotifications) || null;
 }
 let _pn=null, _pnReady=false;
+function devicePlatform(){ try{ return (window.Capacitor&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform())||'ios'; }catch(e){ return 'ios'; } }
 async function initPush(){
   if(!inApp()){ setPushState('متصفح — الإشعارات للتطبيق فقط'); return; }
-  // أندرويد: الإشعارات تحتاج إعداد Firebase (غير مُهيّأ بعد) — نتجاوزها لتفادي انهيار التطبيق عند الفتح
-  try{ const _p=window.Capacitor.getPlatform&&window.Capacitor.getPlatform(); if(_p==='android'){ setPushState('إشعارات أندرويد قريباً'); return; } }catch(e){}
   try{
     const PN = _pn || getPushPlugin();
     if(!PN){ setPushState('❌ إضافة الإشعارات غير مثبّتة'); return; }
@@ -1109,7 +1108,7 @@ async function initPush(){
         for(let i=0; i<20 && !myUid; i++){ await ensureAnonSession(); if(!myUid) await new Promise(r=>setTimeout(r,300)); }
         if(!myUid){ setPushState('❌ تعذّر تجهيز الهوية — حدّث الصفحة'); return; }
         // التسجيل عبر دالة الخادم (تفرض auth.uid() بنفسها) — أوثق من الكتابة المباشرة
-        const { data, error } = await sb.rpc('register_device', { p_token: t.value, p_platform: 'ios' });
+        const { data, error } = await sb.rpc('register_device', { p_token: t.value, p_platform: devicePlatform() });
         if(error) throw error;
         if(!data || data.ok !== true) throw new Error(data && data.reason ? data.reason : 'رفض الخادم');
         setPushState('✅ الجهاز مسجّل — الإشعارات شغّالة');
