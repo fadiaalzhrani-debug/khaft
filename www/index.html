@@ -1335,7 +1335,7 @@ function hasCustom(){ return cartItems().some(i=>i.custom); }
 /* نقاط الولاء محسوبة برقم الجوال من كل الطلبات (Supabase) */
 function phoneLoyalty(phone){
   if(!phone) return {done:0, progress:0, freeAvailable:0};
-  const mine=state.orders.filter(o=>o.customer && o.customer.phone===phone && o.status==='done' && o.status!=='cancelled');
+  const mine=state.orders.filter(o=>o.customer && o.customer.phone===phone && o.status==='done' && o.status!=='cancelled' && !((o.note||'').includes('مشمول بعقد')));
   const paidDone=mine.filter(o=>!o.free).length;   // كل طلب مكتمل (سريع أو عادي) يُحسب
   const freeDone=mine.filter(o=>o.free).length;
   const earned=Math.floor(paidDone/LOYALTY_TARGET);
@@ -1348,7 +1348,7 @@ function phoneLoyalty(phone){
 /* الولاء: كل ٦ طلبات عادية منجزة → الطلب التالي يُخصم منه متوسط أسعار طلباته.
    المكافأة (طلب فيه خصم ولاء، أو طلب مجاني قديم) لا تُحسب ضمن الـ٦. */
 function myLoyalty(){
-  const mine=state.orders.filter(o=>o.status==='done');
+  const mine=state.orders.filter(o=>o.status==='done' && !((o.note||'').includes('مشمول بعقد')));
   const isReward=o=> o.free || (+o.loyaltyDisc>0);
   const regs=mine.filter(o=>!isReward(o));
   const rewardDone=mine.filter(isReward).length;
