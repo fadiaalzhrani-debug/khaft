@@ -543,12 +543,13 @@
   .pick-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:6px;font-size:.8rem;font-weight:700;color:var(--muted)}
   .ps-hero{background:var(--card);border:2px solid var(--gold);border-radius:var(--r-lg);padding:14px;margin-top:14px;display:flex;flex-direction:column;gap:12px}
   .ps-title b{display:block;font-size:1.4rem;font-weight:900}
-  .ps-title small{display:block;color:var(--muted);font-size:.86rem;font-weight:700;margin-top:2px}
+  .ps-title small{display:block;color:var(--muted);font-size:.9rem;font-weight:700;margin-top:2px}
   .ps-price{background:#FFFDF7;border:1.5px solid var(--gold);border-radius:14px;padding:10px 14px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:1px}
-  .ps-lbl{font-size:.82rem;color:var(--muted);font-weight:700}
+  .ps-lbl{font-size:.86rem;color:var(--muted);font-weight:700}
   .ps-line{display:flex;align-items:center;gap:8px;font-size:.9rem;font-weight:700;color:var(--muted)}
   .ps-line s{color:#B3261E;font-weight:800;font-size:1rem}
-  .ps-now{display:inline-block;background:var(--gold);color:#1a1408;border-radius:999px;padding:1px 10px;font-size:.72rem;font-weight:800}
+  .ps-now{display:inline-block;background:var(--gold);color:#1a1408;border-radius:999px;padding:1px 10px;font-size:.76rem;font-weight:800}
+  .ps-days{display:inline-block;background:rgba(58,47,27,.08);color:var(--ink);border-radius:999px;padding:1px 9px;font-size:.72rem;font-weight:800;margin-inline-start:6px;white-space:nowrap}
   .ps-big{font-size:2.6rem;font-weight:900;color:var(--gold-deep);line-height:1;direction:ltr;unicode-bidi:embed}
   .ps-unit{font-size:.74rem;color:var(--muted);font-weight:600}
   .ps-div{width:70%;height:1px;background:var(--line);margin:7px auto 5px}
@@ -556,23 +557,23 @@
   .ps-was s{color:#B3261E}
   .ps-save{margin-top:6px;background:#E6F4EA;color:#2E7D32;border-radius:999px;padding:3px 14px;font-size:.9rem;font-weight:800}
   .ps-table{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
-  .ps-head{background:var(--gold-tint);padding:10px 14px;font-weight:900;font-size:.95rem;border-bottom:1px solid var(--line)}
+  .ps-head{background:var(--gold-tint);padding:11px 14px;font-weight:900;font-size:1rem;border-bottom:1px solid var(--line)}
   .ps-row{display:flex;align-items:center;border-bottom:1px solid var(--line)}
   .ps-row:last-child{border-bottom:0}
   .ps-f{flex:1;padding:10px 14px;min-height:54px;display:flex;flex-direction:column;justify-content:center}
-  .ps-f b{font-weight:800;font-size:.95rem}
-  .ps-f small{color:var(--muted);font-size:.74rem;font-weight:600;margin-top:1px;line-height:1.35}
-  .ps-v{width:38%;text-align:center;font-weight:800;font-size:.95rem;padding:10px 8px;border-inline-end:1px solid var(--line)}
+  .ps-f b{font-weight:800;font-size:1.02rem}
+  .ps-f small{color:var(--muted);font-size:.8rem;font-weight:600;margin-top:1px;line-height:1.35}
+  .ps-v{width:38%;text-align:center;font-weight:800;font-size:1rem;padding:10px 8px;border-inline-end:1px solid var(--line)}
   .ps-ok{font-size:1.1rem}
   .ps-calc{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px 14px}
-  .ps-ct{font-weight:900;font-size:.95rem;margin-bottom:6px}
+  .ps-ct{font-weight:900;font-size:1rem;margin-bottom:6px}
   .ps-cg{display:grid;grid-template-columns:1fr 1fr;gap:3px 16px}
-  .ps-cl{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px dashed var(--line);padding:3px 0;font-size:.82rem;font-weight:600}
-  .ps-cl b{color:var(--gold-deep);font-weight:800}
-  .ps-cs{margin-top:9px;text-align:center;font-weight:700;font-size:.9rem}
+  .ps-cl{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px dashed var(--line);padding:4px 0;font-size:.88rem;font-weight:600}
+  .ps-cl b{color:var(--gold-deep);font-weight:800;flex-shrink:0}
+  .ps-cs{margin-top:9px;text-align:center;font-weight:700;font-size:.94rem;line-height:1.9}
   .ps-cs s{color:#B3261E}
   .ps-cs .g{color:#2E7D32;font-size:1rem}
-  .ps-cn{margin-top:5px;font-size:.72rem;color:var(--muted);text-align:center;font-weight:600}
+  .ps-cn{margin-top:6px;font-size:.78rem;color:var(--muted);text-align:center;font-weight:600}
   .ps-links{display:flex;justify-content:center;gap:18px;margin-top:10px;font-size:.86rem;font-weight:700}
   .ps-links a{color:var(--gold-deep);cursor:pointer;text-decoration:underline}
   .ps-svc{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:10px 14px}
@@ -926,26 +927,26 @@ const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل 
 const PLANS_CLOSE = new Date('2026-09-21T12:00:00+03:00');
 function planDaysLeft(){ const d = Math.ceil((PLANS_CLOSE - Date.now())/86400000); return d>0 ? d : 0; }
 const PLANS = [
-  { id:'apt',  kind:'شقة', kindEn:'Apartment', ico:'🏢', name:'ريّح بالك · باقة الشقة', nameEn:'Rayyeh Balak — Apartment Plan', price:1299, list:1499, was:2239, save:940, pct:42, visits:6,
+  { id:'apt',  kind:'شقة', kindEn:'Apartment', ico:'🏢', name:'ريّح بالك · باقة الشقة', nameEn:'Rayyeh Balak · Apartment Plan', price:1299, list:1499, was:2239, save:940, pct:42, visits:6,
     rows:[
       ['زيارات صيانة إضافية','تطلبها متى احتجت لأي عطل (سباكة · كهرباء · تركيبات) · زيادة على الخدمات تحت','6 زيارات بالسنة'],
       ['تنظيف المكيفات','شامل الوحدة الداخلية والخارجية','✓'],
       ['تنظيف مراوح دورات المياه','مراوح الشفط','✓'],
       ['فحص أمان المنزل','اللوحة والتأريض والحماية والأفياش','✓'],
-      ['صيانة أو تبديل السخان','صيانة وقائية · وإذا ما استخدمتها خلال سنة العقد: خصم 250 ريالاً على تجديد السنة الجاية','✓'],
+      ['صيانة أو تبديل السخان','صيانة وقائية · ما استخدمتها؟ خصم 250 على التجديد','✓'],
       ['ترويبة الصفاية','','✓'],
       ['توصيل الأغراض مجاني','إلى بابك','✓'],
       ['نقل العقد للمستأجر الجديد','لو أجّرت شقتك','✓'],
       ['ضمان الإصلاح','','30 يوماً'],
       ['ضمان الأغراض (قطع الغيار)','','سنتان'] ],
     calc:[['6 زيارات × 180','1,080'],['8 مكيفات × 45 (مع الوحدة الخارجية)','360'],['5 مراوح × 50','250'],['فحص أمان المنزل','199'],['صيانة أو تبديل السخان','250'],['ترويبة الصفاية','100']] },
-  { id:'home', kind:'فيلا', kindEn:'Villa', ico:'🏠', name:'ريّح بالك · باقة الفيلا', nameEn:'Rayyeh Balak — Villa Plan', price:1799, list:1999, was:2729, save:930, pct:34, visits:8,
+  { id:'home', kind:'فيلا', kindEn:'Villa', ico:'🏠', name:'ريّح بالك · باقة الفيلا', nameEn:'Rayyeh Balak · Villa Plan', price:1799, list:1999, was:2729, save:930, pct:34, visits:8,
     rows:[
       ['زيارات صيانة إضافية','تطلبها متى احتجت لأي عطل (سباكة · كهرباء · تركيبات) · زيادة على الخدمات تحت','8 زيارات بالسنة'],
       ['تنظيف المكيفات','شامل الوحدة الداخلية والخارجية','✓'],
       ['تنظيف مراوح دورات المياه','مراوح الشفط','✓'],
       ['فحص أمان المنزل','اللوحة والتأريض والحماية والأفياش','✓'],
-      ['صيانة أو تبديل السخان','صيانة وقائية · وإذا ما استخدمتها خلال سنة العقد: خصم 250 ريالاً على تجديد السنة الجاية','✓'],
+      ['صيانة أو تبديل السخان','صيانة وقائية · ما استخدمتها؟ خصم 250 على التجديد','✓'],
       ['توصيل الأغراض مجاني','إلى بابك','✓'],
       ['نقل العقد للمستأجر الجديد','لو أجّرت فيلتك','✓'],
       ['ضمان الإصلاح','','30 يوماً'],
@@ -1958,21 +1959,39 @@ function renderPlans(){
       <div style="height:24px"></div>
     </div>`;
 }
+const PLAN_EN={
+  'زيارات صيانة إضافية':'Extra maintenance visits',
+  'تطلبها متى احتجت لأي عطل (سباكة · كهرباء · تركيبات) · زيادة على الخدمات تحت':'Book whenever something breaks (plumbing · electrical · installations), on top of the services below',
+  '6 زيارات بالسنة':'6 visits a year','8 زيارات بالسنة':'8 visits a year',
+  'تنظيف المكيفات':'AC cleaning','شامل الوحدة الداخلية والخارجية':'Indoor and outdoor units',
+  'تنظيف مراوح دورات المياه':'Bathroom exhaust fan cleaning','مراوح الشفط':'Exhaust fans',
+  'فحص أمان المنزل':'Home safety check','اللوحة والتأريض والحماية والأفياش':'Panel, grounding, breakers and sockets',
+  'صيانة أو تبديل السخان':'Water heater service','صيانة وقائية · ما استخدمتها؟ خصم 250 على التجديد':'Preventive service · unused? 250 SAR off your renewal',
+  'ترويبة الصفاية':'Drain grouting',
+  'توصيل الأغراض مجاني':'Free parts delivery','إلى بابك':'To your door',
+  'نقل العقد للمستأجر الجديد':'Contract transfer to a new tenant','لو أجّرت شقتك':'If you rent out your apartment','لو أجّرت فيلتك':'If you rent out your villa',
+  'ضمان الإصلاح':'Repair warranty','30 يوماً':'30 days',
+  'ضمان الأغراض (قطع الغيار)':'Parts warranty','سنتان':'2 years',
+  '6 زيارات × 180':'6 visits × 180','8 زيارات × 180':'8 visits × 180',
+  '8 مكيفات × 45 (مع الوحدة الخارجية)':'8 ACs × 45 (incl. outdoor unit)','12 مكيفاً × 45 (مع الوحدة الخارجية)':'12 ACs × 45 (incl. outdoor unit)',
+  '5 مراوح × 50':'5 fans × 50','6 مراوح × 50':'6 fans × 50'
+};
 function renderPlanSheet(planId){
   const E=_uiEN();
   const T=(ar,en)=>E?en:ar;
   const p=PLANS.find(x=>x.id===planId)||PLANS[0];
-  const rows=p.rows.map(r=>`<div class="ps-row"><div class="ps-f"><b>${esc(r[0])}</b>${r[1]?`<small>${esc(r[1])}</small>`:''}</div><div class="ps-v">${r[2]==='✓'?'<span class="ps-ok">✓</span>':esc(r[2])}</div></div>`).join('');
-  const calc=p.calc.map(c=>`<div class="ps-cl"><span>${esc(c[0])}</span><b class="num">${c[1]}</b></div>`).join('');
+  const R=s=>E?(PLAN_EN[s]||s):s;
+  const rows=p.rows.map(r=>`<div class="ps-row"><div class="ps-f"><b dir="auto">${esc(R(r[0]))}</b>${r[1]?`<small dir="auto">${esc(R(r[1]))}</small>`:''}</div><div class="ps-v" dir="auto">${r[2]==='✓'?'<span class="ps-ok">✓</span>':esc(R(r[2]))}</div></div>`).join('');
+  const calc=p.calc.map(c=>`<div class="ps-cl"><span dir="auto">${esc(R(c[0]))}</span><b class="num">${c[1]}</b></div>`).join('');
   const svc=CT_SVC.map(g=>`<h4>${esc(T(g.t,g.te))}</h4><ul>${g.i.map(x=>`<li><span>${esc(T(x[0],x[2]||x[0]))}</span></li>`).join('')}</ul>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead(T(p.name,p.nameEn),'plans')}
       <div class="ps-hero">
-        <div class="ps-title"><b>ريّح بالك</b><small>${T(p.id==='apt'?'كل الخدمات اللي تحتاجها شقتك · في اشتراك واحد طول السنة':'كل الخدمات اللي تحتاجها فيلتك · في اشتراك واحد طول السنة','Everything your '+(p.id==='apt'?'apartment':'villa')+' needs · one subscription, all year')}</small></div>
+        <div class="ps-title"><b>ريّح بالك</b><small>${T(p.id==='apt'?'كل الخدمات اللي تحتاجها شقتك · في اشتراك واحد طول السنة':'كل الخدمات اللي تحتاجها فيلتك · في اشتراك واحد طول السنة','Everything your '+(p.id==='apt'?'apartment':'villa')+' needs, one subscription all year')}</small></div>
         <div class="ps-price">
           <div class="ps-lbl">${T('سعر الباقة السنوية','Annual plan price')}</div>
-          <div class="ps-line"><span class="ps-now">${T('خصم الآن','Now on offer')}</span><s class="num">${en(p.list)}</s> ${T('ريال','SAR')}</div>
+          <div class="ps-line"><span class="ps-now">${T('خصم الآن','Now on offer')}</span><span class="ps-days">⏳ ${T('باقي '+en(planDaysLeft())+' يوم',en(planDaysLeft())+' days left')}</span><s class="num">${en(p.list)}</s> ${T('ريال','SAR')}</div>
           <div class="ps-big num">${en(p.price)}</div>
           <div class="ps-unit">${T('ريال / سنة','SAR / year')}</div>
           <div class="ps-div"></div>
@@ -1988,8 +2007,8 @@ function renderPlanSheet(planId){
       <div class="ps-calc">
         <div class="ps-ct">${T('الحسبة ببساطة','The math, simply')}</div>
         <div class="ps-cg">${calc}</div>
-        <div class="ps-cs">${T('بدون عقد','No contract')} <s class="num">${en(p.was)}</s> · ${T('الباقة','Plan')} <s class="num">${en(p.list)}</s> ← ${T('الآن','now')} <b class="num">${en(p.price)}</b> · ${T('وفّرت','saved')} <b class="num g">${en(p.save)}</b> (${en(p.pct)}%)</div>
-        <div class="ps-cn">${T('180 ريال هي متوسط تكلفة شغل اليد للزيارة الواحدة من طلباتنا السابقة','180 SAR is the average labour cost per visit from our past orders')}</div>
+        <div class="ps-cs" dir="auto">${T('بدون عقد','No contract')} <s class="num">${en(p.was)}</s> · ${T('الباقة','Plan')} <s class="num">${en(p.list)}</s> ← ${T('الآن','now')} <b class="num">${en(p.price)}</b> · <span style="white-space:nowrap">${T('وفّرت','saved')} <b class="num g">${en(p.save)}</b> (${en(p.pct)}%)</span></div>
+        <div class="ps-cn" dir="auto">${T('180 ريال هي متوسط تكلفة شغل اليد للزيارة الواحدة من طلباتنا السابقة','180 SAR is the average labour cost per visit from our past orders')}</div>
       </div>
       <button class="cta gold" style="margin-top:14px" onclick="openSubscribe('${p.id}')">${T('اشترك الآن · '+en(p.price)+' ريال/سنة','Subscribe now · '+en(p.price)+' SAR/yr')}</button>
       <div class="ps-links">
