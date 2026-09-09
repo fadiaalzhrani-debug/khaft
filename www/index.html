@@ -454,6 +454,20 @@
   .complaint-note{margin-top:10px;background:rgba(255,149,0,.1);border:1px solid rgba(255,149,0,.4);border-radius:var(--r-sm);padding:11px 14px;color:#b26a00;font-weight:800;font-size:.92rem}
   .fb-saved{margin-top:10px;background:#f6f4ec;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 14px;color:var(--ink-soft);font-weight:600;font-size:.92rem}
   .sbtn.complaint-send{background:#c0392b;color:#fff;border-color:#c0392b}
+  .parts-box{margin-top:13px;background:#F6F8FB;border:1px solid #DCE3EE;border-radius:13px;padding:12px 15px}
+  .parts-box .pb-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;flex-wrap:wrap}
+  .parts-box .pb-head b{white-space:nowrap}
+  .parts-box .pb-head b{font-size:.95rem}.parts-box .pb-head small{color:var(--muted);font-size:.74rem;font-weight:700;text-align:left}
+  .pb-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed #DCE3EE;font-size:.9rem;font-weight:700}
+  .pb-row:last-child{border-bottom:0}
+  .pb-row .pb-l{display:flex;align-items:center;gap:9px;min-width:0}
+  .pb-img{width:44px;height:44px;border-radius:9px;object-fit:cover;border:1px solid #DCE3EE;background:#fff;flex-shrink:0;cursor:zoom-in}
+  .pb-ph{width:44px;height:44px;border-radius:9px;background:#EEF2F7;display:grid;place-items:center;flex-shrink:0}
+  .pb-zoom{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:grid;place-items:center;padding:20px}
+  .pb-zoom img{max-width:100%;max-height:90vh;border-radius:14px;background:#fff}
+  .wbtn{background:#FFF3C4;border:1.5px solid var(--gold);color:#1a1408;border-radius:10px;padding:6px 10px;font-size:.78rem;font-weight:800;white-space:nowrap}
+  .pb-done{color:#166534;font-size:.78rem;font-weight:800;white-space:nowrap}
+  .wclaim{display:inline-block;background:#E6F4EA;color:#166534;border-radius:20px;padding:1px 9px;font-size:.7rem;font-weight:800;margin-inline-start:6px;vertical-align:middle}
   .cust-invoice{margin-top:13px;background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:13px;padding:13px 15px}
   .cust-invoice .ci-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
   .cust-invoice .ci-head b{font-size:1rem;font-weight:900}
@@ -1254,6 +1268,7 @@ function rowToOrder(r){
     status:r.status||'new', rating:r.rating||0, reminded:!!r.reminded,
     quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, warrantyDays:+r.warranty_days||0, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
     referredBy:r.referred_by||'', creditUsed:+r.credit_used||0, loyaltyDisc:+r.loyalty_disc||0, advanceDisc:+r.advance_disc||0,
+    warrantyOf:r.warranty_of||null, warrantyItem:r.warranty_item||'',
   };
 }
 function orderToPayload(o){
@@ -1268,6 +1283,7 @@ function orderToPayload(o){
     sub_id:(state.subReq&&state.subReq.id)||null, sub_svc:(state.subReq&&state.subReq.svc)||null,   // طلب مشمول بعقد الصيانة
     // الخادم يعيد التحقق من هذه ويتجاهل أي تلاعب
     referred_by:o.referredBy||null, credit_used:+o.creditUsed||0, loyalty_disc:+o.loyaltyDisc||0, advance_disc:+o.advanceDisc||0,
+    warranty_of:o.warrantyOf||null, warranty_item:o.warrantyItem||null,
   };
 }
 /* رفع مقطع الفيديو إلى Supabase Storage وإرجاع رابطه العام */
@@ -3401,7 +3417,7 @@ function renderMyBookings(){
       const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
-        <div class="oh"><div><b>${o.id}</b><div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]}</span></div>
+        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]}</span></div>
         <div class="ometa">
           <span class="pill time">📅 ${dayLabel(o.date)}</span>
           <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
@@ -3426,6 +3442,7 @@ function renderMyBookings(){
           ${o.invoice.discountPct>0?`<div class="ci-row" style="color:#0b7a3b;font-weight:800"><span>🎟️ خصم ${ar(o.invoice.discountPct)}٪</span><span>- ${money((o.invoice.subtotal||0)-(o.invoice.total||0))}</span></div>`:''}
           <div class="ci-row ci-total"><span>الإجمالي</span><span>${money(o.invoice.total||0)}</span></div>
         </div>`:''}
+        ${partsBox(o)}
         ${canRate?`<div class="rate-box">
           <div class="rate-row"><span class="rate-lbl">${o.rating?'تقييمك للخدمة':'قيّم الخدمة:'}</span><div class="stars ${rated?'locked':''}">${stars}</div></div>
           ${o.rating? (o.rating===5
@@ -3444,6 +3461,48 @@ function renderMyBookings(){
     }).join('');
   }
   document.getElementById('app').innerHTML=`<div class="wrap screen">${pageHead('طلباتي','home')}${body}<div style="height:24px"></div></div>`;
+}
+/* ══════════ الأغراض المستخدمة + بلاغ الضمان ══════════
+   القطع المستخدمة = بنود فاتورة الفني القادمة من المخزون (stockId).
+   ضمان القطع سنتان من تاريخ الخدمة (حسب البنود). البلاغ = طلب جديد مجاني مرتبط بالطلب الأصلي. */
+const PARTS_WARRANTY_DAYS=730;
+function orderParts(o){ const inv=o.invoice; if(!inv||!Array.isArray(inv.items)) return []; return inv.items.filter(it=>it&&(it.stockId||it.id==='stock')); }
+function pbZoom(u){ document.body.insertAdjacentHTML('beforeend',`<div class="pb-zoom" onclick="this.remove()"><img src="${esc(u)}" /></div>`); }
+function partsBox(o){
+  if(o.status!=='done'||o.warrantyOf) return '';
+  const parts=orderParts(o); if(!parts.length) return '';
+  const ageDays=(Date.now()-new Date(o.date||o.createdAt).getTime())/86400000;
+  const inW=ageDays<=PARTS_WARRANTY_DAYS;
+  const rows=parts.map((p,i)=>{
+    const claim=state.orders.find(x=>x.warrantyOf&&o.dbId&&x.warrantyOf===o.dbId&&x.warrantyItem===p.name);
+    let act;
+    if(claim) act=`<span class="pb-done">✅ ${claim.status==='done'?'تم التبديل':'تم البلاغ · بنتواصل معك'}</span>`;
+    else if(inW) act=`<button class="wbtn" onclick="claimWarranty('${o.id}',${i})">⚠️ تعطّلت؟ بلّغ على الضمان</button>`;
+    else act=`<span class="pb-done" style="color:var(--muted)">انتهى الضمان</span>`;
+    const pic=p.img?`<img class="pb-img" src="${esc(p.img)}" loading="lazy" onclick="pbZoom('${esc(p.img)}')" />`:`<span class="pb-ph">🔩</span>`;
+    return `<div class="pb-row"><span class="pb-l">${pic}<span>${esc(p.name)}${(+p.qty>1)?' ×'+ar(p.qty):''}</span></span>${act}</div>`;
+  }).join('');
+  return `<div class="parts-box"><div class="pb-head"><b>🧰 الأغراض المستخدمة</b><small>${inW?'مضمونة سنتين من تاريخ الخدمة':'انتهت مدة الضمان'}</small></div>${rows}</div>`;
+}
+async function claimWarranty(orderId, idx){
+  const o=state.orders.find(x=>x.id===orderId); if(!o) return;
+  const p=orderParts(o)[idx]; if(!p) return;
+  if(!confirm('تبلّغ إن «'+p.name+'» تعطّلت وهي على الضمان؟\nبنرسل فنياً يفحصها ويبدّلها مجاناً إذا كانت مشمولة.')) return;
+  if(!cloudReady||!o.dbId){ toast('يحتاج اتصال بالإنترنت'); return; }
+  const today=dateISO(new Date());
+  const base={ createdAt:Date.now(), items:[{ico:'🛡️', name:'ضمان: تبديل '+p.name, qty:+p.qty||1, price:0}],
+    customer:Object.assign({},o.customer), address:Object.assign({},o.address), date:today, startMin:540, duration:60, endMin:600,
+    price:0, finalPrice:0, free:false, status:'new', rating:0, reminded:false, quick:true,
+    note:'🛡️ بلاغ ضمان قطع: '+p.name+' · من الطلب '+o.id+' بتاريخ '+(o.date||''), videoUrl:'', wantsEarlier:true,
+    providerPhone:o.providerPhone||'', promoCode:'', discountPct:0, referredBy:'', creditUsed:0, loyaltyDisc:0, advanceDisc:0,
+    warrantyOf:o.dbId, warrantyItem:p.name };
+  const keepSub=state.subReq; state.subReq=null;   // البلاغ ما يُحسب على عقد الصيانة
+  try{
+    const order=await cloudInsert(base);
+    state.orders.unshift(order); state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id); save();
+    toast('🛡️ استلمنا بلاغك، بنتواصل معك لتبديلها'); render();
+  }catch(e){ console.error('warranty claim:', e); toast('⚠️ ما وصل البلاغ، أعد المحاولة'); }
+  finally{ state.subReq=keepSub; }
 }
 function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(!confirm('متأكد من إلغاء الطلب '+o.id+'؟')) return; o.status='cancelled'; save(); cloudPatch(o.dbId,{status:'cancelled'}); toast('تم إلغاء الطلب'); render(); }
 function printCustInvoice(id){ const o=state.orders.find(x=>x.id===id); if(o&&o.invoice) printInvoiceDoc(o); }
