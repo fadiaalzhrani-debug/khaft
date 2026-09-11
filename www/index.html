@@ -1023,6 +1023,22 @@ const SAVE_KEY = 'siyanah_v1';
 /* ---- ربط قاعدة البيانات Supabase (غيّر القيمتين بمفاتيح مشروعك لو مختلف) ---- */
 const SUPABASE_URL  = 'https://zulogtqxbuqxmdmjpzqj.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_ssggqTzT4GG4sreXV1LObQ_C3yiYhaG';
+/* ═ جلسة دائمة ═ داخل التطبيق: مخزن النظام (Preferences) لا يُمسح مثل ذاكرة المتصفح، وعلى الويب localStorage */
+const _khPrefs=(()=>{ try{ const C=window.Capacitor; if(C&&C.isNativePlatform&&C.isNativePlatform()){ return (typeof C.registerPlugin==='function'?C.registerPlugin('Preferences'):null)||(C.Plugins&&C.Plugins.Preferences)||null; } }catch(e){} return null; })();
+const KH_MIRROR=new Set(['siyanah_v1','khafet_remember','khafet_staff_ok','khafet_admin_ok','khafet_provider_phone','khafet_lang','khafet_uilang','khafet_worker_auth']);
+const KH_STORE={
+  async getItem(k){ let v=null; try{ v=localStorage.getItem(k); }catch(e){} if(v!=null) return v; try{ if(_khPrefs){ const r=await _khPrefs.get({key:k}); if(r&&r.value!=null){ try{ localStorage.setItem(k,r.value); }catch(e){} return r.value; } } }catch(e){} return null; },
+  async setItem(k,v){ try{ localStorage.setItem(k,v); }catch(e){} try{ if(_khPrefs) await _khPrefs.set({key:k,value:String(v)}); }catch(e){} },
+  async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} }
+};
+const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } };
+try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
+  Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); }catch(e){} };
+  Storage.prototype.removeItem=function(k){ _rm.call(this,k); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.remove({key:k}).catch(()=>{}); }catch(e){} };
+}catch(e){}
+/* عند فتح التطبيق: لو ذاكرة المتصفح انمسحت نرجّع المفاتيح من مخزن النظام */
+async function khRestore(){ if(!_khPrefs) return []; const back=[]; for(const k of KH_MIRROR){ try{ if(localStorage.getItem(k)!=null) continue; const r=await _khPrefs.get({key:k}); if(r&&r.value!=null){ localStorage.setItem(k,r.value); back.push(k); } }catch(e){} } return back; }
+
 
 /* ---- الأقسام ---- */
 const CATS = {
@@ -1168,9 +1184,10 @@ async function ensureAnonSession(){
 }
 async function initCloud(){
   if(cloudReady) return;
+  try{ const back=await khRestore(); if(back.includes(SAVE_KEY)){ state=load(); try{ render(); }catch(e){} } }catch(e){}
   try{
     if(window.supabase && SUPABASE_URL && SUPABASE_ANON && !/YOUR_/.test(SUPABASE_URL)){
-      sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+      sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, KH_AUTH_OPTS);
       cloudReady=true;
       await ensureAnonSession();
       loadPrices();
