@@ -1343,8 +1343,11 @@ async function loadOrdersFromCloud(){
     const { data, error } = await qy;
     if(error) throw error;
     cloudFails=0;
-    state.orders = (data||[]).map(rowToOrder);
+    // الطلبات اللي ما وصلت الخادم بعد (بلا dbId) نحتفظ بها ونعيد إرسالها، لا نمسحها
+    const pending=(state.orders||[]).filter(o=>!o.dbId && o.status!=='cancelled' && (Date.now()-(+o.createdAt||0))<3*864e5);
+    state.orders = pending.concat((data||[]).map(rowToOrder));
     save();
+    if(pending.length) resendPending();
     if(['home','tech','admin','mybookings'].includes(view)) render();
   }catch(e){
     cloudFails++;
@@ -1356,6 +1359,28 @@ async function loadOrdersFromCloud(){
     }
   }finally{ cloudLoading=false; }
 }
+/* الطلبات اللي ما وصلت الخادم (بلا dbId): تُعاد إرسالها تلقائيًا عند رجوع الاتصال أو فتح التطبيق */
+let _resending=false;
+async function resendPending(){
+  if(!cloudReady||_resending) return; _resending=true;
+  try{
+    const pend=(state.orders||[]).filter(o=>!o.dbId && o.status!=='cancelled' && (Date.now()-(+o.createdAt||0))<3*864e5);
+    for(const o of pend){
+      let row=null;
+      try{
+        // لو الطلب وصل فعلًا لكن الرد ضاع، نلقاه بدل ما نكرره
+        if(myUid){ const { data }=await sb.from('khafet_orders').select('*').eq('user_id',myUid).eq('service_date',o.date).eq('start_min',o.startMin).eq('customer_phone',(o.customer&&o.customer.phone)||'').limit(1); if(data&&data.length) row=rowToOrder(data[0]); }
+        if(!row) row=await cloudInsert(o);
+      }catch(e){ continue; }
+      const i=state.orders.indexOf(o); if(i>=0) state.orders[i]=row;
+    }
+    save(); if(['home','mybookings','done'].includes(view)) render();
+  }catch(e){} finally{ _resending=false; }
+}
+try{
+  window.addEventListener('online', ()=>{ setTimeout(()=>{ if(cloudReady) loadOrdersFromCloud(); }, 1500); });
+  document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && cloudReady) loadOrdersFromCloud(); });
+}catch(e){}
 async function cloudInsert(order){
   if(!myUid) await ensureAnonSession();   // ضمان وجود هوية قبل الحفظ
   const { data, error } = await sb.from('khafet_orders').insert(orderToPayload(order)).select().single();
@@ -3373,7 +3398,8 @@ async function confirmOrder(){
         message: e && e.message, code: e && e.code,
         details: e && e.details, hint: e && e.hint, raw: e
       });
-      toast('⚠️ ما وصل الطلب — أعد المحاولة');
+      toast('⏳ ما فيه إنترنت، يُرسل طلبك تلقائيًا أول ما يرجع الاتصال');
+      setTimeout(resendPending, 8000);
     }
   }
   if(!order){ state.seq++; order=Object.assign({id:'#'+ar(state.seq), num:state.seq, dbId:null}, base); }
@@ -3392,11 +3418,11 @@ function renderConfirm(){
     <div class="wrap screen">
       <div class="panel" style="margin-top:26px">
         <div class="success">
-          <div class="circle">${o.dbId?'✅':'⚠️'}</div>
-          <h2>${o.dbId?'تم تأكيد طلبك':'طلبك ما وصلنا بعد'}</h2>
-          ${o.dbId?`<p style="color:var(--muted);margin-top:6px;font-weight:700">ارتَح — خلّ الباقي علينا 👌</p>`:''}
+          <div class="circle">${o.dbId?'✅':'⏳'}</div>
+          <h2>${o.dbId?'تم تأكيد طلبك':'جاري إرسال طلبك'}</h2>
+          ${o.dbId?`<p style="color:var(--muted);margin-top:6px;font-weight:700">ارتَح، خلّ الباقي علينا 👌</p>`:''}
           <div class="ordno">رقم الطلب ${o.id}</div>
-          ${o.dbId?'':`<p style="color:var(--muted);margin-top:10px">ما وصلنا طلبك — أعد المحاولة أو تواصل معنا.</p>`}
+          ${o.dbId?'':`<p style="color:var(--muted);margin-top:10px">ما فيه إنترنت الآن. يُرسل طلبك تلقائيًا أول ما يرجع الاتصال، وتشوفه في «طلباتي».</p>`}
         </div>
         ${o.dbId?'':`<a class="cta" style="display:block;text-align:center;text-decoration:none;margin-bottom:14px" href="tel:${PHONE}">📞 اتصل بنا ${PHONE}</a>`}
         <div class="kv"><span>الخدمات</span><b style="max-width:60%">${itemsList}</b></div>
@@ -3434,7 +3460,7 @@ function renderMyBookings(){
       const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
-        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]}</span></div>
+        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?'⏳ جاري الإرسال':(o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status])}</span></div>
         <div class="ometa">
           <span class="pill time">📅 ${dayLabel(o.date)}</span>
           <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
@@ -3442,7 +3468,7 @@ function renderMyBookings(){
           <span class="pill price">${money(o.finalPrice)}${+o.loyaltyDisc>0?' 🎁':''}</span>
           ${o.discountPct>0?`<span class="pill" style="color:#0b7a3b;font-weight:800">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}
         </div>
-        ${o.status==='new'&&!o.providerPhone?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:''}
+        ${!o.dbId?`<div class="finding-note"><span class="fn-ic">⏳</span><div class="fn-t"><b>جاري إرسال طلبك</b><span>ما فيه إنترنت الآن. يُرسل تلقائيًا أول ما يرجع الاتصال.</span></div></div>`:(o.status==='new'&&!o.providerPhone?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:'')}
         ${o.status==='done'&&o.warrantyDays>0?`<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>خدمتك مضمونة ${ar(o.warrantyDays)} يوم</b><span>لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.</span></div></div>`:''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> — نرجو التكرّم باستقباله.</span></div>`:''}
