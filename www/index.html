@@ -902,7 +902,7 @@ html,body{touch-action:manipulation}
 <div id="toast"></div>
 
 <!-- مكتبة Supabase (تُحمّل بالخلفية بدون تعطيل فتح الصفحة) -->
-<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="vendor/supabase.min.js"></script>
 
 <script>
 /* ============================================================
@@ -3909,8 +3909,7 @@ _startI18n();
 if(UILANG==='en') applyLang();
 syncLangBtn();
 // تُحمّل السحابة بالخلفية بعد جاهزية مكتبة Supabase (لا تعطّل فتح الصفحة)
-if(window.supabase) initCloud();
-else window.addEventListener('load', initCloud);
+(function(){ function go(){ if(window.supabase){ initCloud(); return true; } return false; } if(!go()){ document.addEventListener('DOMContentLoaded',function(){ if(!go()) window.addEventListener('load',go); }); } })();   // نبدأ أول ما تجهز المكتبة المحلية بدون انتظار تحميل الخطوط والصور
 
 /* 👁 إظهار/إخفاء كلمة المرور — يُطبَّق تلقائياً على أي حقل كلمة مرور يظهر بالصفحة */
 const _EYE_OPEN='<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
