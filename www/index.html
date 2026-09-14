@@ -349,6 +349,15 @@
   .payopt .badges span{background:#fff;border:1px solid var(--line);border-radius:7px;padding:2px 7px;
     font-size:.68rem;font-weight:800;color:var(--ink-soft)}
   .paynote{font-size:.78rem;color:var(--muted);font-weight:600;margin-top:9px;line-height:1.6}
+  .pay-due{margin-top:12px;padding:13px 14px;border-radius:13px;background:#EEF6FF;border:1px solid #BBD6F5}
+  .pay-due .pd-t{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800;color:#0b3d6b}
+  .pay-due .pd-t b{font-size:1.08rem}
+  .pay-due .pd-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .pay-due .pd-acts button{flex:1;min-width:130px;border:0;border-radius:11px;padding:11px 12px;font-weight:800;font-family:inherit;font-size:.92rem;cursor:pointer;background:#141414;color:#fff}
+  .pay-due .pd-acts button.tmr{background:#fff;color:#141414;border:1.5px solid #141414}
+  .pay-note{margin-top:12px;padding:11px 14px;border-radius:13px;font-weight:700;font-size:.9rem;background:#e8f7ee;border:1px solid #9fd8b3;color:#0b7a3b}
+  .pay-note.wait{background:#FFF7DA;border-color:#F0D68A;color:#7a5c00}
+  .pill.paid{background:#e8f7ee;color:#0b7a3b;font-weight:800}
   .payresult{text-align:center;padding:26px 18px}
   .payresult .ic{font-size:3rem;margin-bottom:8px}
   .payresult h2{font-size:1.25rem;font-weight:900;color:var(--ink)}
@@ -520,7 +529,18 @@
   .home-q{text-align:center;margin-top:28px}
   .home-q h2{font-size:2rem;font-weight:900;letter-spacing:-.03em}
   .home-q p{color:var(--muted);margin-top:5px;font-size:1.02rem}
-  .cats-big{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:22px}
+  .maint{margin:4px 0 14px}
+  .maint .mt-head{font-weight:900;font-size:1.15rem;margin:2px 4px 10px;color:var(--ink)}
+  .maint .mt-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .maint .mt-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px 10px;box-shadow:var(--shadow-sm);transition:.16s;font-family:inherit;cursor:pointer;min-height:118px}
+  .maint .mt-tile:hover{transform:translateY(-2px);border-color:var(--gold)}
+  .maint .mt-tile .mt-ic{width:56px;height:56px;border-radius:16px;background:var(--gold-soft);color:var(--gold-deep);display:grid;place-items:center;font-size:1.8rem}
+  .maint .mt-tile b{font-size:1rem;font-weight:800;color:var(--ink);text-align:center;line-height:1.35}
+  .maint .mt-tile.more .mt-ic{background:var(--ink);color:var(--gold)}
+  .cats-big{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:22px}
+  .cats-big .catbtn{min-width:0}
+  .cats-big .catbtn .cb-t{min-width:0;overflow-wrap:anywhere}
+  @media(max-width:520px){ .cats-big .catbtn{flex-direction:column;justify-content:center;text-align:center;padding:16px 10px;gap:9px} .cats-big .catbtn .cb-ar{display:none} }
   .catbtn{display:flex;align-items:center;gap:15px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px 18px;box-shadow:var(--shadow-sm);transition:.16s;text-align:right;width:100%}
   .catbtn:hover{transform:translateY(-3px);box-shadow:var(--shadow);border-color:var(--gold)}
   .catbtn .cb-ic{width:58px;height:58px;border-radius:16px;background:var(--gold-soft);display:grid;place-items:center;font-size:1.9rem;flex-shrink:0}
@@ -1261,9 +1281,38 @@ async function registerNow(PN){
     setTimeout(()=>{ if(pushState.indexOf('⏳')===0) setPushState('⚠️ آبل ما ردّت — تأكد من الإنترنت واضغط «أعد المحاولة»'); }, 15000);
   }catch(e){ setPushState('❌ خطأ بالتسجيل: '+(e.message||e)); }
 }
-// حمّل الأسعار المعدّلة من لوحة المؤسسة وطبّقها على الكتالوج
+/* ══ الكتالوج من لوحة المؤسسة: الأقسام، وكل قسم تحته خدماته وأسعارها ══ */
+const CATALOG_KEY='khafet_catalog_v1';
+let CAT_FEATURED=['plumb','elec','ac'];   // الأقسام اللي تظهر في الواجهة تحت «صيانة»
+function applyCatalog(cats, svcs){
+  if(!Array.isArray(cats)||!cats.length||!Array.isArray(svcs)||!svcs.length) return false;
+  const activeCats=cats.filter(c=>c&&c.id&&c.active!==false).sort((a,b)=>(+a.sort||0)-(+b.sort||0));
+  if(!activeCats.length) return false;
+  Object.keys(CATS).forEach(k=>{ delete CATS[k]; });
+  activeCats.forEach(c=>{ CATS[c.id]={name:c.name, ico:c.icon||'🛠️', featured:!!c.featured, name_en:c.name_en||''}; });
+  CAT_FEATURED=activeCats.filter(c=>c.featured).map(c=>c.id);
+  const list=svcs.filter(s=>s&&s.id&&s.active!==false&&CATS[s.cat_id]).sort((a,b)=>(+a.sort||0)-(+b.sort||0))
+    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, name_en:s.name_en||''}));
+  SERVICES.length=0; list.forEach(s=>SERVICES.push(s));
+  try{ if(typeof T_DICT_N!=='undefined'){ activeCats.forEach(c=>{ if(c.name_en) T_DICT_N[_west(c.name).trim()]=c.name_en; }); list.forEach(s=>{ if(s.name_en) T_DICT_N[_west(s.name).trim()]=s.name_en; }); } }catch(e){}
+  try{ Object.keys((state&&state.cart)||{}).forEach(id=>{ if(!svc(id)) delete state.cart[id]; }); }catch(e){}
+  return true;
+}
+function otherCats(){ return Object.keys(CATS).filter(k=>!CAT_FEATURED.includes(k) && catCount(k)>0); }
+function applyCachedCatalog(){ try{ const c=JSON.parse(localStorage.getItem(CATALOG_KEY)||'null'); if(c) applyCatalog(c.c, c.s); }catch(e){} }
+let _catalogAt=0;
+// حمّل الأقسام والخدمات والأسعار من لوحة المؤسسة
 async function loadPrices(){
   if(!cloudReady) return;
+  _catalogAt=Date.now();
+  try{
+    const [c, s] = await Promise.all([ sb.from('khafet_categories').select('*'), sb.from('khafet_services').select('*') ]);
+    if(!c.error && !s.error && applyCatalog(c.data, s.data)){
+      try{ localStorage.setItem(CATALOG_KEY, JSON.stringify({c:c.data, s:s.data, t:Date.now()})); }catch(e){}
+      if(['home','prices','pick','services'].includes(view)) render();
+      return;
+    }
+  }catch(e){}
   try{
     const { data } = await sb.from('khafet_prices').select('*');
     if(data && data.length){ const map={}; data.forEach(r=>{ map[r.sid]=Number(r.price); });
@@ -1286,6 +1335,7 @@ function rowToOrder(r){
     quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, warrantyDays:+r.warranty_days||0, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
     referredBy:r.referred_by||'', creditUsed:+r.credit_used||0, loyaltyDisc:+r.loyalty_disc||0, advanceDisc:+r.advance_disc||0,
     warrantyOf:r.warranty_of||null, warrantyItem:r.warranty_item||'',
+    payRequired:!!r.pay_required, released:r.released!==false, paidAmount:+r.paid_amount||0, amountDue:+r.amount_due||0, payStatus:r.pay_status||'unpaid', payMethod:r.pay_method||'',
   };
 }
 function orderToPayload(o){
@@ -1301,6 +1351,7 @@ function orderToPayload(o){
     // الخادم يعيد التحقق من هذه ويتجاهل أي تلاعب
     referred_by:o.referredBy||null, credit_used:+o.creditUsed||0, loyalty_disc:+o.loyaltyDisc||0, advance_disc:+o.advanceDisc||0,
     warranty_of:o.warrantyOf||null, warranty_item:o.warrantyItem||null,
+    pay_required:!!o.payRequired,   // الخادم يقرر إذا الطلب يحتاج دفع مسبق
   };
 }
 /* رفع مقطع الفيديو إلى Supabase Storage وإرجاع رابطه العام */
@@ -1377,6 +1428,7 @@ async function resendPending(){
     save(); if(['home','mybookings','done'].includes(view)) render();
   }catch(e){} finally{ _resending=false; }
 }
+try{ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && cloudReady && Date.now()-_catalogAt>5*60000) loadPrices(); }); }catch(e){}
 try{
   window.addEventListener('online', ()=>{ setTimeout(()=>{ if(cloudReady) loadOrdersFromCloud(); }, 1500); });
   document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && cloudReady) loadOrdersFromCloud(); });
@@ -2314,6 +2366,76 @@ function payBox(amount, opts){
   </div>`;
 }
 
+/* ══ دفع الطلبات: أجرة اليد وقت الحجز، والمتبقي بعد الفاتورة ══ */
+const TAMARA_MIN_LABOR=300;   // تمارا تظهر إذا أجرة اليد فوق ٣٠٠
+let orderPayMethod='online';
+function setOrderPay(m){
+  orderPayMethod=m;
+  document.querySelectorAll('.payopt label').forEach(l=>{ l.classList.toggle('on', l.dataset.m===m); const inp=l.querySelector('input'); if(inp) inp.checked=(l.dataset.m===m); });
+  const b=document.getElementById('orderPayCta');
+  if(b) b.textContent = m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara') : LX('💳 ادفع ','💳 Pay ')+b.dataset.amt;
+}
+function orderPayBox(amount, labor){
+  if(orderPayMethod==='tamara' && !(labor>TAMARA_MIN_LABOR)) orderPayMethod='online';
+  const tamara = labor>TAMARA_MIN_LABOR ? `
+      <label data-m="tamara" class="${orderPayMethod==='tamara'?'on':''}" onclick="setOrderPay('tamara')">
+        <input type="radio" name="opaym" value="tamara" ${orderPayMethod==='tamara'?'checked':''}>
+        <div><div class="t">${LX('قسّطها مع تمارا','Split it with Tamara')}</div>
+        <div class="d">${LX('ادفع '+money(Math.round(amount/4))+' اليوم والباقي على دفعات بدون فوائد','Pay '+en(Math.round(amount/4))+' SAR today, the rest in interest free instalments')}</div>
+        <div class="badges"><span class="tamara-badge">tamara</span></div></div>
+      </label>` : '';
+  return `<div class="paybox">
+    <h4>💳 ${LX('الدفع','Payment')}</h4>
+    <div class="payopt">
+      <label data-m="online" class="${orderPayMethod==='online'?'on':''}" onclick="setOrderPay('online')">
+        <input type="radio" name="opaym" value="online" ${orderPayMethod==='online'?'checked':''}>
+        <div><div class="t">${LX('ادفع الآن','Pay now')}</div>
+        <div class="badges"><span>mada</span><span>Apple&nbsp;Pay</span><span>Visa</span><span>STC&nbsp;Pay</span></div></div>
+      </label>
+      ${tamara}
+    </div>
+  </div>`;
+}
+async function userToken(){
+  try{ if(!myUid) await ensureAnonSession(); const { data } = await sb.auth.getSession(); return (data&&data.session&&data.session.access_token)||''; }catch(e){ return ''; }
+}
+/* يفتح صفحة الدفع الآمنة لمبلغ الطلب المتبقي (الخادم يحسب المبلغ) */
+async function startOrderPayment(o, method){
+  if(!PAY_FN||!o||!o.dbId){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return false; }
+  const viaTamara = method==='tamara';
+  try{
+    const tok=await userToken();
+    const r=await fetch(viaTamara?PAY_FN+'/tamara':PAY_FN, { method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+(tok||SUPABASE_ANON),'apikey':SUPABASE_ANON},
+      body: JSON.stringify({kind:'order', ref_id:o.dbId}) });
+    const j=await r.json();
+    if(!j.ok||!j.url){
+      console.warn('order pay:', j);
+      if(j.error==='nothing_due'){ toast(LX('✓ ما عليك مبلغ','✓ Nothing to pay')); loadOrdersFromCloud(); return false; }
+      toast(viaTamara?LX('تعذّر فتح تمارا، جرّب الدفع الآن','Could not open Tamara, try Pay now'):LX('تعذّر فتح صفحة الدفع','Could not open the payment page'));
+      return false;
+    }
+    try{ localStorage.setItem('khafet_pay_pending', j.payment_id); }catch(e){}
+    location.href=j.url;
+    return true;
+  }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return false; }
+}
+function payOrder(id, method){ const o=state.orders.find(x=>x.id===id); if(o) startOrderPayment(o, method||'online'); }
+/* رجوع العميل للتطبيق بعد صفحة الدفع (في الجوال تفتح بالمتصفح) */
+let _payPoll=false;
+async function checkPendingPayment(){
+  let id=null; try{ id=localStorage.getItem('khafet_pay_pending'); }catch(e){}
+  if(!id||_payPoll||!PAY_FN) return; _payPoll=true;
+  try{
+    const r=await fetch(PAY_FN+'/status?id='+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+SUPABASE_ANON,'apikey':SUPABASE_ANON}});
+    const j=await r.json();
+    const st=j&&j.payment&&j.payment.status;
+    if(st==='paid'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} toast(LX('✅ تم الدفع','✅ Payment received')); if(cloudReady) loadOrdersFromCloud(); }
+    else if(st&&st!=='pending'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} }
+  }catch(e){} finally{ _payPoll=false; }
+}
+try{ document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') checkPendingPayment(); }); window.addEventListener('focus', checkPendingPayment); }catch(e){}
+
 /* إنشاء رابط الدفع وفتحه */
 async function startPayment(kind, refId, amount, name, phone, orderNo){
   if(!PAY_FN){ toast(LX('الدفع الإلكتروني غير مفعّل','Online payment is not enabled')); return false; }
@@ -2686,6 +2808,14 @@ function renderHome(){
     </div>
 
     <div class="wrap screen">
+      <div class="maint">
+        <div class="mt-head">${LX('صيانة','Maintenance')}</div>
+        <div class="mt-grid">
+          ${CAT_FEATURED.filter(k=>CATS[k]&&catCount(k)>0).map(k=>`<button class="mt-tile" onclick="openCat('${k}')"><span class="mt-ic">${catIcon(k,30)}</span><b>${esc(CATS[k].name)}</b></button>`).join('')}
+          ${otherCats().length?`<button class="mt-tile more" onclick="go('services')"><span class="mt-ic">${catIcon('majlis',30)}</span><b>${LX('باقي خدمات المنزل','Other home services')}</b></button>`:''}
+        </div>
+      </div>
+
       <button class="quick-btn" onclick="startQuick()">
         <span class="qb-ic">${icon('zap',26)}</span>
         <span class="qb-t"><b>طلب سريع</b><small>لست متأكداً من العطل؟ احجز موعداً ويصلك الفني للمعاينة</small></span>
@@ -2782,7 +2912,7 @@ function renderPrices(){
         <span class="pr-price">${s.custom?'بعد المعاينة':money(s.price)}</span>
       </button>`;
     }).join('');
-    return `<div class="price-cat"><h3><span style="color:var(--gold-deep)">${catIcon(k,20)}</span> ${c.name}</h3>${rows}</div>`;
+    return rows?`<div class="price-cat"><h3><span style="color:var(--gold-deep)">${catIcon(k,20)}</span> ${c.name}</h3>${rows}</div>`:'';
   }).join('');
   const n=cartCount();
   const nextbar = n>0 ? `
@@ -2938,7 +3068,8 @@ function catIcon(k,s){
 
 /* ---------- باقي الخدمات: الأقسام ---------- */
 function renderServices(){
-  const cats=Object.keys(CATS).map(k=>{
+  const keys=otherCats().length?otherCats():Object.keys(CATS).filter(k=>catCount(k)>0);
+  const cats=keys.map(k=>{
     const c=CATS[k];
     return `<button class="catbtn" onclick="openCat('${k}')">
       <span class="cb-ic" style="color:var(--gold-deep)">${catIcon(k,30)}</span>
@@ -2948,7 +3079,7 @@ function renderServices(){
   }).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
-      ${pageHead('باقي الخدمات','home')}
+      ${pageHead(LX('باقي خدمات المنزل','Other home services'),'home')}
       <p style="color:var(--muted);text-align:center;margin-top:4px">اختر النوع، وبعدها الخدمة اللي تحتاجها.</p>
       <div class="cats-big" style="margin-top:18px">${cats}</div>
       <div style="height:30px"></div>
@@ -3180,6 +3311,7 @@ function renderInfo(){
   const pPct = (loyDisc>0||quickMode||!refCheck.ok)?0:10;   // الإحالة لأول طلب، الولاء للسابع — لا يجتمعان
   const advDisc = advanceDiscFor(b.date, base, quickMode);   // خصم الحجز المبكر ٥٪
   const afterAll=Math.max(0, Math.round(base*(1-pPct/100)) - loyDisc - advDisc);
+  const payNow = (quickMode||state.subReq) ? 0 : Math.max(0, afterAll - Math.min(myRef.balance||0, afterAll));   // أجرة اليد تُدفع وقت الحجز
   const badge = (t)=>`<span style="color:#0b7a3b;font-size:.6em;font-weight:800">${t}</span>`;
   const strike = `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(base)}</span>`;
   const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
@@ -3258,7 +3390,10 @@ function renderInfo(){
         <label>📝 ملاحظات (اختياري)</label>
         <textarea id="f_subnote" placeholder="أي شي تحب الفني يعرفه..."></textarea>
       </div></div>`:''}
-      <button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>
+      ${payNow>0?orderPayBox(payNow, base):''}
+      ${payNow>0
+        ? `<button class="cta" id="orderPayCta" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&base>TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
+        : `<button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>`}
       <div style="height:28px"></div>
     </div>`;
   initPickMap();
@@ -3356,8 +3491,11 @@ async function confirmOrder(){
   const creditUse = quickMode ? 0 : Math.min(myRef.balance||0, afterDisc);
   const videoFile=(document.getElementById('f_video')||{}).files;
   const houseFile=(document.getElementById('f_housePhoto')||{}).files;
+  const payNow = (quickMode||state.subReq) ? 0 : Math.max(0, afterDisc - creditUse);
+  const payMethodNow = (orderPayMethod==='tamara' && cartPrice()>TAMARA_MIN_LABOR) ? 'tamara' : 'online';
+  if(payNow>0 && !cloudReady){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return; }
 
-  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
+  const btn=document.getElementById('orderPayCta')||document.querySelector('.cta'); const btnTxt=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
 
   // ارفع المقطع (إن وُجد) إلى Supabase Storage
   let videoUrl='';
@@ -3388,8 +3526,24 @@ async function confirmOrder(){
     loyaltyDisc: loyDisc, advanceDisc: advDisc,
     free:false, status:'new', rating:0, reminded:false, quick:quickMode, note, videoUrl, wantsEarlier: state.booking.wantsEarlier!==false,
     promoCode: discPct>0?promoCodeIn:'', discountPct: discPct,
+    payRequired: payNow>0,
   };
   let order=null;
+  if(payNow>0){
+    // الحجز المدفوع ما يُحفظ بالجهاز: لازم يوصل الخادم ثم يفتح الدفع
+    try{ order=await cloudInsert(base); }
+    catch(e){ console.error('❌ فشل حفظ الطلب:', e); toast(LX('ما وصل الطلب، تأكد من الإنترنت وحاول مرة ثانية','Order not sent, check your connection and try again')); if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; }
+    state.orders.unshift(order);
+    state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id);
+    state.cart={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
+    save(); lastOrderId=order.id;
+    if(order.payRequired && order.amountDue>0){
+      go('mybookings');   // لما يرجع من صفحة الدفع يلقى طلبه وحالته
+      toast(LX('⏳ نفتح صفحة الدفع...','⏳ Opening payment...'));
+      await startOrderPayment(order, payMethodNow);
+    } else go('confirm');
+    return;
+  }
   if(cloudReady){
     try{ order=await cloudInsert(base); }
     catch(e){
@@ -3458,17 +3612,27 @@ function renderMyBookings(){
       const earlier = canCancel && !arrivedNow && !delay && o.wantsEarlier ? earlierSlotFor(o) : null;
       const canRate=o.status==='done';
       const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
+      const awaitingPay = !!o.dbId && o.payRequired && !o.released && o.status!=='cancelled';
+      const showDue = !!o.dbId && o.status!=='cancelled' && o.amountDue>0 && (awaitingPay || (o.released && (o.payRequired || (o.invoice&&o.invoice.items&&o.invoice.items.length))));
+      const tamaraOk = (+o.price||0) > TAMARA_MIN_LABOR;
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
-        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?'⏳ جاري الإرسال':(o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status])}</span></div>
+        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?'⏳ جاري الإرسال':(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]))}</span></div>
         <div class="ometa">
           <span class="pill time">📅 ${dayLabel(o.date)}</span>
           <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
           <span class="pill time">⏱️ ${fmtDuration(o.duration)}</span>
           <span class="pill price">${money(o.finalPrice)}${+o.loyaltyDisc>0?' 🎁':''}</span>
+          ${o.paidAmount>0&&o.amountDue<=0&&o.status!=='cancelled'?`<span class="pill paid">${LX('✓ مدفوع','✓ Paid')}</span>`:''}
           ${o.discountPct>0?`<span class="pill" style="color:#0b7a3b;font-weight:800">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}
         </div>
-        ${!o.dbId?`<div class="finding-note"><span class="fn-ic">⏳</span><div class="fn-t"><b>جاري إرسال طلبك</b><span>ما فيه إنترنت الآن. يُرسل تلقائيًا أول ما يرجع الاتصال.</span></div></div>`:(o.status==='new'&&!o.providerPhone?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:'')}
+        ${showDue?`<div class="pay-due">
+          <div class="pd-t"><span>${awaitingPay?LX('ادفع لتأكيد الحجز','Pay to confirm your booking'):LX('المتبقي عليك','Amount due')}</span><b>${money(o.amountDue)}</b></div>
+          <div class="pd-acts"><button onclick="payOrder('${o.id}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>${tamaraOk?`<button class="tmr" onclick="payOrder('${o.id}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
+        </div>`:''}
+        ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
+        ${o.status==='cancelled'&&['refund_pending','refund_failed'].includes(o.payStatus)?`<div class="pay-note wait">${LX('⏳ جاري استرجاع المبلغ','⏳ Refund in progress')}</div>`:''}
+        ${!o.dbId?`<div class="finding-note"><span class="fn-ic">⏳</span><div class="fn-t"><b>جاري إرسال طلبك</b><span>ما فيه إنترنت الآن. يُرسل تلقائيًا أول ما يرجع الاتصال.</span></div></div>`:(o.status==='new'&&!o.providerPhone&&!awaitingPay?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:'')}
         ${o.status==='done'&&o.warrantyDays>0?`<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>خدمتك مضمونة ${ar(o.warrantyDays)} يوم</b><span>لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.</span></div></div>`:''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> — نرجو التكرّم باستقباله.</span></div>`:''}
@@ -3547,7 +3711,7 @@ async function claimWarranty(orderId, idx){
   }catch(e){ console.error('warranty claim:', e); toast('⚠️ ما وصل البلاغ، أعد المحاولة'); }
   finally{ state.subReq=keepSub; }
 }
-function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(!confirm('متأكد من إلغاء الطلب '+o.id+'؟')) return; o.status='cancelled'; save(); cloudPatch(o.dbId,{status:'cancelled'}); toast('تم إلغاء الطلب'); render(); }
+function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(!confirm('متأكد من إلغاء الطلب '+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return; o.status='cancelled'; save(); cloudPatch(o.dbId,{status:'cancelled'}); toast('تم إلغاء الطلب'); render(); }
 function printCustInvoice(id){ const o=state.orders.find(x=>x.id===id); if(o&&o.invoice) printInvoiceDoc(o); }
 function printInvoiceDoc(o){
   const inv=o.invoice||{items:[],total:0};
@@ -3862,6 +4026,7 @@ const T_DICT = {
 function _west(s){ return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)); }
 const _TOK=[["/ سنة","/ year"],["/سنة","/year"],["توفّر","Save "],["ريال","SAR"],["ر.س","SAR"],["٪","%"]];
 const T_DICT_N={}; for(const _k in T_DICT){ T_DICT_N[_west(_k).trim()]=T_DICT[_k]; }
+applyCachedCatalog();   // آخر كتالوج محفوظ بالجهاز (قبل ما يوصل الجديد من الخادم)
 const _EMO=/^((?:[←-⯿️‍\u{1F000}-\u{1FAFF}]+\s*)+)([\s\S]+)$/u;
 function _tr(raw){
   if(raw==null) return raw;
