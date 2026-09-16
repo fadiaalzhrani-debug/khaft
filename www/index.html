@@ -1591,13 +1591,28 @@ function isOffDay(iso){ return OFF_DAYS.includes(parseISO(iso).getDay()); }
 /* الجدول المشغول الحقيقي — كل عملاء المنصة، مو بس هذا الجهاز.
    بدونه كان عميلان يحجزان نفس الوقت والفني يتأخر. البيانات: يوم/وقت/مدة/مدينة فقط. */
 let BUSY=[], busyAt=0;
+/* فرق العمل: كل فريق له جدوله، فحجز التكييف ما يقفل موعد السباكة والكهرباء.
+   السباكة والكهرباء فريق واحد (core)، والتكييف فريق، وباقي الأقسام كل واحد لحاله. */
+const SLOT_GROUPS={plumb:'core', elec:'core', ac:'ac'};
+function slotGroup(cat){ return SLOT_GROUPS[cat] || cat || 'gen'; }
+function groupsOfItems(items){
+  const g=new Set();
+  (items||[]).forEach(it=>{ const s=svc(it&&it.id); if(s&&s.cat) g.add(slotGroup(s.cat)); });
+  return Array.from(g);
+}
+/* السلة الحالية: [] يعني ما نعرف التخصص (طلب سريع) فيزاحم كل الفرق */
+function cartGroups(){ return quickMode ? [] : groupsOfItems(cartItems()); }
+function groupsClash(a,b){
+  if(!a || !a.length || !b || !b.length) return true;   // تخصص غير معروف = يزاحم الكل
+  return a.some(x=>b.indexOf(x)>-1);
+}
 async function loadBusy(){
   if(!cloudReady||!sb) return false;
   if(Date.now()-busyAt<60000) return false;   // كاش دقيقة
   busyAt=Date.now();
   try{
     const { data }=await sb.rpc('khafet_busy_times');
-    if(Array.isArray(data)){ BUSY=data.map(r=>({date:r.d,start:r.s,dur:r.m||60,city:(r.c||'').trim()})); return true; }
+    if(Array.isArray(data)){ BUSY=data.map(r=>({date:r.d,start:r.s,dur:r.m||60,city:(r.c||'').trim(),groups:Array.isArray(r.g)?r.g:[]})); return true; }
   }catch(e){}
   return false;
 }
@@ -1614,14 +1629,18 @@ function slotAvailable(iso,startMin,needMin,excludeId){
   // ندمج حجوزات هذا الجهاز مع الجدول الحقيقي لكل العملاء
   const ex=excludeId?state.orders.find(o=>o.id===excludeId):null;
   const myCity=((state.address&&state.address.city)||'').trim();
+  const myGroups=cartGroups();
   let exSkipped=false;
   const cloud=BUSY.filter(b=>b.date===iso).filter(b=>{
     if(ex && !exSkipped && b.start===ex.startMin){ exSkipped=true; return false; }   // الطلب الجاري تعديله
     if(b.city && myCity && b.city!==myCity) return false;                            // مدينة ثانية = فريق ثاني
+    if(!groupsClash(myGroups, b.groups)) return false;                               // تخصص ثاني = جدول ثاني
     return true;
   });
   const seen=new Set(cloud.map(b=>b.start));
-  const local=bookingsOn(iso,excludeId).map(o=>({start:o.startMin,dur:o.duration||60}))
+  const local=bookingsOn(iso,excludeId)
+    .filter(o=>groupsClash(myGroups, groupsOfItems(o.items)))
+    .map(o=>({start:o.startMin,dur:o.duration||60}))
     .filter(o=>!seen.has(o.start));   // طلباتي موجودة بالجدولين — بلا تكرار
   const all=cloud.concat(local);
   if(all.length >= MAX_JOBS_PER_DAY) return false;   // اليوم ممتلئ
