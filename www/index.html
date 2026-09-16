@@ -177,6 +177,28 @@
   .totals .row.big{font-size:1.18rem;font-weight:900;border-top:2px dashed var(--line);padding-top:13px;margin-top:4px}
   .totals .muted{color:var(--muted)}
   .est{background:var(--gold-soft);border:1px solid #F1E3A8;border-radius:var(--r-sm);padding:14px 16px;display:flex;gap:12px;align-items:center;margin-top:16px}
+  /* ملخص الطلب بشكل فاتورة */
+  .rcpt{background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-top:16px;overflow:hidden;box-shadow:var(--shadow-sm)}
+  .rc-head{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--ink);color:var(--gold)}
+  .rc-head b{font-size:1.02rem;font-weight:900}
+  .rc-head small{color:#d8d2bd;font-weight:700;font-size:.78rem}
+  .rc-sec{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:10px 16px 4px;font-weight:900;font-size:.86rem;color:var(--muted);letter-spacing:.02em}
+  .rc-sec small{font-weight:700;font-size:.74rem;color:var(--muted)}
+  .rc-row{display:grid;grid-template-columns:1fr auto auto;gap:6px 10px;align-items:start;padding:10px 16px;border-top:1px dashed var(--line)}
+  .rc-row .rc-n{font-weight:800;line-height:1.35}
+  .rc-row .rc-n small{display:block;color:var(--muted);font-weight:700;font-size:.78rem;margin-top:1px}
+  .rc-row .rc-p{font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums;padding-top:2px}
+  .rc-row.off{opacity:.65}
+  .rc-row.off .rc-n{text-decoration:line-through}
+  .rc-row.off .rc-n small{text-decoration:none}
+  .rc-x{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-weight:900;font-size:1.05rem;font-family:inherit;cursor:pointer;line-height:1}
+  .rc-add{padding:6px 12px;border-radius:9px;border:1.5px solid var(--gold);background:var(--gold-tint);color:var(--ink);font-weight:800;font-size:.8rem;font-family:inherit;cursor:pointer;white-space:nowrap}
+  .rc-opts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;grid-column:1/-1}
+  .rc-opts button{padding:5px 12px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);font-weight:800;font-size:.8rem;font-family:inherit;cursor:pointer;color:var(--ink)}
+  .rc-opts button.on{background:var(--gold);border-color:var(--gold)}
+  .rc-total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-top:2px solid var(--ink);font-weight:900;font-size:1.06rem;background:var(--gold-tint)}
+  .rc-total .big{font-size:1.15rem}
+  .rc-note{padding:8px 16px 12px;color:var(--muted);font-size:.8rem;font-weight:700;background:var(--gold-tint)}
   .est .big{font-size:1.08rem;font-weight:800}
 
   /* Forms */
@@ -1299,16 +1321,43 @@ function applyCatalog(cats, svcs){
   return true;
 }
 function otherCats(){ return Object.keys(CATS).filter(k=>!CAT_FEATURED.includes(k) && catCount(k)>0); }
-function applyCachedCatalog(){ try{ const c=JSON.parse(localStorage.getItem(CATALOG_KEY)||'null'); if(c) applyCatalog(c.c, c.s); }catch(e){} }
+function applyCachedCatalog(){ try{ const c=JSON.parse(localStorage.getItem(CATALOG_KEY)||'null'); if(c){ applyCatalog(c.c, c.s); if(c.p) applyParts(c.p); } }catch(e){} }
+/* ═══ القطع المرتبطة بالخدمات: تنضاف تلقائيًا للطلب، بخيارات (أبيض/أصفر)، ويقدر العميل يشيلها ═══ */
+let PARTS=[];
+function applyParts(rows){
+  if(!Array.isArray(rows)) return;
+  PARTS=rows.filter(r=>r&&r.service_id&&r.item_id).map(r=>({ id:r.id, svc:r.service_id, group:r.group_key, groupName:r.group_name||'', itemId:r.item_id,
+    label:r.label||'', qty:+r.qty||1, def:!!r.is_default, sort:+r.sort||0, name:r.item_name||'', name_en:r.item_name_en||'', price:+r.price||0, img:r.image_url||'', inStock:r.in_stock!==false }));
+}
+function partKey(svcId,group){ return svcId+'|'+group; }
+function partLines(){
+  if(quickMode||state.subReq) return [];
+  const out=[];
+  cartItems().forEach(ci=>{
+    const groups={};
+    PARTS.filter(p=>p.svc===ci.id && p.inStock).sort((a,b)=>a.sort-b.sort).forEach(p=>{ (groups[p.group]=groups[p.group]||[]).push(p); });
+    Object.keys(groups).forEach(g=>{
+      const opts=groups[g], key=partKey(ci.id,g), st=(state.parts||{})[key]||{};
+      const chosen=opts.find(o=>o.itemId===st.itemId)||opts.find(o=>o.def)||opts[0];
+      out.push({ key, svcId:ci.id, group:g, groupName:opts[0].groupName, opts, chosen, qty:(chosen.qty||1)*(ci.qty||1), price:chosen.price, off:!!st.off });
+    });
+  });
+  return out;
+}
+function partsTotal(){ return partLines().filter(l=>!l.off).reduce((a,l)=>a+l.price*l.qty,0); }
+function partName(p){ return (_uiEN() && p.name_en) ? p.name_en : p.name; }
+function choosePart(key,itemId){ state.parts=state.parts||{}; state.parts[key]=Object.assign({}, state.parts[key]||{}, {itemId, off:false}); captureBookingInputs(); save(); render(); }
+function togglePart(key,off){ state.parts=state.parts||{}; state.parts[key]=Object.assign({}, state.parts[key]||{}, {off:!!off}); captureBookingInputs(); save(); render(); }
 let _catalogAt=0;
 // حمّل الأقسام والخدمات والأسعار من لوحة المؤسسة
 async function loadPrices(){
   if(!cloudReady) return;
   _catalogAt=Date.now();
   try{
-    const [c, s] = await Promise.all([ sb.from('khafet_categories').select('*'), sb.from('khafet_services').select('*') ]);
+    const [c, s, p] = await Promise.all([ sb.from('khafet_categories').select('*'), sb.from('khafet_services').select('*'), sb.from('khafet_parts_public').select('*') ]);
     if(!c.error && !s.error && applyCatalog(c.data, s.data)){
-      try{ localStorage.setItem(CATALOG_KEY, JSON.stringify({c:c.data, s:s.data, t:Date.now()})); }catch(e){}
+      if(!p.error) applyParts(p.data||[]);
+      try{ localStorage.setItem(CATALOG_KEY, JSON.stringify({c:c.data, s:s.data, p:(!p.error&&p.data)||[], t:Date.now()})); }catch(e){}
       if(['home','prices','pick','services'].includes(view)) render();
       return;
     }
@@ -1545,7 +1594,8 @@ function feeAmount(){
   return +f.price||0;
 }
 function cartCount(){ return Object.values(state.cart).reduce((a,b)=>a+b,0); }
-function cartPrice(){ return cartItems().reduce((a,i)=>a+i.price*i.qty,0) + feeAmount(); }
+function laborPrice(){ return cartItems().reduce((a,i)=>a+i.price*i.qty,0); }
+function cartPrice(){ return laborPrice() + partsTotal() + feeAmount(); }
 function cartDuration(){ return cartItems().reduce((a,i)=>a+i.dur*i.qty,0); }
 function hasCustom(){ return cartItems().some(i=>i.custom); }
 /* نقاط الولاء محسوبة برقم الجوال من كل الطلبات (Supabase) */
@@ -3338,6 +3388,35 @@ function nextFromTime(){
 }
 
 /* ---------- خطوة ٣: بياناتك وموقعك ---------- */
+/* ملخص الطلب بشكل فاتورة: أجرة اليد، القطع (بخياراتها وإمكانية شيلها)، رسوم الوصول، ثم الإجمالي */
+function receiptHtml(priceTxt, d){
+  const row=(name,sub,price,cls)=>`<div class="rc-row ${cls||''}"><div class="rc-n">${name}${sub?`<small>${sub}</small>`:''}</div><div class="rc-p">${price}</div><div></div></div>`;
+  if(quickMode){
+    return `<div class="rcpt"><div class="rc-head"><b>🧾 ${LX('ملخص طلبك','Order summary')}</b><small>${LX('طلب سريع','Quick request')}</small></div>
+      ${row('⚡ '+LX('معاينة وتحديد المشكلة','Inspection'), LX('الفني يحدد السعر بعد المعاينة','The technician prices it after inspection'), '')}
+      <div class="rc-total"><span>${LX('الإجمالي','Total')}</span><b class="big">${priceTxt}</b></div></div>`;
+  }
+  const parts=partLines();
+  const svcRows=cartItems().map(i=>row(esc(i.ico)+' '+esc(svcName(i, _uiEN()?'en':'ar')), i.qty>1?'× '+ar(i.qty):'', money(i.price*i.qty))).join('');
+  const partRows=parts.map(l=> l.off
+    ? `<div class="rc-row off"><div class="rc-n">🔩 ${esc(l.groupName)}<small>${LX('بدون قطعة، عندك الغرض','No part, you have it')}</small></div><div class="rc-p">${money(0)}</div><button type="button" class="rc-add" onclick="togglePart('${esc(l.key)}',false)">${LX('أضف القطعة','Add part')}</button></div>`
+    : `<div class="rc-row"><div class="rc-n">🔩 ${esc(partName(l.chosen))}<small>${esc(l.groupName)}${l.qty>1?' × '+ar(l.qty):''} · ${money(l.price)} ${LX('للحبة','each')}</small></div><div class="rc-p">${money(l.price*l.qty)}</div><button type="button" class="rc-x" onclick="togglePart('${esc(l.key)}',true)" aria-label="${LX('شيل القطعة','Remove part')}">×</button>
+        ${l.opts.length>1?`<div class="rc-opts">${l.opts.map(o=>`<button type="button" class="${o.itemId===l.chosen.itemId?'on':''}" onclick="choosePart('${esc(l.key)}','${esc(o.itemId)}')">${esc(o.label||partName(o))}</button>`).join('')}</div>`:''}</div>`).join('');
+  const discRows=[
+    d.loyDisc>0 ? row('🎁 '+LX('مكافأة ولاء','Loyalty reward'), '', '− '+money(d.loyDisc)) : '',
+    d.pPct>0 ? row('🎟️ '+LX('خصم كود صديق','Friend code discount')+' '+ar(d.pPct)+'٪', '', '− '+money(Math.round(laborPrice()*d.pPct/100))) : '',
+    d.advDisc>0 ? row('📅 '+LX('خصم الحجز المبكر','Early booking discount'), '', '− '+money(d.advDisc)) : ''
+  ].join('');
+  return `<div class="rcpt">
+    <div class="rc-head"><b>🧾 ${LX('ملخص طلبك','Order summary')}</b><small>${LX('الأسعار بالريال','Prices in SAR')}</small></div>
+    <div class="rc-sec">${LX('أجرة اليد','Labor')}</div>${svcRows}
+    ${parts.length?`<div class="rc-sec">${LX('القطع','Parts')}<small>${LX('عندك الغرض؟ اضغط × وتنشال من الحساب','Have the part? Tap × to remove it')}</small></div>${partRows}`:''}
+    ${feeAmount()>0?`<div class="rc-sec">${LX('الوصول','Visit')}</div>`+row('🚚 '+LX('رسوم وصول الفني','Technician visit fee'),'',money(feeAmount())):''}
+    ${discRows?`<div class="rc-sec">${LX('الخصومات','Discounts')}</div>`+discRows:''}
+    <div class="rc-total"><span>${LX('الإجمالي','Total')}</span><b class="big">${priceTxt}</b></div>
+    <div class="rc-note">${LX('تدفع أجرة اليد والقطع والوصول الحين، وأي قطع إضافية يحتاجها الشغل تظهر في فاتورة الفني.','You pay labor, parts and the visit now. Extra parts, if needed, appear on the technician invoice.')}</div>
+  </div>`;
+}
 function renderInfo(){
   if(!state.booking.date||state.booking.time==null){ go('time'); return; }
   const c=state.customer,a=state.address,b=state.booking;
@@ -3419,11 +3498,7 @@ function renderInfo(){
           <span style="color:#0b7a3b;font-weight:800;font-size:.86rem">يُخصم تلقائياً</span>
         </div></div>`:''}`}
 
-      ${state.subReq?'':`<div class="est"><span style="font-size:1.5rem">${quickMode?'🔎':(free?'🎁':'💳')}</span>
-        <div><div style="color:var(--muted);font-size:.85rem">الإجمالي التقريبي</div>
-        <div class="big">${priceTxt}</div>
-        ${feeAmount()>0?`<div style="color:var(--muted);font-size:.8rem">${LX('شامل رسوم التوصيل '+ar(feeAmount())+' ريال','Includes a '+feeAmount()+' SAR delivery fee')}</div>`:''}</div>
-      </div>`}
+      ${state.subReq?'':receiptHtml(priceTxt, {loyDisc, pPct, advDisc})}
 
       ${state.subReq?`<div class="panel" style="margin-top:12px"><div class="field" style="margin:0">
         <label>📝 ملاحظات (اختياري)</label>
@@ -3518,6 +3593,7 @@ async function confirmOrder(){
   const items = quickMode
     ? [{id:'quick', name:'طلب سريع (معاينة)', ico:'⚡', qty:1, dur:scheduleDuration(), price:0, custom:true}]
     : cartItems().map(i=>({id:i.id,name:i.name,ico:i.ico,qty:i.qty,dur:i.dur,price:i.price,custom:!!i.custom}));
+  partLines().filter(l=>!l.off).forEach(l=>{ items.push({id:'part:'+l.chosen.itemId, stockId:l.chosen.itemId, name:l.chosen.name, ico:'🔩', qty:l.qty, dur:0, price:l.price, custom:false, part:true, img:l.chosen.img||''}); });
   if(feeAmount()>0){ const f=feeSvc(); items.push({id:'fee', name:f.name, ico:f.ico||'🚚', qty:1, dur:0, price:+f.price||0, custom:false}); }
   const loyDisc = quickMode ? 0 : loyaltyDiscFor();
   const duration=scheduleDuration();
@@ -3532,7 +3608,7 @@ async function confirmOrder(){
   const videoFile=(document.getElementById('f_video')||{}).files;
   const houseFile=(document.getElementById('f_housePhoto')||{}).files;
   const payNow = (quickMode||state.subReq) ? 0 : Math.max(0, afterDisc - creditUse);
-  const payMethodNow = (orderPayMethod==='tamara' && cartPrice()>TAMARA_MIN_LABOR) ? 'tamara' : 'online';
+  const payMethodNow = (orderPayMethod==='tamara' && laborPrice()>TAMARA_MIN_LABOR) ? 'tamara' : 'online';
   if(payNow>0 && !cloudReady){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return; }
 
   const btn=document.getElementById('orderPayCta')||document.querySelector('.cta'); const btnTxt=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
@@ -3575,7 +3651,7 @@ async function confirmOrder(){
     catch(e){ console.error('❌ فشل حفظ الطلب:', e); toast(LX('ما وصل الطلب، تأكد من الإنترنت وحاول مرة ثانية','Order not sent, check your connection and try again')); if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; }
     state.orders.unshift(order);
     state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id);
-    state.cart={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
+    state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
     save(); lastOrderId=order.id;
     if(order.payRequired && order.amountDue>0){
       go('mybookings');   // لما يرجع من صفحة الدفع يلقى طلبه وحالته
@@ -3599,7 +3675,7 @@ async function confirmOrder(){
   if(!order){ state.seq++; order=Object.assign({id:'#'+ar(state.seq), num:state.seq, dbId:null}, base); }
   state.orders.unshift(order);
   state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id);
-  state.cart={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
+  state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
   save(); lastOrderId=order.id; go('confirm');
 }
 
