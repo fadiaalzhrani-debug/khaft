@@ -122,12 +122,12 @@ workflows:
       - name: إنشاء وإعداد شهادات التوقيع
         script: |
           keychain initialize
+          export APP_STORE_CONNECT_PRIVATE_KEY="$(cat /tmp/AuthKey.p8)"
+          export CERTIFICATE_PRIVATE_KEY="$(cat /tmp/cert_key.pem)"
           app-store-connect fetch-signing-files "$BUNDLE_ID" \
             --type IOS_APP_STORE \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
             --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$(cat /tmp/AuthKey.p8)" \
-            --certificate-key "$(cat /tmp/cert_key.pem)" \
             --create
           keychain add-certificates
           xcode-project use-profiles
@@ -161,11 +161,11 @@ workflows:
           IPA=$(find "$CM_BUILD_DIR" -name '*.ipa' | head -1)
           echo "الملف: $IPA"
           set +e
+          export APP_STORE_CONNECT_PRIVATE_KEY="$(cat /tmp/AuthKey.p8)"
           app-store-connect publish \
             --path "$IPA" \
             --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
-            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" \
-            --private-key "$(cat /tmp/AuthKey.p8)" 2>&1 | tee /tmp/publish.log
+            --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" 2>&1 | tee /tmp/publish.log
           CODE=${PIPESTATUS[0]}
           if [ "$CODE" -ne 0 ]; then
             echo ""
