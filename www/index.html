@@ -1606,10 +1606,18 @@ function groupsClash(a,b){
   if(!a || !a.length || !b || !b.length) return true;   // تخصص غير معروف = يزاحم الكل
   return a.some(x=>b.indexOf(x)>-1);
 }
+/* سعة كل فريق: كل فني بتخصص معين يزيد حجزًا متزامنًا واحدًا لنفس التخصص */
+let CAP={};
+function capOf(groups){
+  if(!groups || !groups.length) return 1;                       // تخصص غير معروف = فريق واحد
+  const n=groups.map(g=>Math.max(1, +CAP[g]||1));
+  return Math.min.apply(null, n);                               // الطلب يحتاج كل الفرق، فالأقل هو الحد
+}
 async function loadBusy(){
   if(!cloudReady||!sb) return false;
   if(Date.now()-busyAt<60000) return false;   // كاش دقيقة
   busyAt=Date.now();
+  try{ const cap=await sb.rpc('khafet_slot_capacity'); if(cap && cap.data && typeof cap.data==='object') CAP=cap.data; }catch(e){}
   try{
     const { data }=await sb.rpc('khafet_busy_times');
     if(Array.isArray(data)){ BUSY=data.map(r=>({date:r.d,start:r.s,dur:r.m||60,city:(r.c||'').trim(),groups:Array.isArray(r.g)?r.g:[]})); return true; }
@@ -1643,12 +1651,14 @@ function slotAvailable(iso,startMin,needMin,excludeId){
     .map(o=>({start:o.startMin,dur:o.duration||60}))
     .filter(o=>!seen.has(o.start));   // طلباتي موجودة بالجدولين — بلا تكرار
   const all=cloud.concat(local);
-  if(all.length >= MAX_JOBS_PER_DAY) return false;   // اليوم ممتلئ
+  const cap=capOf(myGroups);
+  if(all.length >= MAX_JOBS_PER_DAY*cap) return false;   // جدول الفريق ممتلئ هذا اليوم
+  let overlap=0;
   for(const o of all){
     const oEnd=o.start+o.dur+BUFFER;
-    if(startMin<oEnd && end>o.start) return false;
+    if(startMin<oEnd && end>o.start) overlap++;
   }
-  return true;
+  return overlap < cap;                                  // يقفل الوقت فقط إذا انشغل كل فنيي التخصص
 }
 function scheduleDuration(){ if(quickMode) return QUICK_DURATION; const d=cartDuration(); return d>0?d:60; }
 // نافذة الوصول المعروضة للعميل
