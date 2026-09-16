@@ -485,26 +485,68 @@
   .complaint-note{margin-top:10px;background:rgba(255,149,0,.1);border:1px solid rgba(255,149,0,.4);border-radius:var(--r-sm);padding:11px 14px;color:#b26a00;font-weight:800;font-size:.92rem}
   .fb-saved{margin-top:10px;background:#f6f4ec;border:1px solid var(--line);border-radius:var(--r-sm);padding:11px 14px;color:var(--ink-soft);font-weight:600;font-size:.92rem}
   .sbtn.complaint-send{background:#c0392b;color:#fff;border-color:#c0392b}
-  .parts-box{margin-top:13px;background:#F6F8FB;border:1px solid #DCE3EE;border-radius:13px;padding:12px 15px}
+  .parts-box{margin-top:13px;background:#F6F8FB;border:1px solid #DCE3EE;border-radius:15px;padding:12px 14px}
   .parts-box .pb-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;flex-wrap:wrap}
-  .parts-box .pb-head b{white-space:nowrap}
-  .parts-box .pb-head b{font-size:.95rem}.parts-box .pb-head small{color:var(--muted);font-size:.74rem;font-weight:700;text-align:left}
-  .pb-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed #DCE3EE;font-size:.9rem;font-weight:700}
+  .parts-box .pb-head b{white-space:nowrap;font-size:.95rem}.parts-box .pb-head small{color:var(--muted);font-size:.74rem;font-weight:700}
+  .pb-row{display:grid;grid-template-columns:58px minmax(0,1fr);gap:11px;align-items:start;padding:10px 0;border-bottom:1px dashed #DCE3EE}
   .pb-row:last-child{border-bottom:0}
-  .pb-row .pb-l{display:flex;align-items:center;gap:9px;min-width:0}
-  .pb-img{width:44px;height:44px;border-radius:9px;object-fit:cover;border:1px solid #DCE3EE;background:#fff;flex-shrink:0;cursor:zoom-in}
-  .pb-ph{width:44px;height:44px;border-radius:9px;background:#EEF2F7;display:grid;place-items:center;flex-shrink:0}
+  .pb-img{width:58px;height:58px;border-radius:12px;object-fit:contain;border:1px solid #DCE3EE;background:#fff;cursor:zoom-in}
+  .pb-ph{width:58px;height:58px;border-radius:12px;background:#EEF2F7;display:grid;place-items:center;font-size:1.4rem}
+  .pb-t{min-width:0}.pb-t b{display:block;font-size:.93rem;font-weight:800;line-height:1.35}
+  .pb-t small{display:block;color:var(--muted);font-size:.76rem;font-weight:700;margin-top:2px}
+  .pb-t .pb-act{margin-top:7px}
   .pb-zoom{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:grid;place-items:center;padding:20px}
   .pb-zoom img{max-width:100%;max-height:90vh;border-radius:14px;background:#fff}
   .wbtn{background:#FFF3C4;border:1.5px solid var(--gold);color:#1a1408;border-radius:10px;padding:6px 10px;font-size:.78rem;font-weight:800;white-space:nowrap}
-  .pb-done{color:#166534;font-size:.78rem;font-weight:800;white-space:nowrap}
+  /* عناوين محفوظة (بيتي، بيت أهلي...) */
+  .addr-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .addr-chip{padding:9px 13px;border-radius:999px;border:1.5px solid var(--line);background:#fcfbf7;font-weight:800;font-size:.86rem;transition:.15s;font-family:inherit;color:inherit}
+  .addr-chip.active{background:var(--gold);border-color:var(--gold);color:#1a1408}
+  .addr-chip.new{border-style:dashed;color:var(--muted)}
+  .addr-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+  .addr-row:last-of-type{border-bottom:0}
+  .addr-row .ar-t{flex:1;min-width:0}
+  .addr-row .ar-t b{display:block;font-size:.95rem}
+  .addr-row .ar-t small{color:var(--muted);font-size:.8rem}
+  /* سياسة الإلغاء وتغيير الموعد */
+  .policy-note{margin-top:10px;font-size:.8rem;color:var(--muted);font-weight:700;line-height:1.6}
+  .late-note{display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:12px 14px;border-radius:13px;background:#FFF3C4;border:1px solid var(--gold);font-size:.86rem;line-height:1.6}
+  .late-note b{display:block}
+  .late-note .oact a{text-decoration:none}
+  /* نافذة سفلية: تغيير الموعد، بلاغ الضمان */
+  .kmodal{position:fixed;inset:0;background:rgba(20,17,10,.62);z-index:130;display:flex;align-items:flex-end;justify-content:center}
+  .kmodal .kbox{background:#FAF7EF;width:100%;max-width:560px;max-height:88vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.25)}
+  .kmodal .kh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .kmodal .kh b{font-size:1.15rem;font-weight:900}
+  .kmodal .kx{border:0;background:#f1ede2;border-radius:999px;width:34px;height:34px;font-size:1.05rem;font-weight:900;font-family:inherit}
+  .kmodal textarea{width:100%;min-height:90px;border:1.5px solid var(--line);border-radius:13px;padding:12px;font:inherit;font-size:.95rem;background:#fff}
+  .kmodal .kacts{display:flex;gap:10px;margin-top:14px}
+  .kmodal .kacts .cta{margin:0}
+  .kmodal .cta:disabled{opacity:.55}
+  .pb-done{display:inline-block;color:#166534;font-size:.78rem;font-weight:800;white-space:nowrap;background:#E6F4EA;border-radius:999px;padding:3px 10px}
+  .pb-done.muted{color:var(--muted);background:#EEF2F7}
+  /* إعلان الإدارة أعلى الرئيسية، أو إشعار توقف الحجز */
+  .home-banner{margin:10px 16px 0;background:#FFF3C4;border:1.5px solid var(--gold);border-radius:14px;padding:11px 14px;font-weight:800;font-size:.92rem;line-height:1.6}
+  .home-banner.off{background:#fde8e8;border-color:#f0cccc;color:#b91c1c}
   .wclaim{display:inline-block;background:#E6F4EA;color:#166534;border-radius:20px;padding:1px 9px;font-size:.7rem;font-weight:800;margin-inline-start:6px;vertical-align:middle}
-  .cust-invoice{margin-top:13px;background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:13px;padding:13px 15px}
-  .cust-invoice .ci-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
-  .cust-invoice .ci-head b{font-size:1rem;font-weight:900}
-  .cust-invoice .ci-row{display:flex;justify-content:space-between;padding:7px 0;font-size:.9rem;font-weight:600;border-bottom:1px dashed #EAD9A0}
-  .cust-invoice .ci-row:last-child{border-bottom:none}
-  .cust-invoice .ci-total{font-weight:900;border-top:2px solid #E7D9A6;margin-top:3px;padding-top:9px;font-size:1.02rem;color:#7a5f00}
+  /* فاتورة العميل: أقسام (الشغل، القطع، الرسوم) ثم الملخص والمدفوع والمتبقي */
+  .cust-invoice{margin-top:13px;background:#fff;border:1.5px solid var(--gold);border-radius:15px;overflow:hidden}
+  .cust-invoice .ci-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 14px;background:var(--gold-tint);border-bottom:1px solid var(--gold-soft)}
+  .cust-invoice .ci-head b{font-size:1rem;font-weight:900;display:block}
+  .cust-invoice .ci-head small{color:var(--muted);font-size:.76rem;font-weight:700}
+  .ci-sec{display:flex;align-items:center;gap:8px;padding:10px 14px 4px;font-size:.78rem;font-weight:800;color:var(--muted)}
+  .ci-sec::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--gold)}
+  .ci-row{display:flex;align-items:center;gap:11px;padding:9px 14px;border-bottom:1px dashed #EFE9D6}
+  .ci-img{width:54px;height:54px;border-radius:12px;object-fit:contain;border:1px solid #EFE9D6;background:#fff;flex-shrink:0;cursor:zoom-in}
+  .ci-img.ph{display:grid;place-items:center;font-size:1.5rem;cursor:default;background:#FBF7E8}
+  .ci-n{flex:1;min-width:0}.ci-n b{display:block;font-size:.92rem;font-weight:800;line-height:1.3}.ci-n small{color:var(--muted);font-size:.76rem;font-weight:700}
+  .ci-p{font-weight:800;white-space:nowrap;font-size:.92rem}
+  .ci-sum{padding:10px 14px 12px;background:#FFFDF7;border-top:1px solid #EFE9D6}
+  .ci-sum>div{display:flex;justify-content:space-between;padding:4px 0;font-size:.88rem;font-weight:700;color:var(--muted)}
+  .ci-sum .g{color:#0b7a3b}
+  .ci-sum .ci-total{color:var(--ink);font-weight:900;font-size:1.08rem;border-top:2px solid var(--gold);margin-top:4px;padding-top:8px}
+  .ci-sum .due{color:#0b3d6b;font-weight:900;font-size:.95rem}
+  .ci-sum .ok{color:#0b7a3b;font-weight:800}
 
   .empty{text-align:center;padding:56px 20px;color:var(--muted)}
   .empty .ico{font-size:3.6rem;margin-bottom:12px;opacity:.5}
@@ -597,6 +639,36 @@
   .pick-card .pk-price em{font-style:normal;background:#E6F4EA;color:#2E7D32;border-radius:999px;padding:1px 9px;font-size:.72rem;font-weight:800;margin-inline-start:auto}
   .pick-card .pk-cta{margin-top:8px;align-self:flex-start;background:var(--band,#3A2F1B);color:#F3EDE0;border-radius:999px;padding:6px 14px;font-size:.82rem;font-weight:800}
   .pick-trust{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:6px;font-size:.8rem;font-weight:700;color:var(--muted)}
+  /* سؤال «شقة ولا بيت؟» */
+  .pick-q{margin-top:22px;text-align:center}
+  .pick-q h2{font-size:1.65rem;font-weight:900;margin-bottom:2px}
+  .pick-q p{color:var(--muted);font-weight:700;font-size:.9rem;margin-bottom:14px}
+  .pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+  .pick-big{background:var(--card);border:2px solid var(--line-strong);border-radius:var(--r-lg);padding:22px 12px 18px;text-align:center;cursor:pointer;box-shadow:0 6px 18px rgba(58,47,27,.08);transition:.15s;font-family:inherit;color:inherit}
+  .pick-big:hover,.pick-big:active{border-color:var(--gold);background:var(--gold-tint);transform:scale(.98)}
+  .pick-big .pb-ic{display:grid;place-items:center;width:80px;height:80px;margin:0 auto 10px;border-radius:24px;background:var(--gold-tint);border:1.5px solid var(--gold);font-size:2.6rem;line-height:1}
+  .pick-big b{display:block;font-size:1.6rem;font-weight:900;line-height:1.1}
+  .pick-big small{display:block;color:var(--muted);font-weight:700;font-size:.82rem;margin-top:4px}
+  /* الأغراض بسعر الجملة: صورة المنتج يمين ثم يسار، والسعر العادي مقابل سعر المشترك */
+  .pw{margin-top:14px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden}
+  .pw-head{background:var(--gold-tint);padding:11px 14px;border-bottom:1px solid var(--line)}
+  .pw-head b{display:block;font-weight:900;font-size:1rem}
+  .pw-head small{display:block;color:var(--muted);font-weight:700;font-size:.8rem;margin-top:2px;line-height:1.45}
+  .pw-r{display:grid;grid-template-columns:66px minmax(0,1fr) 64px 80px;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+  .pw-th{padding:7px 12px;background:#FAF7EF;font-size:.7rem;font-weight:800;color:var(--muted);text-align:center;border-top:0}
+  .pw-th span:nth-child(2){text-align:start}
+  .pw-img{width:66px;height:66px;border-radius:14px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+  .pw-img img{width:100%;height:100%;object-fit:contain;display:block}
+  .pw-n{min-width:0;text-align:start}
+  .pw-n b{display:block;font-weight:900;font-size:.95rem;line-height:1.3}
+  .pw-n small{display:inline-block;margin-top:3px;background:#E6F4EA;color:#2E7D32;border-radius:999px;padding:1px 8px;font-size:.68rem;font-weight:800}
+  .pw-reg{text-align:center;line-height:1.1}
+  .pw-reg s{display:block;color:#B3261E;font-weight:800;font-size:1rem}
+  .pw-reg small{font-size:.62rem;color:var(--muted);font-weight:700}
+  .pw-sub{text-align:center;background:var(--gold-tint);border:1.5px solid var(--gold);border-radius:12px;padding:5px 4px;line-height:1.1}
+  .pw-sub b{display:block;color:var(--gold-deep);font-weight:900;font-size:1.2rem}
+  .pw-sub small{font-size:.62rem;color:var(--muted);font-weight:700}
+  .pw-note{padding:9px 14px;font-size:.78rem;color:var(--muted);font-weight:600;background:#FFFDF7;border-top:1px solid var(--line)}
   .ps-hero{background:var(--card);border:2px solid var(--gold);border-radius:var(--r-lg);padding:14px;margin-top:14px;display:flex;flex-direction:column;gap:12px}
   .ps-title b{display:block;font-size:1.4rem;font-weight:900}
   .ps-title small{display:block;color:var(--muted);font-size:.9rem;font-weight:700;margin-top:2px}
@@ -956,8 +1028,8 @@ html,body{touch-action:manipulation}
 const BRAND = 'خافِت';
 const TAGLINE = 'صيانة منزلية موثوقة';
 const APP_VER  = '1.0.1';             // إصدار التطبيق (يُعرض في «حسابي» للدعم)
-const PHONE    = '0590497866';        // رقم التواصل (عدّله)
-const WHATSAPP = '966590497866';      // واتساب بصيغة دولية بدون + (عدّله)
+let PHONE    = '0590497866';        // رقم التواصل (يتغيّر من إعدادات الإدارة)
+let WHATSAPP = '966590497866';      // واتساب بصيغة دولية بدون + (يتغيّر من إعدادات الإدارة)
 const HOURS    = 'يومياً ٨ ص – ١٠ م'; // ساعات العمل
 const CITY     = 'الخبر';             // منطقة التغطية
 const WARRANTY = 'ضمان ٧ أيام';       // الضمان
@@ -965,26 +1037,68 @@ const WARRANTY = 'ضمان ٧ أيام';       // الضمان
 /* أيام الإجازة — ما نستقبل فيها حجوزات.
    الترقيم: ٠=الأحد ١=الإثنين ٢=الثلاثاء ٣=الأربعاء ٤=الخميس ٥=الجمعة ٦=السبت
    حالياً: الجمعة إجازة. لإضافة السبت اجعلها [5,6] */
-const OFF_DAYS = [5];
-const WORK_START = 8 * 60;
-const WORK_END   = 22 * 60;
+let OFF_DAYS = [5];
+let WORK_START = 8 * 60;
+let WORK_END   = 22 * 60;
 const SLOT_STEP  = 30;
 const BUFFER     = 30;   // احتياط تنقّل بين الطلبات — الفني ما يتأخر على اللي بعده
-const LEAD_MIN   = 60;
-const ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «٤–٦م» بدل وقت دقيق)
-const MAX_JOBS_PER_DAY = 8;    // أقصى عدد حجوزات في اليوم (يمنع زحمة الجدول)
+let LEAD_MIN   = 60;
+let ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «٤–٦م» بدل وقت دقيق)
+let MAX_JOBS_PER_DAY = 8;    // أقصى عدد حجوزات في اليوم (يمنع زحمة الجدول)
 const QUICK_DURATION   = 90;   // مدة افتراضية أكبر للطلب السريع/المعاينة (حجمه مجهول)
-const LOYALTY_TARGET = 6;   // كل ٦ طلبات، السابع يُخصم منه متوسط طلباته
+let LOYALTY_TARGET = 6;   // كل ٦ طلبات، السابع يُخصم منه متوسط طلباته (يتغيّر من الإعدادات)
 const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل عبر مزوّد (مخفية عن العميل)
 /* أكواد الخصم الثابتة أُلغيت — صار النظام أكواد إحالة شخصية عشوائية
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي — «ريّح بالك»: باقتان (شقة / بيت) — الشكل المعتمد 2026-08-22
 /* عد تنازلي: الباقة تقفل بعد 30 يوماً من 2026-08-22 */
-const PLANS_CLOSE = new Date('2026-09-21T12:00:00+03:00');
+let PLANS_CLOSE = new Date('2026-09-21T12:00:00+03:00');
 function planDaysLeft(){ const d = Math.ceil((PLANS_CLOSE - Date.now())/86400000); return d>0 ? d : 0; }
+/* ══════════ إعدادات المؤسسة من لوحة الإدارة (khafet_settings): تُطبَّق فوق القيم الثابتة ══════════ */
+let SETTINGS={};
+const SETTINGS_KEY='khafet_settings_v1';
+function stNum(k,d){ const n=parseFloat(SETTINGS[k]); return isFinite(n)?n:d; }
+function stJson(k,d){ try{ const v=JSON.parse(SETTINGS[k]); return v==null?d:v; }catch(e){ return d; } }
+function cancelHours(){ return Math.max(0, stNum('cancel_free_hours',4)); }
+function applySettings(rows){
+  SETTINGS={}; (rows||[]).forEach(r=>{ if(r&&r.key) SETTINGS[r.key]=r.value; });
+  const ws=stNum('work_start',null), we=stNum('work_end',null);
+  if(ws!=null&&we!=null&&we>ws){ WORK_START=Math.round(ws*60); WORK_END=Math.round(we*60); }
+  const aw=stNum('arrival_window',null); if(aw>=30) ARRIVAL_WINDOW=Math.round(aw);
+  const mj=stNum('max_jobs_per_day',null); if(mj>=1) MAX_JOBS_PER_DAY=Math.round(mj);
+  const od=stJson('off_days',null); if(Array.isArray(od)) OFF_DAYS=od.map(Number).filter(n=>n>=0&&n<=6);
+  const pc=SETTINGS.plans_close; if(pc&&/^\d{4}-\d{2}-\d{2}/.test(pc)) PLANS_CLOSE=new Date(pc.slice(0,10)+'T12:00:00+03:00');
+  const ap=stNum('plan_apt_price',null), hp=stNum('plan_home_price',null);
+  [['apt',ap],['home',hp]].forEach(([id,price])=>{ const p=PLANS.find(x=>x.id===id); if(p&&price>0){ p.price=Math.round(price); p.save=Math.max(0,p.was-p.price); p.pct=Math.round(p.save/p.was*100); } });
+  if(SETTINGS.support_phone) PHONE=String(SETTINGS.support_phone).trim();
+  if(SETTINGS.support_whatsapp) WHATSAPP=String(SETTINGS.support_whatsapp).replace(/\D/g,'');
+  const lm=stNum('lead_min',null); if(lm>=0) LEAD_MIN=Math.round(lm);
+  const lt=stNum('loyalty_target',null); if(lt>=2) LOYALTY_TARGET=Math.round(lt);
+  const tm=stNum('tamara_min',null); if(tm>=0) TAMARA_MIN_LABOR=tm;
+}
+/* مفاتيح التحكم من الإدارة (القيمة الافتراضية: مفعّل) */
+function stOn(k,d){ const v=SETTINGS[k]; if(v==null||v==='') return d!==false; return v==='1'||v==='true'; }
+function bookingEnabled(){ return stOn('booking_enabled',true); }
+function quickEnabled(){ return stOn('quick_enabled',true); }
+function tamaraEnabled(){ return stOn('tamara_enabled',true); }
+function referralEnabled(){ return stOn('referral_enabled',true); }
+function homeBannerHtml(){
+  const off=!bookingEnabled(); const txt=off?(SETTINGS.booking_msg||'الحجز متوقف مؤقتًا، نرجع لكم قريبًا.'):String(SETTINGS.home_banner||'').trim();
+  if(!txt) return '';
+  return `<div class="home-banner ${off?'off':''}">${off?'⏸️':'📣'} ${esc(txt)}</div>`;
+}
+try{ const cached=JSON.parse(localStorage.getItem(SETTINGS_KEY)); if(Array.isArray(cached)) setTimeout(()=>applySettings(cached),0); }catch(e){}
+async function loadSettings(){
+  if(!cloudReady) return;
+  try{ const r=await sb.from('khafet_settings').select('key,value'); if(!r.error&&Array.isArray(r.data)){ applySettings(r.data); try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(r.data)); }catch(e){} } }catch(e){}
+}
+/* التغطية: المدن اللي يخدمها خافت. المدينة تُستنتج من موقع العميل */
+function normCity(s){ return String(s||'').replace(/^ال/,'').replace(/[\sً-ْ]/g,''); }
+function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!Array.isArray(list)||!list.length) return true; const c=normCity(city); return list.some(x=>{ const y=normCity(x); return y&&(c.includes(y)||y.includes(c)); }); }
 const PLANS = [
   { id:'apt',  kind:'شقة', kindEn:'Apartment', ico:'🏢', name:'ريّح بالك · باقة الشقة', nameEn:'Rayyeh Balak · Apartment Plan', price:1299, list:1499, was:2239, save:940, pct:42, visits:6,
     rows:[
+      ['الأغراض بسعر الجملة','كل قطعة تحتاجها تشتريها بسعر الجملة طول السنة','✓'],
       ['زيارات صيانة إضافية','تطلبها متى احتجت لأي عطل (سباكة · كهرباء · تركيبات) · زيادة على الخدمات تحت','6 زيارات بالسنة'],
       ['تنظيف المكيفات','شامل الوحدة الداخلية والخارجية','✓'],
       ['تنظيف مراوح دورات المياه','مراوح الشفط','✓'],
@@ -996,15 +1110,16 @@ const PLANS = [
       ['ضمان الإصلاح','','30 يوماً'],
       ['ضمان الأغراض (قطع الغيار)','','سنتان'] ],
     calc:[['6 زيارات × 180','1,080'],['8 مكيفات × 45 (مع الوحدة الخارجية)','360'],['5 مراوح × 50','250'],['فحص أمان المنزل','199'],['صيانة أو تبديل السخان','250'],['ترويبة الصفاية','100']] },
-  { id:'home', kind:'فيلا', kindEn:'Villa', ico:'🏠', name:'ريّح بالك · باقة الفيلا', nameEn:'Rayyeh Balak · Villa Plan', price:1799, list:1999, was:2729, save:930, pct:34, visits:8,
+  { id:'home', kind:'بيت', kindEn:'House', ico:'🏠', name:'ريّح بالك · باقة البيت', nameEn:'Rayyeh Balak · House Plan', price:1799, list:1999, was:2729, save:930, pct:34, visits:8,
     rows:[
+      ['الأغراض بسعر الجملة','كل قطعة تحتاجها تشتريها بسعر الجملة طول السنة','✓'],
       ['زيارات صيانة إضافية','تطلبها متى احتجت لأي عطل (سباكة · كهرباء · تركيبات) · زيادة على الخدمات تحت','8 زيارات بالسنة'],
       ['تنظيف المكيفات','شامل الوحدة الداخلية والخارجية','✓'],
       ['تنظيف مراوح دورات المياه','مراوح الشفط','✓'],
       ['فحص أمان المنزل','اللوحة والتأريض والحماية والأفياش','✓'],
       ['صيانة أو تبديل السخان','صيانة وقائية · ما استخدمتها؟ خصم 250 على التجديد','✓'],
       ['توصيل الأغراض مجاني','إلى بابك','✓'],
-      ['نقل العقد للمستأجر الجديد','لو أجّرت فيلتك','✓'],
+      ['نقل العقد للمستأجر الجديد','لو أجّرت بيتك','✓'],
       ['ضمان الإصلاح','','30 يوماً'],
       ['ضمان الأغراض (قطع الغيار)','','سنتان'] ],
     calc:[['8 زيارات × 180','1,440'],['12 مكيفاً × 45 (مع الوحدة الخارجية)','540'],['6 مراوح × 50','300'],['فحص أمان المنزل','199'],['صيانة أو تبديل السخان','250']] },
@@ -1190,13 +1305,14 @@ function defaultState(){
     cart:{}, orders:[], loyalty:0, myOrderIds:[],
     customer:{name:'',phone:''},
     address:{city:'',district:'',street:'',house:'',mark:'',notes:'',lat:'',lng:'',mapUrl:''},
+    addresses:[],   // العناوين المحفوظة (بيتي، بيت أهلي، الاستراحة...)
     problem:{desc:''}, provider:null,
     booking:{date:null,time:null},
     seq:1000,
   };
 }
 function load(){
-  try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&s.orders) return Object.assign(defaultState(),s); }catch(e){}
+  try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)); if(s&&s.orders){ const st=Object.assign(defaultState(),s); if(!Array.isArray(st.addresses)) st.addresses=[]; return st; } }catch(e){}
   return defaultState();
 }
 function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){} }
@@ -1354,6 +1470,7 @@ async function loadPrices(){
   if(!cloudReady) return;
   _catalogAt=Date.now();
   try{
+    loadSettings();
     const [c, s, p] = await Promise.all([ sb.from('khafet_categories').select('*'), sb.from('khafet_services').select('*'), sb.from('khafet_parts_public').select('*') ]);
     if(!c.error && !s.error && applyCatalog(c.data, s.data)){
       if(!p.error) applyParts(p.data||[]);
@@ -1807,7 +1924,7 @@ const FAQS=[
   ['وش أسوي لو تأخّر الفني؟','تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.'],
   ['فيه ضمان على الشغل؟','نعم — ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.'],
   ['كيف أستفيد من الخصومات؟','احجز قبل ٥ أيام أو أكثر = خصم ٥٪ تلقائي. وكل ٦ طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.'],
-  ['كيف ألغي طلبي؟','من «طلباتي» تقدر تلغي الطلب قبل بدء العمل. لو دفعت رصيداً يرجع لك.'],
+  ['كيف ألغي طلبي؟','من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى <b>4 ساعات قبل الموعد</b>، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.'],
 ];
 function renderFaq(){
   document.getElementById('app').innerHTML=`
@@ -2077,7 +2194,7 @@ function renderAccount(){
 
       <div class="acc-grid">
         <button class="acc-tile" onclick="go('mybookings')"><span class="ti">📋</span><b>طلباتي</b><small>${ar(n)} ${n===1?'طلب':'طلبات'}</small></button>
-        <button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>باقات الصيانة</b><small>وفّر أكثر</small></button>
+        ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>باقات الصيانة</b><small>وفّر أكثر</small></button>`:''}
         <button class="acc-tile" onclick="go('suggest')"><span class="ti">💡</span><b>رأيك يهمنا</b><small>اقتراح · شكوى</small></button>
         <button class="acc-tile" onclick="go('faq')"><span class="ti">❓</span><b>الأسئلة الشائعة</b><small>إجابات سريعة</small></button>
       </div>
@@ -2098,6 +2215,11 @@ function renderAccount(){
         <div id="acc-loc-status">${(state.address&&state.address.lat&&state.address.lng)?accLocOkHtml():''}</div>
         <button class="cta" style="margin-top:14px" onclick="saveAccount()">💾 حفظ التعديلات</button>
       </div>
+
+      ${(state.addresses&&state.addresses.length)?`<div class="panel" style="margin-top:12px"><h3>📍 عناويني</h3>
+        ${state.addresses.map((a,i)=>`<div class="addr-row"><span style="font-size:1.3rem">🏠</span><div class="ar-t"><b>${esc(addrTitle(a,i))}</b><small>${a.house?'منزل '+esc(a.house):''}${a.city?' · '+esc(a.city):''}${a.lat?' · 📍 محدد على الخريطة':''}</small></div><button class="sbtn danger" onclick="deleteAddress(${i})">حذف</button></div>`).join('')}
+        <p style="color:var(--muted);font-size:.8rem;margin-top:8px">تختار أي عنوان منها عند الحجز، أو تضيف عنواناً جديداً.</p>
+      </div>`:''}
 
       ${inApp()?`<div class="panel" style="margin-top:12px"><h3>🔔 الإشعارات</h3>
         <p style="color:var(--muted);font-size:.86rem;line-height:1.7">نبلّغك أول ما ينطلق الفني إليك، ووصوله لبابك، وجاهزية فاتورتك.</p>
@@ -2120,40 +2242,30 @@ function renderAccount(){
 /* ---------- باقات الاشتراك ---------- */
 let subPlan=null;
 /* ══════════ الصيانة السنوية — اختيار نوع السكن ثم ورقة الباقة المعتمدة ══════════ */
+/* الباقات السنوية تظهر فقط لما تفعّلها الإدارة من الإعدادات (plans_enabled) */
+function plansEnabled(){ const v=SETTINGS.plans_enabled; return v==='1'||v==='true'; }
 function renderPlans(){
+  if(!plansEnabled()){ toast('الباقات السنوية غير متاحة حاليًا'); go('home'); return; }
   const E=_uiEN();
   const T=(ar,en)=>E?en:ar;
-  const feats=p=>p.id==='apt'
-    ? T('6 زيارات صيانة · المكيفات · المراوح · السخان · أمان المنزل · ترويبة الصفاية','6 visits · AC · fans · heater · safety check · drain grouting')
-    : T('8 زيارات صيانة · المكيفات · المراوح · السخان · أمان المنزل','8 visits · AC · fans · heater · safety check');
-  const cards=PLANS.map(p=>`<button class="pick-card" onclick="renderPlanSheet('${p.id}')">
-      <span class="pk-ic">${p.ico}</span>
-      <span class="pk-body">
-        <span class="pk-top"><b>${esc(T(p.kind,p.kindEn))}</b><span class="pk-chip">${T('خصم الآن','On offer')}</span></span>
-        <small class="pk-name">${esc(T(p.name,p.nameEn))}</small>
-        <small class="pk-feats">${feats(p)}</small>
-        <span class="pk-price"><s class="num">${en(p.list)}</s><b class="num">${en(p.price)}</b><i>${T('ريال / سنة','SAR / year')}</i><em>${T('وفّرت','save')} ${en(p.save)} (${en(p.pct)}%)</em></span>
-        <span class="pk-cta">${T('شوف الباقة','See the plan')} ←</span>
-      </span>
+  /* أول شاشة: سؤال واحد بس، شقة ولا بيت؟ (بدون أسعار، الأسعار في صفحة الباقة) */
+  const cards=PLANS.map(p=>`<button class="pick-big" onclick="renderPlanSheet('${p.id}')">
+      <span class="pb-ic">${p.ico}</span>
+      <b>${esc(T(p.kind,p.kindEn))}</b>
+      <small>${T(p.id==='apt'?'باقة الشقة':'باقة البيت', p.id==='apt'?'Apartment plan':'House plan')}</small>
     </button>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
-      ${pageHead(T('الصيانات السنوية','Annual Maintenance'),'home')}
+      ${pageHead(T('الاشتراك السنوي','Annual subscription'),'home')}
       <div class="pick-hero">
         <b>ريّح بالك</b>
-        <small>${T('صيانة سنوية كاملة لسكنك في اشتراك واحد · اختر نوع سكنك وشوف باقتك','Full-year home maintenance in one subscription · pick your home type')}</small>
-        <div class="pick-pills"><span>💰 ${T('وفّر حتى 42%','Save up to 42%')}</span><span>⏳ ${T('باقي '+en(planDaysLeft())+' يوم وتقفل الباقة',en(planDaysLeft())+' days left')}</span><span>🔧 ${T('أجرة اليد مشمولة','Labour included')}</span><span>🛡️ ${T('ضمان الإصلاح والقطع','Repair & parts warranty')}</span></div>
+        <small>${T('صيانة سنوية كاملة لسكنك في اشتراك واحد','Full-year home maintenance in one subscription')}</small>
       </div>
-      <div class="pick-wrap">
-        <h2>${T('حدد نوع سكنك','Select your home type')}</h2>
-        ${cards}
+      <div class="pick-q">
+        <h2>${T('أنت شقة ولا بيت؟','Apartment or house?')}</h2>
+        <p>${T('اختر نوع سكنك وشوف باقتك','Pick your home type to see your plan')}</p>
+        <div class="pick-grid">${cards}</div>
       </div>
-      <div class="pick-trust">
-        <span>✓ ${T('توصيل الأغراض مجاني','Free parts delivery')}</span>
-        <span>✓ ${T('نقل العقد للمستأجر الجديد','Transferable to a new tenant')}</span>
-        <span>✓ ${T('تحجز وتتابع من التطبيق','Book & track in the app')}</span>
-      </div>
-      <div class="ps-links" style="margin-top:8px"><a onclick="openTerms()">📜 ${T('الشروط والأحكام','Terms & conditions')}</a></div>
       <div style="height:24px"></div>
     </div>`;
 }
@@ -2167,40 +2279,52 @@ const PLAN_EN={
   'صيانة أو تبديل السخان':'Water heater service','صيانة وقائية · ما استخدمتها؟ خصم 250 على التجديد':'Preventive service · unused? 250 SAR off your renewal',
   'ترويبة الصفاية':'Drain grouting',
   'توصيل الأغراض مجاني':'Free parts delivery','إلى بابك':'To your door',
-  'نقل العقد للمستأجر الجديد':'Contract transfer to a new tenant','لو أجّرت شقتك':'If you rent out your apartment','لو أجّرت فيلتك':'If you rent out your villa',
+  'نقل العقد للمستأجر الجديد':'Contract transfer to a new tenant','لو أجّرت شقتك':'If you rent out your apartment','لو أجّرت فيلتك':'If you rent out your villa','لو أجّرت بيتك':'If you rent out your house',
+  'الأغراض بسعر الجملة':'Parts at wholesale price','كل قطعة تحتاجها تشتريها بسعر الجملة طول السنة':'Buy every part you need at wholesale price all year',
   'ضمان الإصلاح':'Repair warranty','30 يوماً':'30 days',
   'ضمان الأغراض (قطع الغيار)':'Parts warranty','سنتان':'2 years',
   '6 زيارات × 180':'6 visits × 180','8 زيارات × 180':'8 visits × 180',
   '8 مكيفات × 45 (مع الوحدة الخارجية)':'8 ACs × 45 (incl. outdoor unit)','12 مكيفاً × 45 (مع الوحدة الخارجية)':'12 ACs × 45 (incl. outdoor unit)',
   '5 مراوح × 50':'5 fans × 50','6 مراوح × 50':'6 fans × 50'
 };
+/* أمثلة الأغراض بسعر الجملة في صفحة الباقة: السعر العادي لغير المشترك، وسعر المشترك = سعر الجملة */
+const PLAN_PARTS=[
+  { n:'خلاط ماتيلدا',         ne:'Matilda mixer tap',      img:SUPABASE_URL+'/storage/v1/object/public/khafet-parts/plans/mixer.jpg',  reg:110, sub:55 },
+  { n:'لمبة ليد 9 وات',       ne:'9W LED bulb',             img:SUPABASE_URL+'/storage/v1/object/public/khafet-parts/plans/bulb.jpg',   reg:8,   sub:3.45 },
+  { n:'فيش كهرباء 13 أمبير',  ne:'13A power socket',        img:SUPABASE_URL+'/storage/v1/object/public/khafet-parts/plans/sock.jpg',   reg:19,  sub:7.76 },
+];
 function renderPlanSheet(planId){
   const E=_uiEN();
   const T=(ar,en)=>E?en:ar;
   const p=PLANS.find(x=>x.id===planId)||PLANS[0];
   const R=s=>E?(PLAN_EN[s]||s):s;
+  /* جدول مقارنة مرتب: صورة · المنتج · السعر العادي · سعر المشترك */
+  const parts=`<div class="pw-r pw-th"><span></span><span>${T('المنتج','Product')}</span><span>${T('السعر العادي','Regular')}</span><span>${T('سعر المشترك','Member')}</span></div>`
+    +PLAN_PARTS.map(x=>{ const pct=Math.round((x.reg-x.sub)/x.reg*100), fx=v=>Number(v).toFixed(2); return `<div class="pw-r">
+        <span class="pw-img"><img src="${x.img}" alt=""></span>
+        <span class="pw-n"><b dir="auto">${esc(T(x.n,x.ne))}</b><small>${T('وفّر','Save')} ${en(pct)}%</small></span>
+        <span class="pw-reg"><s class="num">${fx(x.reg)}</s><small>${T('ر.س','SAR')}</small></span>
+        <span class="pw-sub"><b class="num">${fx(x.sub)}</b><small>${T('ر.س','SAR')}</small></span>
+      </div>`; }).join('');
   const rows=p.rows.map(r=>`<div class="ps-row"><div class="ps-f"><b dir="auto">${esc(R(r[0]))}</b>${r[1]?`<small dir="auto">${esc(R(r[1]))}</small>`:''}</div><div class="ps-v" dir="auto">${r[2]==='✓'?'<span class="ps-ok">✓</span>':esc(R(r[2]))}</div></div>`).join('');
   const calc=p.calc.map(c=>`<div class="ps-cl"><span dir="auto">${esc(R(c[0]))}</span><b class="num">${c[1]}</b></div>`).join('');
   const svc=CT_SVC.map(g=>`<h4>${esc(T(g.t,g.te))}</h4><ul>${g.i.map(x=>`<li><span>${esc(T(x[0],x[2]||x[0]))}</span></li>`).join('')}</ul>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead(T(p.name,p.nameEn),'plans')}
-      <div class="ps-hero">
-        <div class="ps-title"><b>ريّح بالك</b><small>${T(p.id==='apt'?'كل الخدمات اللي تحتاجها شقتك · في اشتراك واحد طول السنة':'كل الخدمات اللي تحتاجها فيلتك · في اشتراك واحد طول السنة','Everything your '+(p.id==='apt'?'apartment':'villa')+' needs, one subscription all year')}</small></div>
-        <div class="ps-price">
-          <div class="ps-lbl">${T('سعر الباقة السنوية','Annual plan price')}</div>
-          <div class="ps-line"><span class="ps-now">${T('خصم الآن','Now on offer')}</span><span class="ps-days">⏳ ${T('باقي '+en(planDaysLeft())+' يوم',en(planDaysLeft())+' days left')}</span><s class="num">${en(p.list)}</s> ${T('ريال','SAR')}</div>
-          <div class="ps-big num">${en(p.price)}</div>
-          <div class="ps-unit">${T('ريال / سنة','SAR / year')}</div>
-          <div class="ps-div"></div>
-          <div class="ps-lbl">${T('مجموع الخدمات بدون عقد','Same services without a contract')}</div>
-          <div class="ps-was"><s class="num">${en(p.was)}</s> ${T('ريال','SAR')}</div>
-          <div class="ps-save">🎉 ${T('وفّرت','You save')} ${en(p.save)} ${T('ريال','SAR')} (${en(p.pct)}%)</div>
-        </div>
+      <div class="pick-hero">
+        <b>ريّح بالك</b>
+        <small>${T(p.id==='apt'?'باقة الشقة · كل الخدمات اللي تحتاجها شقتك في اشتراك واحد طول السنة':'باقة البيت · كل الخدمات اللي يحتاجها بيتك في اشتراك واحد طول السنة',(p.id==='apt'?'Apartment plan':'House plan')+' · everything your home needs, one subscription all year')}</small>
+        <div class="pick-pills"><span>🏷️ ${T('الأغراض بسعر الجملة','Parts at wholesale')}</span><span>🔧 ${T('أجرة اليد مشمولة','Labour included')}</span><span>💰 ${T('وفّر '+en(p.pct)+'%','Save '+en(p.pct)+'%')}</span><span>🛡️ ${T('ضمان الإصلاح والقطع','Repair & parts warranty')}</span></div>
       </div>
       <div class="ps-table">
-        <div class="ps-head">${T('الخدمات المشمولة في باقة ريّح بالك','What the Rayyeh Balak plan includes')}</div>
+        <div class="ps-head">${T('وش تحصل في الباقة','What you get in the plan')}</div>
         ${rows}
+      </div>
+      <div class="pw">
+        <div class="pw-head"><b>🏷️ ${T('الأغراض بسعر الجملة','Parts at wholesale price')}</b><small>${T('المشترك يشتري أي قطعة يحتاجها بنفس سعر الجملة اللي نشتري فيه، بدون ربح. أمثلة:','Members buy any part at the same wholesale price we pay, no markup. Examples:')}</small></div>
+        ${parts}
+        <div class="pw-note">${T('السعر العادي هو سعر البيع لغير المشتركين · التوصيل مجاني للمشتركين.','Regular price is what non-members pay · delivery is free for members.')}</div>
       </div>
       <div class="ps-calc">
         <div class="ps-ct">${T('الحسبة ببساطة','The math, simply')}</div>
@@ -2208,12 +2332,22 @@ function renderPlanSheet(planId){
         <div class="ps-cs" dir="auto">${T('بدون عقد','No contract')} <s class="num">${en(p.was)}</s> · ${T('الباقة','Plan')} <s class="num">${en(p.list)}</s> ← ${T('الآن','now')} <b class="num">${en(p.price)}</b> · <span style="white-space:nowrap">${T('وفّرت','saved')} <b class="num g">${en(p.save)}</b> (${en(p.pct)}%)</span></div>
         <div class="ps-cn" dir="auto">${T('180 ريال هي متوسط تكلفة شغل اليد للزيارة الواحدة من طلباتنا السابقة','180 SAR is the average labour cost per visit from our past orders')}</div>
       </div>
+      <details class="ps-svc"><summary>🛠 ${T('باقي الخدمات المشمولة في زيارات الصيانة (64 خدمة)','Other services covered by maintenance visits (64)')}</summary><div class="ct-svc">${svc}</div></details>
+      <div class="ps-price" style="margin-top:14px">
+        <div class="ps-lbl">${T('سعر الباقة السنوية','Annual plan price')}</div>
+        <div class="ps-line"><span class="ps-now">${T('خصم الآن','Now on offer')}</span><span class="ps-days">⏳ ${T('باقي '+en(planDaysLeft())+' يوم',en(planDaysLeft())+' days left')}</span><s class="num">${en(p.list)}</s> ${T('ريال','SAR')}</div>
+        <div class="ps-big num">${en(p.price)}</div>
+        <div class="ps-unit">${T('ريال / سنة','SAR / year')}</div>
+        <div class="ps-div"></div>
+        <div class="ps-lbl">${T('مجموع الخدمات بدون عقد','Same services without a contract')}</div>
+        <div class="ps-was"><s class="num">${en(p.was)}</s> ${T('ريال','SAR')}</div>
+        <div class="ps-save">🎉 ${T('وفّرت','You save')} ${en(p.save)} ${T('ريال','SAR')} (${en(p.pct)}%)</div>
+      </div>
       <button class="cta gold" style="margin-top:14px" onclick="openSubscribe('${p.id}')">${T('اشترك الآن · '+en(p.price)+' ريال/سنة','Subscribe now · '+en(p.price)+' SAR/yr')}</button>
       <div class="ps-links">
         <a onclick="openTerms()">📜 ${T('الشروط والأحكام','Terms & conditions')}</a>
         <a onclick="renderPlans()">↩︎ ${T('تغيير نوع السكن','Change home type')}</a>
       </div>
-      <details class="ps-svc"><summary>🛠 ${T('الخدمات المشمولة في زيارات الصيانة (64 خدمة)','Services covered by maintenance visits (64)')}</summary><div class="ct-svc">${svc}</div></details>
       <div style="height:24px"></div>
     </div>`;
   window.scrollTo(0,0);
@@ -2362,7 +2496,7 @@ async function renderMySub(){
   const sub=srv||local;
   if(!sub){ document.getElementById('app').innerHTML=`<div class="wrap screen">${pageHead('🛡️ صيانتي السنوية','home')}
     <div class="empty"><div class="ico">🛡️</div><h3>ما عندك عقد صيانة بعد</h3></div>
-    <button class="cta gold" onclick="go('plans')">شوف الباقات واشترك</button></div>`; return; }
+    ${plansEnabled()?`<button class="cta gold" onclick="go('plans')">شوف الباقات واشترك</button>`:`<button class="cta gold" onclick="go('home')">احجز خدمة</button>`}</div>`; return; }
   /* عقود قديمة (premium/plat/basic…) تُعامل كباقة البيت */
   const planId=(sub.plan_id==='apt'||sub.plan_id==='home')? sub.plan_id : 'home';
   const usage=(srv&&srv.usage)||{};
@@ -2455,7 +2589,7 @@ function payBox(amount, opts){
 }
 
 /* ══ دفع الطلبات: أجرة اليد وقت الحجز، والمتبقي بعد الفاتورة ══ */
-const TAMARA_MIN_LABOR=300;   // تمارا تظهر إذا أجرة اليد فوق ٣٠٠
+let TAMARA_MIN_LABOR=300;   // تمارا تظهر إذا أجرة اليد فوق ٣٠٠ (يتغيّر من الإعدادات)
 let orderPayMethod='online';
 function setOrderPay(m){
   orderPayMethod=m;
@@ -2464,8 +2598,8 @@ function setOrderPay(m){
   if(b) b.textContent = m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara') : LX('💳 ادفع ','💳 Pay ')+b.dataset.amt;
 }
 function orderPayBox(amount, labor){
-  if(orderPayMethod==='tamara' && !(labor>TAMARA_MIN_LABOR)) orderPayMethod='online';
-  const tamara = labor>TAMARA_MIN_LABOR ? `
+  if(orderPayMethod==='tamara' && !(tamaraEnabled() && labor>TAMARA_MIN_LABOR)) orderPayMethod='online';
+  const tamara = (tamaraEnabled() && labor>TAMARA_MIN_LABOR) ? `
       <label data-m="tamara" class="${orderPayMethod==='tamara'?'on':''}" onclick="setOrderPay('tamara')">
         <input type="radio" name="opaym" value="tamara" ${orderPayMethod==='tamara'?'checked':''}>
         <div><div class="t">${LX('قسّطها مع تمارا','Split it with Tamara')}</div>
@@ -2887,6 +3021,7 @@ function renderHome(){
       </div>` : '';
 
   document.getElementById('app').innerHTML=`
+    ${homeBannerHtml()}
     <div class="hero hero-slim">
       <div class="hero-in">
         <h1>اطلب صيانة</h1>
@@ -2904,23 +3039,23 @@ function renderHome(){
         </div>
       </div>
 
-      <button class="quick-btn" onclick="startQuick()">
+      ${quickEnabled()?`<button class="quick-btn" onclick="startQuick()">
         <span class="qb-ic">${icon('zap',26)}</span>
         <span class="qb-t"><b>طلب سريع</b><small>لست متأكداً من العطل؟ احجز موعداً ويصلك الفني للمعاينة</small></span>
         <span class="qb-ar">←</span>
-      </button>
+      </button>`:''}
 
       ${mySubLocal()?`
       <button class="services-btn mysub-btn" onclick="go('mysub')">
         <span class="sb-ic">🛡️</span>
         <span class="sb-t"><b>صيانتي السنوية</b><small>خدمات عقدك — اطلب منها بضغطة، بدون رسوم</small></span>
         <span class="qb-ar">←</span>
-      </button>`:`
+      </button>`:(plansEnabled()?`
       <button class="services-btn" onclick="go('plans')">
         <span class="sb-ic">${icon('shield',24)}</span>
         <span class="sb-t"><b style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">الصيانات السنوية<span style="background:var(--gold);color:#1a1408;font-size:.66rem;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;line-height:1.4">وفّر أكثر</span></b><small>${LX('⏳ باقي '+en(planDaysLeft())+' يوم وتقفل الباقة','⏳ '+en(planDaysLeft())+' days left before plans close')}</small></span>
         <span class="qb-ar">←</span>
-      </button>`}
+      </button>`:'')}
 
       <button class="services-btn" onclick="go('majlis')">
         <span class="sb-ic" style="color:var(--gold-deep)">${catIcon('majlis',26)}</span>
@@ -3176,6 +3311,7 @@ function renderServices(){
 
 /* ---------- طلب سريع: مباشرة للموعد + وصف/مقطع ---------- */
 function startQuick(){
+  if(!quickEnabled()){ toast('الطلب السريع غير متاح حاليًا، اختر الخدمة من القائمة'); return; }
   quickMode=true; state.cart={}; state.booking={date:null,time:null};
   go('time');
 }
@@ -3220,7 +3356,7 @@ function captureBookingInputs(){
   const n=g('f_name'),p=g('f_phone');
   if(n!==undefined) state.customer.name=n;
   if(p!==undefined) state.customer.phone=p;
-  ['district','street','house','mark','notes'].forEach(k=>{const v=g('f_'+k); if(v!==undefined) state.address[k]=v;});
+  ['district','street','house','mark','notes','label'].forEach(k=>{const v=g('f_'+k); if(v!==undefined) state.address[k]=v;});
   const d=g('f_desc'); if(d!==undefined){ state.problem=state.problem||{}; state.problem.desc=d; }
 }
 function onVideoPick(el){
@@ -3469,6 +3605,7 @@ function renderInfo(){
       </div>
 
       <div class="panel"><h3>📍 وين نوصلك؟</h3>
+        ${addrChipsHtml()}
         <p class="loc-hint">حدّد موقعك بدقة: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط 📌</p>
         <div id="pickmap" class="pickmap"></div>
         <button type="button" class="loc-btn" onclick="locateMe()">
@@ -3476,7 +3613,9 @@ function renderInfo(){
           <span class="lb-t"><b>استخدم موقعي الحالي</b><small>نحدّد موقعك تلقائياً، وتقدر تعدّله على الخريطة</small></span>
         </button>
         <div id="loc-status">${a.lat&&a.lng?locOkHtml():''}</div>
+        ${a.city&&!inCoverage(a.city)?`<div class="late-note" id="cov-note"><span>📍</span><div><b>${esc(a.city)} خارج مناطق التغطية حاليًا</b>${esc(SETTINGS.coverage_msg||'نخدم الخبر والدمام والظهران حاليًا ونتوسع قريبًا.')}<div class="oact" style="margin-top:8px"><a class="sbtn ok" href="https://wa.me/${WHATSAPP}?text=${encodeURIComponent('أبي أعرف متى توصلون '+(a.city||'')+'، رقمي: '+(c.phone||''))}" target="_blank" rel="noopener">💬 بلّغوني لما توصلون</a></div></div></div>`:''}
         <div class="field" style="margin-top:14px"><label>رقم المنزل / الشقة</label><input id="f_house" value="${esc(a.house)}" placeholder="مثال: ٢٤٥١ · الدور الأول" /></div>
+        <div class="field"><label>اسم العنوان (اختياري)</label><input id="f_label" value="${esc(a.label||'')}" placeholder="مثال: بيتي · بيت أهلي · الاستراحة" /></div>
         <label class="video-up ${a.photoUrl?'has':''}" id="housePhotoUp" style="margin-top:12px">
           <input type="file" id="f_housePhoto" accept="image/*" onchange="onHousePhotoPick(this)" hidden />
           <span class="vu-ic">🏠</span>
@@ -3485,7 +3624,7 @@ function renderInfo(){
       </div>
       ${state.subReq?'</div>':''}
 
-      ${(free||state.subReq)?'':`<div class="panel" style="padding:14px 16px"><div class="field" style="margin:0">
+      ${(free||state.subReq||!referralEnabled())?'':`<div class="panel" style="padding:14px 16px"><div class="field" style="margin:0">
         <label>🎟️ كود صديق (اختياري)</label>
         <input id="f_promo" value="${esc(state.promo||'')}" onchange="setPromo(this.value)" placeholder="مثال: خافت-K7F2M9" />
         ${refCheck.busy?`<div style="color:var(--muted);font-weight:700;font-size:.84rem;margin-top:6px">⏳ نتحقق…</div>`
@@ -3549,6 +3688,29 @@ function ensureMarker(lat,lng){
     _pmarker.on('dragend',()=>{ const p=_pmarker.getLatLng(); setPin(p.lat,p.lng); });
   }
 }
+/* ══════════ عناوين متعددة: بيتي، بيت أهلي، الاستراحة... ══════════ */
+function addrTitle(a,i){ return (a&&a.label)||(a&&a.house?('منزل '+a.house):'')||('عنوان '+ar((i||0)+1)); }
+function addrChipsHtml(){
+  const list=state.addresses||[]; if(!list.length) return '';
+  const cur=state.address||{};
+  const chips=list.map((a,i)=>`<button type="button" class="addr-chip ${cur.id&&cur.id===a.id?'active':''}" onclick="useAddress(${i})">🏠 ${esc(addrTitle(a,i))}</button>`).join('');
+  return `<div class="addr-chips">${chips}<button type="button" class="addr-chip new" onclick="newAddress()">＋ عنوان جديد</button></div>`;
+}
+function useAddress(i){ const a=(state.addresses||[])[i]; if(!a) return; captureBookingInputs(); state.address=Object.assign({}, a); save(); render(); }
+function newAddress(){ captureBookingInputs(); state.address={city:'',district:'',street:'',house:'',mark:'',notes:'',lat:'',lng:'',mapUrl:'',photoUrl:'',label:''}; save(); render(); }
+/* يحفظ العنوان الحالي في القائمة: يحدّث الموجود أو يضيف جديد (حد أقصى 6) */
+function rememberAddress(){
+  const a=state.address||{}; if(!(a.lat&&a.lng) && !a.house) return;
+  state.addresses=state.addresses||[];
+  if(!a.id) a.id='a'+Date.now().toString(36);
+  const i=state.addresses.findIndex(x=>x.id===a.id);
+  if(!a.label && i<0 && state.addresses.length===0) a.label='بيتي';
+  const copy=Object.assign({}, a);
+  if(i>=0) state.addresses[i]=copy; else state.addresses.push(copy);
+  if(state.addresses.length>6) state.addresses=state.addresses.slice(-6);
+  save();
+}
+function deleteAddress(i){ const a=(state.addresses||[])[i]; if(!a) return; if(!confirm('حذف العنوان «'+addrTitle(a,i)+'»؟')) return; state.addresses.splice(i,1); if(state.address&&state.address.id===a.id) state.address.id=null; save(); render(); }
 function initPickMap(){
   const el=document.getElementById('pickmap'); if(!el) return;
   if(!window.L){ setTimeout(initPickMap,300); return; }   // انتظر تحميل مكتبة الخريطة
@@ -3589,6 +3751,9 @@ async function confirmOrder(){
   if(!c.phone){ toast('اكتب رقم الجوال'); return; }
   if(!(a.lat&&a.lng) && !a.house){ toast('حدّد موقعك على الخريطة أو اكتب رقم المنزل'); return; }
   if(!b.date||b.time==null){ toast('اختر اليوم والوقت'); return; }
+  if(!bookingEnabled()){ toast('⏸️ '+(SETTINGS.booking_msg||'الحجز متوقف مؤقتًا')); return; }
+  if(a.city && !inCoverage(a.city)){ toast('⚠️ '+(SETTINGS.coverage_msg||'خارج مناطق التغطية حاليًا')); const el=document.getElementById('cov-note'); if(el) el.scrollIntoView({block:'center'}); return; }
+  rememberAddress();   // يحفظ العنوان في قائمة عناوينه ليختاره بضغطة المرة الجاية
 
   const items = quickMode
     ? [{id:'quick', name:'طلب سريع (معاينة)', ico:'⚡', qty:1, dur:scheduleDuration(), price:0, custom:true}]
@@ -3723,6 +3888,11 @@ function renderMyBookings(){
     body=os.map(o=>{
       const itemsList=o.items.map(i=>`${i.ico} ${i.name}${i.qty>1?' ×'+ar(i.qty):''}`).join('، ');
       const canCancel=['new','confirmed'].includes(o.status);
+      const lateCancel=canCancel && hoursUntil(o)<cancelHours();   // أقل من X ساعات: الإلغاء والتغيير عبر التواصل فقط
+      const canReorder=['done','cancelled'].includes(o.status) && !o.quick && !o.warrantyOf && (o.items||[]).some(i=>SERVICES.some(s=>s.id===i.id&&!s.hidden));
+      const ageDays=o.date?(Date.now()-parseISO(o.date).getTime())/86400000:999;
+      const inLaborW=o.status==='done' && o.warrantyDays>0 && ageDays<=o.warrantyDays && !o.warrantyOf;
+      const laborClaim=o.dbId?state.orders.find(x=>x.warrantyOf===o.dbId&&x.warrantyItem==='labor'):null;
       const arrivedNow = o.arrived && o.date===todayISO;   // «وصل الآن» تظهر فقط يوم الموعد
       const delay = canCancel && !arrivedNow ? expectedDelayFor(o) : 0;
       const earlier = canCancel && !arrivedNow && !delay && o.wantsEarlier ? earlierSlotFor(o) : null;
@@ -3730,7 +3900,7 @@ function renderMyBookings(){
       const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
       const awaitingPay = !!o.dbId && o.payRequired && !o.released && o.status!=='cancelled';
       const showDue = !!o.dbId && o.status!=='cancelled' && o.amountDue>0 && (awaitingPay || (o.released && (o.payRequired || (o.invoice&&o.invoice.items&&o.invoice.items.length))));
-      const tamaraOk = (+o.price||0) > TAMARA_MIN_LABOR;
+      const tamaraOk = tamaraEnabled() && (+o.price||0) > TAMARA_MIN_LABOR;
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
         <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?'⏳ جاري الإرسال':(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]))}</span></div>
@@ -3749,7 +3919,11 @@ function renderMyBookings(){
         ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
         ${o.status==='cancelled'&&['refund_pending','refund_failed'].includes(o.payStatus)?`<div class="pay-note wait">${LX('⏳ جاري استرجاع المبلغ','⏳ Refund in progress')}</div>`:''}
         ${!o.dbId?`<div class="finding-note"><span class="fn-ic">⏳</span><div class="fn-t"><b>جاري إرسال طلبك</b><span>ما فيه إنترنت الآن. يُرسل تلقائيًا أول ما يرجع الاتصال.</span></div></div>`:(o.status==='new'&&!o.providerPhone&&!awaitingPay?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:'')}
-        ${o.status==='done'&&o.warrantyDays>0?`<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>خدمتك مضمونة ${ar(o.warrantyDays)} يوم</b><span>لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.</span></div></div>`:''}
+        ${o.status==='done'&&o.warrantyDays>0&&!o.warrantyOf?(laborClaim
+          ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${laborClaim.status==='done'?'تم إصلاح المشكلة على الضمان':(laborClaim.status==='cancelled'?'بلاغ الضمان أُغلق':'استلمنا بلاغك على الضمان')}</b><span>${laborClaim.status==='done'?'شكراً لصبرك، ونعتذر عن الإزعاج.':(laborClaim.status==='cancelled'?'تواصل معنا لو لسا المشكلة موجودة.':'بنتواصل معك ونرسل الفني مجاناً.')}</span></div></div>`
+          : (inLaborW
+            ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>خدمتك مضمونة ${ar(o.warrantyDays)} يوم · باقي ${ar(Math.max(1,Math.ceil(o.warrantyDays-ageDays)))} يوم</b><span>رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.</span><div><button class="wbtn" style="margin-top:8px" onclick="openLaborClaim('${o.id}')">🛡️ المشكلة رجعت</button></div></div></div>`
+            : `<div class="warranty-note" style="background:#f3f1ea;border-color:var(--line)"><span class="wn-ic">🛡️</span><div class="wn-t"><b style="color:var(--muted)">انتهت مدة الضمان (${ar(o.warrantyDays)} يوم)</b></div></div>`)):''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> — نرجو التكرّم باستقباله.</span></div>`:''}
         ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>الفني متأخّر قليلاً</b><span>موعدك المتوقّع صار حوالي ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
@@ -3759,12 +3933,7 @@ function renderMyBookings(){
           <button class="an-btn" onclick="advanceOrder('${o.id}')">قدّم موعدي</button>
         </div>`:''}
         ${['new','confirmed'].includes(o.status)?`<div class="reminder-note" style="margin-top:12px">⏰ <span>سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.</span></div>`:''}
-        ${o.invoice&&o.invoice.items&&o.invoice.items.length?`<div class="cust-invoice">
-          <div class="ci-head"><b>🧾 الفاتورة</b><button class="sbtn" onclick="printCustInvoice('${o.id}')">🖨️ طباعة</button></div>
-          ${o.invoice.items.map(it=>`<div class="ci-row"><span>${esc(it.name)}${(it.qty>1)?' ×'+ar(it.qty):''}</span><span>${money((+it.price||0)*(+it.qty||1))}</span></div>`).join('')}
-          ${o.invoice.discountPct>0?`<div class="ci-row" style="color:#0b7a3b;font-weight:800"><span>🎟️ خصم ${ar(o.invoice.discountPct)}٪</span><span>- ${money((o.invoice.subtotal||0)-(o.invoice.total||0))}</span></div>`:''}
-          <div class="ci-row ci-total"><span>الإجمالي</span><span>${money(o.invoice.total||0)}</span></div>
-        </div>`:''}
+        ${custInvoiceHtml(o)}
         ${partsBox(o)}
         ${canRate?`<div class="rate-box">
           <div class="rate-row"><span class="rate-lbl">${o.rating?'تقييمك للخدمة':'قيّم الخدمة:'}</span><div class="stars ${rated?'locked':''}">${stars}</div></div>
@@ -3779,7 +3948,10 @@ function renderMyBookings(){
                  : `<div class="fb-box"><textarea placeholder="اكتب رسالتك / شكواك هنا..."></textarea><button class="sbtn complaint-send" onclick="saveFeedback('${o.id}', this)">📩 إرسال الشكوى</button></div>`}`
           ):''}
         </div>`:''}
-        ${canCancel?`<div class="oact"><button class="sbtn danger" onclick="cancelOrder('${o.id}')">إلغاء الطلب</button></div>`:''}
+        ${canCancel?(lateCancel
+          ? `<div class="late-note"><span>⏰</span><div><b>باقي أقل من ${ar(cancelHours())} ساعات على الموعد</b>للإلغاء أو تغيير الموعد الحين تواصل معنا مباشرة.<div class="oact" style="margin-top:8px"><a class="sbtn" href="tel:${PHONE}">📞 اتصال</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 واتساب</a></div></div></div>`
+          : `<div class="oact"><button class="sbtn" onclick="openReschedule('${o.id}')">📅 تغيير الموعد</button><button class="sbtn danger" onclick="cancelOrder('${o.id}')">إلغاء الطلب</button></div><div class="policy-note">الإلغاء أو تغيير الموعد مجاني حتى ${ar(cancelHours())} ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.</div>`):''}
+        ${canReorder?`<div class="oact"><button class="sbtn ok" onclick="reorder('${o.id}')">🔁 اطلب مرة ثانية</button></div>`:''}
       </div>`;
     }).join('');
   }
@@ -3801,11 +3973,11 @@ function partsBox(o){
     let act;
     if(claim) act=`<span class="pb-done">✅ ${claim.status==='done'?'تم التبديل':'تم البلاغ · بنتواصل معك'}</span>`;
     else if(inW) act=`<button class="wbtn" onclick="claimWarranty('${o.id}',${i})">⚠️ تعطّلت؟ بلّغ على الضمان</button>`;
-    else act=`<span class="pb-done" style="color:var(--muted)">انتهى الضمان</span>`;
+    else act=`<span class="pb-done muted">انتهى الضمان</span>`;
     const pic=p.img?`<img class="pb-img" src="${esc(p.img)}" loading="lazy" onclick="pbZoom('${esc(p.img)}')" />`:`<span class="pb-ph">🔩</span>`;
-    return `<div class="pb-row"><span class="pb-l">${pic}<span>${esc(p.name)}${(+p.qty>1)?' ×'+ar(p.qty):''}</span></span>${act}</div>`;
+    return `<div class="pb-row">${pic}<div class="pb-t"><b>${esc(p.name)}</b><small>${(+p.qty>1)?'×'+ar(p.qty)+' · ':''}${inW?'ضمان سنتين من تاريخ الخدمة':'انتهى الضمان'}</small><div class="pb-act">${act}</div></div></div>`;
   }).join('');
-  return `<div class="parts-box"><div class="pb-head"><b>🧰 الأغراض المستخدمة</b><small>${inW?'مضمونة سنتين من تاريخ الخدمة':'انتهت مدة الضمان'}</small></div>${rows}</div>`;
+  return `<div class="parts-box"><div class="pb-head"><b>🧰 الأغراض المستخدمة</b><small>${inW?'مضمونة سنتين':'انتهت مدة الضمان'}</small></div>${rows}</div>`;
 }
 async function claimWarranty(orderId, idx){
   const o=state.orders.find(x=>x.id===orderId); if(!o) return;
@@ -3827,27 +3999,177 @@ async function claimWarranty(orderId, idx){
   }catch(e){ console.error('warranty claim:', e); toast('⚠️ ما وصل البلاغ، أعد المحاولة'); }
   finally{ state.subReq=keepSub; }
 }
-function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(!confirm('متأكد من إلغاء الطلب '+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return; o.status='cancelled'; save(); cloudPatch(o.dbId,{status:'cancelled'}); toast('تم إلغاء الطلب'); render(); }
+/* كم ساعة باقية على موعد الطلب (سالب = فات الموعد) */
+function hoursUntil(o){ if(!o||!o.date) return 999; const d=parseISO(o.date); d.setHours(0,0,0,0); return (d.getTime()+(+o.startMin||0)*60000-Date.now())/3600000; }
+/* سياسة الإلغاء: مجاني حتى 4 ساعات قبل الموعد، وبعدها عبر التواصل فقط */
+function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا للإلغاء'); return; } if(!confirm('متأكد من إلغاء الطلب '+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return; o.status='cancelled'; save(); cloudPatch(o.dbId,{status:'cancelled'}); toast('تم إلغاء الطلب'); render(); }
+
+/* ══════════ إعادة الطلب بضغطة: نفس الخدمات والعنوان، يختار الموعد بس ══════════ */
+function reorder(id){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const cart={};
+  (o.items||[]).forEach(i=>{ if(i.part||i.custom||i.id==='fee'||i.id==='quick') return; const s=SERVICES.find(x=>x.id===i.id); if(s&&!s.hidden) cart[i.id]=Math.max(1,+i.qty||1); });
+  if(!Object.keys(cart).length){ toast('خدمات هذا الطلب ما عادت متاحة، اختر من القائمة'); go('home'); return; }
+  quickMode=false; state.subReq=null; state.cart=cart; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''};
+  if(o.address&&(o.address.lat||o.address.house)) state.address=Object.assign({}, state.address||{}, o.address);
+  save(); toast('🔁 حطّينا نفس الخدمات والعنوان، اختر الموعد'); go('time');
+}
+
+/* ══════════ تغيير الموعد من التطبيق (مجاني حتى 4 ساعات قبل الموعد) ══════════ */
+let _rs=null;
+function kmodalEl(){ let m=document.getElementById('kmodal'); if(!m){ m=document.createElement('div'); m.id='kmodal'; m.className='kmodal'; m.onclick=e=>{ if(e.target===m) closeKModal(); }; document.body.appendChild(m); } return m; }
+function closeKModal(){ const m=document.getElementById('kmodal'); if(m) m.remove(); _rs=null; }
+function openReschedule(id){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا لتغييره'); return; }
+  _rs={id:o.id, date:o.date, time:null};
+  rsRender();
+  loadBusy().then(ch=>{ if(ch&&_rs) rsRender(); });   // حدّث الجدول المشغول الحقيقي
+}
+function rsRender(){
+  if(!_rs) return;
+  const o=state.orders.find(x=>x.id===_rs.id); if(!o){ closeKModal(); return; }
+  const need=o.duration||60;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const days=[]; for(let i=0;i<16;i++){ const d=new Date(today); d.setDate(today.getDate()+i); if(!OFF_DAYS.includes(d.getDay())) days.push(d); }
+  if(!days.some(d=>dateISO(d)===_rs.date)) _rs.date=dateISO(days[0]);
+  const dchips=days.map(d=>{ const iso=dateISO(d); return `<button type="button" class="dchip ${_rs.date===iso?'active':''}" onclick="rsPick('${iso}')"><small>${i0(d,today)?'اليوم':AR_DAYS[d.getDay()]}</small><b>${ar(d.getDate())}</b><span class="mon">${AR_MONTHS[d.getMonth()]}</span></button>`; }).join('');
+  const nowMin=new Date().getHours()*60+new Date().getMinutes();
+  const slots=[];
+  for(let t=WORK_START;t+need<=WORK_END;t+=ARRIVAL_WINDOW){
+    const past = _rs.date===dateISO(today) && t < nowMin+60;
+    const same = _rs.date===o.date && t===o.startMin;
+    const ok = !past && !same && slotAvailable(_rs.date,t,need,o.id);
+    slots.push(`<button type="button" class="slot win ${_rs.time===t?'active':''}" ${ok?'':'disabled'} onclick="rsTime(${t})">${windowLabel(t)}</button>`);
+  }
+  const anyFree=slots.some(s=>!s.includes('disabled'));
+  kmodalEl().innerHTML=`<div class="kbox">
+    <div class="kh"><b>📅 تغيير موعد ${esc(o.id)}</b><button type="button" class="kx" onclick="closeKModal()">✕</button></div>
+    <p style="color:var(--muted);font-size:.86rem;font-weight:700;margin-bottom:10px">موعدك الحالي: ${dayLabel(o.date)} · ${windowLabel(o.startMin)}</p>
+    <h3 style="font-size:.95rem;margin-bottom:8px">اختر اليوم</h3><div class="dates">${dchips}</div>
+    <h3 style="font-size:.95rem;margin:12px 0 8px">اختر نافذة الوصول</h3>
+    ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
+    <div class="kacts"><button type="button" class="cta gold" ${_rs.time==null?'disabled':''} onclick="rsConfirm()">تأكيد الموعد الجديد</button></div>
+  </div>`;
+}
+function rsPick(iso){ if(!_rs||isOffDay(iso)) return; _rs.date=iso; _rs.time=null; rsRender(); }
+function rsTime(t){ if(!_rs) return; _rs.time=t; rsRender(); }
+function rsConfirm(){
+  if(!_rs) return;
+  const o=state.orders.find(x=>x.id===_rs.id); if(!o||_rs.time==null) return;
+  if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا لتغييره'); closeKModal(); return; }
+  const from=dayLabel(o.date)+' '+windowLabel(o.startMin);
+  o.date=_rs.date; o.startMin=_rs.time; o.endMin=_rs.time+(o.duration||60);
+  const to=dayLabel(o.date)+' '+windowLabel(o.startMin);
+  o.note=((o.note||'')+'\n⏰ غيّر العميل الموعد من '+from+' إلى '+to).trim();
+  save();
+  cloudPatch(o.dbId,{service_date:o.date, start_min:o.startMin, end_min:o.endMin, note:o.note});
+  closeKModal(); toast('تم تغيير موعدك ✅'); render();
+}
+
+/* ══════════ بلاغ ضمان على الشغل: «المشكلة رجعت» = طلب جديد مجاني مرتبط بالأصلي ══════════ */
+function openLaborClaim(id){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  if(!cloudReady||!o.dbId){ toast('يحتاج اتصال بالإنترنت'); return; }
+  const svcs=(o.items||[]).filter(i=>!i.part&&i.id!=='fee').map(i=>i.ico+' '+i.name).join('، ');
+  kmodalEl().innerHTML=`<div class="kbox">
+    <div class="kh"><b>🛡️ المشكلة رجعت؟</b><button type="button" class="kx" onclick="closeKModal()">✕</button></div>
+    <p style="font-size:.9rem;line-height:1.7;margin-bottom:8px">الطلب ${esc(o.id)} · ${esc(svcs)}<br><span style="color:var(--muted);font-weight:700">مضمون ${ar(o.warrantyDays)} يوم. نرسل الفني يفحص ويصلح مجاناً إذا كانت نفس المشكلة.</span></p>
+    <textarea id="lc_desc" placeholder="اشرح وش رجع بالضبط (مثال: التسريب رجع من نفس المكان)"></textarea>
+    <div class="kacts"><button type="button" class="cta gold" onclick="sendLaborClaim('${o.id}')">🛡️ أرسل البلاغ</button></div>
+  </div>`;
+}
+async function sendLaborClaim(id){
+  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const desc=((document.getElementById('lc_desc')||{}).value||'').trim();
+  if(desc.length<3){ toast('اكتب وش المشكلة اللي رجعت'); return; }
+  const btn=document.querySelector('#kmodal .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
+  // بدون معرّفات خدمات عشان الخادم ما يعيد تسعيرها: بلاغ الضمان مجاني
+  const items=(o.items||[]).filter(i=>!i.part&&i.id!=='fee'&&i.id!=='quick').map(i=>({ico:'🛡️', name:'ضمان: '+i.name, qty:+i.qty||1, dur:+i.dur||0, price:0}));
+  if(!items.length) items.push({ico:'🛡️', name:'ضمان: إعادة الفحص والإصلاح', qty:1, price:0});
+  const dur=o.duration||60;
+  const base={ createdAt:Date.now(), items, customer:Object.assign({},o.customer), address:Object.assign({},o.address),
+    date:dateISO(new Date()), startMin:540, duration:dur, endMin:540+dur,
+    price:0, finalPrice:0, free:false, status:'new', rating:0, reminded:false, quick:true,
+    note:'🛡️ بلاغ ضمان شغل من الطلب '+o.id+' بتاريخ '+(o.date||'')+': '+desc, videoUrl:'', wantsEarlier:true,
+    providerPhone:o.providerPhone||'', promoCode:'', discountPct:0, referredBy:'', creditUsed:0, loyaltyDisc:0, advanceDisc:0,
+    warrantyOf:o.dbId, warrantyItem:'labor' };
+  const keepSub=state.subReq; state.subReq=null;   // البلاغ ما يُحسب على عقد الصيانة
+  try{
+    const order=await cloudInsert(base);
+    state.orders.unshift(order); state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id); save();
+    closeKModal(); toast('🛡️ استلمنا بلاغك، بنتواصل معك ونرسل الفني مجاناً'); render();
+  }catch(e){ console.error('labor claim:', e); toast('⚠️ ما وصل البلاغ، أعد المحاولة'); if(btn){ btn.disabled=false; btn.textContent='🛡️ أرسل البلاغ'; } }
+  finally{ state.subReq=keepSub; }
+}
 function printCustInvoice(id){ const o=state.orders.find(x=>x.id===id); if(o&&o.invoice) printInvoiceDoc(o); }
+/* تصنيف بند الفاتورة: شغل (خدمة) أو قطعة من المستودع أو رسوم */
+function invKind(it){ if(!it) return 'svc'; if(it.id==='fee') return 'fee'; if(it.id==='stock'||it.stockId||it.part||it.id==='part'||String(it.id||'').startsWith('part:')) return 'part'; return 'svc'; }
+function invGroups(inv){ const g={svc:[],part:[],fee:[]}; (inv&&inv.items||[]).forEach(it=>g[invKind(it)].push(it)); return g; }
+function invItemIco(it){ const s=SERVICES.find(x=>x.id===it.id); return (s&&s.ico)||'🔧'; }
+function invSums(o){ const inv=o.invoice||{items:[]}; const sub=(inv.items||[]).reduce((a,it)=>a+(+it.price||0)*(+it.qty||1),0); const total=(+inv.total>0)?+inv.total:sub; const disc=inv.discountPct>0?Math.max(0,sub-total):0; return {sub,total,disc,paid:+o.paidAmount||0,due:Math.max(0,+o.amountDue||0)}; }
+/* صندوق الفاتورة داخل «طلباتي» */
+function custInvoiceHtml(o){
+  const inv=o.invoice; if(!inv||!Array.isArray(inv.items)||!inv.items.length) return '';
+  const g=invGroups(inv), s=invSums(o);
+  const line=(it,kind)=>{ const q=+it.qty||1, p=+it.price||0;
+    const media = kind==='part' ? (it.img?`<img class="ci-img" src="${esc(it.img)}" loading="lazy" onclick="pbZoom('${esc(it.img)}')" />`:`<span class="ci-img ph">🔩</span>`) : `<span class="ci-img ph">${kind==='fee'?'🚚':invItemIco(it)}</span>`;
+    return `<div class="ci-row">${media}<div class="ci-n"><b>${esc(it.name)}</b><small>${q>1?ar(q)+' × '+money(p):money(p)}</small></div><div class="ci-p">${money(p*q)}</div></div>`; };
+  const sec=(t,rows,kind)=>rows.length?`<div class="ci-sec">${t}</div>${rows.map(r=>line(r,kind)).join('')}`:'';
+  return `<div class="cust-invoice">
+    <div class="ci-head"><div><b>🧾 الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="sbtn" onclick="printCustInvoice('${o.id}')">🖨️ طباعة</button></div>
+    ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
+    ${(inv.dropped&&inv.dropped.length)?`<div class="ci-sec">أغراض عندك ما احتجناها</div>${inv.dropped.map(d=>`<div class="ci-row"><div class="ci-n"><b style="text-decoration:line-through;color:var(--muted)">${esc(d.name)}${(+d.qty>1)?' ×'+ar(d.qty):''}</b><small>يرجع لك ${money(d.amount)}</small></div></div>`).join('')}`:''}
+    <div class="ci-sum">
+      ${s.disc>0?`<div><span>المجموع</span><span>${money(s.sub)}</span></div><div class="g"><span>🎟️ خصم ${ar(inv.discountPct)}٪</span><span>− ${money(s.disc)}</span></div>`:''}
+      <div class="ci-total"><span>الإجمالي</span><span>${money(s.total)}</span></div>
+      ${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}
+      ${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(+inv.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(inv.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}
+    </div>
+  </div>`;
+}
+/* الفاتورة المطبوعة: نفس الأقسام مع صور القطع والضمان */
 function printInvoiceDoc(o){
   const inv=o.invoice||{items:[],total:0};
-  const rows=(inv.items||[]).map(it=>`<tr><td>${esc(it.name)}</td><td>${ar(it.qty||1)}</td><td>${money(+it.price||0)}</td><td>${money((+it.price||0)*(+it.qty||1))}</td></tr>`).join('');
+  const g=invGroups(inv), s=invSums(o);
+  const row=(it,kind)=>{ const q=+it.qty||1,p=+it.price||0; const media=kind==='part'?(it.img?`<img src="${esc(it.img)}" alt="">`:'🔩'):(kind==='fee'?'🚚':invItemIco(it));
+    return `<div class="r"><span class="im">${media}</span><span class="nm"><b>${esc(it.name)}</b><small>${q>1?ar(q)+' × '+money(p):money(p)}</small></span><span class="tt">${money(p*q)}</span></div>`; };
+  const sec=(t,rows,kind)=>rows.length?`<div class="sec">${t}</div>${rows.map(r=>row(r,kind)).join('')}`:'';
   const d=new Date(); const ds=ar(d.getDate())+'/'+ar(d.getMonth()+1)+'/'+ar(d.getFullYear());
-  const html='<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>فاتورة '+o.id+'</title>'
-   +'<style>body{font-family:Cairo,system-ui,Arial,sans-serif;padding:24px;color:#141414;max-width:520px;margin:0 auto}'
-   +'.h{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #F5C518;padding-bottom:12px}'
-   +'.h .b{font-size:1.5rem;font-weight:900}.h .b span{background:#F5C518;padding:2px 10px;border-radius:8px}'
-   +'.meta{color:#555;font-size:.9rem;margin:12px 0}.meta div{margin:3px 0}'
-   +'table{width:100%;border-collapse:collapse;margin-top:8px}th,td{text-align:right;padding:9px 6px;border-bottom:1px solid #eee;font-size:.92rem}'
-   +'th{background:#FBF3D0;font-weight:800}.tot{display:flex;justify-content:space-between;font-weight:900;font-size:1.2rem;margin-top:14px;border-top:2px solid #141414;padding-top:10px}'
-   +'.ft{margin-top:22px;text-align:center;color:#888;font-size:.85rem}@media print{.noprint{display:none}}</style></head><body>'
-   +'<div class="h"><div class="b">🔧 <span>'+BRAND+'</span></div><div style="text-align:left"><b>فاتورة</b><br>'+o.id+'</div></div>'
-   +'<div class="meta"><div>العميل: '+esc(o.customer.name)+' · '+esc(o.customer.phone)+'</div><div>التاريخ: '+ds+'</div></div>'
-   +'<table><thead><tr><th>الخدمة</th><th>العدد</th><th>السعر</th><th>الإجمالي</th></tr></thead><tbody>'+rows+'</tbody></table>'
-   +'<div class="tot"><span>الإجمالي</span><span>'+money(inv.total||0)+'</span></div>'
-   +'<div class="ft">شكراً لتعاملك مع '+BRAND+' · '+PHONE+'</div>'
-   +'<div class="noprint" style="text-align:center;margin-top:18px"><button onclick="print()" style="padding:10px 22px;font-weight:800;border:none;background:#141414;color:#fff;border-radius:10px;cursor:pointer">🖨️ طباعة</button></div>'
-   +'</body></html>';
+  const a=o.address||{}; const addr=[a.city, a.house?'منزل '+a.house:''].filter(Boolean).join(' · ');
+  const html=`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة ${esc(o.id)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}body{font-family:Cairo,system-ui,Arial,sans-serif;margin:0 auto;padding:0 0 22px;color:#1A1712;background:#fff;max-width:560px}
+.top{background:#F5C518;padding:20px 18px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:0 0 22px 22px}
+.brand{display:flex;align-items:center;gap:10px}.brand .lg{width:50px;height:50px;border-radius:14px;background:#1A1712;color:#F5C518;display:grid;place-items:center;font-size:1.5rem}
+.brand b{font-size:1.4rem;font-weight:900;display:block;line-height:1.1}.brand small{color:#3d3a30;font-weight:700;font-size:.78rem}
+.no{text-align:left}.no b{display:block;font-size:1.05rem;font-weight:900}.no small{color:#3d3a30;font-weight:700;font-size:.8rem}
+.wrap{padding:0 18px}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin:16px 0 6px;font-size:.88rem;font-weight:700;color:#3d3a30}.meta span{color:#6E685B;font-weight:700;display:block;font-size:.72rem}
+.sec{display:flex;align-items:center;gap:8px;margin:14px 0 2px;font-size:.8rem;font-weight:800;color:#6E685B}.sec::before{content:"";width:9px;height:9px;border-radius:50%;background:#F5C518}
+.r{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed #EFE9D6}
+.r .im{width:62px;height:62px;border-radius:14px;border:1px solid #EFE9D6;background:#FBF7E8;display:grid;place-items:center;font-size:1.7rem;overflow:hidden;flex-shrink:0}
+.r .im img{width:100%;height:100%;object-fit:contain;background:#fff}
+.r .nm{flex:1;min-width:0}.r .nm b{display:block;font-size:.95rem;font-weight:800;line-height:1.3}.r .nm small{color:#6E685B;font-weight:700;font-size:.78rem}
+.r .tt{font-weight:900;white-space:nowrap;font-size:.95rem}
+.sum{margin-top:14px;border-top:2px solid #1A1712;padding-top:8px}.sum div{display:flex;justify-content:space-between;padding:4px 0;font-size:.92rem;font-weight:700;color:#3d3a30}
+.sum .tot{font-size:1.3rem;font-weight:900;color:#1A1712}.sum .g{color:#0b7a3b}.sum .due{color:#0b3d6b;font-weight:900;font-size:1rem;background:#EEF6FF;border-radius:10px;padding:8px 10px;margin-top:6px}.sum .ok{color:#0b7a3b;font-weight:900}
+.wr{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:.78rem;font-weight:800}.wr span{background:#E6F4EA;color:#166534;border-radius:999px;padding:4px 11px}
+.ft{margin-top:20px;text-align:center;color:#888;font-size:.82rem;font-weight:700}
+.noprint{text-align:center;margin-top:16px}.noprint button{padding:10px 22px;font-weight:800;border:none;background:#141414;color:#fff;border-radius:10px;cursor:pointer;font-family:inherit}
+@media print{.noprint{display:none}.top{border-radius:0}}
+</style></head><body>
+<div class="top"><div class="brand"><span class="lg">🔧</span><div><b>${BRAND}</b><small>للصيانة المنزلية · الخبر</small></div></div><div class="no"><b>فاتورة ${esc(o.id)}</b><small>${ds}</small></div></div>
+<div class="wrap">
+<div class="meta"><div><span>العميل</span>${esc((o.customer||{}).name||'')}</div><div><span>الجوال</span>${esc((o.customer||{}).phone||'')}</div>${addr?`<div><span>العنوان</span>${esc(addr)}</div>`:''}${o.date?`<div><span>تاريخ الخدمة</span>${dayLabel(o.date)}</div>`:''}</div>
+${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
+<div class="sum">${s.disc>0?`<div><span>المجموع</span><span>${money(s.sub)}</span></div><div class="g"><span>🎟️ خصم ${ar(inv.discountPct)}٪</span><span>− ${money(s.disc)}</span></div>`:''}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${(inv.dropped&&inv.dropped.length)?`<div class="g"><span>↩️ أغراض عندك: ${esc(inv.dropped.map(d=>d.name).join('، '))}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(+inv.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(inv.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
+<div class="wr"><span>🛡️ ضمان الشغل ${o.warrantyDays>0?ar(o.warrantyDays)+' يوم':'٧ أيام'}</span>${g.part.length?'<span>🔩 ضمان القطع سنتان</span>':''}</div>
+<div class="ft">شكراً لتعاملك مع ${BRAND} · ${PHONE}</div>
+<div class="noprint"><button onclick="print()">🖨️ طباعة</button></div>
+</div>
+</body></html>`;
   const w=window.open('','_blank'); if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة'); return; } w.document.write(html); w.document.close();
 }
 function rate(id,n){ const o=state.orders.find(x=>x.id===id); if(!o||o.rating) return; o.rating=n; save(); cloudPatch(o.dbId,{rating:n}); toast('شكراً لتقييمك '+'⭐'.repeat(n)); render(); }
