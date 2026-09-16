@@ -1292,7 +1292,7 @@ function applyCatalog(cats, svcs){
   activeCats.forEach(c=>{ CATS[c.id]={name:c.name, ico:c.icon||'🛠️', featured:!!c.featured, name_en:c.name_en||''}; });
   CAT_FEATURED=activeCats.filter(c=>c.featured).map(c=>c.id);
   const list=svcs.filter(s=>s&&s.id&&s.active!==false&&CATS[s.cat_id]).sort((a,b)=>(+a.sort||0)-(+b.sort||0))
-    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, name_en:s.name_en||''}));
+    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, hidden:!!s.hidden, name_en:s.name_en||''}));
   SERVICES.length=0; list.forEach(s=>SERVICES.push(s));
   try{ if(typeof T_DICT_N!=='undefined'){ activeCats.forEach(c=>{ if(c.name_en) T_DICT_N[_west(c.name).trim()]=c.name_en; }); list.forEach(s=>{ if(s.name_en) T_DICT_N[_west(s.name).trim()]=s.name_en; }); } }catch(e){}
   try{ Object.keys((state&&state.cart)||{}).forEach(id=>{ if(!svc(id)) delete state.cart[id]; }); }catch(e){}
@@ -1469,7 +1469,7 @@ function ar(n){ return String(n).replace(/[0-9]/g,d=>AR_DIG[d]); }
 function money(n){ return ar(n)+' ر.س'; }
 function en(n){ return Number(n).toLocaleString('en-US'); }
 function svc(id){ return SERVICES.find(s=>s.id===id); }
-function catCount(k){ return SERVICES.filter(s=>s.cat===k).length; }
+function catCount(k){ return SERVICES.filter(s=>s.cat===k && !s.hidden).length; }
 
 function _uiEN(){ return (typeof UILANG!=='undefined') && UILANG==='en'; }
 function LX(a,e){ return _uiEN()?e:a; }   // اختيار نص حسب اللغة (للجُمل المقسّمة بوسوم)
@@ -1536,8 +1536,16 @@ function jobDur(mins,lang){ if(!mins) return t('byInspection'); if(lang==='ar') 
 
 /* ---- حسابات السلة ---- */
 function cartItems(){ return Object.keys(state.cart).map(id=>({...svc(id),qty:state.cart[id]})); }
+/* رسوم التوصيل: خدمة مخفية في الكتالوج (id=fee) تنضاف لكل طلب فيه خدمات */
+function feeSvc(){ const f=svc('fee'); return (f && f.price>0) ? f : null; }
+function feeAmount(){
+  const f=feeSvc();
+  if(!f || quickMode || state.subReq) return 0;
+  if(!Object.keys(state.cart||{}).length) return 0;
+  return +f.price||0;
+}
 function cartCount(){ return Object.values(state.cart).reduce((a,b)=>a+b,0); }
-function cartPrice(){ return cartItems().reduce((a,i)=>a+i.price*i.qty,0); }
+function cartPrice(){ return cartItems().reduce((a,i)=>a+i.price*i.qty,0) + feeAmount(); }
 function cartDuration(){ return cartItems().reduce((a,i)=>a+i.dur*i.qty,0); }
 function hasCustom(){ return cartItems().some(i=>i.custom); }
 /* نقاط الولاء محسوبة برقم الجوال من كل الطلبات (Supabase) */
@@ -2932,7 +2940,7 @@ function renderPrices(){
   quickMode=false;
   const sections=Object.keys(CATS).map(k=>{
     const c=CATS[k];
-    const rows=SERVICES.filter(s=>s.cat===k).map(s=>{
+    const rows=SERVICES.filter(s=>s.cat===k && !s.hidden).map(s=>{
       const sel=!!state.cart[s.id];
       return `<button class="price-row ${sel?'sel':''}" onclick="toggleService('${s.id}')">
         <span class="pr-check">${sel?'✓':''}</span>
@@ -3128,7 +3136,7 @@ function toggleService(id){
   save(); if(view==='prices') renderPrices(); else renderPick();
 }
 function renderPick(){
-  const list=SERVICES.filter(s=>s.cat===currentCat);
+  const list=SERVICES.filter(s=>s.cat===currentCat && !s.hidden);
   const rows=list.map(s=>{
     const sel=!!state.cart[s.id];
     return `<button class="srow ${sel?'sel':''}" onclick="toggleService('${s.id}')">
@@ -3412,7 +3420,8 @@ function renderInfo(){
 
       ${state.subReq?'':`<div class="est"><span style="font-size:1.5rem">${quickMode?'🔎':(free?'🎁':'💳')}</span>
         <div><div style="color:var(--muted);font-size:.85rem">الإجمالي التقريبي</div>
-        <div class="big">${priceTxt}</div></div>
+        <div class="big">${priceTxt}</div>
+        ${feeAmount()>0?`<div style="color:var(--muted);font-size:.8rem">${LX('شامل رسوم التوصيل '+ar(feeAmount())+' ريال','Includes a '+feeAmount()+' SAR delivery fee')}</div>`:''}</div>
       </div>`}
 
       ${state.subReq?`<div class="panel" style="margin-top:12px"><div class="field" style="margin:0">
@@ -3508,6 +3517,7 @@ async function confirmOrder(){
   const items = quickMode
     ? [{id:'quick', name:'طلب سريع (معاينة)', ico:'⚡', qty:1, dur:scheduleDuration(), price:0, custom:true}]
     : cartItems().map(i=>({id:i.id,name:i.name,ico:i.ico,qty:i.qty,dur:i.dur,price:i.price,custom:!!i.custom}));
+  if(feeAmount()>0){ const f=feeSvc(); items.push({id:'fee', name:f.name, ico:f.ico||'🚚', qty:1, dur:0, price:+f.price||0, custom:false}); }
   const loyDisc = quickMode ? 0 : loyaltyDiscFor();
   const duration=scheduleDuration();
   const _subnote=(document.getElementById('f_subnote')||{}).value||'';
