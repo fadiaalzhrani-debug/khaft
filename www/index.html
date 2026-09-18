@@ -1106,6 +1106,7 @@ function applySettings(rows){
   const lm=stNum('lead_min',null); if(lm>=0) LEAD_MIN=Math.round(lm);
   const lt=stNum('loyalty_target',null); if(lt>=2) LOYALTY_TARGET=Math.round(lt);
   const tm=stNum('tamara_min',null); if(tm>=0) TAMARA_MIN_LABOR=tm;
+  const apc=stNum('advance_pct',null); if(apc>=0) ADVANCE_PCT=Math.min(50,apc);
   FIRST_PCT=Math.max(0,stNum('first_order_pct',0)); LAUNCH_PCT=Math.max(0,stNum('launch_pct',0));
   const lu=String(SETTINGS.launch_until||''); LAUNCH_UNTIL=/^\d{4}-\d{2}-\d{2}/.test(lu)?lu.slice(0,10):null;
 }
@@ -1714,6 +1715,7 @@ function serverMsg(e){
     KHAFET_BOOKING_OFF:  LX(SETTINGS.booking_msg||'الحجز متوقف مؤقتًا، نرجع لكم قريبًا','Booking is paused right now'),
     KHAFET_WARRANTY_DUP: LX('بلاغ الضمان لهذا الطلب مسجّل عندنا من قبل','A warranty claim for this order is already registered'),
     KHAFET_UNPAID:       LX('فيه مبلغ متبقٍ على الطلب','This order still has a balance due'),
+    KHAFET_BLOCKED:      LX('تعذّر إكمال الطلب من التطبيق، تواصل معنا على '+PHONE,'We could not complete this order in the app, please call '+PHONE),
   };
   for(const k in MAP){ if(m.indexOf(k)>=0) return MAP[k]; }
   if(/fetch|network|Failed to fetch/i.test(m)) return LX('تأكد من الإنترنت وحاول مرة ثانية','Check your connection and try again');
@@ -1782,7 +1784,7 @@ function dateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(
 function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 /* ---- خصم ذكي ٥٪: يظهر فقط إذا امتلأ أول يومَي عمل، ويُطبَّق لمن يحجز يوماً بعدهما ----
    (مو خصم ثابت يطلع من لا شي — بل حافز لتوزيع الضغط لما الأيام القريبة تنحجز) */
-const ADVANCE_PCT=5, NEAR_FULL_DAYS=2;
+let ADVANCE_PCT=5; const NEAR_FULL_DAYS=2;   // النسبة من الإعدادات advance_pct
 function daysUntil(iso){
   if(!iso) return -1;
   const t=new Date(); t.setHours(0,0,0,0);
@@ -3222,7 +3224,7 @@ function renderHome(){
   const reviews=(state.orders||[])
     .filter(o=>o.rating===5 && o.feedback && o.feedback.trim() && o.customer && !o.reviewHidden)
     .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).slice(0,10);
-  const reviewsHtml = reviews.length ? `
+  const reviewsHtml = (reviews.length && stOn('reviews_enabled',true)) ? `
       <div class="reviews">
         <div class="rv-head">💬 وش قالوا عملاؤنا</div>
         <div class="rv-strip">
@@ -3238,8 +3240,8 @@ function renderHome(){
     ${homeBannerHtml()}${privacyNoticeHtml()}
     <div class="hero hero-slim">
       <div class="hero-in">
-        <h1>اطلب صيانة</h1>
-        <p class="hero-sub"><b>صيانة احترافية تستاهلها</b><span>منزلك في أيادٍ أمينة</span></p>
+        <h1>${esc(solText('hero_title','اطلب صيانة'))}</h1>
+        <p class="hero-sub"><b>${esc(solText('hero_sub','صيانة احترافية تستاهلها'))}</b><span>${esc(solText('hero_sub2','منزلك في أيادٍ أمينة'))}</span></p>
         ${launchPromoHtml()}
       </div>
       <svg class="hero-wave" viewBox="0 0 1440 40" preserveAspectRatio="none"><path fill="currentColor" d="M0 40 L0 20 Q 360 40 720 20 T 1440 20 L1440 40 Z"/></svg>
@@ -3279,11 +3281,11 @@ function renderHome(){
         <span class="qb-ar">←</span>
       </button>`:''}
 
-      <button class="services-btn" onclick="go('majlis')">
+      ${stOn('majlis_enabled',true)?`<button class="services-btn" onclick="go('majlis')">
         <span class="sb-ic" style="color:var(--gold-deep)">${catIcon('majlis',26)}</span>
         <span class="sb-t"><b>ابنِ مجلسك <span style="background:var(--gold);color:#1a1408;font-size:.68rem;font-weight:800;padding:2px 9px;border-radius:20px;margin-inline-start:6px;vertical-align:middle">قريباً</span></b><small>مجلس ساندوتش بانل · حدّد المقاس واعرف التكلفة فوراً</small></span>
         <span class="qb-ar">←</span>
-      </button>
+      </button>`:''}
 
       <div class="acc-grid" style="margin-top:12px">
         <button class="acc-tile" onclick="go('prices')"><span class="ti">${icon('tag',26)}</span><b>قائمة الأسعار</b><small>تصفّح الخدمات واطلب</small></button>
@@ -3791,10 +3793,10 @@ function renderInfo(){
   const badge = (t)=>`<span style="color:#0b7a3b;font-size:.6em;font-weight:800">${t}</span>`;
   const strike = `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(base)}</span>`;
   const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
-    : (loyDisc>0 ? `${strike} ${money(afterAll)} ${badge('🎁 خصم ولاء '+money(loyDisc))}${advDisc>0?' '+badge('📅 حجز مبكر ٥٪'):''}`
-    : (pPct>0 ? `${strike} ${money(afterAll)} ${badge('خصم '+ar(pPct)+'٪ 🎟️')}${advDisc>0?' '+badge('📅 حجز مبكر ٥٪'):''}`
-    : (promo.amt>0 ? `${strike} ${money(afterAll)} ${badge(promoLabel(promo.kind,promo.pct))}${advDisc>0?' '+badge('📅 حجز مبكر ٥٪'):''}`
-    : (advDisc>0 ? `${strike} ${money(afterAll)} ${badge('📅 خصم حجز مبكر ٥٪ — '+money(advDisc))}`
+    : (loyDisc>0 ? `${strike} ${money(afterAll)} ${badge('🎁 خصم ولاء '+money(loyDisc))}${advDisc>0?' '+badge('📅 حجز مبكر '+ar(ADVANCE_PCT)+'٪'):''}`
+    : (pPct>0 ? `${strike} ${money(afterAll)} ${badge('خصم '+ar(pPct)+'٪ 🎟️')}${advDisc>0?' '+badge('📅 حجز مبكر '+ar(ADVANCE_PCT)+'٪'):''}`
+    : (promo.amt>0 ? `${strike} ${money(afterAll)} ${badge(promoLabel(promo.kind,promo.pct))}${advDisc>0?' '+badge('📅 حجز مبكر '+ar(ADVANCE_PCT)+'٪'):''}`
+    : (advDisc>0 ? `${strike} ${money(afterAll)} ${badge('📅 خصم حجز مبكر '+ar(ADVANCE_PCT)+'٪ — '+money(advDisc))}`
     : money(base)))));
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
