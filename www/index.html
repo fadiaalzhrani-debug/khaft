@@ -10,8 +10,8 @@
 <meta name="theme-color" content="#F5C518" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -1235,6 +1235,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .tm-tease .tt{display:flex;flex-direction:column;gap:2px}
 .tm-tease .tt b{font-size:.92rem;line-height:1.6}
 .tm-tease .tt small{color:#5A1FBF;font-weight:800;font-size:.8rem}
+.rc-note.out{background:none;border:0;padding:10px 6px 0;margin:0;color:var(--muted);font-size:.84rem;font-weight:600;line-height:1.7;text-align:center}
 .price-row2{display:flex;flex-direction:column;gap:4px;background:var(--card);border-radius:var(--r-sm);padding:13px 16px;margin-top:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .25s var(--spring)}
 .price-row2:active{transform:scale(.985)}
 .price-row2.sel{box-shadow:inset 0 0 0 2.5px var(--c-1),var(--shadow-sm)}
@@ -1366,6 +1367,7 @@ function applySettings(rows){
   const tm=stNum('tamara_min',null); if(tm>=0) TAMARA_MIN_LABOR=tm;
   const apc=stNum('advance_pct',null); if(apc>=0) ADVANCE_PCT=Math.min(50,apc);
   FIRST_PCT=Math.max(0,stNum('first_order_pct',0)); LAUNCH_PCT=Math.max(0,stNum('launch_pct',0));
+  FIRST_FREE_DELIVERY=stOn('first_free_delivery',false);
   WELCOME_CREDIT=Math.max(0,stNum('welcome_credit',0)); APP_WARRANTY=Math.max(0,stNum('app_warranty_days',30));
   if(APP_WARRANTY>0) WARRANTY=LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+'-day warranty');
   const lu=String(SETTINGS.launch_until||''); LAUNCH_UNTIL=/^\d{4}-\d{2}-\d{2}/.test(lu)?lu.slice(0,10):null;
@@ -1448,7 +1450,7 @@ function homeBannerHtml(){
 function appPerksHtml(){
   if(!(WELCOME_CREDIT>0) && !(APP_WARRANTY>0)) return '';
   const main = WELCOME_CREDIT>0 ? LX('رصيد ترحيبي لأول طلب من التطبيق','Welcome credit on your first app order') : LX('ضمان على كل طلب من التطبيق','Warranty on every app order');
-  const sub = (WELCOME_CREDIT>0 && APP_WARRANTY>0) ? LX('ومعه ضمان '+ar(APP_WARRANTY)+' يوم على شغل اليد','plus a '+APP_WARRANTY+'-day labor warranty') : LX('لو رجعت نفس المشكلة نرجع لك مجانًا','If the same issue returns, we come back free');
+  const sub = (WELCOME_CREDIT>0 && APP_WARRANTY>0) ? LX((FIRST_FREE_DELIVERY?'وتوصيل مجاني، ':'ومعه ')+'ضمان '+ar(APP_WARRANTY)+' يوم على شغل اليد',(FIRST_FREE_DELIVERY?'free delivery and a ':'plus a ')+APP_WARRANTY+'-day labor warranty') : LX('لو رجعت نفس المشكلة نرجع لك مجانًا','If the same issue returns, we come back free');
   const big = WELCOME_CREDIT>0 ? ar(WELCOME_CREDIT) : ar(APP_WARRANTY);
   const unit = WELCOME_CREDIT>0 ? LX('ريال','SAR') : LX('يوم','days');
   return `<button type="button" class="promo-card" onclick="go('services')" aria-label="${LX('مزايا التطبيق','App perks')}">
@@ -1597,7 +1599,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=102;
+const APP_BUILD=103;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2205,17 +2207,31 @@ function myLoyalty(){
 }
 /* خصم الولاء المطبّق على الطلب الحالي (بحد أقصى سعر السلة) — الخادم يعيد التحقق */
 /* خصم الإطلاق / خصم أول طلب: على أجرة اليد فقط، لا يجتمع مع كود صديق أو الولاء (الخادم يعيد حسابه) */
-function promoInfo(){
+function deliveryPromo(){
+  if(quickMode||state.subReq||!FIRST_FREE_DELIVERY) return 0;
+  const orders=(state.orders||[]).filter(o=>o.status!=='cancelled');
+  return orders.length ? 0 : feeAmount();
+}
+function promoInfo(skipPct){
   if(quickMode||state.subReq) return {amt:0,pct:0,kind:''};
   const orders=(state.orders||[]).filter(o=>o.status!=='cancelled');
   let pct=0, kind='';
-  if(FIRST_PCT>0 && !orders.length){ pct=FIRST_PCT; kind='first'; }
-  if(LAUNCH_PCT>0 && LAUNCH_UNTIL && dateISO(new Date())<=LAUNCH_UNTIL && LAUNCH_PCT>pct){ pct=LAUNCH_PCT; kind='launch'; }
-  if(!pct) return {amt:0,pct:0,kind:''};
-  return {amt:Math.round(laborPrice()*Math.min(pct,50)/100), pct, kind};
+  if(!skipPct){
+    if(FIRST_PCT>0 && !orders.length){ pct=FIRST_PCT; kind='first'; }
+    if(LAUNCH_PCT>0 && LAUNCH_UNTIL && dateISO(new Date())<=LAUNCH_UNTIL && LAUNCH_PCT>pct){ pct=LAUNCH_PCT; kind='launch'; }
+  }
+  let amt = pct ? Math.round(laborPrice()*Math.min(pct,50)/100) : 0;
+  const dl=deliveryPromo();
+  if(dl>0){ amt+=dl; kind = kind ? kind+'+delivery' : 'delivery'; }
+  return {amt, pct, kind};
 }
 function promoName(kind){ return kind==='launch' ? LX('🎉 خصم الإطلاق','🎉 Launch offer') : LX('🎁 خصم أول طلب','🎁 First order discount'); }
-function promoLabel(kind,pct){ return promoName(kind)+' '+(_uiEN()?en(pct)+'% off labor':ar(pct)+'٪ على أجرة اليد'); }
+function promoLabel(kind,pct){
+  const k=String(kind||''), dl=LX('🚚 توصيل مجاني لأول طلب','🚚 Free delivery on your first order');
+  if(k==='delivery') return dl;
+  const base=promoName(k.replace('+delivery',''))+' '+(_uiEN()?en(pct)+'% off labor':ar(pct)+'٪ على أجرة اليد');
+  return k.indexOf('+delivery')>0 ? base+' + '+LX('توصيل مجاني','free delivery') : base;
+}
 function loyaltyDiscFor(){
   if(quickMode) return 0;
   const L=myLoyalty();
@@ -2861,8 +2877,7 @@ function renderAccount(){
 
       <div class="acc-foot">
         <a href="privacy.html" target="_blank" rel="noopener">🔒 الخصوصية</a> ·
-        <a href="privacy.html#terms" target="_blank" rel="noopener">📜 الشروط</a> ·
-        <a href="privacy.html#refund" target="_blank" rel="noopener">↩️ الإلغاء والاسترجاع</a>
+        <a href="privacy.html#terms" target="_blank" rel="noopener">📜 الشروط</a>
         <label class="mkt-mini"><input type="checkbox" id="acc_mkt" ${mktPref===false?'':'checked'} onchange="setMarketing(this.checked)"> ${LX('توصلني إشعارات العروض','Send me offer notifications')}</label>
         <div style="margin-top:10px;color:var(--muted);font-size:.78rem">${BRAND} · الإصدار ${APP_VER}</div>
         <button class="cta" style="background:transparent;color:var(--muted);border:1px solid var(--line);margin-top:16px" onclick="logoutAccount()">🚪 تسجيل الخروج</button>
@@ -3223,6 +3238,7 @@ function payBox(amount, opts){
 
 /* ══ دفع الطلبات: أجرة اليد وقت الحجز، والمتبقي بعد الفاتورة ══ */
 let TAMARA_MIN_LABOR=300;   // تمارا تظهر إذا المبلغ المدفوع عند الحجز فوق الحد (يتغيّر من الإعدادات)
+let FIRST_FREE_DELIVERY=false;   // توصيل مجاني لأول طلب (الخادم يتحقق ويخصم)
 let WELCOME_CREDIT=0, APP_WARRANTY=30;   // مزايا التطبيق: رصيد ترحيبي لأول طلب + ضمان الشغل
 let FIRST_PCT=0, LAUNCH_PCT=0, LAUNCH_UNTIL=null;   // خصم أول طلب / خصم الإطلاق على أجرة اليد (من الإعدادات)
 let orderPayMethod='online';
@@ -3236,7 +3252,7 @@ function setOrderPay(m){
 function welcomeNoteHtml(){
   if(isVerified || !(WELCOME_CREDIT>0) || (myOrders()||[]).length) return '';
   try{ if(localStorage.getItem('kh_welcome_note_x')==='1') return ''; }catch(e){}
-  return `<div class="wnote" id="wnote"><span class="wn-i">🎁</span><div class="wn-b"><b>${LX('أول طلب لك؟ لك '+ar(WELCOME_CREDIT)+' ريال رصيد','First order? You get '+WELCOME_CREDIT+' SAR credit')}</b><span>${LX('سجّل دخولك برقم جوالك وينخصم من طلبك تلقائيًا.','Sign in with your mobile number and it comes off your order automatically.')}</span></div><button type="button" class="wn-x" aria-label="إغلاق" onclick="closeWelcomeNote()">×</button></div>`;
+  return `<div class="wnote" id="wnote"><span class="wn-i">🎁</span><div class="wn-b"><b>${LX('أول طلب لك؟ لك '+ar(WELCOME_CREDIT)+' ريال رصيد'+(FIRST_FREE_DELIVERY?' وتوصيل مجاني':''),'First order? You get '+WELCOME_CREDIT+' SAR credit'+(FIRST_FREE_DELIVERY?' and free delivery':''))}</b><span>${LX('سجّل دخولك برقم جوالك وينخصم من طلبك تلقائيًا.','Sign in with your mobile number and it comes off your order automatically.')}</span></div><button type="button" class="wn-x" aria-label="إغلاق" onclick="closeWelcomeNote()">×</button></div>`;
 }
 function closeWelcomeNote(){ try{ localStorage.setItem('kh_welcome_note_x','1'); }catch(e){} const el=document.getElementById('wnote'); if(el) el.remove(); }
 function orderPayBox(amount, labor){
@@ -4243,8 +4259,8 @@ function receiptHtml(priceTxt, d){
     ${feeAmount()>0?`<div class="rc-sec">${LX('الوصول','Visit')}</div>`+row('🚚 '+LX('رسوم وصول الفني','Technician visit fee'),'',money(feeAmount())):''}
     ${discRows?`<div class="rc-sec">${LX('الخصومات','Discounts')}</div>`+discRows:''}
     <div class="rc-total"><span>${d.credit>0?LX('تدفع الآن','You pay now'):LX('الإجمالي','Total')}</span><b class="big">${d.credit>0?money(d.payNow):priceTxt}</b></div>
-    <div class="rc-note">${LX('تدفع أجرة اليد والقطع والوصول الحين، وأي قطع إضافية يحتاجها الشغل تظهر في فاتورة الفني.','You pay labor, parts and the visit now. Extra parts, if needed, appear on the technician invoice.')}</div>
-  </div>`;
+  </div>
+  <div class="rc-note out">${LX('تدفع أجرة اليد والقطع والوصول الآن. ولو احتاج الشغل قطعة إضافية، يضيفها الفني في فاتورته.','You pay labor, parts and the visit now. If the job needs an extra part, the technician adds it to his invoice.')}</div>`;
 }
 function renderInfo(){
   if(!state.booking.date||state.booking.time==null){ go('time'); return; }
@@ -4255,7 +4271,7 @@ function renderInfo(){
   const loyDisc=loyaltyDiscFor();
   const free = loyDisc>0;   // مكافأة ولاء → نخفي كود الإحالة ونعرض 🎁 بدل 💳
   const pPct = (loyDisc>0||quickMode||!refCheck.ok)?0:10;   // الإحالة لأول طلب، الولاء للسابع — لا يجتمعان
-  const promo = (loyDisc>0||pPct>0) ? {amt:0,pct:0,kind:''} : promoInfo();   // خصم الإطلاق / أول طلب على أجرة اليد
+  const promo = promoInfo(loyDisc>0||pPct>0);   // خصم الإطلاق / أول طلب على أجرة اليد
   const advDisc = advanceDiscFor(b.date, base, quickMode);   // خصم الحجز المبكر ٥٪
   const afterAll=Math.max(0, Math.round(base*(1-pPct/100)) - loyDisc - advDisc - promo.amt);
   const payNow = (quickMode||state.subReq) ? 0 : Math.max(0, afterAll - Math.min(myRef.balance||0, afterAll));   // أجرة اليد تُدفع وقت الحجز
@@ -4464,7 +4480,7 @@ async function confirmOrder(){
   const promoCodeIn=(document.getElementById('f_promo')||{}).value ? document.getElementById('f_promo').value.trim() : (state.promo||'');
   // الخصم والرصيد والولاء يُعاد حسابهم في الخادم — هذي بس للعرض
   const discPct = (loyDisc>0 || !refCheck.ok) ? 0 : 10;
-  const promo = (quickMode||loyDisc>0||discPct>0) ? {amt:0,pct:0,kind:''} : promoInfo();
+  const promo = promoInfo(quickMode||loyDisc>0||discPct>0);
   const advDisc = quickMode ? 0 : advanceDiscFor(b.date, cartPrice(), quickMode);   // خصم ٥٪ الذكي
   const afterDisc = Math.max(0, Math.round(cartPrice()*(1-discPct/100)) - loyDisc - advDisc - promo.amt);
   const creditUse = quickMode ? 0 : Math.min(myRef.balance||0, afterDisc);
