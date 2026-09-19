@@ -10,8 +10,8 @@
 <meta name="theme-color" content="#F5C518" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -532,6 +532,12 @@
   .pc-pct b{font-size:1.25rem;font-weight:900}.pc-pct small{font-size:.68rem;font-weight:800;margin-top:3px}
   .pc-tx{flex:1;min-width:0}.pc-tx b{display:block;font-size:.95rem;font-weight:900;line-height:1.35;color:#fff}.pc-tx small{display:block;color:rgba(255,255,255,.72);font-size:.78rem;font-weight:700;margin-top:3px}
   .pc-arr{flex:none;color:var(--gold);font-size:1.5rem;font-weight:900;line-height:1}
+  #updWall{position:fixed;inset:0;z-index:99999;background:var(--bg);display:grid;place-items:center;padding:24px;text-align:center}
+  #updWall .uw-box{max-width:360px}
+  #updWall .uw-ic{width:88px;height:88px;border-radius:28px;background:var(--gold);display:grid;place-items:center;font-size:2.5rem;margin:0 auto 18px;box-shadow:0 12px 30px rgba(245,197,24,.35)}
+  #updWall h2{font-size:1.55rem;font-weight:900;margin:0}
+  #updWall p{color:var(--muted);margin:10px 0 22px;line-height:1.9;font-weight:600;font-size:1rem}
+  #updWall .uw-btn{display:block;width:100%;background:var(--ink);color:#fff;border:none;border-radius:16px;padding:16px;font-weight:900;font-size:1.05rem;font-family:inherit;text-decoration:none;cursor:pointer}
   .home-banner{margin:10px 16px 0;background:#FFF3C4;border:1.5px solid var(--gold);border-radius:14px;padding:11px 14px;font-weight:800;font-size:.92rem;line-height:1.6}
   .home-banner.off{background:#fde8e8;border-color:#f0cccc;color:#b91c1c}
   .wclaim{display:inline-block;background:#E6F4EA;color:#166534;border-radius:20px;padding:1px 9px;font-size:.7rem;font-weight:800;margin-inline-start:6px;vertical-align:middle}
@@ -766,6 +772,18 @@
   .acc-hero .av{width:54px;height:54px;border-radius:50%;background:var(--gold);color:var(--ink);display:grid;place-items:center;font-size:1.7rem;flex-shrink:0}
   .acc-hero b{font-size:1.15rem;display:block}
   .acc-hero small{opacity:.82;font-size:.9rem}
+  .sw-row{display:flex;gap:12px;align-items:flex-start;cursor:pointer}
+  .sw-row input{width:22px;height:22px;margin-top:3px;accent-color:var(--gold-deep);flex:none}
+  .sw-row b{display:block;font-size:.98rem}
+  .sw-row small{display:block;color:var(--muted);font-weight:600;font-size:.84rem;margin-top:2px;line-height:1.6}
+  .cmp-item{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-top:10px;background:var(--card)}
+  .cmp-item .hd{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+  .cmp-item .hd b{font-size:.98rem}
+  .cmp-item p{margin-top:6px;font-size:.92rem;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+  .cmp-item small{color:var(--muted);font-weight:700;font-size:.8rem}
+  .cmp-reply{margin-top:8px;background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:10px;padding:9px 11px;font-size:.92rem;line-height:1.7;white-space:pre-wrap}
+  .cmp-ticket{text-align:center;padding:8px 0}
+  .cmp-ticket .no{display:inline-block;background:var(--ink);color:var(--gold);font-weight:900;font-size:1.5rem;border-radius:14px;padding:8px 20px;margin:10px 0;letter-spacing:.04em}
   .acc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
   .acc-tile{background:var(--card);border:1px solid var(--line);border-radius:15px;padding:16px 10px;text-align:center;cursor:pointer;transition:.15s;color:var(--ink)}
   .acc-tile:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:var(--shadow-sm)}
@@ -1017,8 +1035,193 @@
 
 html,body{touch-action:manipulation}
 </style>
+<style id="kh-skin">
+/* ═══ خافت · التصميم الجديد 2026-09-19 (طبقة شكل فقط: ألوان وخط وأشكال وحركة، بدون لمس الوظائف) ═══ */
+:root{
+  --gold:#F5C518; --gold-strong:#E9A800; --gold-deep:#B8860B; --gold-soft:#FBF1C9; --gold-tint:#FDF8E7;
+  --ink:#3A3029; --ink-soft:#5E5046; --brand:#3A3029; --brand-dark:#2B241F; --brand-soft:#FBF1C9;
+  --accent:#F5C518; --accent-soft:#FBF1C9;
+  --bg:#F1E9DF; --card:#FAF6F1; --muted:#8E8175; --line:#E2D7CA; --line-strong:#D6C9BA;
+  --ok:#15803D; --ok-soft:#E3F4E8; --danger:#DC2626; --danger-soft:#FBE4E1; --warn:#B4560F;
+  --r:26px; --r-sm:20px; --r-lg:32px;
+  --shadow:0 18px 34px -24px rgba(58,48,41,.5);
+  --shadow-sm:0 14px 26px -22px rgba(58,48,41,.45);
+  --shadow-gold:0 10px 22px -10px rgba(184,134,11,.8);
+  --brown:#4E3F35; --group:#E7DDD1;
+  --c-1:#27B9B5; --c-2:#F0B21A; --c-3:#3796D3; --c-4:#EC8434; --c-5:#E45C86; --c-6:#9460DC; --c-7:#46B064; --c-8:#DE6650;
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --f-head:'Baloo Bhaijaan 2','Cairo',system-ui,sans-serif;
+}
+body{background:var(--bg);color:var(--ink)}
+h1,h2,h3,.logo .brand-txt,.cta,.hbtn,.pagehead h2,.sec-head h2,.mt-head,.quick-btn .qb-t b,.services-btn .sb-t b,.rc-head b,.rc-total .big,.success h2,.payresult h2,.cartbar .cgo,.cartbar .cinfo b,.dchip b,.promo-card .pc-tx b,.pc-pct b,.lticket .tk-body b,.plan-name,.plan-price{font-family:var(--f-head)}
+h1,h2,h3{letter-spacing:0}
+
+/* الهيدر */
+header.top{background:rgba(241,233,223,.9);border-bottom:0}
+.logo .mk{border-radius:14px;box-shadow:0 10px 18px -10px rgba(184,134,11,.9)}
+.hbtn{border-radius:999px;padding:10px 16px}
+.hbtn.ghost{background:var(--card);border:0}
+.loc-chip{border:0;border-radius:999px;background:var(--card)}
+
+/* الرئيسية: من أصفر صريح إلى أرضية دافية وعنوان بني كبير */
+.hero{background:linear-gradient(180deg,#FBF3EA 0%,var(--bg) 100%);color:var(--ink)}
+.hero::before{display:none}
+.hero-wave{display:none}
+.hero h1,.hero.hero-slim h1{font-family:var(--f-head);font-weight:800;font-size:2.35rem;line-height:1.35;letter-spacing:0;color:var(--ink)}
+.hero-sub b{color:var(--ink-soft)} .hero-sub span{color:var(--muted)}
+.hero-slim .hero-in{padding-bottom:10px}
+.promo-card{background:var(--brown);border-radius:var(--r);padding:16px 18px;box-shadow:0 18px 30px -20px rgba(58,48,41,.8);transition:transform .28s var(--spring)}
+.promo-card:active{transform:scale(.97)}
+.pc-pct{width:62px;height:62px;border-radius:18px;box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,0,.08)}
+.pc-tx b{color:#FFF8EF}
+.home-banner{border:0;border-radius:var(--r-sm);background:var(--gold-soft)}
+
+/* بلاطات الأقسام الملوّنة */
+.maint .mt-head{font-size:1.05rem;color:var(--muted);font-weight:700;margin:6px 4px 14px}
+.maint .mt-grid{grid-template-columns:repeat(4,1fr);gap:10px}
+.maint .mt-tile{background:none;border:0;box-shadow:none;padding:0;min-height:0;gap:10px;justify-content:flex-start;transition:transform .28s var(--spring)}
+.maint .mt-tile:hover{transform:none;border-color:transparent}
+.maint .mt-tile:active{transform:scale(.92)}
+.maint .mt-tile .mt-ic,.maint .mt-tile.more .mt-ic,.scard .sico,.services-btn .sb-ic,.ct-ic{--c:var(--c-1);color:#fff;
+  background:linear-gradient(165deg,color-mix(in srgb,var(--c) 72%,#fff) 0%,var(--c) 55%,color-mix(in srgb,var(--c) 88%,#000) 100%);
+  box-shadow:0 12px 20px -10px color-mix(in srgb,var(--c) 85%,transparent),inset 0 2px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,0,.08);border:0}
+.maint .mt-tile .mt-ic{width:68px;height:68px;border-radius:21px}
+.maint .mt-tile .mt-ic svg{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
+.maint .mt-tile:nth-child(2) .mt-ic{--c:var(--c-2)} .maint .mt-tile:nth-child(3) .mt-ic{--c:var(--c-3)} .maint .mt-tile:nth-child(4) .mt-ic{--c:var(--c-4)}
+.maint .mt-tile:nth-child(5) .mt-ic{--c:var(--c-5)} .maint .mt-tile:nth-child(6) .mt-ic{--c:var(--c-6)} .maint .mt-tile:nth-child(7) .mt-ic{--c:var(--c-7)} .maint .mt-tile:nth-child(8) .mt-ic{--c:var(--c-8)}
+.maint .mt-tile.more .mt-ic{--c:var(--c-8)}
+.maint .mt-tile b{font-size:.88rem;font-weight:700;color:var(--ink-soft)}
+.ctile{border:0;border-radius:var(--r)} .ct-ic{border-radius:20px}
+.ctile:nth-child(2) .ct-ic{--c:var(--c-2)} .ctile:nth-child(3) .ct-ic{--c:var(--c-3)} .ctile:nth-child(4) .ct-ic{--c:var(--c-4)}
+
+/* طلب سريع + أزرار الأقسام */
+.quick-btn{background:var(--gold);border-radius:var(--r);padding:18px;box-shadow:0 14px 26px -16px rgba(184,134,11,.9);transition:transform .28s var(--spring)}
+.quick-btn::after{display:none}
+.quick-btn:hover{transform:none;box-shadow:0 14px 26px -16px rgba(184,134,11,.9)}
+.quick-btn:active{transform:scale(.97)}
+.quick-btn .qb-ic{border-radius:18px;background:rgba(255,255,255,.45)}
+.quick-btn .qb-t b{font-size:1.35rem;letter-spacing:0}
+.quick-btn .qb-t small{color:#5b4a14}
+.quick-btn .qb-ar{width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.45);display:grid;place-items:center}
+.services-btn{border:0;border-radius:var(--r);transition:transform .28s var(--spring)}
+.services-btn:active{transform:scale(.97)}
+.services-btn .sb-ic{--c:var(--c-6);border-radius:17px;color:#fff !important}
+.services-btn .sb-ic svg{color:#fff}
+.services-btn.sol-btn .sb-ic{--c:var(--c-7)} .services-btn.mysub-btn .sb-ic{--c:var(--c-3)}
+.acc-tile{border:0;border-radius:var(--r-sm);box-shadow:var(--shadow-sm);transition:transform .28s var(--spring)}
+.acc-tile:active{transform:scale(.95)}
+.trust-item{border:0;box-shadow:none;background:var(--group)}
+.lticket{background:var(--card);box-shadow:var(--shadow-sm);border-radius:var(--r)}
+.lticket .tk-left::after{display:none}
+.lticket .tk-left{border-radius:20px;margin:12px;width:62px;background:var(--gold-soft);color:var(--gold-deep)}
+.lticket .tk-body b{color:var(--ink)} .lticket .tk-body span{color:var(--muted)}
+.lticket .tk-mini i{background:var(--group)}
+.lticket .tk-mini i.on{background:var(--c-1);box-shadow:none}
+.lticket .tk-mini i.on:nth-child(2){background:var(--c-2)} .lticket .tk-mini i.on:nth-child(3){background:var(--c-3)} .lticket .tk-mini i.on:nth-child(4){background:var(--c-4)} .lticket .tk-mini i.on:nth-child(5){background:var(--c-5)} .lticket .tk-mini i.on:nth-child(6){background:var(--c-6)}
+
+/* بطاقات الخدمات */
+.scard,.pcard,.panel,.obook,.rcpt,.plan-card,.value-card,.mj-card,.paybox{border:0}
+.scard{border-radius:var(--r);transition:transform .28s var(--spring)}
+.scard .sico{border-radius:16px}
+.grid .scard:nth-child(8n+2) .sico{--c:var(--c-2)} .grid .scard:nth-child(8n+3) .sico{--c:var(--c-3)} .grid .scard:nth-child(8n+4) .sico{--c:var(--c-4)}
+.grid .scard:nth-child(8n+5) .sico{--c:var(--c-5)} .grid .scard:nth-child(8n+6) .sico{--c:var(--c-6)} .grid .scard:nth-child(8n+7) .sico{--c:var(--c-7)} .grid .scard:nth-child(8n+8) .sico{--c:var(--c-8)}
+.pill{background:var(--group)}
+.scard .add{background:var(--group);color:var(--ink);border-radius:999px;min-height:48px;transition:transform .28s var(--spring),background .2s}
+.scard .add:hover{background:var(--group)}
+.scard .add:active{transform:scale(.95)}
+.scard .add.in{background:var(--c-1);color:#fff}
+
+/* شريط السلة: كبسولة بنية عائمة */
+.cartbar{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:var(--brown);border-radius:var(--r-lg);box-shadow:0 18px 34px -14px rgba(58,48,41,.8)}
+.cartbar .wrap{height:72px;padding-inline:14px}
+.cartbar .cgo{border-radius:999px;min-height:50px;padding:0 24px}
+
+/* الصفحات الداخلية */
+.back{border:0;border-radius:50%;background:var(--card);width:46px;height:46px}
+.pagehead h2{font-weight:800}
+.panel{border-radius:var(--r)}
+.field input,.field textarea,.field select{border:0;background:#fff;border-radius:var(--r-sm);min-height:56px;padding:14px 18px;box-shadow:inset 0 0 0 1.5px transparent}
+.field input:focus,.field textarea:focus,.field select:focus{border:0;box-shadow:inset 0 0 0 2px var(--gold)}
+.dchip{border:0;background:var(--card);border-radius:18px;transition:transform .25s var(--spring)}
+.dchip.active{background:var(--brown);color:#FFF8EF}
+.more-date{border:0;border-radius:18px;background:var(--card)}
+.slot{border:0;background:var(--card);border-radius:999px;min-height:52px;transition:transform .25s var(--spring),background .2s}
+.slot.active{background:var(--gold);color:var(--ink)}
+.slot:active,.dchip:active{transform:scale(.94)}
+.addr-chip{border:0;border-radius:999px;background:var(--card)}
+.addr-chip.active{background:var(--brown);color:#FFF8EF}
+.notify-toggle,.agree{border:0;border-radius:var(--r-sm);background:var(--card)}
+
+/* الأزرار */
+.cta{background:var(--brown);color:#FFF8EF;border-radius:999px;min-height:62px;font-size:1.25rem;font-weight:800;letter-spacing:0;box-shadow:0 10px 22px -10px rgba(58,48,41,.7);transition:transform .28s var(--spring)}
+.cta:hover{transform:none}
+.cta:active{transform:scale(.95)}
+.cta.gold{background:var(--gold);color:var(--ink);box-shadow:var(--shadow-gold)}
+.sbtn{border:0;border-radius:999px;background:var(--group);padding:11px 18px}
+.sbtn.ok{background:var(--ok-soft)} .sbtn.danger{background:var(--danger-soft)}
+.wbtn{border-radius:999px}
+
+/* الفاتورة والدفع والطلبات */
+.rcpt{border-radius:var(--r)}
+.rc-head{background:var(--brown);color:var(--gold)}
+.rc-opts button{border-radius:999px}
+.payopt label{border:0;border-radius:var(--r-sm);background:var(--card)}
+.payopt label.on{background:var(--gold-tint);box-shadow:inset 0 0 0 2.5px var(--gold)}
+.payopt .badges span{border-radius:999px}
+.obook{border-radius:var(--r)}
+.status{padding:6px 14px}
+.warranty-note,.finding-note,.reject-note,.delay-note,.advance-note,.arrived-note,.pay-due,.pay-note,.reminder-note,.policy-note,.late-note,.labor-note{border:0;border-radius:var(--r-sm)}
+.success .circle{background:#22B15A;box-shadow:0 16px 30px -12px rgba(34,177,90,.7)}
+.tsheet,.loc-sheet{border-radius:var(--r-lg) var(--r-lg) 0 0}
+.rv-card,.ct-tier,.mj-opts button,.loc-cities button{border:0;border-radius:var(--r-sm)}
+.acc-head{border-radius:var(--r);background:var(--brown);color:#FFF8EF}
+
+/* قائمة الأقسام + الشريط السفلي للخطوات + رأس الحساب */
+.catbtn{border:0;border-radius:var(--r);transition:transform .28s var(--spring)}
+.catbtn:hover{transform:none;box-shadow:var(--shadow-sm)}
+.catbtn:active{transform:scale(.95)}
+.catbtn .cb-ic{--c:var(--c-1);color:#fff;border-radius:19px;border:0;
+  background:linear-gradient(165deg,color-mix(in srgb,var(--c) 72%,#fff) 0%,var(--c) 55%,color-mix(in srgb,var(--c) 88%,#000) 100%);
+  box-shadow:0 12px 20px -10px color-mix(in srgb,var(--c) 85%,transparent),inset 0 2px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,0,.08)}
+.catbtn .cb-ic svg{color:#fff}
+.catbtn:nth-child(8n+1) .cb-ic{--c:var(--c-4)} .catbtn:nth-child(8n+2) .cb-ic{--c:var(--c-5)} .catbtn:nth-child(8n+3) .cb-ic{--c:var(--c-6)} .catbtn:nth-child(8n+4) .cb-ic{--c:var(--c-7)}
+.catbtn:nth-child(8n+5) .cb-ic{--c:var(--c-8)} .catbtn:nth-child(8n+6) .cb-ic{--c:var(--c-1)} .catbtn:nth-child(8n+7) .cb-ic{--c:var(--c-2)} .catbtn:nth-child(8n+8) .cb-ic{--c:var(--c-3)}
+.nextbar,.sol-bar{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:var(--brown);border:0;border-radius:var(--r-lg);box-shadow:0 18px 34px -14px rgba(58,48,41,.8)}
+.nextbar .wrap{padding-inline:16px}
+.nextbar .nb-go{border-radius:999px;min-height:50px;font-family:var(--f-head);font-size:1.1rem}
+.nextbar .nb-go:hover{background:var(--gold)}
+.acc-hero{background:var(--brown);border-radius:var(--r);color:#FFF8EF}
+
+@media (max-width:640px){ .hero h1,.hero.hero-slim h1{font-size:2.1rem} }
+@media (prefers-reduced-motion:reduce){ *{transition-duration:.01s !important} }
+
+/* ═══ شاشة التحميل: حركة «المفتاح يشدّ ثم يطلع البيت» ═══ */
+#khSplash{position:fixed;inset:0;z-index:99999;background:#FBF3EA;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:opacity .45s ease,transform .45s ease}
+#khSplash.out{opacity:0;transform:scale(1.04);pointer-events:none}
+#khSplash .logo3{width:128px;height:128px;border-radius:22.37%;position:relative;background:linear-gradient(160deg,#FFD24A,#FFC324 55%,#F2B100);box-shadow:0 20px 36px -16px rgba(184,134,11,.8),inset 0 2px 0 rgba(255,255,255,.45),inset 0 -4px 0 rgba(0,0,0,.06);transform-origin:49.88% 48.13%;animation:dr3Tile var(--sp,4.8s) cubic-bezier(.45,0,.25,1) 1 both}
+#khSplash .logo3 svg{position:absolute;inset:0;width:100%;height:100%}
+#khSplash p{font-family:var(--f-head);font-weight:600;font-size:18px;color:#8E8175;margin:0;animation:khFadeUp .8s .6s cubic-bezier(.22,1,.36,1) both}
+#khSplash .ln{fill:none;stroke:#fff;stroke-width:12;stroke-linejoin:round;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:dr3H var(--sp,4.8s) cubic-bezier(.55,.05,.25,1) 1 both}
+#khSplash .fl{animation:dr3FH var(--sp,4.8s) cubic-bezier(.45,0,.2,1) 1 both}
+#khSplash .wg{transform-box:view-box;transform-origin:399px 385px;animation:dr3Wig var(--sp,4.8s) linear 1 both}
+#khSplash .shd{opacity:0;animation:dr3Shd var(--sp,4.8s) ease 1 both}
+#khSplash .sw{animation:dr3Sw var(--sp,4.8s) cubic-bezier(.6,.02,.3,1) 1 both}
+@keyframes khFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes dr3Tile{0%{transform:rotate(-40deg) scale(.8);opacity:0}5%,18%{transform:rotate(-40deg);opacity:1}27%{transform:rotate(-18deg)}29%,40%{transform:rotate(-20deg)}49%{transform:rotate(3deg) scale(1.04)}53%{transform:rotate(-1deg) scale(.99)}56%{transform:none}100%{transform:none;opacity:1}}
+@keyframes dr3Wig{0%,5%{transform:scale(0);opacity:0;animation-timing-function:cubic-bezier(.34,1.35,.64,1)}13%,29%{transform:none;opacity:1;animation-timing-function:ease-in-out}34%{transform:rotate(-18deg);animation-timing-function:ease-in-out}40%,100%{transform:none}}
+@keyframes dr3H{0%,56%{stroke-dashoffset:1}66%,100%{stroke-dashoffset:0}}
+@keyframes dr3FH{0%,66%{transform:translateY(0)}78%,100%{transform:translateY(-640px)}}
+@keyframes dr3Shd{0%,76%{opacity:0}84%,100%{opacity:1}}
+@keyframes dr3Sw{0%,80%{transform:translateX(-900px)}94%,100%{transform:translateX(900px)}}
+@media (prefers-reduced-motion:reduce){ #khSplash *{animation-duration:.01s !important} }
+
+</style><!--/kh-skin-->
 </head>
 <body>
+<!--kh-splash--><div id="khSplash" onclick="this.classList.add('out')"><div class="logo3" role="img" aria-label="خافت"><svg class="flat dr3" viewBox="129 55 800 800" aria-hidden="true"><defs><clipPath id="spcH"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/></clipPath><clipPath id="spcW"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcL"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcT"><rect x="129" y="55" width="800" height="800" rx="179"/></clipPath><linearGradient id="spfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".035" stop-color="#fff" stop-opacity=".9"/><stop offset=".07" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><linearGradient id="spshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#E9D3A0" stop-opacity=".45"/></linearGradient><linearGradient id="spwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><radialGradient id="spnut" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8E4"/><stop offset=".6" stop-color="#F3DC9C"/><stop offset="1" stop-color="#D9AE3E"/></radialGradient><filter id="spb30" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter><filter id="spb10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="spb4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs><g class="wg"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="url(#spwf)"/></g><polygon class="ln lh" pathLength="1" points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><g clip-path="url(#spcH)"><rect class="fl fh" x="129" y="770" width="800" height="720" fill="url(#spfill)"/></g><g clip-path="url(#spcL)" class="shd"><rect x="129" y="400" width="800" height="400" fill="url(#spshade)"/></g><g clip-path="url(#spcT)"><g class="sw"><g transform="skewX(-22)"><rect x="340" y="-100" width="260" height="1100" fill="#fff" opacity=".22" filter="url(#spb30)"/><rect x="455" y="-100" width="34" height="1100" fill="#fff" opacity=".55" filter="url(#spb10)"/></g></g></g><g clip-path="url(#spcL)"><g class="sw"><g transform="skewX(-22)"><rect x="360" y="-100" width="70" height="1100" fill="#C9962A" opacity=".28" filter="url(#spb10)"/><rect x="452" y="-100" width="18" height="1100" fill="#fff" filter="url(#spb4)"/><rect x="478" y="-100" width="7" height="1100" fill="#FFFDF5" opacity=".9"/></g></g></g></svg></div><p>صيانة منزلك في أيادٍ أمينة</p></div>
+<script>(function(){var el=document.getElementById('khSplash');if(!el)return;var first=true;try{first=!localStorage.getItem('kh_splash_seen');localStorage.setItem('kh_splash_seen','1');}catch(e){}
+var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;var d=rm?0.6:(first?4.8:2.6);el.style.setProperty('--sp',d+'s');
+setTimeout(function(){el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},600);},d*1000+250);})();</script><!--/kh-splash-->
 
 <header class="top">
   <div class="wrap">
@@ -1063,7 +1266,7 @@ let PHONE    = '0590497866';        // رقم التواصل (يتغيّر من 
 let WHATSAPP = '966590497866';      // واتساب بصيغة دولية بدون + (يتغيّر من إعدادات الإدارة)
 const HOURS    = 'يومياً ٨ ص – ١٠ م'; // ساعات العمل
 const CITY     = 'الخبر';             // منطقة التغطية
-const WARRANTY = 'ضمان ٧ أيام';       // الضمان
+let WARRANTY = 'ضمان ٣٠ يوم';       // الضمان (يتحدّث من الإعدادات app_warranty_days)
 /* لوحة المؤسسة انتقلت لصفحة admin.html بحساب Supabase — ما عاد فيه رمز هنا */
 /* أيام الإجازة — ما نستقبل فيها حجوزات.
    الترقيم: ٠=الأحد ١=الإثنين ٢=الثلاثاء ٣=الأربعاء ٤=الخميس ٥=الجمعة ٦=السبت
@@ -1108,7 +1311,10 @@ function applySettings(rows){
   const tm=stNum('tamara_min',null); if(tm>=0) TAMARA_MIN_LABOR=tm;
   const apc=stNum('advance_pct',null); if(apc>=0) ADVANCE_PCT=Math.min(50,apc);
   FIRST_PCT=Math.max(0,stNum('first_order_pct',0)); LAUNCH_PCT=Math.max(0,stNum('launch_pct',0));
+  WELCOME_CREDIT=Math.max(0,stNum('welcome_credit',0)); APP_WARRANTY=Math.max(0,stNum('app_warranty_days',30));
+  if(APP_WARRANTY>0) WARRANTY=LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+'-day warranty');
   const lu=String(SETTINGS.launch_until||''); LAUNCH_UNTIL=/^\d{4}-\d{2}-\d{2}/.test(lu)?lu.slice(0,10):null;
+  try{ checkAppBuild(); }catch(e){}
 }
 /* مفاتيح التحكم من الإدارة (القيمة الافتراضية: مفعّل) */
 function stOn(k,d){ const v=SETTINGS[k]; if(v==null||v==='') return d!==false; return v==='1'||v==='true'; }
@@ -1116,15 +1322,88 @@ function bookingEnabled(){ return stOn('booking_enabled',true); }
 function quickEnabled(){ return stOn('quick_enabled',true); }
 function tamaraEnabled(){ return stOn('tamara_enabled',true); }
 function referralEnabled(){ return stOn('referral_enabled',true); }
+/* ═ إجبار التحديث: إذا النسخة أقدم من app_min_build في الإعدادات يظهر حاجز يوجّه للمتجر (أو لتحديث الصفحة على الويب) ═ */
+function checkAppBuild(){
+  const S=SETTINGS||{}; const min=parseInt(S.app_min_build,10)||0; let w=document.getElementById('updWall');
+  if(!(min>APP_BUILD)){ if(w) w.remove(); return false; }
+  if(w) return true;
+  const A=!_uiEN();
+  const plat=(window.Capacitor&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform())||'web';
+  const msg=String(S.app_update_msg||'').trim()||(A?'فيه تحديث مهم. حدّث التطبيق عشان تكمل.':'An important update is available. Update the app to continue.');
+  const btn = plat==='ios' ? '<a class="uw-btn" href="https://apps.apple.com/sa/app/id6790860656" target="_blank" rel="noopener">'+(A?'افتح آب ستور':'Open App Store')+'</a>'
+            : plat==='android' ? '<a class="uw-btn" href="https://play.google.com/store/apps/details?id=com.khafet.app" target="_blank" rel="noopener">'+(A?'افتح قوقل بلاي':'Open Google Play')+'</a>'
+            : '<button type="button" class="uw-btn" onclick="location.reload()">'+(A?'حدّث الصفحة':'Reload')+'</button>';
+  w=document.createElement('div'); w.id='updWall'; w.setAttribute('role','dialog'); w.setAttribute('aria-modal','true');
+  w.innerHTML='<div class="uw-box"><div class="uw-ic">⬆️</div><h2>'+(A?'حدّث التطبيق':'Update required')+'</h2><p>'+esc(msg)+'</p>'+btn+'</div>';
+  document.body.appendChild(w); return true;
+}
+/* ═ عدّاد التثبيتات الفريدة: معرّف ثابت لكل جهاز (يبقى حتى لو انمسح تخزين المتصفح)، يُسجَّل مرة باليوم. يعطي الإدارة عدد الأجهزة الفعلي بدون تكرار ═ */
+async function registerInstall(app, build){
+  try{
+    if(!sb) return;
+    const day=new Date().toISOString().slice(0,10);
+    try{ if(localStorage.getItem('kh_install_day')===day) return; }catch(e){}
+    let id=await KH_STORE.getItem('kh_install_id');
+    if(!id || !/^[0-9a-f-]{36}$/i.test(id)){
+      id=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{ const r=Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); });
+      await KH_STORE.setItem('kh_install_id',id);
+    }
+    const C=window.Capacitor; const p=(C&&C.isNativePlatform&&C.isNativePlatform()&&C.getPlatform)?C.getPlatform():'web';
+    const r=await sb.rpc('register_install',{ p_id:id, p_app:app, p_platform:(p==='ios'||p==='android')?p:'web', p_build:build });
+    if(r && !r.error){ try{ localStorage.setItem('kh_install_day',day); }catch(e){} }
+  }catch(e){}
+}
+/* ═ تحديث تلقائي زي أي تطبيق: نسأل المتجر، ولو فيه نسخة أحدث يطلع حاجز «حدّث التطبيق». أندرويد يحدّث من داخل التطبيق، وآيفون يفتح آب ستور ═ */
+function verGt(a,b){ const x=String(a||'').split('.').map(n=>parseInt(n,10)||0), y=String(b||'').split('.').map(n=>parseInt(n,10)||0); for(let i=0;i<Math.max(x.length,y.length);i++){ if((x[i]||0)!==(y[i]||0)) return (x[i]||0)>(y[i]||0); } return false; }
+let _storeChk=0;
+async function checkStoreUpdate(){
+  try{
+    const C=window.Capacitor; if(!(C&&C.isNativePlatform&&C.isNativePlatform())) return;
+    if(Date.now()-_storeChk < 3600000) return; _storeChk=Date.now();
+    const AU=(C.Plugins&&C.Plugins.AppUpdate)||(typeof C.registerPlugin==='function'?C.registerPlugin('AppUpdate'):null); if(!AU) return;
+    const info=await AU.getAppUpdateInfo({ country:'SA' }); if(!info) return;
+    const plat=C.getPlatform();
+    const newer = plat==='android' ? (info.updateAvailability===2 && (+info.availableVersionCode||0) > (+info.currentVersionCode||0))
+                                   : verGt(info.availableVersionName, info.currentVersionName);
+    if(!newer || document.getElementById('updWall')) return;
+    // أول يوم من نزول النسخة في آب ستور: ممكن ما توصل لكل الأجهزة، فنسمح بـ«لاحقًا»
+    const rel=info.availableVersionReleaseDate ? new Date(info.availableVersionReleaseDate).getTime() : 0;
+    const soft = plat==='ios' && rel>0 && (Date.now()-rel < 86400000);
+    const A=!_uiEN();
+    const w=document.createElement('div'); w.id='updWall'; w.setAttribute('role','dialog'); w.setAttribute('aria-modal','true');
+    w.innerHTML='<div class="uw-box"><div class="uw-ic">⬆️</div><h2>'+(A?'فيه نسخة جديدة':'New version available')+'</h2><p>'+(A?'حدّث خافِت لآخر نسخة عشان تكمل.':'Update خافِت to the latest version to continue.')+'</p>'
+      +'<button type="button" class="uw-btn" id="uwGo">'+(A?'حدّث الآن':'Update now')+'</button>'
+      +(soft?'<button type="button" id="uwLater" style="margin-top:12px;background:none;border:none;color:var(--muted);font-weight:800;font-family:inherit;font-size:.95rem;cursor:pointer">'+(A?'لاحقًا':'Later')+'</button>':'')+'</div>';
+    document.body.appendChild(w);
+    document.getElementById('uwGo').onclick=async function(){
+      try{ if(plat==='android' && info.immediateUpdateAllowed){ await AU.performImmediateUpdate(); } else { await AU.openAppStore({ country:'SA' }); } }
+      catch(e){ try{ await AU.openAppStore({ country:'SA' }); }catch(_){} } };
+    const l=document.getElementById('uwLater'); if(l) l.onclick=function(){ w.remove(); };
+  }catch(e){}
+}
+document.addEventListener('DOMContentLoaded',function(){ setTimeout(checkStoreUpdate,1500); });
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') checkStoreUpdate(); });
 function homeBannerHtml(){
   const off=!bookingEnabled(); const txt=off?(SETTINGS.booking_msg||'الحجز متوقف مؤقتًا، نرجع لكم قريبًا.'):String(SETTINGS.home_banner||'').trim();
   if(!txt) return '';
+  if(!off && txt===String(SETTINGS.app_update_msg||'').trim()) return '';   // رسالة «حدّث التطبيق» موجّهة للنسخ القديمة فقط
   return `<div class="home-banner ${off?'off':''}">${off?'⏸️':'📣'} ${esc(txt)}</div>`;
 }
 /* بطاقة عرض الإطلاق: من الإعدادات launch_pct و launch_until، تختفي تلقائيًا بعد التاريخ */
+function appPerksHtml(){
+  if(!(WELCOME_CREDIT>0) && !(APP_WARRANTY>0)) return '';
+  const main = WELCOME_CREDIT>0 ? LX('رصيد ترحيبي لأول طلب من التطبيق','Welcome credit on your first app order') : LX('ضمان على كل طلب من التطبيق','Warranty on every app order');
+  const sub = (WELCOME_CREDIT>0 && APP_WARRANTY>0) ? LX('ومعه ضمان '+ar(APP_WARRANTY)+' يوم على شغل اليد','plus a '+APP_WARRANTY+'-day labor warranty') : LX('لو رجعت نفس المشكلة نرجع لك مجانًا','If the same issue returns, we come back free');
+  const big = WELCOME_CREDIT>0 ? ar(WELCOME_CREDIT) : ar(APP_WARRANTY);
+  const unit = WELCOME_CREDIT>0 ? LX('ريال','SAR') : LX('يوم','days');
+  return `<button type="button" class="promo-card" onclick="go('services')" aria-label="${LX('مزايا التطبيق','App perks')}">
+    <span class="pc-pct"><b>${big}</b><small>${unit}</small></span>
+    <span class="pc-tx"><b>${main}</b><small>${sub}</small></span>
+    <span class="pc-arr">${_uiEN()?'›':'‹'}</span>
+  </button>`;
+}
 function launchPromoHtml(){
-  if(!(LAUNCH_PCT>0) || !LAUNCH_UNTIL) return '';
-  if(dateISO(new Date())>LAUNCH_UNTIL) return '';
+  if(!(LAUNCH_PCT>0) || !LAUNCH_UNTIL || dateISO(new Date())>LAUNCH_UNTIL) return appPerksHtml();
   return `<button type="button" class="promo-card" onclick="go('services')" aria-label="${LX('عرض الإطلاق','Launch offer')}">
     <span class="pc-pct"><b>${ar(LAUNCH_PCT)}٪</b><small>${LX('خصم','OFF')}</small></span>
     <span class="pc-tx"><b>${LX('على أجرة اليد لكل طلب من التطبيق','Off labor on every order in the app')}</b><small>${LX('العرض ينتهي ','Offer ends ')+dayLabel(LAUNCH_UNTIL)}</small></span>
@@ -1262,7 +1541,9 @@ const KH_STORE={
   async setItem(k,v){ try{ localStorage.setItem(k,v); }catch(e){} try{ if(_khPrefs) await _khPrefs.set({key:k,value:String(v)}); }catch(e){} _secSet(k,v); },
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
-const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false } };
+/* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
+const APP_BUILD=101;
+const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
   Storage.prototype.removeItem=function(k){ _rm.call(this,k); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.remove({key:k}).catch(()=>{}); if(this===localStorage) _secRm(k); }catch(e){} };
@@ -1420,6 +1701,7 @@ async function initCloud(){
   try{
     if(window.supabase && SUPABASE_URL && SUPABASE_ANON && !/YOUR_/.test(SUPABASE_URL)){
       sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, KH_AUTH_OPTS);
+      registerInstall('khafet', APP_BUILD);
       cloudReady=true;
       await ensureAnonSession();
       loadPrices();
@@ -1715,6 +1997,8 @@ function serverMsg(e){
     KHAFET_BOOKING_OFF:  LX(SETTINGS.booking_msg||'الحجز متوقف مؤقتًا، نرجع لكم قريبًا','Booking is paused right now'),
     KHAFET_WARRANTY_DUP: LX('بلاغ الضمان لهذا الطلب مسجّل عندنا من قبل','A warranty claim for this order is already registered'),
     KHAFET_UNPAID:       LX('فيه مبلغ متبقٍ على الطلب','This order still has a balance due'),
+    KHAFET_UPDATE_REQUIRED: LX('حدّث التطبيق من المتجر عشان تكمل','Update the app from the store to continue'),
+    KHAFET_COMPLAINT_SHORT: LX('اكتب تفاصيل أكثر عن الشكوى','Please add more details to the complaint'),
     KHAFET_BLOCKED:      LX('تعذّر إكمال الطلب من التطبيق، تواصل معنا على '+PHONE,'We could not complete this order in the app, please call '+PHONE),
   };
   for(const k in MAP){ if(m.indexOf(k)>=0) return MAP[k]; }
@@ -2001,8 +2285,81 @@ function render(){
   if(view==='faq') return renderFaq();
   if(view==='tips') return renderTips();
   if(view==='tip') return renderTipDetail();
+  if(view==='complaints') return renderComplaints();
   if(view==='solutions') return renderSolutions();
   if(view==='solution') return renderSolutionDetail();
+}
+/* ---------- 📣 الشكاوى برقم متابعة + 🔔 تفضيل إشعارات العروض (نظام حماية البيانات والتجارة الإلكترونية) ---------- */
+let COMPLAINTS=[], cmpLoaded=false, cmpBusy=false, cmpKind='quality', cmpOrderPre='', cmpDone=null, mktPref=null;
+const CMP_KINDS=[['quality','جودة الشغل','Work quality'],['late','تأخر أو عدم حضور','Late or no show'],['price','السعر أو الفاتورة','Price or invoice'],['tech','تعامل الفني','Technician conduct'],['app','التطبيق أو الدفع','App or payment'],['other','أخرى','Other']];
+const CMP_ST={open:['قيد المراجعة','Under review'],progress:['جارٍ المعالجة','In progress'],closed:['أُغلقت','Closed']};
+function cmpKindLabel(k){ const r=CMP_KINDS.find(x=>x[0]===k); return r?LX(r[1],r[2]):String(k||''); }
+function cmpSla(){ const n=stNum('complaint_sla_days',3); return n>0?Math.round(n):3; }
+async function loadComplaints(){
+  if(!cloudReady||!sb){ cmpLoaded=true; return; }
+  try{ if(!myUid) await ensureAnonSession();
+    const r=await sb.from('khafet_complaints').select('id,ticket_no,kind,body,status,reply,replied_at,order_no,created_at').order('created_at',{ascending:false}).limit(50);
+    if(!r.error && Array.isArray(r.data)) COMPLAINTS=r.data;
+  }catch(e){}
+  cmpLoaded=true; if(view==='complaints') render();
+}
+function openComplaint(orderDbId){ cmpOrderPre=orderDbId||''; cmpDone=null; go('complaints'); }
+function setCmpKind(k){ cmpKind=k; const b=(document.getElementById('cmp_body')||{}).value||''; const o=(document.getElementById('cmp_order')||{}).value||''; cmpOrderPre=o; render(); const el=document.getElementById('cmp_body'); if(el) el.value=b; }
+async function submitComplaint(){
+  if(cmpBusy) return;
+  const body=((document.getElementById('cmp_body')||{}).value||'').trim();
+  const ord=(document.getElementById('cmp_order')||{}).value||'';
+  if(body.length<10){ toast(LX('اكتب تفاصيل الشكوى (10 أحرف على الأقل)','Describe the complaint (at least 10 characters)')); return; }
+  if(!cloudReady||!sb){ toast(LX('الشكوى تحتاج اتصال بالإنترنت','A connection is needed to send a complaint')); return; }
+  cmpBusy=true; const btn=document.getElementById('cmp_send'); if(btn){ btn.disabled=true; btn.textContent='⏳'; }
+  try{
+    if(!myUid) await ensureAnonSession();
+    const c=state.customer||{};
+    const r=await sb.from('khafet_complaints').insert({ kind:cmpKind, body, customer_name:c.name||'', customer_phone:c.phone||'', order_id:ord||null }).select('ticket_no').single();
+    if(r.error) throw r.error;
+    cmpDone=r.data.ticket_no; cmpOrderPre=''; cmpBusy=false; await loadComplaints(); render(); window.scrollTo(0,0);
+  }catch(e){ cmpBusy=false; toast(serverMsg(e)||LX('ما انرسلت الشكوى، حاول مرة ثانية','Could not send, try again')); if(btn){ btn.disabled=false; btn.textContent=LX('📣 إرسال الشكوى','📣 Send complaint'); } }
+}
+function renderComplaints(){
+  if(!cmpLoaded) loadComplaints();
+  const orders=myOrders().filter(o=>o.dbId);
+  const sla=cmpSla();
+  const form = cmpDone
+    ? `<div class="panel cmp-ticket" style="margin-top:14px"><div style="font-size:2rem">✅</div><h3>${LX('استلمنا شكواك','We received your complaint')}</h3>
+        <div class="no">#${ar(cmpDone)}</div>
+        <p style="color:var(--muted);font-weight:700">${LX('هذا رقم المتابعة. نرد عليك هنا خلال '+ar(sla)+' أيام عمل.','This is your tracking number. We reply here within '+sla+' working days.')}</p>
+        <button class="cta" style="margin-top:12px" onclick="cmpDone=null;render()">${LX('شكوى أخرى','Another complaint')}</button></div>`
+    : `<div class="panel" style="margin-top:14px">
+        <h3>${LX('نوع الشكوى','Complaint type')}</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${CMP_KINDS.map(k=>`<button class="sbtn ${cmpKind===k[0]?'ok':''}" onclick="setCmpKind('${k[0]}')">${LX(k[1],k[2])}</button>`).join('')}</div>
+        ${orders.length?`<div class="field" style="margin-top:16px"><label>${LX('الطلب المتعلق بالشكوى (اختياري)','Related order (optional)')}</label>
+          <select id="cmp_order"><option value="">${LX('بدون طلب محدد','No specific order')}</option>${orders.slice(0,30).map(o=>`<option value="${esc(o.dbId)}" ${cmpOrderPre===o.dbId?'selected':''}>${esc(o.id)} · ${esc(dayLabel(o.date))}</option>`).join('')}</select></div>`:''}
+        <div class="field" style="margin-top:16px"><label>${LX('وش اللي صار؟','What happened?')} <span class="req">*</span></label>
+          <textarea id="cmp_body" rows="6" maxlength="2000" placeholder="${LX('اكتب التفاصيل: وش المشكلة، ومتى، ووش تبي نسوي لك','Describe the issue, when it happened, and what you would like us to do')}"></textarea></div>
+        <button class="cta" id="cmp_send" style="margin-top:6px" onclick="submitComplaint()">${LX('📣 إرسال الشكوى','📣 Send complaint')}</button>
+      </div>`;
+  const list = COMPLAINTS.length ? `<div class="panel" style="margin-top:12px"><h3>${LX('شكاواي','My complaints')}</h3>${COMPLAINTS.map(c=>{ const st=CMP_ST[c.status]||CMP_ST.open;
+      return `<div class="cmp-item"><div class="hd"><b>#${ar(c.ticket_no)} · ${esc(cmpKindLabel(c.kind))}</b><span class="status ${c.status==='closed'?'done':(c.status==='progress'?'progress':'new')}">${LX(st[0],st[1])}</span></div>
+        <small>${esc(String(c.created_at||'').slice(0,10))}${c.order_no?' · '+LX('طلب','Order')+' #'+ar(c.order_no):''}</small>
+        <p>${esc(c.body)}</p>${c.reply?`<div class="cmp-reply"><b>${LX('رد خافِت:','Khafet reply:')}</b> ${esc(c.reply)}</div>`:''}</div>`; }).join('')}</div>` : '';
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead(LX('الشكاوى','Complaints'),'account')}
+      <div class="flow-sum">📣 <span>${LX('كل شكوى تاخذ رقم متابعة، ونرد عليك هنا خلال '+ar(sla)+' أيام عمل.','Every complaint gets a tracking number and a reply here within '+sla+' working days.')}</span></div>
+      ${form}${list}
+      <div style="height:26px"></div>
+    </div>`;
+}
+async function loadMktPref(){
+  if(!cloudReady||!sb) return;
+  try{ if(!myUid) await ensureAnonSession(); const r=await sb.rpc('my_marketing_pref'); if(!r.error){ mktPref=(r.data!==false); if(view==='account'){ const el=document.getElementById('acc_mkt'); if(el) el.checked=mktPref; } } }catch(e){}
+}
+async function setMarketing(on){
+  mktPref=!!on;
+  if(!cloudReady||!sb){ toast(LX('يحتاج اتصال بالإنترنت','Needs a connection')); return; }
+  try{ if(!myUid) await ensureAnonSession(); const r=await sb.rpc('set_marketing_pref',{ p_on:!!on }); if(r.error) throw r.error;
+    toast(on?LX('🔔 بتوصلك العروض والإعلانات','🔔 Offers are on'):LX('🔕 أوقفنا إشعارات العروض. إشعارات طلباتك مستمرة','🔕 Offers are off. Order updates continue')); }
+  catch(e){ toast(LX('ما انحفظ الخيار، حاول مرة ثانية','Could not save, try again')); }
 }
 /* ---------- 🏘️ حلول جاهزة (مشكلة معروفة + حلها بسعر ثابت)، تُدار من لوحة الإدارة ---------- */
 let SOLUTIONS=[], curSolution=null, solutionsLoaded=false;
@@ -2152,11 +2509,12 @@ let sugKind='اقتراح';
 function setSugKind(k){ sugKind=k; renderSuggest(); }
 function renderSuggest(){
   const c=state.customer||{};
-  const kinds=[['اقتراح','💡'],['شكوى','⚠️'],['شكر','🌟']];
+  const kinds=[['اقتراح','💡'],['شكر','🌟']];
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('رأيك يهمنا','home')}
-      <div class="flow-sum">💬 <span>اكتب لنا وبنقرأ كل كلمة — رأيك يطوّر خدمتنا فعلاً.</span></div>
+      <div class="flow-sum">💬 <span>اكتب لنا وبنقرأ كل كلمة، رأيك يطوّر خدمتنا فعلاً.</span></div>
+      <p style="margin-top:10px;font-size:.92rem;font-weight:700">عندك شكوى؟ <a onclick="openComplaint('')" style="color:var(--gold-deep);font-weight:900;cursor:pointer;text-decoration:underline">قدّمها برقم متابعة</a></p>
       <div class="panel" style="margin-top:14px">
         <h3>نوع الرسالة</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2277,6 +2635,7 @@ async function verifyOtpCode(){
     otpStep=false;
     await loadOrdersFromCloud();
     toast('أهلاً بك 👋'); go('account');
+    loadMyRef().then(()=>{ if(['account','info','home','checkout'].includes(view)) render(); });   // الرصيد الترحيبي بعد التوثيق
   }catch(e){
     console.warn('otp verify:', e.message||e);
     toast('الرمز غير صحيح أو انتهت صلاحيته');
@@ -2292,11 +2651,22 @@ async function loadMyRef(){
   if(!cloudReady || !sb) return;
   try{
     const { data:code } = await sb.rpc('my_referral_code');       // ينشئه أول مرة
+    await claimWelcome();
     const { data:info } = await sb.rpc('my_credit');
     myRef = { code: code || (info&&info.code) || null,
               balance: (info&&+info.balance) || 0,
               referrals: (info&&+info.referrals) || 0 };
   }catch(e){ console.warn('ref:', e.message||e); }
+}
+async function claimWelcome(){
+  try{
+    if(!isVerified || !sb) return;
+    try{ if(localStorage.getItem('kh_welcome_done')==='1') return; }catch(e){}
+    const { data, error } = await sb.rpc('claim_welcome_credit');
+    if(error || !data) return;
+    if(data.ok){ toast(LX('🎁 انضاف لك '+ar(data.amount)+' ريال رصيد ترحيبي','🎁 '+data.amount+' SAR welcome credit added')); }
+    if(data.ok || ['already','not_new','off','demo'].includes(data.reason)){ try{ localStorage.setItem('kh_welcome_done','1'); }catch(e){} }
+  }catch(e){}
 }
 function copyCode(code){ try{ navigator.clipboard.writeText(code); toast('📋 تم نسخ الكود'); }catch(e){ toast(code); } }
 function shareCode(code){
@@ -2381,6 +2751,7 @@ async function confirmDeleteAccount(){
 }
 function renderAccount(){
   if(!(state.customer&&state.customer.phone)){ go('login'); return; }
+  if(mktPref===null) loadMktPref();
   const c=state.customer||{}; const n=myOrders().length; const code=myRef.code;
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
@@ -2403,8 +2774,13 @@ function renderAccount(){
       <div class="acc-grid">
         <button class="acc-tile" onclick="go('mybookings')"><span class="ti">📋</span><b>طلباتي</b><small>${ar(n)} ${n===1?'طلب':'طلبات'}</small></button>
         ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>باقات الصيانة</b><small>وفّر أكثر</small></button>`:''}
-        <button class="acc-tile" onclick="go('suggest')"><span class="ti">💡</span><b>رأيك يهمنا</b><small>اقتراح · شكوى</small></button>
+        <button class="acc-tile" onclick="go('suggest')"><span class="ti">💡</span><b>رأيك يهمنا</b><small>اقتراح أو شكر</small></button>
+        <button class="acc-tile" onclick="openComplaint('')"><span class="ti">📣</span><b>الشكاوى</b><small>برقم متابعة</small></button>
         <button class="acc-tile" onclick="go('faq')"><span class="ti">❓</span><b>الأسئلة الشائعة</b><small>إجابات سريعة</small></button>
+      </div>
+
+      <div class="panel" style="margin-top:12px"><h3>🔔 الإشعارات</h3>
+        <label class="sw-row"><input type="checkbox" id="acc_mkt" ${mktPref===false?'':'checked'} onchange="setMarketing(this.checked)"><span><b>العروض والإعلانات</b><small>إشعارات الخصومات والجديد. تقدر توقفها أي وقت، وإشعارات طلباتك توصلك دائمًا.</small></span></label>
       </div>
 
       ${code?`<div class="panel" style="margin-top:12px"><h3>🎟️ كودك — شاركه واكسب</h3>
@@ -2799,6 +3175,7 @@ function payBox(amount, opts){
 
 /* ══ دفع الطلبات: أجرة اليد وقت الحجز، والمتبقي بعد الفاتورة ══ */
 let TAMARA_MIN_LABOR=200;   // تمارا تظهر إذا المبلغ المدفوع عند الحجز فوق الحد (يتغيّر من الإعدادات)
+let WELCOME_CREDIT=0, APP_WARRANTY=30;   // مزايا التطبيق: رصيد ترحيبي لأول طلب + ضمان الشغل
 let FIRST_PCT=0, LAUNCH_PCT=0, LAUNCH_UNTIL=null;   // خصم أول طلب / خصم الإطلاق على أجرة اليد (من الإعدادات)
 let orderPayMethod='online';
 function setOrderPay(m){
@@ -3765,7 +4142,8 @@ function receiptHtml(priceTxt, d){
     d.loyDisc>0 ? row('🎁 '+LX('مكافأة ولاء','Loyalty reward'), '', '− '+money(d.loyDisc)) : '',
     d.pPct>0 ? row('🎟️ '+LX('خصم كود صديق','Friend code discount')+' '+ar(d.pPct)+'٪', '', '− '+money(Math.round(laborPrice()*d.pPct/100))) : '',
     (d.promo&&d.promo.amt>0) ? row(promoLabel(d.promo.kind,d.promo.pct), '', '− '+money(d.promo.amt)) : '',
-    d.advDisc>0 ? row('📅 '+LX('خصم الحجز المبكر','Early booking discount'), '', '− '+money(d.advDisc)) : ''
+    d.advDisc>0 ? row('📅 '+LX('خصم الحجز المبكر','Early booking discount'), '', '− '+money(d.advDisc)) : '',
+    d.credit>0 ? row('💰 '+LX('رصيدك','Your credit'), '', '− '+money(d.credit)) : ''
   ].join('');
   return `<div class="rcpt">
     <div class="rc-head"><b>🧾 ${LX('ملخص طلبك','Order summary')}</b><small>${LX('الأسعار بالريال','Prices in SAR')}</small></div>
@@ -3773,7 +4151,7 @@ function receiptHtml(priceTxt, d){
     ${parts.length?`<div class="rc-sec">${LX('القطع','Parts')}<small>${LX('عندك الغرض؟ اضغط × وتنشال من الحساب','Have the part? Tap × to remove it')}</small></div>${partRows}`:''}
     ${feeAmount()>0?`<div class="rc-sec">${LX('الوصول','Visit')}</div>`+row('🚚 '+LX('رسوم وصول الفني','Technician visit fee'),'',money(feeAmount())):''}
     ${discRows?`<div class="rc-sec">${LX('الخصومات','Discounts')}</div>`+discRows:''}
-    <div class="rc-total"><span>${LX('الإجمالي','Total')}</span><b class="big">${priceTxt}</b></div>
+    <div class="rc-total"><span>${d.credit>0?LX('تدفع الآن','You pay now'):LX('الإجمالي','Total')}</span><b class="big">${d.credit>0?money(d.payNow):priceTxt}</b></div>
     <div class="rc-note">${LX('تدفع أجرة اليد والقطع والوصول الحين، وأي قطع إضافية يحتاجها الشغل تظهر في فاتورة الفني.','You pay labor, parts and the visit now. Extra parts, if needed, appear on the technician invoice.')}</div>
   </div>`;
 }
@@ -3861,9 +4239,12 @@ function renderInfo(){
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <b style="color:#0b7a3b">💰 رصيدك ${ar(myRef.balance)} ر.س</b>
           <span style="color:#0b7a3b;font-weight:800;font-size:.86rem">يُخصم تلقائياً</span>
-        </div></div>`:''}`}
+        </div></div>`:((!isVerified && WELCOME_CREDIT>0)?`<button type="button" class="panel" onclick="go('account')" style="display:block;width:100%;text-align:start;padding:14px 16px;background:#fff8dc;border-color:var(--gold);cursor:pointer;font-family:inherit">
+          <b style="display:block;color:var(--ink)">🎁 ${LX('أول طلب لك؟ خذ '+ar(WELCOME_CREDIT)+' ريال رصيد','First order? Get '+WELCOME_CREDIT+' SAR credit')}</b>
+          <span style="display:block;color:var(--muted);font-weight:700;font-size:.84rem;margin-top:3px">${LX('وثّق رقم جوالك من «حسابي» ويُخصم من هذا الطلب تلقائيًا','Verify your mobile number in Account and it comes off this order automatically')}</span>
+        </button>`:'')}`}
 
-      ${state.subReq?'':receiptHtml(priceTxt, {loyDisc, pPct, advDisc, promo})}
+      ${state.subReq?'':receiptHtml(priceTxt, {loyDisc, pPct, advDisc, promo, credit:(quickMode||state.subReq)?0:Math.max(0,afterAll-payNow), payNow})}
 
       ${state.subReq?`<div class="panel" style="margin-top:12px"><div class="field" style="margin:0">
         <label>📝 ملاحظات (اختياري)</label>
@@ -4398,7 +4779,7 @@ function printInvoiceDoc(o){
 <div class="meta"><div><span>العميل</span>${esc((o.customer||{}).name||'')}</div><div><span>الجوال</span>${esc((o.customer||{}).phone||'')}</div>${addr?`<div><span>العنوان</span>${esc(addr)}</div>`:''}${o.date?`<div><span>تاريخ الخدمة</span>${dayLabel(o.date)}</div>`:''}</div>
 ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
 <div class="sum">${s.disc>0?`<div><span>المجموع</span><span>${money(s.sub)}</span></div><div class="g"><span>🎟️ خصم ${ar(inv.discountPct)}٪</span><span>− ${money(s.disc)}</span></div>`:''}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}٪</span><span>${money(vatOf(s.total))}</span></div>`:''}${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${(inv.dropped&&inv.dropped.length)?`<div class="g"><span>↩️ أغراض عندك: ${esc(inv.dropped.map(d=>d.name).join('، '))}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(+inv.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(inv.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
-<div class="wr"><span>🛡️ ضمان الشغل ${o.warrantyDays>0?ar(o.warrantyDays)+' يوم':'٧ أيام'}</span>${g.part.length?'<span>🔩 ضمان القطع سنتان</span>':''}</div>
+<div class="wr"><span>🛡️ ضمان الشغل ${ar(o.warrantyDays>0?o.warrantyDays:APP_WARRANTY)+' يوم'}</span>${g.part.length?'<span>🔩 ضمان القطع سنتان</span>':''}</div>
 ${zatcaQr(s.total, vatOf(s.total), o.date)?`<div id="qr" style="margin:14px auto 0;width:140px"></div>`:''}
 <div class="ft">${legalLine()}<br>${vatLine()}<br>شكراً لتعاملك مع ${BRAND} · ${PHONE}</div>
 ${zatcaQr(s.total, vatOf(s.total), o.date)?`<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"><\/script><script>try{ new QRCode(document.getElementById('qr'),{text:'${zatcaQr(s.total, vatOf(s.total), o.date)}',width:140,height:140}); }catch(e){}<\/script>`:''}
@@ -4562,7 +4943,7 @@ const T_DICT = {
   // المزوّد / الانضمام
   "سجّل الآن —":"Register now —",": أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.":": Complete your details and start receiving orders in your cities.","الاسم / اسم المؤسسة":"Name / business name","مثال: خافت-K7F2M9":"e.g. Khafet-K7F2M9","مثال:":"e.g.",
   // برامج/عناصر متفرقة
-  "ضمان ٧ أيام":"7-day warranty","ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Warranty on labor and parts. If the same issue returns, we come back at no extra cost.","لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.":"If the same issue recurs within the period, contact us and we'll fix it.",
+  "ضمان ٧ أيام":"7-day warranty","رصيد ترحيبي":"Welcome credit","ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Warranty on labor and parts. If the same issue returns, we come back at no extra cost.","لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.":"If the same issue recurs within the period, contact us and we'll fix it.",
   "قائمة الأسعار":"Price list","قائمة المهام":"Job list","العمل المطلوب":"Work needed","العميل":"Customer","عميل":"Customer","علامة":"Landmark","المدة التقريبية":"Est. time","مهامك — الوقت والموقع والعمل المطلوب":"Your jobs — time, location and work needed","لا توجد مهام حالياً":"No jobs right now",
   // الوحدات والوقت
   "دقيقة":"min","ساعة":"hour","ساعتان":"2 hours","ساعتين":"2 hours","ساعات":"hours","يوم":"day","ر.س":"SAR",
