@@ -10,8 +10,8 @@
 <meta name="theme-color" content="#F5C518" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" /></noscript>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
@@ -1192,6 +1192,58 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .nextbar .nb-go:hover{background:var(--gold)}
 .acc-hero{background:var(--brown);border-radius:var(--r);color:#FFF8EF}
 
+/* ═ ملاحظات 2026-09-19: الكمية، السلة، ملخص السعر والمدة، تمارا، الرصيد ═ */
+.srow{border:0;border-radius:var(--r-sm);cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .25s var(--spring),box-shadow .2s}
+.srow:active{transform:scale(.98)}
+.srow.sel{background:var(--card);box-shadow:inset 0 0 0 2.5px var(--c-1),var(--shadow-sm)}
+.srow .srow-ic{border-radius:16px;background:var(--gold-soft)}
+.srow .srow-t b{font-family:var(--f-head)}
+.srow.sel .srow-ck{background:var(--c-1);border-color:var(--c-1);color:#fff}
+.srow-qty{display:inline-flex;align-items:center;gap:2px;background:var(--group);border-radius:999px;padding:4px;flex:none}
+.srow-qty button{width:38px;height:38px;border-radius:50%;background:#fff;font-size:1.35rem;font-weight:800;line-height:1;color:var(--ink);display:grid;place-items:center;transition:transform .2s var(--spring)}
+.srow-qty button:last-child{background:var(--gold)}
+.srow-qty button:active{transform:scale(.88)}
+.srow-qty b{min-width:30px;text-align:center;font-family:var(--f-head);font-size:1.15rem}
+.addmore{border:0;border-radius:999px;background:var(--group);color:var(--ink-soft)}
+.nextbar .wrap{height:auto;min-height:74px;padding-block:10px}
+.nb-sum{display:flex;flex-direction:column;gap:2px}
+.nb-sum div{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.nb-sum span{font-size:.84rem;opacity:.75;font-weight:700}
+.nb-sum b{font-family:var(--f-head);font-size:1.02rem}
+.nb-sum div:first-child b{font-size:1.18rem;color:var(--gold)}
+.hbtn.cartbtn{position:relative;background:var(--gold);color:var(--ink);padding:10px 14px}
+.hbtn.cartbtn .badge{background:var(--brown);color:#FFF8EF}
+.long-note{margin:0 0 12px;background:var(--gold-soft);border-radius:16px;padding:10px 14px;font-weight:700;font-size:.88rem;color:var(--ink-soft);line-height:1.7}
+.opt{font-style:normal;font-family:'Cairo',sans-serif;font-size:.72rem;font-weight:700;background:var(--group);color:var(--muted);border-radius:999px;padding:2px 10px;margin-inline-start:6px;vertical-align:middle}
+.mkt-mini{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;color:var(--muted);font-size:.8rem;font-weight:700}
+.wnote{display:flex;align-items:flex-start;gap:12px;background:var(--gold-soft);border-radius:var(--r-sm);padding:14px 14px 14px 10px;margin-top:16px}
+.wnote .wn-i{font-size:1.5rem;line-height:1.2}
+.wnote .wn-b{flex:1;display:flex;flex-direction:column;gap:2px}
+.wnote .wn-b b{font-family:var(--f-head);font-size:1rem}
+.wnote .wn-b span{font-size:.84rem;color:var(--ink-soft);font-weight:600;line-height:1.6}
+.wnote .wn-x{width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.7);font-size:1.3rem;line-height:1;color:var(--ink-soft);flex:none}
+.mybal{display:flex;align-items:center;gap:10px;background:var(--ok-soft);border-radius:16px;padding:11px 14px;margin-bottom:12px;font-weight:800;color:var(--ok)}
+.mybal b{font-family:var(--f-head);font-size:1.1rem}
+.mybal em{margin-inline-start:auto;font-style:normal;font-size:.78rem;font-weight:700;opacity:.85}
+.payopt label.tm-ad{background:linear-gradient(135deg,#F3E9FF 0%,#FFE9F3 100%);position:relative;overflow:hidden}
+.payopt label.tm-ad.on{box-shadow:inset 0 0 0 2.5px #7B2FF7}
+.tm-free{display:inline-block;background:#7B2FF7;color:#fff;border-radius:999px;padding:1px 10px;font-size:.72rem;font-weight:800;margin-inline-start:6px;vertical-align:middle}
+.tm-amt{margin-top:4px;font-size:.88rem;color:var(--ink-soft);font-weight:600}
+.tm-amt b{font-family:var(--f-head);font-size:1.35rem;color:#5A1FBF}
+.tm-tease{display:flex;align-items:center;gap:12px;width:100%;text-align:start;margin-top:10px;background:linear-gradient(135deg,#F3E9FF 0%,#FFE9F3 100%);border-radius:var(--r-sm);padding:13px 14px;transition:transform .25s var(--spring)}
+.tm-tease:active{transform:scale(.97)}
+.tm-tease .tt{display:flex;flex-direction:column;gap:2px}
+.tm-tease .tt b{font-size:.92rem;line-height:1.6}
+.tm-tease .tt small{color:#5A1FBF;font-weight:800;font-size:.8rem}
+.price-row2{display:flex;flex-direction:column;gap:4px;background:var(--card);border-radius:var(--r-sm);padding:13px 16px;margin-top:9px;cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .25s var(--spring)}
+.price-row2:active{transform:scale(.985)}
+.price-row2.sel{box-shadow:inset 0 0 0 2.5px var(--c-1),var(--shadow-sm)}
+.price-row2 .pr-l1,.price-row2 .pr-l2{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.price-row2 .pr-name{font-weight:800;font-size:1rem}
+.price-row2 .pr-price{font-family:var(--f-head);font-size:1.1rem;white-space:nowrap}
+.price-row2 .pr-l2{color:var(--muted);font-size:.84rem;font-weight:700}
+.price-row2 .pr-l3{display:flex;justify-content:flex-end;margin-top:6px}
+
 @media (max-width:640px){ .hero h1,.hero.hero-slim h1{font-size:2.1rem} }
 @media (prefers-reduced-motion:reduce){ *{transition-duration:.01s !important} }
 
@@ -1233,9 +1285,12 @@ setTimeout(function(){el.classList.add('out');setTimeout(function(){if(el.parent
     <button id="langBtn" class="hbtn ghost" onclick="toggleLang()" title="English / عربي">
       <span>🌐</span><span class="lbl">EN</span>
     </button>
+    <button id="cartBtn" class="hbtn ghost cartbtn" onclick="go('cart')" style="display:none" aria-label="السلة">
+      <span>🛒</span><span class="badge" id="cartCountB">0</span>
+    </button>
     <button id="accountBtn" class="hbtn ghost" onclick="go('account')" style="display:none">
       <span>👤</span><span class="lbl">حسابي</span>
-      <span class="badge" id="myCount">0</span>
+      <span class="badge" id="myCount" style="display:none">0</span>
     </button>
     <button id="loginBtn" class="hbtn ghost" onclick="go('login')">
       <span>👤</span><span class="lbl">تسجيل الدخول</span>
@@ -1542,7 +1597,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=101;
+const APP_BUILD=102;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -1570,7 +1625,6 @@ const SERVICES = [
   {id:'p2', cat:'plumb', ico:'🚰', name:'تسليك مجاري/بالوعة', desc:'تسليك انسداد المجاري أو البالوعات.',      dur:45, price:120, quick:true},
   {id:'p3', cat:'plumb', ico:'🔩', name:'تغيير خلاط ماء',      desc:'تركيب خلاط مغسلة أو مطبخ جديد.',          dur:40, price:100},
   {id:'p4', cat:'plumb', ico:'💧', name:'إصلاح تسريب مياه',    desc:'كشف ومعالجة تسريب المواسير والوصلات.',    dur:60, price:150, quick:true},
-  {id:'pleak', cat:'plumb', ico:'🔎', name:'كشف تسريب المياه بالأجهزة', desc:'فحص شامل لكامل المنزل بالأجهزة — بدون تكسير.', dur:60, price:150, quick:true},
   {id:'p5', cat:'plumb', ico:'♨️', name:'تركيب/إصلاح سخان',    desc:'تركيب سخان جديد أو صيانة القديم — بدون قطع الغيار.', dur:90, price:250},
   {id:'p6', cat:'plumb', ico:'🚽', name:'إصلاح سيفون الحمام',  desc:'إصلاح أو تغيير طرمبة/سيفون الكرسي.',      dur:45, price:110},
   {id:'e1', cat:'elec',  ico:'💡', name:'تغيير لمبة/إضاءة',    desc:'تركيب أو تغيير لمبات وإضاءة.',            dur:20, price:50,  quick:true},
@@ -2257,7 +2311,8 @@ function slotAvailable(iso,startMin,needMin,excludeId){
 }
 function scheduleDuration(){ if(quickMode) return QUICK_DURATION; const d=cartDuration(); return d>0?d:60; }
 // نافذة الوصول المعروضة للعميل
-function windowLabel(startMin){ return fmtTime(startMin)+' – '+fmtTime(Math.min(startMin+ARRIVAL_WINDOW, WORK_END)); }
+function windowSpan(need){ if(!stOn('long_window_enabled',true)) return ARRIVAL_WINDOW; const from=stNum('long_window_from_min',ARRIVAL_WINDOW)||ARRIVAL_WINDOW; return (need>from) ? Math.ceil(need/ARRIVAL_WINDOW)*ARRIVAL_WINDOW : ARRIVAL_WINDOW; }
+function windowLabel(startMin, need){ return fmtTime(startMin)+' – '+fmtTime(Math.min(startMin+windowSpan(need||0), WORK_END)); }
 
 /* ============================================================
    التنقل / العرض
@@ -2274,6 +2329,7 @@ function render(){
   if(view==='mysub') return renderMySub();
   if(view==='services') return renderServices();
   if(view==='pick') return renderPick();
+  if(view==='cart') return renderCart();
   if(view==='time') return renderTime();
   if(view==='info') return renderInfo();
   if(view==='confirm') return renderConfirm();
@@ -2779,9 +2835,6 @@ function renderAccount(){
         <button class="acc-tile" onclick="go('faq')"><span class="ti">❓</span><b>الأسئلة الشائعة</b><small>إجابات سريعة</small></button>
       </div>
 
-      <div class="panel" style="margin-top:12px"><h3>🔔 الإشعارات</h3>
-        <label class="sw-row"><input type="checkbox" id="acc_mkt" ${mktPref===false?'':'checked'} onchange="setMarketing(this.checked)"><span><b>العروض والإعلانات</b><small>إشعارات الخصومات والجديد. تقدر توقفها أي وقت، وإشعارات طلباتك توصلك دائمًا.</small></span></label>
-      </div>
 
       ${code?`<div class="panel" style="margin-top:12px"><h3>🎟️ كودك — شاركه واكسب</h3>
         <div class="ref-code"><b>${esc(code)}</b><button class="sbtn ok" data-code="${esc(code)}" onclick="copyCode(this.dataset.code)">📋 نسخ</button></div>
@@ -2805,17 +2858,12 @@ function renderAccount(){
         <p style="color:var(--muted);font-size:.8rem;margin-top:8px">تختار أي عنوان منها عند الحجز، أو تضيف عنواناً جديداً.</p>
       </div>`:''}
 
-      ${inApp()?`<div class="panel" style="margin-top:12px"><h3>🔔 الإشعارات</h3>
-        <p style="color:var(--muted);font-size:.86rem;line-height:1.7">نبلّغك أول ما ينطلق الفني إليك، ووصوله لبابك، وجاهزية فاتورتك.</p>
-        <div id="push-status" style="margin-top:10px;font-weight:800;font-size:.92rem">${esc(LX(pushState,pushState))}</div>
-        <button class="cta" style="margin-top:12px" onclick="initPush()">🔄 تفعيل / إعادة المحاولة</button>
-      </div>`:''}
 
       <div class="acc-foot">
         <a href="privacy.html" target="_blank" rel="noopener">🔒 الخصوصية</a> ·
         <a href="privacy.html#terms" target="_blank" rel="noopener">📜 الشروط</a> ·
         <a href="privacy.html#refund" target="_blank" rel="noopener">↩️ الإلغاء والاسترجاع</a>
-        <div class="legal-box">${legalLine()}<br>${vatLine()}<br>${esc(legalInfo().email)} · ${ar(PHONE)}${legalInfo().maroof?` · <a href="${esc(legalInfo().maroof)}" target="_blank" rel="noopener">موثّق في معروف</a>`:''}</div>
+        <label class="mkt-mini"><input type="checkbox" id="acc_mkt" ${mktPref===false?'':'checked'} onchange="setMarketing(this.checked)"> ${LX('توصلني إشعارات العروض','Send me offer notifications')}</label>
         <div style="margin-top:10px;color:var(--muted);font-size:.78rem">${BRAND} · الإصدار ${APP_VER}</div>
         <button class="cta" style="background:transparent;color:var(--muted);border:1px solid var(--line);margin-top:16px" onclick="logoutAccount()">🚪 تسجيل الخروج</button>
         <button class="acc-danger" onclick="openDeleteAccount()">حذف حسابي نهائياً</button>
@@ -3174,7 +3222,7 @@ function payBox(amount, opts){
 }
 
 /* ══ دفع الطلبات: أجرة اليد وقت الحجز، والمتبقي بعد الفاتورة ══ */
-let TAMARA_MIN_LABOR=200;   // تمارا تظهر إذا المبلغ المدفوع عند الحجز فوق الحد (يتغيّر من الإعدادات)
+let TAMARA_MIN_LABOR=300;   // تمارا تظهر إذا المبلغ المدفوع عند الحجز فوق الحد (يتغيّر من الإعدادات)
 let WELCOME_CREDIT=0, APP_WARRANTY=30;   // مزايا التطبيق: رصيد ترحيبي لأول طلب + ضمان الشغل
 let FIRST_PCT=0, LAUNCH_PCT=0, LAUNCH_UNTIL=null;   // خصم أول طلب / خصم الإطلاق على أجرة اليد (من الإعدادات)
 let orderPayMethod='online';
@@ -3184,17 +3232,32 @@ function setOrderPay(m){
   const b=document.getElementById('orderPayCta');
   if(b) b.textContent = m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara') : LX('💳 ادفع ','💳 Pay ')+b.dataset.amt;
 }
+/* إشعار الرصيد الترحيبي: لغير الموثّق اللي ما له طلبات، ويتقفل بـ× */
+function welcomeNoteHtml(){
+  if(isVerified || !(WELCOME_CREDIT>0) || (myOrders()||[]).length) return '';
+  try{ if(localStorage.getItem('kh_welcome_note_x')==='1') return ''; }catch(e){}
+  return `<div class="wnote" id="wnote"><span class="wn-i">🎁</span><div class="wn-b"><b>${LX('أول طلب لك؟ لك '+ar(WELCOME_CREDIT)+' ريال رصيد','First order? You get '+WELCOME_CREDIT+' SAR credit')}</b><span>${LX('سجّل دخولك برقم جوالك وينخصم من طلبك تلقائيًا.','Sign in with your mobile number and it comes off your order automatically.')}</span></div><button type="button" class="wn-x" aria-label="إغلاق" onclick="closeWelcomeNote()">×</button></div>`;
+}
+function closeWelcomeNote(){ try{ localStorage.setItem('kh_welcome_note_x','1'); }catch(e){} const el=document.getElementById('wnote'); if(el) el.remove(); }
 function orderPayBox(amount, labor){
-  if(orderPayMethod==='tamara' && !(tamaraEnabled() && labor>TAMARA_MIN_LABOR)) orderPayMethod='online';
-  const tamara = (tamaraEnabled() && labor>TAMARA_MIN_LABOR) ? `
-      <label data-m="tamara" class="${orderPayMethod==='tamara'?'on':''}" onclick="setOrderPay('tamara')">
+  const tmOk = tamaraEnabled() && labor>=TAMARA_MIN_LABOR;
+  if(orderPayMethod==='tamara' && !tmOk) orderPayMethod='online';
+  const left = Math.max(0, Math.ceil(TAMARA_MIN_LABOR - labor));
+  const tamara = tmOk ? `
+      <label data-m="tamara" class="tm-ad ${orderPayMethod==='tamara'?'on':''}" onclick="setOrderPay('tamara')">
         <input type="radio" name="opaym" value="tamara" ${orderPayMethod==='tamara'?'checked':''}>
-        <div><div class="t">${LX('قسّطها مع تمارا','Split it with Tamara')}</div>
-        <div class="d">${LX('ادفع '+money(Math.round(amount/4))+' اليوم والباقي على دفعات بدون فوائد','Pay '+en(Math.round(amount/4))+' SAR today, the rest in interest free instalments')}</div>
+        <div><div class="t">${LX('قسّطها على 4 دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
+        <div class="tm-amt"><b>${money(Math.round(amount/4))}</b> ${LX('فقط اليوم، والباقي على 3 أشهر','only today, the rest over 3 months')}</div>
         <div class="badges"><span class="tamara-badge">tamara</span></div></div>
-      </label>` : '';
+      </label>`
+    : (tamaraEnabled() && left>0 && left<=150) ? `
+      <button type="button" class="tm-tease" onclick="go('home')">
+        <span class="tamara-badge">tamara</span>
+        <span class="tt"><b>${LX('باقي لك '+money(left)+' وتقسّط طلبك على 4 دفعات بدون فوائد','Add '+en(left)+' SAR more to split your order into 4 interest free payments')}</b><small>${LX('أضف خدمة ثانية بنفس الزيارة ＋','Add another service to the same visit ＋')}</small></span>
+      </button>` : '';
   return `<div class="paybox">
     <h4>💳 ${LX('الدفع','Payment')}</h4>
+    ${(isVerified||myRef.balance>0)?`<div class="mybal"><span>💰 ${LX('رصيدي','My credit')}</span><b>${money(myRef.balance||0)}</b>${myRef.balance>0?`<em>${LX('انخصم من طلبك','applied to your order')}</em>`:''}</div>`:''}
     <div class="payopt">
       <label data-m="online" class="${orderPayMethod==='online'?'on':''}" onclick="setOrderPay('online')">
         <input type="radio" name="opaym" value="online" ${orderPayMethod==='online'?'checked':''}>
@@ -3535,6 +3598,7 @@ function syncHeader(){
   const n=myOrders().length;
   document.getElementById('myCount').textContent=ar(n);
   const loggedIn=!!(state.customer&&state.customer.phone);   // داخل بحسابه؟
+  const cb=document.getElementById('cartBtn'); if(cb){ const cn=quickMode?0:cartCount(); cb.style.display=cn>0?'':'none'; const cc=document.getElementById('cartCountB'); if(cc) cc.textContent=ar(cn); }
   const ab=document.getElementById('accountBtn'); if(ab) ab.style.display=loggedIn?'':'none';
   const lb=document.getElementById('loginBtn'); if(lb) lb.style.display=loggedIn?'none':'';
   const lc=document.getElementById('locCity'); if(lc) lc.textContent=(state.address&&state.address.city)?state.address.city:'حدّد موقعك';
@@ -3614,7 +3678,7 @@ function renderHome(){
       </div>` : '';
 
   document.getElementById('app').innerHTML=`
-    ${homeBannerHtml()}${privacyNoticeHtml()}
+    ${homeBannerHtml()}
     <div class="hero hero-slim">
       <div class="hero-in">
         <h1>${esc(solText('hero_title','اطلب صيانة'))}</h1>
@@ -3665,14 +3729,14 @@ function renderHome(){
       </button>`:''}
 
       <div class="acc-grid" style="margin-top:12px">
-        <button class="acc-tile" onclick="go('prices')"><span class="ti">${icon('tag',26)}</span><b>قائمة الأسعار</b><small>تصفّح الخدمات واطلب</small></button>
-        <button class="acc-tile" onclick="go('tips')"><span class="ti">${icon('book',26)}</span><b>نصائح السلامة</b><small>مقالات تحمي بيتك</small></button>
+        ${stOn('prices_tile_enabled',true)?`<button class="acc-tile" onclick="go('prices')"><span class="ti">${icon('tag',26)}</span><b>قائمة الأسعار</b><small>تصفّح الخدمات واطلب</small></button>`:''}
+        ${stOn('tips_enabled',true)?`<button class="acc-tile" onclick="go('tips')"><span class="ti">${icon('book',26)}</span><b>${esc(solText('tips_title','نصائح السلامة'))}</b><small>${esc(solText('tips_sub','مقالات تحمي بيتك'))}</small></button>`:''}
       </div>
 
       <div class="trust">
         <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${WARRANTY}</b></div>
         <div class="trust-item"><span class="ti-ic">${icon('wrench',14)}</span><b>فنيون معتمدون</b></div>
-        <div class="trust-item"><span class="ti-ic">${icon('gift',14)}</span><b>خدمات مجانية</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('tag',14)}</span><b>أسعار مناسبة</b></div>
       </div>
 
       <div class="lticket" role="button" tabindex="0" onclick="showLoyaltyInfo()">
@@ -3729,19 +3793,19 @@ function renderPrices(){
     const c=CATS[k];
     const rows=SERVICES.filter(s=>s.cat===k && !s.hidden).map(s=>{
       const sel=!!state.cart[s.id];
-      return `<button class="price-row ${sel?'sel':''}" onclick="toggleService('${s.id}')">
-        <span class="pr-check">${sel?'✓':''}</span>
-        <span class="pr-name">${s.ico} ${s.name}</span>
-        <span class="pr-dur">${fmtDuration(s.dur)}</span>
-        <span class="pr-price">${s.custom?'بعد المعاينة':money(s.price)}</span>
-      </button>`;
+      const q=state.cart[s.id]||0;
+      return `<div role="button" tabindex="0" class="price-row2 ${sel?'sel':''}" onclick="pickRowTap('${s.id}')">
+        <div class="pr-l1"><span class="pr-name">${s.ico} ${s.name}</span><b class="pr-price">${s.custom?'بعد المعاينة':money(s.price)}</b></div>
+        <div class="pr-l2"><span>${LX('المدة التقريبية','Estimated time')}</span><span>${fmtDuration(s.dur)}</span></div>
+        ${sel&&!s.custom?`<div class="pr-l3" onclick="event.stopPropagation()"><span class="srow-qty"><button type="button" onclick="setQty('${s.id}',-1)" aria-label="أقل">−</button><b>${ar(q)}</b><button type="button" onclick="setQty('${s.id}',1)" aria-label="أكثر">+</button></span></div>`:''}
+      </div>`;
     }).join('');
     return rows?`<div class="price-cat"><h3><span style="color:var(--gold-deep)">${catIcon(k,20)}</span> ${c.name}</h3>${rows}</div>`:'';
   }).join('');
   const n=cartCount();
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))} · ${money(cartPrice())}</b><small>${LX('المدة التقريبية ','Est. time ')}${fmtDuration(cartDuration())}</small></div>
+      <div class="nb-info nb-sum"><div><span>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))}</span><b>${money(cartPrice())}</b></div><div><span>${LX('المدة التقريبية','Estimated time')}</span><b>${fmtDuration(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="go('time')">التالي <span>←</span></button>
     </div></div>` : '';
   document.getElementById('app').innerHTML=`
@@ -3927,16 +3991,17 @@ function renderPick(){
   const list=SERVICES.filter(s=>s.cat===currentCat && !s.hidden);
   const rows=list.map(s=>{
     const sel=!!state.cart[s.id];
-    return `<button class="srow ${sel?'sel':''}" onclick="toggleService('${s.id}')">
+    const q=state.cart[s.id]||0;
+    return `<div role="button" tabindex="0" class="srow ${sel?'sel':''}" onclick="pickRowTap('${s.id}')">
       <span class="srow-ic">${s.ico}</span>
-      <span class="srow-t"><b>${s.name}</b><small>⏱️ ${fmtDuration(s.dur)} · ${s.custom?'بعد المعاينة':money(s.price)}</small></span>
-      <span class="srow-ck">${sel?'✓':''}</span>
-    </button>`;
+      <span class="srow-t"><b>${s.name}</b><small>⏱️ ${fmtDuration(s.dur)} · ${s.custom?'بعد المعاينة':money(s.price)}${(q>1&&!s.custom)?' × '+ar(q)+' = '+money(s.price*q):''}</small></span>
+      ${sel&&!s.custom?`<span class="srow-qty" onclick="event.stopPropagation()"><button type="button" onclick="setQty('${s.id}',-1)" aria-label="أقل">−</button><b>${ar(q)}</b><button type="button" onclick="setQty('${s.id}',1)" aria-label="أكثر">+</button></span>`:`<span class="srow-ck">${sel?'✓':''}</span>`}
+    </div>`;
   }).join('');
   const n=cartCount();
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))} · ${fmtDuration(cartDuration())}</b><small>المدة التقريبية للتنفيذ</small></div>
+      <div class="nb-info nb-sum"><div><span>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))}</span><b>${money(cartPrice())}</b></div><div><span>${LX('المدة التقريبية','Estimated time')}</span><b>${fmtDuration(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="go('time')">التالي <span>←</span></button>
     </div></div>` : '';
 
@@ -3949,6 +4014,31 @@ function renderPick(){
       <a class="addmore" onclick="go('home')">＋ أضف من قسم آخر</a>
     </div>
     ${nextbar}`;
+}
+
+/* لمسة على خدمة مختارة ما تشيلها (الشيل من زر −)، عشان ما تضيع الكمية بلمسة غلط */
+function pickRowTap(id){ if(!state.cart[id]) toggleService(id); }
+/* ---------- 🛒 السلة: تبقى محفوظة لين يكتمل الطلب ---------- */
+function renderCart(){
+  quickMode=false;
+  const items=cartItems();
+  if(!items.length){ go('home'); return; }
+  const n=cartCount();
+  const rows=items.map(i=>`<div class="srow sel" style="cursor:default">
+      <span class="srow-ic">${i.ico}</span>
+      <span class="srow-t"><b>${esc(svcName(i, _uiEN()?'en':'ar'))}</b><small>⏱️ ${fmtDuration(i.dur*i.qty)} · ${i.custom?'بعد المعاينة':money(i.price*i.qty)}</small></span>
+      <span class="srow-qty"><button type="button" onclick="setQty('${i.id}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${i.id}',1)" aria-label="أكثر">+</button></span>
+    </div>`).join('');
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen" style="padding-bottom:120px">
+      ${pageHead('🛒 '+LX('سلتك','Your cart'),'home')}
+      <div class="srows">${rows}</div>
+      <a class="addmore" onclick="go('home')">＋ ${LX('أضف خدمة ثانية','Add another service')}</a>
+    </div>
+    <div class="nextbar"><div class="wrap">
+      <div class="nb-info nb-sum"><div><span>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))}</span><b>${money(cartPrice())}</b></div><div><span>${LX('المدة التقريبية','Estimated time')}</span><b>${fmtDuration(cartDuration())}</b></div></div>
+      <button class="nb-go" onclick="go('time')">${LX('التالي','Next')} <span>←</span></button>
+    </div></div>`;
 }
 
 /* ---------- خطوة ٢: اختر اليوم والوقت ---------- */
@@ -4087,7 +4177,7 @@ function renderTime(){
   const slots=[];
   for(let t=WORK_START;t+need<=WORK_END;t+=ARRIVAL_WINDOW){
     const ok=slotAvailable(b.date,t,need), active=b.time===t;
-    slots.push(`<button class="slot win ${active?'active':''}" ${ok?'':'disabled'} onclick="pickTime(${t})">${windowLabel(t)}</button>`);
+    slots.push(`<button class="slot win ${active?'active':''}" ${ok?'':'disabled'} onclick="pickTime(${t})">${windowLabel(t,need)}</button>`);
   }
   const anyFree=slots.some(s=>!s.includes('disabled'));
   const ready=b.time!=null;
@@ -4104,11 +4194,12 @@ function renderTime(){
       </div>
       <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
       <div class="panel" id="slotsPanel"><h3>🕐 اختر نافذة الوصول</h3>
+        ${(!quickMode && windowSpan(need)>ARRIVAL_WINDOW)?`<p class="long-note">${LX('طلبك يحتاج وقت أطول من فترة واحدة، فنحجز لك الفترة كاملة: '+fmtDuration(windowSpan(need))+'.','Your order needs more than one window, so we book the full period: '+fmtDuration(windowSpan(need))+'.')}</p>`:''}
         ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
       </div>
     </div>
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${ready?windowLabel(b.time):'🕐 اختر نافذة الوصول'}</b><small>${dayLabel(b.date)}</small></div>
+      <div class="nb-info"><b>${ready?windowLabel(b.time,need):'🕐 اختر نافذة الوصول'}</b><small>${dayLabel(b.date)}</small></div>
       <button class="nb-go${ready?'':' need'}" onclick="nextFromTime()">التالي <span>←</span></button>
     </div></div>`;
 }
@@ -4192,7 +4283,7 @@ function renderInfo(){
         <label class="video-up" id="videoUp">
           <input type="file" id="f_video" accept="image/*,video/*" onchange="onVideoPick(this)" hidden />
           <span class="vu-ic">📷</span>
-          <span class="vu-t"><b>أرفق صورة أو مقطع</b><small id="vu-name">صوّر المشكلة أو ارفع صورة/فيديو ليشوفها الفني (اختياري)</small></span>
+          <span class="vu-t"><b>أرفق صورة أو مقطع <em class="opt">اختياري</em></b><small id="vu-name">صوّر المشكلة أو ارفع صورة/فيديو ليشوفها الفني (اختياري)</small></span>
         </label>
       </div>`}
 
@@ -4223,7 +4314,7 @@ function renderInfo(){
         <label class="video-up ${a.photoUrl?'has':''}" id="housePhotoUp" style="margin-top:12px">
           <input type="file" id="f_housePhoto" accept="image/*" onchange="onHousePhotoPick(this)" hidden />
           <span class="vu-ic">🏠</span>
-          <span class="vu-t"><b>صورة المنزل (اختياري)</b><small id="hp-name">${a.photoUrl?'📎 تم إرفاق صورة المنزل':'صوّر أو ارفع صورة لواجهة المنزل ليعرفه الفني بسهولة'}</small></span>
+          <span class="vu-t"><b>صورة المنزل <em class="opt">اختياري</em></b><small id="hp-name">${a.photoUrl?'📎 تم إرفاق صورة المنزل':'صوّر أو ارفع صورة لواجهة المنزل ليعرفه الفني بسهولة'}</small></span>
         </label>
       </div>
       ${state.subReq?'</div>':''}
@@ -4235,14 +4326,12 @@ function renderInfo(){
           : refCheck.ok?`<div style="color:#0b7a3b;font-weight:800;font-size:.86rem;margin-top:6px">✅ خصم ١٠٪ مطبّق — أهلاً بك في خافِت 🎉</div>`
           : (state.promo?`<div style="color:#c0392b;font-weight:700;font-size:.84rem;margin-top:6px">${REF_MSG[refCheck.reason]||'❌ الكود غير صحيح'}</div>`:'')}
       </div></div>
-      ${myRef.balance>0?`<div class="panel" style="padding:14px 16px;background:#e8f7ee;border-color:#0b7a3b">
+      ${(myRef.balance>0 && !(payNow>0))?`<div class="panel" style="padding:14px 16px;background:#e8f7ee;border-color:#0b7a3b">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
           <b style="color:#0b7a3b">💰 رصيدك ${ar(myRef.balance)} ر.س</b>
           <span style="color:#0b7a3b;font-weight:800;font-size:.86rem">يُخصم تلقائياً</span>
-        </div></div>`:((!isVerified && WELCOME_CREDIT>0)?`<button type="button" class="panel" onclick="go('account')" style="display:block;width:100%;text-align:start;padding:14px 16px;background:#fff8dc;border-color:var(--gold);cursor:pointer;font-family:inherit">
-          <b style="display:block;color:var(--ink)">🎁 ${LX('أول طلب لك؟ خذ '+ar(WELCOME_CREDIT)+' ريال رصيد','First order? Get '+WELCOME_CREDIT+' SAR credit')}</b>
-          <span style="display:block;color:var(--muted);font-weight:700;font-size:.84rem;margin-top:3px">${LX('وثّق رقم جوالك من «حسابي» ويُخصم من هذا الطلب تلقائيًا','Verify your mobile number in Account and it comes off this order automatically')}</span>
-        </button>`:'')}`}
+        </div></div>`:''}
+      ${welcomeNoteHtml()}`}
 
       ${state.subReq?'':receiptHtml(priceTxt, {loyDisc, pPct, advDisc, promo, credit:(quickMode||state.subReq)?0:Math.max(0,afterAll-payNow), payNow})}
 
@@ -4252,9 +4341,9 @@ function renderInfo(){
       </div></div>`:''}
       ${payNow>0?orderPayBox(payNow, payNow):''}
       ${payNow>0
-        ? `<button class="cta" id="orderPayCta" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&payNow>TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
+        ? `<button class="cta" id="orderPayCta" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&payNow>=TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
         : `<button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>`}
-      <div class="policy-note">${payNow>0?'بالضغط على الدفع':'بتأكيد الطلب'} توافق على <a href="privacy.html#terms" target="_blank" rel="noopener">الشروط</a> و<a href="privacy.html#refund" target="_blank" rel="noopener">سياسة الإلغاء والاسترجاع</a>. الإلغاء مجاني حتى ${ar(cancelHours())} ساعات قبل الموعد، والقطع تُحاسب على حدة بعد المعاينة. ${vatLine()}.</div>
+      <div class="policy-note">${payNow>0?'بالضغط على الدفع':'بتأكيد الطلب'} أنت توافق على <a href="privacy.html#terms" target="_blank" rel="noopener">الشروط</a> و<a href="privacy.html#refund" target="_blank" rel="noopener">سياسة الإلغاء</a> و<a href="privacy.html" target="_blank" rel="noopener">الخصوصية</a>.</div>
       <div style="height:28px"></div>
     </div>`;
   initPickMap();
@@ -4382,7 +4471,7 @@ async function confirmOrder(){
   const videoFile=(document.getElementById('f_video')||{}).files;
   const houseFile=(document.getElementById('f_housePhoto')||{}).files;
   const payNow = (quickMode||state.subReq) ? 0 : Math.max(0, afterDisc - creditUse);
-  const payMethodNow = (orderPayMethod==='tamara' && payNow>TAMARA_MIN_LABOR) ? 'tamara' : 'online';
+  const payMethodNow = (orderPayMethod==='tamara' && payNow>=TAMARA_MIN_LABOR) ? 'tamara' : 'online';
   if(payNow>0 && !cloudReady){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return; }
 
   const btn=document.getElementById('orderPayCta')||document.querySelector('.cta'); const btnTxt=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
@@ -4509,7 +4598,7 @@ function renderMyBookings(){
       const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
       const awaitingPay = !!o.dbId && o.payRequired && !o.released && o.status!=='cancelled';
       const showDue = !!o.dbId && o.status!=='cancelled' && o.amountDue>0 && (awaitingPay || (o.released && (o.payRequired || (o.invoice&&o.invoice.items&&o.invoice.items.length))));
-      const tamaraOk = tamaraEnabled() && (+o.amountDue||+o.finalPrice||0) > TAMARA_MIN_LABOR;
+      const tamaraOk = tamaraEnabled() && (+o.amountDue||+o.finalPrice||0) >= TAMARA_MIN_LABOR;
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
         <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?'⏳ جاري الإرسال':(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]))}</span></div>
@@ -4932,7 +5021,7 @@ const T_DICT = {
   "باقات الصيانة":"Maintenance plans","باقة الشقة":"Apartment plan","باقة المنزل":"House plan","باقة راحة البال":"Peace-of-mind plan","اشترك الآن":"Subscribe now","✅ أرسل طلب الاشتراك":"✅ Send subscription request","الباقة المختارة:":"Selected plan:","التفعيل فوري":"Instant activation",
   "الاشتراك يشمل أجرة اليد (شغل الفني) فقط":"The subscription covers labor (technician work) only","أولوية في الحجز":"Booking priority","أولوية قصوى + دعم واتساب مباشر":"Top priority + direct WhatsApp support","ضمان ممتد على الأعمال":"Extended warranty on work","صيانة بالسنة":"Yearly maintenance","زيارة فحص وقائي":"Preventive inspection visit","زيارتان فحص وقائي دورية":"Two periodic preventive visits","٤ زيارات فحص وقائي دورية":"Four periodic preventive visits",
   "خصم ١٠٪ على الأعمال الكبيرة":"10% off major work","خصم ١٥٪ على الأعمال الكبيرة":"15% off major work","خصم ٢٥٪ على الأعمال الكبيرة":"25% off major work","بنتواصل معك على جوالك لتأكيد الباقة وتفعيلها.":"We'll contact you on your mobile to confirm and activate the plan.","* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.":"* Major work is discounted per plan · we'll contact you to activate.",
-  "وفّر أكثر":"Save more","خدمات مجانية":"Free services","الأكثر طلباً":"Most popular","الأكثر طلباً":"Most requested",
+  "وفّر أكثر":"Save more","خدمات مجانية":"Free services","أسعار مناسبة":"Fair prices","سلتك":"Your cart","اختياري":"optional","الأكثر طلباً":"Most popular","الأكثر طلباً":"Most requested",
   // النصائح
   "نصائح السلامة":"Safety tips","مقالات تحمي بيتك":"Articles that protect your home","نصائح مفيدة تحمي بيتك وتوفّر عليك — من خبرة فنيّي خافِت.":"Useful tips that protect your home and save you money — from Khafet technicians' experience.","قريباً نصائح مفيدة":"Useful tips coming soon","جارٍ التحميل…":"Loading…",
   // رسائل التحميل والأخطاء
