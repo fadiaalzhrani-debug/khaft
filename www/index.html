@@ -1649,7 +1649,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=107;
+const APP_BUILD=109;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2249,7 +2249,17 @@ function feeAmount(){
 }
 function cartCount(){ return Object.values(state.cart).reduce((a,b)=>a+b,0); }
 function laborPrice(){ return cartItems().reduce((a,i)=>a+i.price*i.qty,0); }
-function cartPrice(){ return laborPrice() + partsTotal() + feeAmount(); }
+/* رسوم طلب صغير: خدمة مخفية (id=smallfee) تنضاف إذا مجموع الخدمات والأغراض أقل من small_order_under. الطلب ما ينرفض أبدًا */
+function smallFeeSvc(){ const f=svc('smallfee'); return (f && f.price>0) ? f : null; }
+function smallFeeAmount(){
+  const f=smallFeeSvc(), under=stNum('small_order_under',0)||0;
+  if(!f || !(under>0) || quickMode || state.subReq || hasCustom()) return 0;
+  if(!Object.keys(state.cart||{}).length) return 0;
+  let parts=0; try{ parts=partsTotal(); }catch(e){}
+  return (laborPrice()+parts) < under ? (+f.price||0) : 0;
+}
+function isFeeId(id){ return id==='fee' || id==='smallfee'; }
+function cartPrice(){ return laborPrice() + partsTotal() + feeAmount() + smallFeeAmount(); }
 function cartDuration(){ return cartItems().reduce((a,i)=>a+i.dur*i.qty,0); }
 function hasCustom(){ return cartItems().some(i=>i.custom); }
 /* نقاط الولاء محسوبة برقم الجوال من كل الطلبات (Supabase) */
@@ -3326,12 +3336,18 @@ let orderPayMethod='online';
 /* Apple Pay الأصلي (آيفون): شاشة أبل بضغطتين بدون صفحة دفع. APPLEPAY_OK تصير true بعد فحص الجهاز */
 const APPLEPAY_MERCHANT='merchant.com.khafet.app';
 let APPLEPAY_OK=false, _apPlugin, _apChecked=false, _apPicked=false;
+function apDiag(d){ try{ const C=window.Capacitor; if(!(C&&C.isNativePlatform&&C.isNativePlatform())||!PAY_FN) return; d.build=APP_BUILD; d.plat=C.getPlatform&&C.getPlatform();
+  fetch(PAY_FN+'/applepay',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPABASE_ANON,'apikey':SUPABASE_ANON},body:JSON.stringify({diag:d})}).catch(()=>{}); }catch(e){} }
 function applePayPlugin(){ if(_apPlugin!==undefined) return _apPlugin; _apPlugin=null;
-  try{ const C=window.Capacitor; if(C&&C.isNativePlatform&&C.isNativePlatform()&&C.getPlatform()==='ios'&&typeof C.registerPlugin==='function'&&(!C.isPluginAvailable||C.isPluginAvailable('KhafetApplePay'))) _apPlugin=C.registerPlugin('KhafetApplePay'); }catch(e){}
+  try{ const C=window.Capacitor; if(C&&C.isNativePlatform&&C.isNativePlatform()&&C.getPlatform()==='ios') _apPlugin=(C.Plugins&&C.Plugins.KhafetApplePay)||(typeof C.registerPlugin==='function'?C.registerPlugin('KhafetApplePay'):null); }catch(e){}
   return _apPlugin; }
 async function checkApplePay(){ if(_apChecked) return; _apChecked=true;
-  try{ const A=applePayPlugin(); if(!A||!stOn('applepay_native',false)) { _apChecked=false; return; } const c=await A.canMakePayments(); APPLEPAY_OK=!!(c&&c.available&&c.hasCards);
-    if(APPLEPAY_OK && view==='info'){ if(!_apPicked&&orderPayMethod==='online') orderPayMethod='applepay'; render(); } }catch(e){ APPLEPAY_OK=false; } }
+  try{ const A=applePayPlugin(); if(!A||!stOn('applepay_native',false)) { _apChecked=false;
+      if(!window.__apDiag1){ window.__apDiag1=1; const C=window.Capacitor||{}; let hdr=[]; try{ hdr=(C.PluginHeaders||[]).map(h=>h.name); }catch(e){} apDiag({step:'check', plugin:!!A, setting:stOn('applepay_native',false), settingRaw:String(SETTINGS.applepay_native), isAvail:!!(C.isPluginAvailable&&C.isPluginAvailable('KhafetApplePay')), headers:hdr}); }
+      return; }
+    const c=await A.canMakePayments(); APPLEPAY_OK=!!(c&&c.available&&c.hasCards);
+    apDiag({step:'check', plugin:true, setting:true, can:c});
+    if(APPLEPAY_OK && view==='info'){ if(!_apPicked&&orderPayMethod==='online') orderPayMethod='applepay'; render(); } }catch(e){ APPLEPAY_OK=false; apDiag({step:'check', err:String((e&&(e.message||e.code))||e)}); } }
 function setOrderPay(m){
   orderPayMethod=m; _apPicked=true;
   document.querySelectorAll('.payopt label').forEach(l=>{ l.classList.toggle('on', l.dataset.m===m); const inp=l.querySelector('input'); if(inp) inp.checked=(l.dataset.m===m); });
@@ -3390,12 +3406,12 @@ async function nativeApplePay(o){
   const tok=await userToken(); const H={'Content-Type':'application/json','Authorization':'Bearer '+(tok||SUPABASE_ANON),'apikey':SUPABASE_ANON};
   let tk;
   try{ const q=await (await fetch(PAY_FN+'/applepay',{method:'POST',headers:H,body:JSON.stringify({ref_id:o.dbId,quote:true})})).json();
-    if(!q||!q.ok||!(q.amount>0)) return 'unavailable';
+    if(!q||!q.ok||!(q.amount>0)){ apDiag({step:'quote', res:q}); return 'unavailable'; }
     tk=await A.requestPayment({merchantId:APPLEPAY_MERCHANT, amount:Number(q.amount).toFixed(2), label:'خافِت'});
-  }catch(e){ return /cancel/i.test(String((e&&(e.code||e.message))||e)) ? 'cancelled' : 'unavailable'; }
-  if(!tk||!tk.token) return 'unavailable';
+  }catch(e){ const em=String((e&&(e.code||e.message))||e); apDiag({step:'request', err:em, msg:String((e&&e.message)||'')}); return /cancel/i.test(em) ? 'cancelled' : 'unavailable'; }
+  if(!tk||!tk.token){ apDiag({step:'request', err:'no_token'}); return 'unavailable'; }
   let ok=false;
-  try{ const j=await (await fetch(PAY_FN+'/applepay',{method:'POST',headers:H,body:JSON.stringify({ref_id:o.dbId,token:tk.token})})).json(); ok=!!(j&&j.ok&&j.paid); }catch(e){}
+  try{ const j=await (await fetch(PAY_FN+'/applepay',{method:'POST',headers:H,body:JSON.stringify({ref_id:o.dbId,token:tk.token})})).json(); ok=!!(j&&j.ok&&j.paid); apDiag({step:'charge', ok:ok, error:j&&j.error, message:j&&j.message}); }catch(e){ apDiag({step:'charge', err:String((e&&e.message)||e)}); }
   try{ await A.completePayment({success:ok}); }catch(e){}
   return ok?'paid':'failed';
 }
@@ -3406,6 +3422,7 @@ function showPaidScreen(){
 /* يفتح صفحة الدفع الآمنة لمبلغ الطلب المتبقي (الخادم يحسب المبلغ) */
 async function startOrderPayment(o, method){
   if(!PAY_FN||!o||!o.dbId){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return false; }
+  apDiag({step:'pay', method:method, apOk:APPLEPAY_OK, picked:orderPayMethod});
   if(method==='applepay'){
     const r=await nativeApplePay(o);
     if(r==='paid'){ try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(); return true; }
@@ -4378,13 +4395,14 @@ function receiptHtml(priceTxt, d){
     d.advDisc>0 ? disc('📅', LX('خصم الحجز المبكر','Early booking discount'), d.advDisc) : '',
     d.credit>0 ? disc('💰', LX('رصيدك','Your credit'), d.credit) : ''
   ].join('');
-  const fee=feeAmount();
-  const sub=laborPrice()+partsTotal()+fee;
+  const fee=feeAmount(), sfee=smallFeeAmount();
+  const sub=laborPrice()+partsTotal()+fee+sfee;
   return `<div class="invoice">
     <div class="iv-head"><b>${LX('ملخص طلبك','Order summary')}</b><small>${dayLabel(state.booking.date)}</small></div>
     <div class="iv-sec">${LX('الخدمات','Services')}</div>${svcRows}
     ${parts.length?`<div class="iv-sec">${LX('الأغراض','Parts')}</div>${partRows}`:''}
     ${fee>0?`<div class="iv-row"><span class="iv-ic">🚚</span><span class="iv-n">${LX('رسوم توصيل الأغراض','Parts delivery')}</span><b class="iv-p">${money(fee)}</b></div>`:''}
+    ${sfee>0?`<div class="iv-row"><span class="iv-ic">🧾</span><span class="iv-n">${LX('رسوم طلب صغير','Small order fee')}</span><b class="iv-p">${money(sfee)}</b></div>`:''}
     ${discRows?`<div class="iv-sub"><span>${LX('المجموع','Subtotal')}</span><b>${money(sub)}</b></div>`+discRows:''}
     <div class="iv-total"><span>${d.credit>0||discRows?LX('تدفع الآن','You pay now'):LX('الإجمالي','Total')}</span><b>${(d.credit>0||discRows)?money(d.payNow):priceTxt}</b></div>
   </div>
@@ -4605,6 +4623,7 @@ async function confirmOrder(){
     : cartItems().map(i=>({id:i.id,name:i.name,ico:i.ico,qty:i.qty,dur:i.dur,price:i.price,custom:!!i.custom}));
   partLines().filter(l=>!l.off).forEach(l=>{ items.push({id:'part:'+l.chosen.itemId, stockId:l.chosen.itemId, name:l.chosen.name, ico:'🔩', qty:l.qty, dur:0, price:l.price, custom:false, part:true, img:l.chosen.img||''}); });
   if(feeAmount()>0){ const f=feeSvc(); items.push({id:'fee', name:f.name, ico:f.ico||'🚚', qty:1, dur:0, price:+f.price||0, custom:false}); }
+  if(smallFeeAmount()>0){ const f=smallFeeSvc(); items.push({id:'smallfee', name:f.name, ico:f.ico||'🧾', qty:1, dur:0, price:+f.price||0, custom:false}); }
   const loyDisc = quickMode ? 0 : loyaltyDiscFor();
   const duration=scheduleDuration();
   const _subnote=(document.getElementById('f_subnote')||{}).value||'';
@@ -4858,7 +4877,7 @@ async function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) 
 function reorder(id){
   const o=state.orders.find(x=>x.id===id); if(!o) return;
   const cart={};
-  (o.items||[]).forEach(i=>{ if(i.part||i.custom||i.id==='fee'||i.id==='quick') return; const s=SERVICES.find(x=>x.id===i.id); if(s&&!s.hidden) cart[i.id]=Math.max(1,+i.qty||1); });
+  (o.items||[]).forEach(i=>{ if(i.part||i.custom||isFeeId(i.id)||i.id==='quick') return; const s=SERVICES.find(x=>x.id===i.id); if(s&&!s.hidden) cart[i.id]=Math.max(1,+i.qty||1); });
   if(!Object.keys(cart).length){ toast('خدمات هذا الطلب ما عادت متاحة، اختر من القائمة'); go('home'); return; }
   quickMode=false; state.subReq=null; state.cart=cart; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''};
   if(o.address&&(o.address.lat||o.address.house)) state.address=Object.assign({}, state.address||{}, o.address);
@@ -4921,7 +4940,7 @@ function rsConfirm(){
 function openLaborClaim(id){
   const o=state.orders.find(x=>x.id===id); if(!o) return;
   if(!cloudReady||!o.dbId){ toast('يحتاج اتصال بالإنترنت'); return; }
-  const svcs=(o.items||[]).filter(i=>!i.part&&i.id!=='fee').map(i=>i.ico+' '+i.name).join('، ');
+  const svcs=(o.items||[]).filter(i=>!i.part&&!isFeeId(i.id)).map(i=>i.ico+' '+i.name).join('، ');
   kmodalEl().innerHTML=`<div class="kbox">
     <div class="kh"><b>🛡️ المشكلة رجعت؟</b><button type="button" class="kx" onclick="closeKModal()">✕</button></div>
     <p style="font-size:.9rem;line-height:1.7;margin-bottom:8px">الطلب ${esc(o.id)} · ${esc(svcs)}<br><span style="color:var(--muted);font-weight:700">مضمون ${ar(o.warrantyDays)} يوم. نرسل الفني يفحص ويصلح مجاناً إذا كانت نفس المشكلة.</span></p>
@@ -4935,7 +4954,7 @@ async function sendLaborClaim(id){
   if(desc.length<3){ toast('اكتب وش المشكلة اللي رجعت'); return; }
   const btn=document.querySelector('#kmodal .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
   // بدون معرّفات خدمات عشان الخادم ما يعيد تسعيرها: بلاغ الضمان مجاني
-  const items=(o.items||[]).filter(i=>!i.part&&i.id!=='fee'&&i.id!=='quick').map(i=>({ico:'🛡️', name:'ضمان: '+i.name, qty:+i.qty||1, dur:+i.dur||0, price:0}));
+  const items=(o.items||[]).filter(i=>!i.part&&!isFeeId(i.id)&&i.id!=='quick').map(i=>({ico:'🛡️', name:'ضمان: '+i.name, qty:+i.qty||1, dur:+i.dur||0, price:0}));
   if(!items.length) items.push({ico:'🛡️', name:'ضمان: إعادة الفحص والإصلاح', qty:1, price:0});
   const dur=o.duration||60;
   const base={ createdAt:Date.now(), items, customer:Object.assign({},o.customer), address:Object.assign({},o.address),
@@ -4954,7 +4973,7 @@ async function sendLaborClaim(id){
 }
 function printCustInvoice(id){ const o=state.orders.find(x=>x.id===id); if(o&&o.invoice) printInvoiceDoc(o); }
 /* تصنيف بند الفاتورة: شغل (خدمة) أو قطعة من المستودع أو رسوم */
-function invKind(it){ if(!it) return 'svc'; if(it.id==='fee') return 'fee'; if(it.id==='stock'||it.stockId||it.part||it.id==='part'||String(it.id||'').startsWith('part:')) return 'part'; return 'svc'; }
+function invKind(it){ if(!it) return 'svc'; if(isFeeId(it.id)) return 'fee'; if(it.id==='stock'||it.stockId||it.part||it.id==='part'||String(it.id||'').startsWith('part:')) return 'part'; return 'svc'; }
 function invGroups(inv){ const g={svc:[],part:[],fee:[]}; (inv&&inv.items||[]).forEach(it=>g[invKind(it)].push(it)); return g; }
 function invItemIco(it){ const s=SERVICES.find(x=>x.id===it.id); return (s&&s.ico)||'🔧'; }
 function invSums(o){ const inv=o.invoice||{items:[]}; const sub=(inv.items||[]).reduce((a,it)=>a+(+it.price||0)*(+it.qty||1),0); const total=(+inv.total>0)?+inv.total:sub; const disc=inv.discountPct>0?Math.max(0,sub-total):0; return {sub,total,disc,paid:+o.paidAmount||0,due:Math.max(0,+o.amountDue||0)}; }
@@ -4984,7 +5003,7 @@ function custInvoiceHtml(o){
 function printInvoiceDoc(o){
   const inv=o.invoice||{items:[],total:0};
   const g=invGroups(inv), s=invSums(o);
-  const row=(it,kind)=>{ const q=+it.qty||1,p=+it.price||0; const media=kind==='part'?(it.img?`<img src="${esc(it.img)}" alt="">`:'🔩'):(kind==='fee'?'🚚':invItemIco(it));
+  const row=(it,kind)=>{ const q=+it.qty||1,p=+it.price||0; const media=kind==='part'?(it.img?`<img src="${esc(it.img)}" alt="">`:'🔩'):(kind==='fee'?(it.id==='smallfee'?'🧾':'🚚'):invItemIco(it));
     return `<div class="r"><span class="im">${media}</span><span class="nm"><b>${esc(it.name)}</b><small>${q>1?ar(q)+' × '+money(p):money(p)}</small></span><span class="tt">${money(p*q)}</span></div>`; };
   const sec=(t,rows,kind)=>rows.length?`<div class="sec">${t}</div>${rows.map(r=>row(r,kind)).join('')}`:'';
   const d=new Date(); const ds=ar(d.getDate())+'/'+ar(d.getMonth()+1)+'/'+ar(d.getFullYear());
