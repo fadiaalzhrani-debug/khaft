@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>خافِت · الدفع</title>
+<style>
+  html,body{height:100%;margin:0;background:#F1E9DF;color:#3A3029;font-family:-apple-system,"Segoe UI",Tahoma,sans-serif}
+  .w{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+  .c{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;font-size:2.7rem;font-weight:800;color:#fff;background:#22B15A;box-shadow:0 0 0 12px rgba(34,177,90,.14),0 0 0 26px rgba(34,177,90,.07)}
+  .c.bad{background:#DC2626;box-shadow:0 0 0 12px rgba(220,38,38,.12),0 0 0 26px rgba(220,38,38,.06)}
+  h1{font-size:1.5rem;margin:26px 0 8px}
+  p{margin:0;color:#7A6C60;font-weight:600}
+</style>
+</head>
+<body>
+<!-- صفحة الرجوع بعد رمز البنك (الدفع بالبطاقة داخل التطبيق). التطبيق يراقب الدفعة ويسكر هذي النافذة لحاله. -->
+<div class="w"><div class="c" id="c">✓</div><h1 id="t">تمت العملية</h1><p id="s">ارجع لتطبيق خافِت</p></div>
+<script>
+(function(){
+  var q=new URLSearchParams(location.search), st=(q.get('status')||'').toLowerCase(), en=/^en/i.test(navigator.language||'');
+  var ok = st==='paid' || st==='captured' || st==='authorized' || st==='';
+  if(!ok){ document.getElementById('c').className='c bad'; document.getElementById('c').textContent='✕'; }
+  document.getElementById('t').textContent = ok ? (en?'Payment complete':'تمت العملية') : (en?'Payment not completed':'ما تمت العملية');
+  document.getElementById('s').textContent = en ? 'Go back to the Khafet app' : 'ارجع لتطبيق خافِت';
+})();
+</script>
+</body>
+</html>

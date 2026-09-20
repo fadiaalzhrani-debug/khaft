@@ -361,6 +361,23 @@
   .paybox{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
   .paybox h4{font-size:.95rem;font-weight:800;margin-bottom:9px;color:var(--ink)}
   .payopt{display:grid;gap:9px}
+  /* البطاقة داخل التطبيق */
+  .cardform{background:#fff;border-radius:18px;padding:12px;display:grid;gap:9px;box-shadow:inset 0 0 0 2px var(--gold)}
+  .cardform input[type=text],.cardform input[type=tel],.cardform input[type=password]{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:13px;padding:12px 13px;font:inherit;font-weight:700;font-size:1rem;background:var(--card);color:var(--ink);direction:ltr;text-align:left}
+  .cardform input::placeholder{color:var(--muted);font-weight:600;direction:rtl;text-align:right}
+  .cardform input:focus{outline:0;border-color:var(--gold-strong)}
+  .cardform .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .cardform .save{display:flex;align-items:center;gap:9px;font-weight:700;font-size:.9rem;padding:2px 4px;cursor:pointer}
+  .cardform .save input{width:20px;height:20px;accent-color:var(--gold-strong)}
+  .cardform .cc-row{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:13px;padding:10px 12px;font-weight:700;cursor:pointer;background:var(--card)}
+  .cardform .cc-row.on{border-color:var(--gold-strong);background:var(--gold-tint)}
+  .cardform .cc-row .br{background:var(--brown);color:#fff;border-radius:8px;padding:3px 9px;font-size:.72rem;font-weight:800;text-transform:lowercase}
+  .cardform .cc-row .n{flex:1;direction:ltr;text-align:right}
+  .cardform .cc-row button{border:0;background:transparent;color:var(--muted);font-size:1.1rem;padding:2px 6px;cursor:pointer}
+  .cc-modal{position:fixed;inset:0;z-index:400;background:rgba(40,30,22,.55);display:flex;align-items:flex-end;justify-content:center}
+  .cc-modal .sheet{width:100%;max-width:520px;background:var(--bg);border-radius:26px 26px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+  .cc-modal h3{margin:0 0 12px;display:flex;justify-content:space-between;align-items:center}
+  .cc-modal h3 button{border:0;background:var(--card);border-radius:50%;width:36px;height:36px;font-size:1.1rem;cursor:pointer}
   /* زر Apple Pay الرسمي: WebKit يرسمه بنفسه، وخارج أبل يبقى زر أسود بنص */
   .cta.apbtn{background:#000;color:#fff}
   @supports (-webkit-appearance:-apple-pay-button){ .cta.apbtn{-webkit-appearance:-apple-pay-button;-apple-pay-button-type:pay;-apple-pay-button-style:black;color:transparent;min-height:54px;box-shadow:none} }
@@ -1673,7 +1690,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=112;
+const APP_BUILD=113;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -3374,8 +3391,10 @@ async function checkApplePay(){ if(_apChecked) return; _apChecked=true;
     const c=await A.canMakePayments(); APPLEPAY_OK=!!(c&&c.available&&c.hasCards);
     apDiag({step:'check', plugin:true, setting:true, can:c});
     if(APPLEPAY_OK && view==='info'){ if(!_apPicked&&orderPayMethod==='online') orderPayMethod='applepay'; render(); } }catch(e){ APPLEPAY_OK=false; apDiag({step:'check', err:String((e&&(e.message||e.code))||e)}); } }
-function setOrderPay(m){
-  orderPayMethod=m; _apPicked=true;
+function setOrderPay(m,keep){
+  const was=orderPayMethod; if(was==='card') cardDraftSave();
+  orderPayMethod=m; if(!keep) _apPicked=true;
+  if(!keep && (m==='card')!==(was==='card')){ rerenderPayBox(); return; }
   document.querySelectorAll('.payopt label').forEach(l=>{ l.classList.toggle('on', l.dataset.m===m); const inp=l.querySelector('input'); if(inp) inp.checked=(l.dataset.m===m); });
   const b=document.getElementById('orderPayCta');
   if(b) b.classList.toggle('apbtn', m==='applepay');
@@ -3389,6 +3408,9 @@ function welcomeNoteHtml(){
 }
 function closeWelcomeNote(){ try{ localStorage.setItem('kh_welcome_note_x','1'); }catch(e){} const el=document.getElementById('wnote'); if(el) el.remove(); }
 function orderPayBox(amount, labor){
+  _pbArgs=[amount,labor]; const cardOn=cardInappOn() && !APPLEPAY_OK; if(cardOn) loadMyCards();
+  if(cardOn && orderPayMethod==='online') orderPayMethod='card';
+  if(!cardOn && orderPayMethod==='card') orderPayMethod='online';
   const tmOk = tamaraEnabled() && labor>=TAMARA_MIN_LABOR;
   if(orderPayMethod==='tamara' && !tmOk) orderPayMethod='online';
   if(orderPayMethod==='applepay' && !APPLEPAY_OK) orderPayMethod='online';
@@ -3415,7 +3437,12 @@ function orderPayBox(amount, labor){
         <input type="radio" name="opaym" value="applepay" ${orderPayMethod==='applepay'?'checked':''}>
         <div><div class="t"> Pay</div></div>
       </label>`:''}
-      ${APPLEPAY_OK?'':`<label data-m="online" class="${orderPayMethod==='online'?'on':''}" onclick="setOrderPay('online')">
+      ${cardOn?`<label data-m="card" class="${orderPayMethod==='card'?'on':''}" onclick="setOrderPay('card')">
+        <input type="radio" name="opaym" value="card" ${orderPayMethod==='card'?'checked':''}>
+        <div><div class="t">${LX('مدى / بطاقة','mada / Card')}</div>
+        <div class="badges"><span>mada</span><span>Visa</span><span>Mastercard</span></div></div>
+      </label>${orderPayMethod==='card'?cardFormHtml():''}`:''}
+      ${(APPLEPAY_OK||cardOn)?'':`<label data-m="online" class="${orderPayMethod==='online'?'on':''}" onclick="setOrderPay('online')">
         <input type="radio" name="opaym" value="online" ${orderPayMethod==='online'?'checked':''}>
         <div><div class="t">${LX('ادفع الآن','Pay now')}</div>
         <div class="badges"><span>mada</span><span>Visa</span><span>STC&nbsp;Pay</span></div></div>
@@ -3427,6 +3454,79 @@ function orderPayBox(amount, labor){
 async function userToken(){
   try{ if(!myUid) await ensureAnonSession(); const { data } = await sb.auth.getSession(); return (data&&data.session&&data.session.access_token)||''; }catch(e){ return ''; }
 }
+/* ───── البطاقة داخل التطبيق ───── */
+let MY_CARDS=[], _cardsLoaded=false, cardPick='new', _cardData=null, _pbArgs=null, _cardDraft={};
+function cardInappOn(){ return inApp() && stOn('card_inapp',false) && /^pk_(live|test)_/.test(String(SETTINGS.moyasar_pk||'')) && !!PAY_FN; }
+function payHeaders(tok){ return {'Content-Type':'application/json','Authorization':'Bearer '+(tok||SUPABASE_ANON),'apikey':SUPABASE_ANON}; }
+function rerenderPayBox(){ const pb=document.querySelector('#app .paybox'); if(!pb||!_pbArgs) return; const t=document.createElement('div'); t.innerHTML=orderPayBox(_pbArgs[0],_pbArgs[1]); if(t.firstElementChild) pb.replaceWith(t.firstElementChild); const b=document.getElementById('orderPayCta'); if(b) setOrderPay(orderPayMethod,true); }
+async function loadMyCards(){ if(_cardsLoaded||!cardInappOn()) return; _cardsLoaded=true;
+  try{ const j=await (await fetch(PAY_FN+'/card',{method:'POST',headers:payHeaders(await userToken()),body:JSON.stringify({list:true})})).json();
+    if(j&&j.ok&&Array.isArray(j.cards)){ MY_CARDS=j.cards; if(MY_CARDS.length&&cardPick==='new') cardPick=MY_CARDS[0].id; if(MY_CARDS.length) rerenderPayBox(); } }catch(e){ _cardsLoaded=false; } }
+function pickCard(id){ cardDraftSave(); cardPick=id; const m=document.getElementById('ccModalForm'); if(m){ m.innerHTML=cardFormInner(); } else rerenderPayBox(); }
+async function deleteCard(id,ev){ if(ev) ev.stopPropagation(); if(!confirm(LX('تحذف هذي البطاقة؟','Remove this card?'))) return;
+  try{ await fetch(PAY_FN+'/card',{method:'POST',headers:payHeaders(await userToken()),body:JSON.stringify({delete:id})}); }catch(e){}
+  MY_CARDS=MY_CARDS.filter(c=>c.id!==id); if(cardPick===id) cardPick=MY_CARDS.length?MY_CARDS[0].id:'new'; const m=document.getElementById('ccModalForm'); if(m) m.innerHTML=cardFormInner(); else rerenderPayBox(); }
+function cardDraftSave(){ ['cc_num','cc_exp','cc_name'].forEach(k=>{ const e=document.getElementById(k); if(e) _cardDraft[k]=e.value; }); }
+function ccFmt(el){ const d=el.value.replace(/\D/g,'').slice(0,19); el.value=d.replace(/(.{4})/g,'$1 ').trim(); }
+function ccExp(el){ let d=el.value.replace(/\D/g,'').slice(0,4); if(d.length>=3) d=d.slice(0,2)+' / '+d.slice(2); el.value=d; }
+function cardFormInner(){
+  const saved=MY_CARDS.map(c=>`<div class="cc-row ${cardPick===c.id?'on':''}" onclick="pickCard('${c.id}')"><span class="br">${esc(c.company||'card')}</span><span class="n">•••• ${esc(c.last4||'')}</span><button type="button" aria-label="${LX('حذف','Remove')}" onclick="deleteCard('${c.id}',event)">×</button></div>`).join('');
+  const newRow=MY_CARDS.length?`<div class="cc-row ${cardPick==='new'?'on':''}" onclick="pickCard('new')"><span class="n" style="direction:inherit">${LX('بطاقة ثانية','Another card')}</span></div>`:'';
+  const v=k=>esc(_cardDraft[k]||'');
+  const fields=cardPick==='new'?`<input id="cc_num" type="tel" inputmode="numeric" autocomplete="cc-number" maxlength="23" placeholder="${LX('رقم البطاقة','Card number')}" value="${v('cc_num')}" oninput="ccFmt(this)">
+    <div class="two"><input id="cc_exp" type="tel" inputmode="numeric" autocomplete="cc-exp" maxlength="7" placeholder="MM / YY" value="${v('cc_exp')}" oninput="ccExp(this)"><input id="cc_cvc" type="password" inputmode="numeric" autocomplete="cc-csc" maxlength="4" placeholder="CVC"></div>
+    <input id="cc_name" type="text" autocomplete="cc-name" placeholder="${LX('الاسم على البطاقة','Name on card')}" value="${v('cc_name')}">
+    <label class="save"><input type="checkbox" id="cc_save" checked> ${LX('احفظ بطاقتي للطلبات الجاية','Save my card for next orders')}</label>`:'';
+  return saved+newRow+fields;
+}
+function cardFormHtml(){ return `<div class="cardform" id="cardForm">${cardFormInner()}</div>`; }
+/* يقرأ خانات البطاقة ويتحقق منها. يرجّع null مع تنبيه لو فيها غلط */
+function cardRead(){
+  if(cardPick!=='new' && MY_CARDS.some(c=>c.id===cardPick)) return {saved:cardPick};
+  const g=id=>(document.getElementById(id)||{}).value||''; const bad=(id,ar,en)=>{ toast(LX(ar,en)); const e=document.getElementById(id); if(e){ e.focus(); try{ e.scrollIntoView({block:'center'}); }catch(_){} } return null; };
+  const number=g('cc_num').replace(/\D/g,''); let sum=0; for(let i=0;i<number.length;i++){ let n=+number[number.length-1-i]; if(i%2===1){ n*=2; if(n>9) n-=9; } sum+=n; }
+  if(number.length<13||number.length>19||sum%10!==0) return bad('cc_num','تأكد من رقم البطاقة','Check the card number');
+  const ex=g('cc_exp').replace(/\D/g,''); const mm=+ex.slice(0,2), yy=+ex.slice(2,4); const now=new Date(), cy=now.getFullYear()%100, cm=now.getMonth()+1;
+  if(ex.length!==4||mm<1||mm>12||yy<cy||(yy===cy&&mm<cm)) return bad('cc_exp','تأكد من تاريخ الانتهاء','Check the expiry date');
+  const cvc=g('cc_cvc').replace(/\D/g,''); if(cvc.length<3) return bad('cc_cvc','اكتب رمز CVC خلف البطاقة','Enter the CVC on the back of the card');
+  let name=g('cc_name').replace(/\s+/g,' ').trim(); if(name && /[^A-Za-z .'-]/.test(name)) return bad('cc_name','اكتب الاسم بالحروف الإنجليزية مثل ما هو على البطاقة','Enter the name in English letters as on the card');
+  if(!name) name='Khafet Customer'; else if(name.split(' ').length<2) name+=' Customer';
+  return {number, month:String(mm).padStart(2,'0'), year:String(2000+yy), cvc, name, save:!!((document.getElementById('cc_save')||{}).checked)};
+}
+/* يدفع الطلب بالبطاقة. يرجّع: paid / opened (فتحنا رمز البنك) / failed / fallback (نكمل بصفحة ميسر) */
+async function payWithCard(o){
+  const c=_cardData; _cardData=null; if(!c) return 'failed';
+  try{
+    const H=payHeaders(await userToken());
+    const init=await (await fetch(PAY_FN+'/card',{method:'POST',headers:H,body:JSON.stringify(c.saved?{ref_id:o.dbId,saved_id:c.saved}:{ref_id:o.dbId})})).json();
+    if(!init||!init.ok){ if(init&&init.error==='nothing_due'){ toast(LX('✓ ما عليك مبلغ','✓ Nothing to pay')); loadOrdersFromCloud(); return 'failed'; } toast(LX('ما انقبلت البطاقة، جرّب بطاقة ثانية','The card was not accepted, try another card')); return 'failed'; }
+    try{ localStorage.setItem('khafet_pay_pending', init.payment_id); }catch(e){}
+    if(init.paid){ try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(o); return 'paid'; }
+    let url=init.url||'';
+    if(!c.saved){
+      let j=null;
+      try{ const r=await fetch('https://api.moyasar.com/v1/payments',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Basic '+btoa(String(SETTINGS.moyasar_pk)+':')},
+        body:JSON.stringify({given_id:init.payment_id, amount:Math.round(init.amount*100), currency:'SAR', description:init.description, callback_url:init.callback_url, metadata:init.metadata,
+          source:{type:'creditcard', name:c.name, number:c.number, month:c.month, year:c.year, cvc:c.cvc, save_card:!!c.save}})}); j=await r.json(); }
+      catch(e){ return 'fallback'; }   // تعذّر الوصول لميسر من التطبيق: نكمل بصفحة الدفع
+      if(j&&j.status==='initiated'&&j.source&&j.source.transaction_url) url=j.source.transaction_url;
+      else if(!(j&&(j.status==='paid'||j.status==='captured'))){ const m=(j&&j.source&&j.source.message)||''; toast(j&&j.errors?LX('تأكد من بيانات البطاقة','Check the card details'):LX('ما انقبلت البطاقة','The card was not accepted')+(m?' · '+m:'')); return 'failed'; }
+    }
+    if(url){ await openPayUrl(url, init.payment_id, o); return 'opened'; }
+    // اندفعت بدون رمز بنك: الخادم يتحقق ويثبّت
+    const st=await (await fetch(PAY_FN+'/status?id='+encodeURIComponent(init.payment_id),{headers:{'Authorization':'Bearer '+(await authToken()),'apikey':SUPABASE_ANON}})).json();
+    if(st&&st.ok&&st.payment&&st.payment.status==='paid'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(o); return 'paid'; }
+    return 'failed';
+  }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return 'failed'; }
+}
+/* دفع طلب موجود بالبطاقة من «طلباتي»: نافذة فيها نفس خانات البطاقة */
+function openCardModal(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; closeCardModal(); loadMyCards();
+  const m=document.createElement('div'); m.className='cc-modal'; m.id='ccModal'; m.onclick=e=>{ if(e.target===m) closeCardModal(); };
+  m.innerHTML=`<div class="sheet"><h3><span>💳 ${LX('مدى / بطاقة','mada / Card')}</span><button type="button" onclick="closeCardModal()" aria-label="${LX('إغلاق','Close')}">×</button></h3><div class="cardform" id="ccModalForm">${cardFormInner()}</div><button class="cta" style="margin-top:14px" id="ccModalPay" onclick="payCardModal('${o.id}')">${LX('💳 ادفع ','💳 Pay ')}${money(o.amountDue||o.finalPrice||0)}</button></div>`;
+  document.body.appendChild(m); }
+function closeCardModal(){ const m=document.getElementById('ccModal'); if(m) m.remove(); }
+async function payCardModal(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; const c=cardRead(); if(!c) return; _cardData=c; const b=document.getElementById('ccModalPay'); if(b){ b.disabled=true; b.textContent='⏳'; }
+  const r=await payWithCard(o); closeCardModal(); if(r==='fallback') startOrderPayment(o,'online'); }
 /* صفحة الدفع داخل التطبيق: نافذة متصفح فوق التطبيق، ونراقب الدفعة ونسكر النافذة أول ما تندفع. على الويب العادي ننتقل للصفحة كالمعتاد */
 let _payWatch=null, _paidJust=null;
 function payBrowserPlugin(){ try{ const C=window.Capacitor; if(C&&C.isNativePlatform&&C.isNativePlatform()) return (C.Plugins&&C.Plugins.Browser)||(typeof C.registerPlugin==='function'?C.registerPlugin('Browser'):null); }catch(e){} return null; }
@@ -3465,6 +3565,12 @@ function showPaidScreen(o){
 async function startOrderPayment(o, method){
   if(!PAY_FN||!o||!o.dbId){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return false; }
   apDiag({step:'pay', method:method, apOk:APPLEPAY_OK, picked:orderPayMethod});
+  if(method==='card'){
+    const r=await payWithCard(o);
+    if(r==='paid'||r==='opened') return true;
+    if(r!=='fallback') return false;
+    method='online';
+  }
   if(method==='applepay'){
     const r=await nativeApplePay(o);
     if(r==='paid'){ try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(o); return true; }
@@ -4681,7 +4787,8 @@ async function confirmOrder(){
   const videoFile=(document.getElementById('f_video')||{}).files;
   const houseFile=(document.getElementById('f_housePhoto')||{}).files;
   const payNow = (quickMode||state.subReq) ? 0 : Math.max(0, afterDisc - creditUse);
-  const payMethodNow = (orderPayMethod==='tamara' && payNow>=TAMARA_MIN_LABOR) ? 'tamara' : (orderPayMethod==='applepay' && APPLEPAY_OK) ? 'applepay' : 'online';
+  const payMethodNow = (orderPayMethod==='tamara' && payNow>=TAMARA_MIN_LABOR) ? 'tamara' : (orderPayMethod==='applepay' && APPLEPAY_OK) ? 'applepay' : (orderPayMethod==='card' && cardInappOn() && !APPLEPAY_OK) ? 'card' : 'online';
+  if(payNow>0 && payMethodNow==='card'){ _cardData=cardRead(); if(!_cardData) return; }
   if(payNow>0 && !cloudReady){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return; }
 
   const btn=document.getElementById('orderPayCta')||document.querySelector('.cta'); const btnTxt=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
@@ -4836,7 +4943,7 @@ function renderMyBookings(){
         </div>
         ${showDue?`<div class="pay-due">
           <div class="pd-t"><span>${awaitingPay?LX('ادفع لتأكيد الحجز','Pay to confirm your booking'):LX('المتبقي عليك','Amount due')}</span><b>${money(o.amountDue)}</b></div>
-          <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${o.id}','applepay')"> Pay</button>`:`<button onclick="payOrder('${o.id}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>`}${tamaraOk?`<button class="tmr" onclick="payOrder('${o.id}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
+          <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${o.id}','applepay')"> Pay</button>`:(cardInappOn()?`<button onclick="openCardModal('${o.id}')">${LX('💳 ادفع بالبطاقة','💳 Pay by card')}</button>`:`<button onclick="payOrder('${o.id}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>`)}${tamaraOk?`<button class="tmr" onclick="payOrder('${o.id}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
         </div>`:''}
         ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
         ${o.status==='cancelled'&&['refund_pending','refund_failed'].includes(o.payStatus)?`<div class="pay-note wait">${LX('⏳ جاري استرجاع المبلغ','⏳ Refund in progress')}</div>`:''}
