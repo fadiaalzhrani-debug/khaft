@@ -361,6 +361,9 @@
   .paybox{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
   .paybox h4{font-size:.95rem;font-weight:800;margin-bottom:9px;color:var(--ink)}
   .payopt{display:grid;gap:9px}
+  /* زر Apple Pay الرسمي: WebKit يرسمه بنفسه، وخارج أبل يبقى زر أسود بنص */
+  .cta.apbtn{background:#000;color:#fff}
+  @supports (-webkit-appearance:-apple-pay-button){ .cta.apbtn{-webkit-appearance:-apple-pay-button;-apple-pay-button-type:pay;-apple-pay-button-style:black;color:transparent;min-height:54px;box-shadow:none} }
   .payopt label{display:flex;align-items:flex-start;gap:10px;border:1.5px solid var(--line);border-radius:13px;
     padding:12px 13px;cursor:pointer;background:var(--bg)}
   .payopt label.on{border-color:var(--gold-strong);background:var(--gold-tint);box-shadow:0 4px 14px rgba(245,197,24,.16)}
@@ -1646,7 +1649,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=106;
+const APP_BUILD=107;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -3320,11 +3323,21 @@ let FIRST_FREE_DELIVERY=false;   // توصيل مجاني لأول طلب (ال�
 let WELCOME_CREDIT=0, APP_WARRANTY=30;   // مزايا التطبيق: رصيد ترحيبي لأول طلب + ضمان الشغل
 let FIRST_PCT=0, LAUNCH_PCT=0, LAUNCH_UNTIL=null;   // خصم أول طلب / خصم الإطلاق على أجرة اليد (من الإعدادات)
 let orderPayMethod='online';
+/* Apple Pay الأصلي (آيفون): شاشة أبل بضغطتين بدون صفحة دفع. APPLEPAY_OK تصير true بعد فحص الجهاز */
+const APPLEPAY_MERCHANT='merchant.com.khafet.app';
+let APPLEPAY_OK=false, _apPlugin, _apChecked=false, _apPicked=false;
+function applePayPlugin(){ if(_apPlugin!==undefined) return _apPlugin; _apPlugin=null;
+  try{ const C=window.Capacitor; if(C&&C.isNativePlatform&&C.isNativePlatform()&&C.getPlatform()==='ios'&&typeof C.registerPlugin==='function'&&(!C.isPluginAvailable||C.isPluginAvailable('KhafetApplePay'))) _apPlugin=C.registerPlugin('KhafetApplePay'); }catch(e){}
+  return _apPlugin; }
+async function checkApplePay(){ if(_apChecked) return; _apChecked=true;
+  try{ const A=applePayPlugin(); if(!A||!stOn('applepay_native',false)) { _apChecked=false; return; } const c=await A.canMakePayments(); APPLEPAY_OK=!!(c&&c.available&&c.hasCards);
+    if(APPLEPAY_OK && view==='info'){ if(!_apPicked&&orderPayMethod==='online') orderPayMethod='applepay'; render(); } }catch(e){ APPLEPAY_OK=false; } }
 function setOrderPay(m){
-  orderPayMethod=m;
+  orderPayMethod=m; _apPicked=true;
   document.querySelectorAll('.payopt label').forEach(l=>{ l.classList.toggle('on', l.dataset.m===m); const inp=l.querySelector('input'); if(inp) inp.checked=(l.dataset.m===m); });
   const b=document.getElementById('orderPayCta');
-  if(b) b.textContent = m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara') : LX('💳 ادفع ','💳 Pay ')+b.dataset.amt;
+  if(b) b.classList.toggle('apbtn', m==='applepay');
+  if(b) b.textContent = m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara') : m==='applepay' ? LX(' Pay · ',' Pay · ')+b.dataset.amt : LX('💳 ادفع ','💳 Pay ')+b.dataset.amt;
 }
 /* إشعار الرصيد الترحيبي: لغير الموثّق اللي ما له طلبات، ويتقفل بـ× */
 function welcomeNoteHtml(){
@@ -3336,6 +3349,8 @@ function closeWelcomeNote(){ try{ localStorage.setItem('kh_welcome_note_x','1');
 function orderPayBox(amount, labor){
   const tmOk = tamaraEnabled() && labor>=TAMARA_MIN_LABOR;
   if(orderPayMethod==='tamara' && !tmOk) orderPayMethod='online';
+  if(orderPayMethod==='applepay' && !APPLEPAY_OK) orderPayMethod='online';
+  checkApplePay();
   const left = Math.max(0, Math.ceil(TAMARA_MIN_LABOR - labor));
   const tamara = tmOk ? `
       <label data-m="tamara" class="tm-ad ${orderPayMethod==='tamara'?'on':''}" onclick="setOrderPay('tamara')">
@@ -3353,6 +3368,10 @@ function orderPayBox(amount, labor){
     <h4>💳 ${LX('الدفع','Payment')}</h4>
     ${(isVerified||myRef.balance>0)?`<div class="mybal"><span>💰 ${LX('رصيدي','My credit')}</span><b>${money(myRef.balance||0)}</b></div>`:''}
     <div class="payopt">
+      ${APPLEPAY_OK?`<label data-m="applepay" class="${orderPayMethod==='applepay'?'on':''}" onclick="setOrderPay('applepay')">
+        <input type="radio" name="opaym" value="applepay" ${orderPayMethod==='applepay'?'checked':''}>
+        <div><div class="t"> Pay</div></div>
+      </label>`:''}
       <label data-m="online" class="${orderPayMethod==='online'?'on':''}" onclick="setOrderPay('online')">
         <input type="radio" name="opaym" value="online" ${orderPayMethod==='online'?'checked':''}>
         <div><div class="t">${LX('ادفع الآن','Pay now')}</div>
@@ -3365,9 +3384,35 @@ function orderPayBox(amount, labor){
 async function userToken(){
   try{ if(!myUid) await ensureAnonSession(); const { data } = await sb.auth.getSession(); return (data&&data.session&&data.session.access_token)||''; }catch(e){ return ''; }
 }
+/* Apple Pay الأصلي: المبلغ من الخادم، التوكن من شاشة أبل، والخصم في الخادم. يرجع: paid / cancelled / failed / unavailable */
+async function nativeApplePay(o){
+  const A=applePayPlugin(); if(!A||!APPLEPAY_OK) return 'unavailable';
+  const tok=await userToken(); const H={'Content-Type':'application/json','Authorization':'Bearer '+(tok||SUPABASE_ANON),'apikey':SUPABASE_ANON};
+  let tk;
+  try{ const q=await (await fetch(PAY_FN+'/applepay',{method:'POST',headers:H,body:JSON.stringify({ref_id:o.dbId,quote:true})})).json();
+    if(!q||!q.ok||!(q.amount>0)) return 'unavailable';
+    tk=await A.requestPayment({merchantId:APPLEPAY_MERCHANT, amount:Number(q.amount).toFixed(2), label:'خافِت'});
+  }catch(e){ return /cancel/i.test(String((e&&(e.code||e.message))||e)) ? 'cancelled' : 'unavailable'; }
+  if(!tk||!tk.token) return 'unavailable';
+  let ok=false;
+  try{ const j=await (await fetch(PAY_FN+'/applepay',{method:'POST',headers:H,body:JSON.stringify({ref_id:o.dbId,token:tk.token})})).json(); ok=!!(j&&j.ok&&j.paid); }catch(e){}
+  try{ await A.completePayment({success:ok}); }catch(e){}
+  return ok?'paid':'failed';
+}
+function showPaidScreen(){
+  document.getElementById('app').innerHTML=`<div class="wrap screen"><div class="panel" style="margin-top:30px"><div class="payresult"><div class="ic">✅</div><h2>${LX('تم الدفع بنجاح','Payment successful')}</h2><p>${LX('وصلك إيصال على جوالك. تقدر تتابع من «طلباتي».','A receipt was sent to your phone. Track it from "My orders".')}</p></div><button class="cta gold" style="margin-top:14px" onclick="go('mybookings')">${LX('طلباتي','My orders')}</button><button class="cta" style="margin-top:8px" onclick="go('home')">${LX('الرئيسية','Home')}</button></div></div>`;
+  window.scrollTo(0,0);
+}
 /* يفتح صفحة الدفع الآمنة لمبلغ الطلب المتبقي (الخادم يحسب المبلغ) */
 async function startOrderPayment(o, method){
   if(!PAY_FN||!o||!o.dbId){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return false; }
+  if(method==='applepay'){
+    const r=await nativeApplePay(o);
+    if(r==='paid'){ try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(); return true; }
+    if(r==='cancelled') return false;
+    if(r==='failed') toast(LX('ما تمت العملية، كمّل الدفع بالبطاقة','Payment did not go through, continue with a card'));
+    method='online';   // أي تعذّر: نكمل بصفحة الدفع العادية
+  }
   const viaTamara = method==='tamara';
   try{
     const tok=await userToken();
@@ -3386,7 +3431,7 @@ async function startOrderPayment(o, method){
     return true;
   }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return false; }
 }
-function payOrder(id, method){ const o=state.orders.find(x=>x.id===id); if(o) startOrderPayment(o, method||'online'); }
+function payOrder(id, method){ checkApplePay(); const o=state.orders.find(x=>x.id===id); if(o) startOrderPayment(o, method||'online'); }
 /* رجوع العميل للتطبيق بعد صفحة الدفع (في الجوال تفتح بالمتصفح) */
 let _payPoll=false;
 async function checkPendingPayment(){
@@ -4440,7 +4485,7 @@ function renderInfo(){
       </div></div>`:''}
       ${payNow>0?orderPayBox(payNow, payNow):''}
       ${payNow>0
-        ? `<button class="cta" id="orderPayCta" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&payNow>=TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
+        ? `<button class="cta${(orderPayMethod==='applepay'&&APPLEPAY_OK)?' apbtn':''}" id="orderPayCta" aria-label="${(orderPayMethod==='applepay'&&APPLEPAY_OK)?'Apple Pay':''}" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&payNow>=TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):(orderPayMethod==='applepay'&&APPLEPAY_OK)?' Pay · '+money(payNow):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
         : `<button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>`}
       <div class="policy-note">${payNow>0?'بالضغط على الدفع':'بتأكيد الطلب'} أنت توافق على <a href="privacy.html#terms" target="_blank" rel="noopener">الشروط</a> و<a href="privacy.html#refund" target="_blank" rel="noopener">سياسة الإلغاء</a> و<a href="privacy.html" target="_blank" rel="noopener">الخصوصية</a>.</div>
       <div style="height:28px"></div>
@@ -4575,7 +4620,7 @@ async function confirmOrder(){
   const videoFile=(document.getElementById('f_video')||{}).files;
   const houseFile=(document.getElementById('f_housePhoto')||{}).files;
   const payNow = (quickMode||state.subReq) ? 0 : Math.max(0, afterDisc - creditUse);
-  const payMethodNow = (orderPayMethod==='tamara' && payNow>=TAMARA_MIN_LABOR) ? 'tamara' : 'online';
+  const payMethodNow = (orderPayMethod==='tamara' && payNow>=TAMARA_MIN_LABOR) ? 'tamara' : (orderPayMethod==='applepay' && APPLEPAY_OK) ? 'applepay' : 'online';
   if(payNow>0 && !cloudReady){ toast(LX('الدفع يحتاج اتصال بالإنترنت','Payment needs an internet connection')); return; }
 
   const btn=document.getElementById('orderPayCta')||document.querySelector('.cta'); const btnTxt=btn?btn.textContent:''; if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
@@ -4622,7 +4667,7 @@ async function confirmOrder(){
     save(); lastOrderId=order.id;
     if(order.payRequired && order.amountDue>0){
       go('mybookings');   // لما يرجع من صفحة الدفع يلقى طلبه وحالته
-      toast(LX('⏳ نفتح صفحة الدفع...','⏳ Opening payment...'));
+      if(payMethodNow!=='applepay') toast(LX('⏳ نفتح صفحة الدفع...','⏳ Opening payment...'));
       await startOrderPayment(order, payMethodNow);
     } else go('confirm');
     return;
@@ -4716,7 +4761,7 @@ function renderMyBookings(){
         </div>
         ${showDue?`<div class="pay-due">
           <div class="pd-t"><span>${awaitingPay?LX('ادفع لتأكيد الحجز','Pay to confirm your booking'):LX('المتبقي عليك','Amount due')}</span><b>${money(o.amountDue)}</b></div>
-          <div class="pd-acts"><button onclick="payOrder('${o.id}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>${tamaraOk?`<button class="tmr" onclick="payOrder('${o.id}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
+          <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${o.id}','applepay')"> Pay</button>`:''}<button onclick="payOrder('${o.id}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>${tamaraOk?`<button class="tmr" onclick="payOrder('${o.id}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
         </div>`:''}
         ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
         ${o.status==='cancelled'&&['refund_pending','refund_failed'].includes(o.payStatus)?`<div class="pay-note wait">${LX('⏳ جاري استرجاع المبلغ','⏳ Refund in progress')}</div>`:''}

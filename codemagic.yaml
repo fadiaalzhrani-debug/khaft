@@ -18,6 +18,8 @@ workflows:
         - appstore
       vars:
         BUNDLE_ID: "com.khafet.app"
+        # معرّف تاجر Apple Pay. يبقى فاضي لين ينربط المعرّف بمعرّف التطبيق في حساب أبل، وإلا يفشل التوقيع
+        APPLE_PAY_MERCHANT: "merchant.com.khafet.app"
       node: 20.19.0
       xcode: latest
       cocoapods: default
@@ -78,6 +80,11 @@ workflows:
             '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
             '<plist version="1.0"><dict/></plist>' > "$ENT"
           /usr/libexec/PlistBuddy -c "Add :aps-environment string production" "$ENT"
+          # صلاحية Apple Pay الأصلي (فقط إذا المعرّف مضبوط فوق)
+          if [ -n "$APPLE_PAY_MERCHANT" ]; then
+            /usr/libexec/PlistBuddy -c "Add :com.apple.developer.in-app-payments array" "$ENT"
+            /usr/libexec/PlistBuddy -c "Add :com.apple.developer.in-app-payments:0 string $APPLE_PAY_MERCHANT" "$ENT"
+          fi
           # اربط الملف بالمشروع (xcodeproj متوفّر مع CocoaPods)
           ruby -e "require 'xcodeproj'; \
             p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); \

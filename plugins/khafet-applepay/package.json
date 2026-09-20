@@ -1,0 +1,14 @@
+{
+  "name": "khafet-applepay",
+  "version": "1.0.0",
+  "description": "Apple Pay sheet (PassKit) for the Khafet app. Returns the payment token to the web layer.",
+  "main": "index.js",
+  "files": ["ios/", "KhafetApplepay.podspec", "index.js"],
+  "license": "MIT",
+  "capacitor": {
+    "ios": { "src": "ios" }
+  },
+  "peerDependencies": {
+    "@capacitor/core": "^6.0.0"
+  }
+}
