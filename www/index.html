@@ -1323,7 +1323,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 <body>
 <!--kh-splash--><div id="khSplash" onclick="this.classList.add('out')"><div class="logo3" role="img" aria-label="خافت"><svg class="flat dr3" viewBox="129 55 800 800" aria-hidden="true"><defs><clipPath id="spcH"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/></clipPath><clipPath id="spcW"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcL"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcT"><rect x="129" y="55" width="800" height="800" rx="179"/></clipPath><linearGradient id="spfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".035" stop-color="#fff" stop-opacity=".9"/><stop offset=".07" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><linearGradient id="spshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#E9D3A0" stop-opacity=".45"/></linearGradient><linearGradient id="spwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><radialGradient id="spnut" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8E4"/><stop offset=".6" stop-color="#F3DC9C"/><stop offset="1" stop-color="#D9AE3E"/></radialGradient><filter id="spb30" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter><filter id="spb10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="spb4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs><g class="wg"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="url(#spwf)"/></g><polygon class="ln lh" pathLength="1" points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><g clip-path="url(#spcH)"><rect class="fl fh" x="129" y="770" width="800" height="720" fill="url(#spfill)"/></g><g clip-path="url(#spcL)" class="shd"><rect x="129" y="400" width="800" height="400" fill="url(#spshade)"/></g><g clip-path="url(#spcT)"><g class="sw"><g transform="skewX(-22)"><rect x="340" y="-100" width="260" height="1100" fill="#fff" opacity=".22" filter="url(#spb30)"/><rect x="455" y="-100" width="34" height="1100" fill="#fff" opacity=".55" filter="url(#spb10)"/></g></g></g><g clip-path="url(#spcL)"><g class="sw"><g transform="skewX(-22)"><rect x="360" y="-100" width="70" height="1100" fill="#C9962A" opacity=".28" filter="url(#spb10)"/><rect x="452" y="-100" width="18" height="1100" fill="#fff" filter="url(#spb4)"/><rect x="478" y="-100" width="7" height="1100" fill="#FFFDF5" opacity=".9"/></g></g></g></svg></div><p>صيانة منزلك في أيادٍ أمينة</p></div>
 <script>(function(){var el=document.getElementById('khSplash');if(!el)return;var first=true;try{first=!localStorage.getItem('kh_splash_seen');localStorage.setItem('kh_splash_seen','1');}catch(e){}
-var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;var d=rm?0.6:(first?4.8:2.6);el.style.setProperty('--sp',d+'s');
+var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;var deep=/[?&](s|v)=/.test(location.search);var d=rm?0.6:(deep?1.2:(first?4.8:2.6));el.style.setProperty('--sp',d+'s');
 setTimeout(function(){el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},600);},d*1000+250);})();</script><!--/kh-splash-->
 
 <header class="top">
@@ -1646,7 +1646,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=105;
+const APP_BUILD=106;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -1935,8 +1935,9 @@ async function loadPrices(){
     const [c, s, p] = await Promise.all([ sb.from('khafet_categories').select('*'), sb.from('khafet_services').select('*'), sb.from('khafet_parts_public').select('*') ]);
     if(!c.error && !s.error && applyCatalog(c.data, s.data)){
       if(!p.error) applyParts(p.data||[]);
+      applyDeepLink(true);
       try{ localStorage.setItem(CATALOG_KEY, JSON.stringify({c:c.data, s:s.data, p:(!p.error&&p.data)||[], t:Date.now()})); }catch(e){}
-      if(['home','prices','pick','services'].includes(view)) render();
+      if(['home','prices','pick','services','cart'].includes(view)) render();
       return;
     }
   }catch(e){}
@@ -2134,6 +2135,25 @@ function subscribeCloud(){
 
 let view='home';
 try{ if(new URLSearchParams(location.search).has('join')) view='join'; }catch(e){}   /* رابط مباشر لتسجيل المزوّدين */
+/* رابط مباشر من بوت الواتساب: ?s=p1,e1:3 (خدمات بكمياتها) أو ?v=mybookings|complaints */
+let _deepSvc=[], _deepView='';
+try{ const q=new URLSearchParams(location.search);
+  _deepSvc=(q.get('s')||'').split(',').map(x=>{ const m=/^([\w-]{1,24})(?::(\d{1,2}))?$/.exec(x.trim()); return m?{id:m[1], n:Math.min(Math.max(+m[2]||1,1),20)}:null; }).filter(Boolean).slice(0,6);
+  if(['mybookings','complaints'].includes(q.get('v'))) _deepView=q.get('v');
+}catch(e){}
+/* final=true: آخر محاولة (الكتالوج وصل أو انتهت المهلة)، نفتح الموجود وننسى الباقي */
+function applyDeepLink(final){
+  if(!_deepSvc.length && !_deepView) return;
+  if(_deepView){ const v=_deepView; _deepView=''; _deepSvc=[]; try{ history.replaceState({}, '', location.pathname); }catch(e){} go(v); return; }
+  const ok=_deepSvc.filter(d=>SERVICES.some(s=>s.id===d.id && !s.hidden && CATS[s.cat]));
+  if(ok.length<_deepSvc.length && !final) return;
+  _deepSvc=[]; try{ history.replaceState({}, '', location.pathname); }catch(e){}
+  if(!ok.length) return;
+  quickMode=false; state.cart={}; state.parts={};
+  ok.forEach(d=>{ const s=SERVICES.find(x=>x.id===d.id); state.cart[d.id]=s.custom?1:d.n; });
+  currentCat=SERVICES.find(x=>x.id===ok[0].id).cat;
+  save(); go('cart');
+}
 let currentCat='plumb';
 let quickMode=false;        // طلب سريع (بدون اختيار خدمة)
 let adminFilter='all';
@@ -5331,6 +5351,8 @@ function toggleLang(){ setUILang(UILANG==='en'?'ar':'en'); }
 document.documentElement.lang = UILANG==='en'?'en':'ar';
 document.documentElement.dir  = UILANG==='en'?'ltr':'rtl';
 render();  // تُعرض الصفحة فوراً بدون انتظار أي شيء خارجي
+try{ if(localStorage.getItem(CATALOG_KEY)) applyDeepLink(false); }catch(e){}   /* زائر جديد: ننتظر الأسعار الحية حتى ما يشوف سعرًا قديمًا */
+setTimeout(function(){ try{ applyDeepLink(true); }catch(e){} }, 4000);
 _startI18n();
 if(UILANG==='en') applyLang();
 syncLangBtn();
