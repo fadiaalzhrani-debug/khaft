@@ -1211,6 +1211,31 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .catbtn:nth-child(8n+1) .cb-ic{--c:var(--c-4)} .catbtn:nth-child(8n+2) .cb-ic{--c:var(--c-5)} .catbtn:nth-child(8n+3) .cb-ic{--c:var(--c-6)} .catbtn:nth-child(8n+4) .cb-ic{--c:var(--c-7)}
 .catbtn:nth-child(8n+5) .cb-ic{--c:var(--c-8)} .catbtn:nth-child(8n+6) .cb-ic{--c:var(--c-1)} .catbtn:nth-child(8n+7) .cb-ic{--c:var(--c-2)} .catbtn:nth-child(8n+8) .cb-ic{--c:var(--c-3)}
 .nextbar,.sol-bar{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:var(--brown);border:0;border-radius:var(--r-lg);box-shadow:0 18px 34px -14px rgba(58,48,41,.8)}
+/* ═ صفحة الحل (تصميم 2026-09-21): صورة كبيرة، حقائق سريعة، بطاقات مرقّمة، وعدّاد للكمية ═ */
+.sd .sd-hero{margin-top:6px;text-align:center}
+.sd .sd-img{height:210px;border-radius:var(--r);background:#fff center/contain no-repeat;box-shadow:var(--shadow-sm)}
+.sd .sd-ic{width:96px;height:96px;margin:6px auto 0;border-radius:28px;background:var(--gold-soft);display:grid;place-items:center;font-size:2.8rem}
+.sd h1{font-family:var(--f-head);font-size:1.42rem;line-height:1.5;margin:14px 6px 0;text-wrap:balance}
+.sd .sd-facts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.sd .sd-fact{background:var(--card);border-radius:18px;padding:9px 18px;display:flex;flex-direction:column;line-height:1.35;min-width:120px;box-shadow:var(--shadow-sm)}
+.sd .sd-fact small{color:var(--muted);font-size:.74rem;font-weight:700}
+.sd .sd-fact b{font-family:var(--f-head);font-size:1.12rem}
+.sd .sd-fact.gold{background:var(--gold);box-shadow:var(--shadow-gold)}
+.sd .sd-fact.gold small{color:rgba(58,48,41,.75)}
+.sd .sd-card{background:var(--card);border-radius:var(--r);padding:16px 18px;margin-top:12px;box-shadow:var(--shadow-sm)}
+.sd .sd-card.ok{background:var(--gold-tint)}
+.sd .sd-card h2{font-family:var(--f-head);font-size:1.08rem;margin:0 0 8px;display:flex;align-items:center;gap:9px}
+.sd .sd-card p{margin:0;color:var(--ink-soft);line-height:1.95;font-size:.98rem}
+.sd .sd-dot{width:26px;height:26px;flex:none;border-radius:50%;background:var(--brown);color:#FFF8EF;display:grid;place-items:center;font-size:.8rem;font-weight:800;font-family:var(--f-head)}
+.sd .sd-dot.ck{background:var(--ok)}
+.sd .sd-steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.sd .sd-steps li{display:flex;gap:10px;align-items:flex-start;line-height:1.8;font-size:.97rem;color:var(--ink-soft)}
+.sd .sd-steps li i{font-style:normal;width:24px;height:24px;flex:none;margin-top:3px;border-radius:50%;background:var(--gold);color:var(--ink);display:grid;place-items:center;font-size:.78rem;font-weight:800}
+.sd .sd-inc{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.sd .sd-inc li{position:relative;padding-inline-start:26px;line-height:1.8;font-size:.95rem;color:var(--ink-soft)}
+.sd .sd-inc li::before{content:'✓';position:absolute;inset-inline-start:0;top:0;color:var(--ok);font-weight:900}
+.sd .sd-qty{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sd .sd-qty small{color:var(--muted);font-size:.82rem}
 /* الشريط بني غامق، فنص السعر لازم يكون فاتحًا وإلا اختفى (كان لونه غامق على غامق) */
 .sol-bar{color:#FFF8EF;padding-inline:20px;gap:14px}
 .sol-bar .sol-bar-p{flex:none;min-width:auto;white-space:nowrap}
@@ -1487,7 +1512,12 @@ function tamaraEnabled(){ return stOn('tamara_enabled',true); }
 function referralEnabled(){ return stOn('referral_enabled',true); }
 /* ═ إجبار التحديث: إذا النسخة أقدم من app_min_build في الإعدادات يظهر حاجز يوجّه للمتجر (أو لتحديث الصفحة على الويب) ═ */
 function checkAppBuild(){
-  const S=SETTINGS||{}; const min=parseInt(S.app_min_build,10)||0; let w=document.getElementById('updWall');
+  const S=SETTINGS||{};
+  // لكل متجر رقمه: آبل تتأخر بالمراجعة، فلا نقفل على مستخدمي الآيفون نسخة ما وصلتهم بعد
+  const _plat=(window.Capacitor&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform())||'web';
+  const _k=_plat==='ios'?'app_min_build_ios':(_plat==='android'?'app_min_build_android':'');
+  const min=parseInt((_k&&S[_k]!=null&&String(S[_k]).trim()!=='')?S[_k]:S.app_min_build,10)||0;
+  let w=document.getElementById('updWall');
   if(!(min>APP_BUILD)){ if(w) w.remove(); return false; }
   if(w) return true;
   const A=!_uiEN();
@@ -1705,7 +1735,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=116;
+const APP_BUILD=117;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -1949,7 +1979,7 @@ function applyCatalog(cats, svcs){
   CAT_FEATURED=activeCats.filter(c=>c.featured).map(c=>c.id);
   // الخدمات المخفية (مثل خدمات صفحة الحلول) تبقى قابلة للحجز حتى لو قسمها مخفي، لكنها لا تظهر في القوائم
   const list=svcs.filter(s=>s&&s.id&&s.active!==false&&(CATS[s.cat_id]||s.hidden)).sort((a,b)=>(+a.sort||0)-(+b.sort||0))
-    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, hidden:!!s.hidden||!CATS[s.cat_id]||CATS[s.cat_id].soon, name_en:s.name_en||''}));
+    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, hidden:!!s.hidden||!CATS[s.cat_id]||CATS[s.cat_id].soon, name_en:s.name_en||'', extra:(s.extra_price==null||s.custom)?null:+s.extra_price, extraDur:s.extra_duration==null?null:+s.extra_duration}));
   SERVICES.length=0; list.forEach(s=>SERVICES.push(s));
   try{ if(typeof T_DICT_N!=='undefined'){ activeCats.forEach(c=>{ if(c.name_en) T_DICT_N[_west(c.name).trim()]=c.name_en; }); list.forEach(s=>{ if(s.name_en) T_DICT_N[_west(s.name).trim()]=s.name_en; }); } }catch(e){}
   try{ Object.keys((state&&state.cart)||{}).forEach(id=>{ if(!svc(id)) delete state.cart[id]; }); }catch(e){}
@@ -2303,7 +2333,9 @@ function feeAmount(){
   return +f.price||0;
 }
 function cartCount(){ return Object.values(state.cart).reduce((a,b)=>a+b,0); }
-function laborPrice(){ return cartItems().reduce((a,i)=>a+i.price*i.qty,0); }
+function lineLabor(i){ const q=Math.max(1,+i.qty||1), p=+i.price||0; return p + (q-1)*(i.extra!=null?+i.extra:p); }
+function lineDur(i){ const q=Math.max(1,+i.qty||1), d=+i.dur||0; return d + (q-1)*(i.extraDur!=null?+i.extraDur:d); }
+function laborPrice(){ return cartItems().reduce((a,i)=>a+lineLabor(i),0); }
 /* رسوم طلب صغير: خدمة مخفية (id=smallfee) تنضاف إذا مجموع الخدمات والأغراض أقل من small_order_under. الطلب ما ينرفض أبدًا */
 function smallFeeSvc(){ const f=svc('smallfee'); return (f && f.price>0) ? f : null; }
 function smallFeeAmount(){
@@ -2315,7 +2347,7 @@ function smallFeeAmount(){
 }
 function isFeeId(id){ return id==='fee' || id==='smallfee'; }
 function cartPrice(){ return laborPrice() + partsTotal() + feeAmount() + smallFeeAmount(); }
-function cartDuration(){ return cartItems().reduce((a,i)=>a+i.dur*i.qty,0); }
+function cartDuration(){ return cartItems().reduce((a,i)=>a+lineDur(i),0); }
 function hasCustom(){ return cartItems().some(i=>i.custom); }
 /* نقاط الولاء محسوبة برقم الجوال من كل الطلبات (Supabase) */
 function phoneLoyalty(phone){
@@ -2606,36 +2638,54 @@ function renderSolutions(){
       <div style="height:26px"></div>
     </div>`;
 }
-function openSolution(id){ curSolution=SOLUTIONS.find(s=>s.id===id)||null; if(curSolution) go('solution'); }
+function openSolution(id){ curSolution=SOLUTIONS.find(s=>s.id===id)||null; solQty=1; if(curSolution) go('solution'); }
 function solLines(t){ return String(t||'').split(/\n+/).map(x=>x.replace(/^[•\-\s]+/,'').trim()).filter(Boolean); }
 function solChips(t){ return String(t||'').split(/[·•]/).map(x=>x.trim()).filter(Boolean); }
-function renderSolutionDetail(){
+let solQty=1;
+function solUnitOk(s){ return !!(s && String(s.unit_label||'').trim() && s.service_id && svc(s.service_id)); }
+function solSetQty(d){ solQty=Math.min(10, Math.max(1, solQty+d)); renderSolutionDetail(true); }
+function solTotals(s){
+  const v=s&&s.service_id?svc(s.service_id):null; const q=solUnitOk(s)?solQty:1;
+  const price=v? lineLabor({price:v.price,extra:v.extra,qty:q}) : (+s.price||0);
+  const dur=v? lineDur({dur:v.dur,extraDur:v.extraDur,qty:q}) : 0;
+  return {q,price,dur,unit:v?v.price:(+s.price||0)};
+}
+function renderSolutionDetail(keep){
   const s=curSolution; if(!s){ go('solutions'); return; }
+  if(!keep) solQty=Math.max(1,solQty||1);
   const svcOk=!!(s.service_id && svc(s.service_id));
-  const steps=solLines(s.solution), chips=solChips(s.includes);
+  const steps=solLines(s.solution), chips=solChips(s.includes), T=solTotals(s), multi=solUnitOk(s);
+  const unit=esc(String(s.unit_label||'').trim());
+  const y=keep?window.scrollY:0;
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen sol-detail">
+    <div class="wrap screen sd">
       ${pageHead(esc(solText('solutions_title','حلول منازل أجيال')),'solutions')}
-      <div class="sol-top">
-        ${s.image_url?`<div class="sol-top-img" style="background-image:url('${esc(s.image_url)}')"></div>`:`<div class="sol-top-ic">${esc(s.icon||'🔧')}</div>`}
+      <div class="sd-hero">
+        ${s.image_url?`<div class="sd-img" style="background-image:url('${esc(s.image_url)}')"></div>`:`<div class="sd-ic">${esc(s.icon||'🔧')}</div>`}
         <h1>${esc(s.title)}</h1>
+        <div class="sd-facts">
+          <span class="sd-fact gold"><small>${multi?LX('سعر ال'+unit,'Per unit'):LX('أجرة الحل','Price')}</small><b>${T.unit>0?money(T.unit):LX('بعد المعاينة','After inspection')}</b></span>
+          ${T.dur>0?`<span class="sd-fact"><small>${LX('مدة الزيارة','Visit time')}</small><b>${fmtDuration(T.dur)}</b></span>`:''}
+        </div>
       </div>
-      ${s.problem?`<div class="sol-row"><span class="sol-k">😕 المشكلة</span><p>${esc(s.problem)}</p></div>`:''}
-      ${s.cause?`<div class="sol-row"><span class="sol-k">🔍 السبب</span><p>${esc(s.cause)}</p></div>`:''}
-      ${steps.length?`<div class="sol-row ok"><span class="sol-k">✅ الحل</span><ol class="sol-steps">${steps.map(x=>'<li>'+esc(x)+'</li>').join('')}</ol></div>`:''}
-      ${chips.length?`<div class="sol-chips">${chips.map(x=>'<span>'+esc(x)+'</span>').join('')}</div>`:''}
-      <p class="policy-note" style="text-align:center;margin-top:10px">${svcOk?'أجرة اليد تُدفع عند الحجز، والقطع تُحاسب بعد المعاينة.':'يوصلك الفني للمعاينة أولًا، والسعر النهائي بعدها.'}</p>
-      <div style="height:96px"></div>
+      ${s.problem?`<section class="sd-card"><h2><span class="sd-dot">١</span>${LX('وش المشكلة؟','The problem')}</h2><p>${esc(s.problem)}</p></section>`:''}
+      ${s.cause?`<section class="sd-card"><h2><span class="sd-dot">٢</span>${LX('ليش تصير؟','Why it happens')}</h2><p>${esc(s.cause)}</p></section>`:''}
+      ${steps.length?`<section class="sd-card ok"><h2><span class="sd-dot">٣</span>${LX('وش نسوي بالضبط؟','What we do')}</h2><ol class="sd-steps">${steps.map((x,i)=>'<li><i>'+ar(i+1)+'</i><span>'+esc(x)+'</span></li>').join('')}</ol></section>`:''}
+      ${chips.length?`<section class="sd-card"><h2><span class="sd-dot ck">✓</span>${LX('السعر يشمل','The price includes')}</h2><ul class="sd-inc">${chips.map(x=>'<li>'+esc(x)+'</li>').join('')}</ul></section>`:''}
+      ${multi?`<section class="sd-card sd-qty"><div><h2 style="margin:0">${LX('كم '+unit+' تبي نبدّل؟','How many?')}</h2><small>${LX('كلها في زيارة وحدة','All in one visit')}</small></div>
+        <div class="srow-qty"><button type="button" onclick="solSetQty(-1)" aria-label="${LX('أقل','Less')}">−</button><b>${ar(T.q)}</b><button type="button" onclick="solSetQty(1)" aria-label="${LX('أكثر','More')}">+</button></div></section>`:''}
+      <div style="height:104px"></div>
     </div>
     <div class="sol-bar">
-      <div class="sol-bar-p"><small>أجرة الحل</small><b>${+s.price>0?money(s.price):'بعد المعاينة'}</b></div>
+      <div class="sol-bar-p"><small>${multi&&T.q>1?LX('الإجمالي · '+ar(T.q)+' '+unit,'Total · '+T.q):LX('أجرة الحل','Price')}</small><b>${T.price>0?money(T.price):LX('بعد المعاينة','After inspection')}</b></div>
       <button class="cta gold sol-bar-btn" onclick="orderSolution('${esc(s.id)}')">${esc(s.cta||'اطلب الحل')}</button>
     </div>`;
+  if(keep) window.scrollTo(0,y);
 }
 function orderSolution(id){
   const s=SOLUTIONS.find(x=>x.id===id); if(!s) return;
   if(s.service_id && svc(s.service_id)){
-    quickMode=false; state.subReq=null; state.cart={}; state.cart[s.service_id]=1; save(); go('time');
+    quickMode=false; state.subReq=null; state.cart={}; state.cart[s.service_id]=solUnitOk(s)?solQty:1; save(); go('time');
   } else {
     state.quickNote='🏘️ '+(s.title||'')+' · حل من صفحة '+solText('solutions_title','حلول منازل أجيال');
     startQuick();
@@ -4557,7 +4607,7 @@ function receiptHtml(priceTxt, d){
       <div class="iv-total"><span>${LX('الإجمالي','Total')}</span><b>${priceTxt}</b></div></div>`;
   }
   const parts=partLines();
-  const svcRows=cartItems().map(i=>line(esc(i.ico), esc(svcName(i, _uiEN()?'en':'ar')), i.qty, money(i.price*i.qty))).join('');
+  const svcRows=cartItems().map(i=>line(esc(i.ico), esc(svcName(i, _uiEN()?'en':'ar')), i.qty, money(lineLabor(i)))).join('');
   const partRows=parts.map(l=> l.off
     ? line('🔩', esc(l.groupName), 1, money(0), 'off', `<button type="button" class="iv-add" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,false)">＋ ${LX('ضيفها','Add it')}</button>`)
     : line('🔩', esc(partName(l.chosen)), 1, money(l.price*l.qty), '', `<button type="button" class="iv-x" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,true)" aria-label="${LX('شيل القطعة','Remove part')}">×</button>`
