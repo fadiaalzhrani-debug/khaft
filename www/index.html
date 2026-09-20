@@ -1211,6 +1211,11 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .catbtn:nth-child(8n+1) .cb-ic{--c:var(--c-4)} .catbtn:nth-child(8n+2) .cb-ic{--c:var(--c-5)} .catbtn:nth-child(8n+3) .cb-ic{--c:var(--c-6)} .catbtn:nth-child(8n+4) .cb-ic{--c:var(--c-7)}
 .catbtn:nth-child(8n+5) .cb-ic{--c:var(--c-8)} .catbtn:nth-child(8n+6) .cb-ic{--c:var(--c-1)} .catbtn:nth-child(8n+7) .cb-ic{--c:var(--c-2)} .catbtn:nth-child(8n+8) .cb-ic{--c:var(--c-3)}
 .nextbar,.sol-bar{left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom));background:var(--brown);border:0;border-radius:var(--r-lg);box-shadow:0 18px 34px -14px rgba(58,48,41,.8)}
+/* الشريط بني غامق، فنص السعر لازم يكون فاتحًا وإلا اختفى (كان لونه غامق على غامق) */
+.sol-bar{color:#FFF8EF;padding-inline:20px;gap:14px}
+.sol-bar .sol-bar-p{flex:none;min-width:auto;white-space:nowrap}
+.sol-bar .sol-bar-p b{color:#FFF8EF;font-family:var(--f-head);font-size:1.22rem}
+.sol-bar .sol-bar-p small{color:rgba(255,248,239,.7)}
 .nextbar .wrap{padding-inline:16px}
 .nextbar .nb-go{border-radius:999px;min-height:50px;font-family:var(--f-head);font-size:1.1rem}
 .nextbar .nb-go:hover{background:var(--gold)}
@@ -1700,7 +1705,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=115;
+const APP_BUILD=116;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
