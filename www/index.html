@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- بناء 2026-07-22 — يشمل: إصلاح الحجز · حذف الحساب · خصم الحجز المبكر · خانة الاقتراحات · إزالة روابط الطاقم -->
+<!-- بناء 2026-07-22 · يشمل: إصلاح الحجز · حذف الحساب · خصم الحجز المبكر · خانة الاقتراحات · إزالة روابط الطاقم -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>خافِت | صيانة منزلية شاملة</title>
-<meta name="description" content="خافِت — منصة صيانة منزلية شاملة: سباكة، كهرباء، تكييف، نجارة، دهان، أجهزة وتنظيف. احجز فني موثوق في الوقت المناسب لك." />
+<meta name="description" content="خافِت · منصة صيانة منزلية شاملة: سباكة، كهرباء، تكييف، نجارة، دهان، أجهزة وتنظيف. احجز فني موثوق في الوقت المناسب لك." />
 <link rel="icon" href="logo.png" />
 <meta name="theme-color" content="#F5C518" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -16,7 +16,7 @@
 <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
   :root{
-    /* هوية خافِت — أصفر ذهبي + فحمي دافئ */
+    /* هوية خافِت · أصفر ذهبي + فحمي دافئ */
     --gold:#F5C518; --gold-strong:#E3AF07; --gold-deep:#B8860B; --gold-soft:#FBF1C9; --gold-tint:#FDF8E7;
     --ink:#1A1712; --ink-soft:#40392E; --brand:#1A1712; --brand-dark:#000000; --brand-soft:#FBF1C9;
     --accent:#F5C518; --accent-soft:#FEF6D6;
@@ -225,6 +225,8 @@
   .more-date input[type=date]{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:none;padding:0}
 
   /* Time slots */
+  .soon-tag{background:var(--gold-soft);color:var(--gold-deep);font-size:.66rem;font-weight:900;padding:3px 9px;border-radius:20px;white-space:nowrap;line-height:1.5;margin-top:4px;display:inline-block}
+  .mt-tile.soon,.catbtn.soon{opacity:.72}
   .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px;margin-top:4px}
   .slot{padding:12px 6px;border-radius:13px;border:1.5px solid var(--line);background:#fcfbf7;font-weight:700;text-align:center;transition:.15s;font-size:.9rem}
   .slot.win{white-space:nowrap;font-size:.88rem;font-weight:800}
@@ -772,7 +774,7 @@
   .loy-prog{display:flex;gap:6px;margin:14px 0}
   .loy-prog i{flex:1;height:9px;border-radius:6px;background:#eae5d8}
   .loy-prog i.on{background:var(--gold-strong)}
-  /* عناصر الثقة — رقائق تتكيّف مع العرض */
+  /* عناصر الثقة · رقائق تتكيّف مع العرض */
   .trust{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:26px}
   .trust-item{display:inline-flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow-sm)}
   .trust-item .ti-ic{font-size:1.05rem;width:26px;height:26px;border-radius:50%;background:var(--gold-tint);display:grid;place-items:center;flex-shrink:0}
@@ -787,7 +789,7 @@
   .acc-link{display:block;padding:12px 4px;color:var(--ink);text-decoration:none;font-weight:700;font-size:.95rem;border-bottom:1px solid var(--line)}
   .acc-link:last-child{border-bottom:none}
   .acc-link:hover{color:var(--gold)}
-  /* صفحة حسابي — تصميم مرتّب */
+  /* صفحة حسابي · تصميم مرتّب */
   .acc-hero{display:flex;align-items:center;gap:14px;background:linear-gradient(135deg,var(--ink),#2c2c2c);color:#fff;border-radius:18px;padding:18px 20px;margin-top:14px}
   .acc-hero .av{width:54px;height:54px;border-radius:50%;background:var(--gold);color:var(--ink);display:grid;place-items:center;font-size:1.7rem;flex-shrink:0}
   .acc-hero b{font-size:1.15rem;display:block}
@@ -854,7 +856,7 @@
   .tip-content{margin-top:12px;line-height:2;font-size:1rem;color:var(--ink)}
   .tip-content p{margin:0 0 14px}
   .tip-content b{color:var(--ink)}
-  /* أيقونات SVG داخل الأزرار — بدل الإيموجي */
+  /* أيقونات SVG داخل الأزرار · بدل الإيموجي */
   .qb-ic svg{color:#1A1712}
   .sb-ic svg{color:#8a6d00}
   .trust-item .ti-ic svg{color:#8a6d00}
@@ -1012,7 +1014,7 @@
     .logo{font-size:1.3rem}
   }
 
-/* 👁 إظهار/إخفاء كلمة المرور — يلتف حول الحقل */
+/* 👁 إظهار/إخفاء كلمة المرور · يلتف حول الحقل */
 .pwwrap{position:relative;display:block}
 .pwwrap > input{width:100%;padding-inline-end:46px !important}
 .pweye{position:absolute;inset-inline-end:6px;top:50%;transform:translateY(-50%);
@@ -1162,11 +1164,13 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .panel{border-radius:var(--r)}
 .field input,.field textarea,.field select{border:0;background:#fff;border-radius:var(--r-sm);min-height:56px;padding:14px 18px;box-shadow:inset 0 0 0 1.5px transparent}
 .field input:focus,.field textarea:focus,.field select:focus{border:0;box-shadow:inset 0 0 0 2px var(--gold)}
-.dchip{border:0;background:var(--card);border-radius:18px;transition:transform .25s var(--spring)}
-.dchip.active{background:var(--brown);color:#FFF8EF}
-.more-date{border:0;border-radius:18px;background:var(--card)}
-.slot{border:0;background:var(--card);border-radius:999px;min-height:52px;transition:transform .25s var(--spring),background .2s}
-.slot.active{background:var(--gold);color:var(--ink)}
+/* خانات اليوم والوقت: خلفية بيضا وإطار خفيف عشان تبين كأزرار داخل اللوحة */
+.dchip{border:1.5px solid var(--line);background:#FFFDF8;border-radius:18px;transition:transform .25s var(--spring)}
+.dchip.active{background:var(--brown);color:#FFF8EF;border-color:var(--brown)}
+.more-date{border:1.5px dashed var(--line-strong);border-radius:18px;background:#FFFDF8}
+.slot{border:1.5px solid var(--line);background:#FFFDF8;border-radius:999px;min-height:52px;box-shadow:0 8px 16px -14px rgba(58,48,41,.6);transition:transform .25s var(--spring),background .2s}
+.slot.active{background:var(--gold);color:var(--ink);border-color:var(--gold-strong);box-shadow:var(--shadow-gold)}
+.slot:disabled{background:#EDE4D9;border-color:transparent;color:var(--muted);opacity:.75;text-decoration:none;box-shadow:none}
 .slot:active,.dchip:active{transform:scale(.94)}
 .addr-chip{border:0;border-radius:999px;background:var(--card)}
 .addr-chip.active{background:var(--brown);color:#FFF8EF}
@@ -1305,7 +1309,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .iv-add:active{transform:scale(.92)}
 .iv-row.off{opacity:1}
 .iv-row.off .iv-ic,.iv-row.off .iv-n,.iv-row.off .iv-p{opacity:.5}
-.iv-hint{display:block;color:var(--muted);font-weight:600;font-size:.78rem;line-height:1.5;margin-top:1px}
+.iv-hint{display:block;grid-column:2 / -1;color:var(--muted);font-weight:600;font-size:.78rem;line-height:1.5;margin-top:1px}
 .ref-earn{display:block;margin-top:8px;background:var(--ok-soft);color:var(--ok);border-radius:14px;padding:8px 12px;font-weight:800}
 .ref-fine{display:block;margin-top:8px;font-size:.74rem;opacity:.8}
 .iv-sub{display:flex;justify-content:space-between;align-items:baseline;margin:8px 18px 0;padding-top:12px;border-top:1px dashed var(--line-strong);font-weight:700;color:var(--ink-soft)}
@@ -1404,8 +1408,8 @@ setTimeout(function(){el.classList.add('out');setTimeout(function(){if(el.parent
 
 <script>
 /* ============================================================
-   خافِت — مؤسسة صيانة منزلية (سباكة وكهرباء)
-   موقع صفحة واحدة يعمل بدون إنترنت — يحفظ البيانات في المتصفح
+   خافِت · مؤسسة صيانة منزلية (سباكة وكهرباء)
+   موقع صفحة واحدة يعمل بدون إنترنت · يحفظ البيانات في المتصفح
    ============================================================ */
 
 /* ---- إعدادات المؤسسة (قابلة للتعديل) ---- */
@@ -1417,24 +1421,24 @@ let WHATSAPP = '966590497866';      // واتساب بصيغة دولية بدو
 const HOURS    = 'يومياً ٨ ص – ١٠ م'; // ساعات العمل
 const CITY     = 'الخبر';             // منطقة التغطية
 let WARRANTY = 'ضمان ٣٠ يوم';       // الضمان (يتحدّث من الإعدادات app_warranty_days)
-/* لوحة المؤسسة انتقلت لصفحة admin.html بحساب Supabase — ما عاد فيه رمز هنا */
-/* أيام الإجازة — ما نستقبل فيها حجوزات.
+/* لوحة المؤسسة انتقلت لصفحة admin.html بحساب Supabase · ما عاد فيه رمز هنا */
+/* أيام الإجازة · ما نستقبل فيها حجوزات.
    الترقيم: ٠=الأحد ١=الإثنين ٢=الثلاثاء ٣=الأربعاء ٤=الخميس ٥=الجمعة ٦=السبت
    حالياً: الجمعة إجازة. لإضافة السبت اجعلها [5,6] */
 let OFF_DAYS = [5];
 let WORK_START = 8 * 60;
 let WORK_END   = 22 * 60;
 const SLOT_STEP  = 30;
-const BUFFER     = 30;   // احتياط تنقّل بين الطلبات — الفني ما يتأخر على اللي بعده
+const BUFFER     = 30;   // احتياط تنقّل بين الطلبات · الفني ما يتأخر على اللي بعده
 let LEAD_MIN   = 60;
 let ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «٤–٦م» بدل وقت دقيق)
 let MAX_JOBS_PER_DAY = 8;    // أقصى عدد حجوزات في اليوم (يمنع زحمة الجدول)
 const QUICK_DURATION   = 90;   // مدة افتراضية أكبر للطلب السريع/المعاينة (حجمه مجهول)
 let LOYALTY_TARGET = 6;   // كل ٦ طلبات، السابع يُخصم منه متوسط طلباته (يتغيّر من الإعدادات)
 const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل عبر مزوّد (مخفية عن العميل)
-/* أكواد الخصم الثابتة أُلغيت — صار النظام أكواد إحالة شخصية عشوائية
+/* أكواد الخصم الثابتة أُلغيت · صار النظام أكواد إحالة شخصية عشوائية
    يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
-// باقات الاشتراك السنوي — «ريّح بالك»: باقتان (شقة / بيت) — الشكل المعتمد 2026-08-22
+// باقات الاشتراك السنوي · «ريّح بالك»: باقتان (شقة / بيت) · الشكل المعتمد 2026-08-22
 /* عد تنازلي: الباقة تقفل بعد 30 يوماً من 2026-08-22 */
 let PLANS_CLOSE = new Date('2026-09-21T12:00:00+03:00');
 function planDaysLeft(){ const d = Math.ceil((PLANS_CLOSE - Date.now())/86400000); return d>0 ? d : 0; }
@@ -1460,6 +1464,7 @@ function applySettings(rows){
   const lt=stNum('loyalty_target',null); if(lt>=2) LOYALTY_TARGET=Math.round(lt);
   const tm=stNum('tamara_min',null); if(tm>=0) TAMARA_MIN_LABOR=tm;
   const apc=stNum('advance_pct',null); if(apc>=0) ADVANCE_PCT=Math.min(50,apc);
+  const amd=stNum('advance_min_days',null); if(amd>=0) ADVANCE_MIN=Math.round(amd);
   FIRST_PCT=Math.max(0,stNum('first_order_pct',0)); LAUNCH_PCT=Math.max(0,stNum('launch_pct',0));
   FRIEND_PCT=Math.min(10,Math.max(0,stNum('referral_friend_pct',0)));
   FRIEND_BONUS=Math.max(0,stNum('referral_friend_bonus',10));
@@ -1549,8 +1554,10 @@ function appPerksHtml(){
   if(!stOn('home_card_enabled',true)) return '';
   const title=String(SETTINGS.home_card_title||'').trim(), badge=String(SETTINGS.home_card_badge||'').trim();
   let big, small, text;
-  if(title){ const p=badge.split(/\s+/); big=p[0]||'🎁'; small=p.slice(1).join(' '); text=esc(title); }
-  else { if(!(WELCOME_CREDIT>0) || (myOrders()||[]).length) return ''; big=ar(WELCOME_CREDIT); small=LX('ريال','SAR'); text=LX('هدية أول طلب','First order gift'); }
+  const isNew = WELCOME_CREDIT>0 && !((myOrders()||[]).length);
+  if(isNew){ big=ar(WELCOME_CREDIT); small=LX('ريال','SAR'); text=LX('هدية أول طلب','First order gift'); }   // العميل الجديد: الهدية أهم
+  else if(title){ const p=badge.split(/\s+/); big=p[0]||'🎁'; small=p.slice(1).join(' '); text=esc(title); }
+  else return '';
   return `<div class="gift-note" id="giftNote"><span class="gn-amt"><b>${esc(big)}</b>${small?`<small>${esc(small)}</small>`:''}</span><span class="gn-t">${text}</span></div>`;
 }
 function launchPromoHtml(){
@@ -1622,38 +1629,38 @@ const PLANS = [
       ['ضمان الأغراض (قطع الغيار)','','سنتان'] ],
     calc:[['8 زيارات × 180','1,440'],['12 مكيفاً × 45 (مع الوحدة الخارجية)','540'],['6 مراوح × 50','300'],['فحص أمان المنزل','199'],['صيانة أو تبديل السخان','250']] },
 ];
-/* ── الباقات القديمة (للمرجع فقط — لم تعد معروضة) ── */
+/* ── الباقات القديمة (للمرجع فقط · لم تعد معروضة) ── */
 const PLANS_LEGACY = [
   { id:'home', name:'باقة البيت', nameEn:'Home Plan', price:1799, badge:'', was:3000, monthly:150, visits:12, visitsTxt:'12 زيارة', features:[
-      '🔧 12 زيارة بالسنة — أجرة اليد مجانية',
+      '🔧 12 زيارة بالسنة · أجرة اليد مجانية',
       '❄️ تنظيف كل مكيفات البيت مرة بالسنة (سبليت · حتى 12)',
       '🏠 فحص شامل للبيت مرة بالسنة',
       '🔥 فحص السخان المركزي قبل الشتاء',
       '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
   { id:'premium', name:'باقة بريميوم', nameEn:'Premium Plan', price:2399, badge:'الأفضل قيمة', was:3700, monthly:200, visits:12, visitsTxt:'زيارات لا محدودة', features:[
-      '♾️ زيارات لا محدودة — أجرة اليد مجانية بالكامل',
+      '♾️ زيارات لا محدودة · أجرة اليد مجانية بالكامل',
       '❄️ تنظيف كل مكيفات البيت مرتين بالسنة',
       '💧 كشف تسريب المياه بالأجهزة بدون تكسير',
       '🏠 فحص شامل مرتين + فحص أمان الكهرباء مرة بالسنة',
       '🔥 فحص السخان المركزي مع صيانة شاملة',
-      '🏷️ خصم 10% على قطع الغيار — لأول 200 عقد',
+      '🏷️ خصم 10% على قطع الغيار · لأول 200 عقد',
       '🔁 نقل العقد للمستأجر الجديد',
       '🚚 توصيل مجاني · 🔔 تذكيرات الصيانة',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
   { id:'plat', name:'باقة بلاتينيوم', nameEn:'Platinum Plan', price:3299, badge:'', was:4600, monthly:275, visits:12, visitsTxt:'زيارات لا محدودة', features:[
-      '👑 كل مزايا بريميوم — زيارات لا محدودة وأجرة يد مجانية',
+      '👑 كل مزايا بريميوم · زيارات لا محدودة وأجرة يد مجانية',
       '🌀 تنظيف مراوح دورات المياه مرة بالسنة',
       '🧱 تجديد ترويبة البلاط لـ4 دورات مياه',
       '❄️ تنظيف كل مكيفات البيت مرتين بالسنة',
       '💧 كشف التسريب · 🏠 فحص شامل مرتين · ⚡ أمان الكهرباء',
-      '🏷️ خصم 10% على قطع الغيار — لأول 200 عقد',
+      '🏷️ خصم 10% على قطع الغيار · لأول 200 عقد',
       '🔁 نقل العقد للمستأجر الجديد',
       '🛡️ ضمان الإصلاح 365 يوم · وضمان القطع سنتان' ] },
 ];
 
 const CT_ROWS=[
-{l:'زيارات الصيانة',le:'Maintenance visits',s:'سباكة · كهرباء · تركيبات — لا تشمل الأغراض والقطع',se:'Plumbing · electrical · installs — parts not included',v:['12 زيارة','لا محدودة','لا محدودة'],ve:['12 visits','Unlimited','Unlimited']},
+{l:'زيارات الصيانة',le:'Maintenance visits',s:'سباكة · كهرباء · تركيبات · لا تشمل الأغراض والقطع',se:'Plumbing · electrical · installs · parts not included',v:['12 زيارة','لا محدودة','لا محدودة'],ve:['12 visits','Unlimited','Unlimited']},
 {l:'تنظيف المكيفات',le:'AC cleaning',s:'سبليت فقط · حتى 12 مكيفاً',se:'Split units · up to 12',v:['مرة بالسنة','مرتان بالسنة','مرتان بالسنة'],ve:['Once a year','Twice a year','Twice a year']},
 {l:'كشف تسريب المياه',le:'Water leak detection',s:'بالأجهزة، بدون تكسير',se:'With devices, no breaking',v:['NO','YES','YES']},
 {l:'فحص السخان المركزي',le:'Central heater check',s:'قبل الشتاء',se:'Before winter',v:['YES','YES','YES'],note:['','مع صيانة شاملة','مع صيانة شاملة'],noteE:['','with full service','with full service']},
@@ -1661,11 +1668,11 @@ const CT_ROWS=[
 {l:'تجديد ترويبة البلاط',le:'Tile grout renewal',s:'لـ4 دورات مياه',se:'For 4 bathrooms',v:['NO','NO','4 دورات مياه'],ve:['NO','NO','4 bathrooms']},
 {l:'التوصيل',le:'Delivery',s:'رسوم المشوار',se:'Trip charge',v:['مجاني','مجاني','مجاني'],ve:['Free','Free','Free'],ok:1},
 {l:'خصم قطع الغيار',le:'Spare parts discount',s:'أرخص من سعر السوق · لأول 200 عقد',se:'Below market price · first 200 contracts',v:['NO','10%','10%'],ve:['NO','10%','10%']},
-{l:'تذكيرات الصيانة',le:'Maintenance reminders',s:'بالتطبيق — نذكّرك بمواعيدك',se:'In-app — we remind you',v:['YES','YES','YES']},
-{l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out — the contract moves too',v:['NO','YES','YES']},
+{l:'تذكيرات الصيانة',le:'Maintenance reminders',s:'بالتطبيق · نذكّرك بمواعيدك',se:'In-app · we remind you',v:['YES','YES','YES']},
+{l:'نقل العقد للمستأجر الجديد',le:'Transfer to a new tenant',s:'لو أجّرت بيتك، العقد ينتقل',se:'Rent it out · the contract moves too',v:['NO','YES','YES']},
 {l:'فحص شامل للبيت',le:'Full home inspection',s:'',se:'',v:['مرة بالسنة','مرتان بالسنة','مرتان بالسنة'],ve:['Once a year','Twice a year','Twice a year']},
 {l:'فحص أمان الكهرباء',le:'Electrical safety check',s:'اللوحة والتأريض والحماية',se:'Panel, earthing & protection',v:['NO','مرة بالسنة','مرة بالسنة'],ve:['NO','Once a year','Once a year']},
-{l:'ضمان الإصلاح',le:'Repair warranty',s:'',se:'',wide:'365 يوماً — مضمون طول مدة العقد',wideE:'365 days — covered for the whole contract'},
+{l:'ضمان الإصلاح',le:'Repair warranty',s:'',se:'',wide:'365 يوماً · مضمون طول مدة العقد',wideE:'365 days · covered for the whole contract'},
 {l:'ضمان الأغراض',le:'Parts warranty',s:'قطع الغيار',se:'Spare parts',wide:'سنتان على جميع القطع',wideE:'Two years on all parts'}
 ];
 const CT_SVC=[
@@ -1693,7 +1700,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=114;
+const APP_BUILD=115;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -1721,7 +1728,7 @@ const SERVICES = [
   {id:'p2', cat:'plumb', ico:'🚰', name:'تسليك مجاري/بالوعة', desc:'تسليك انسداد المجاري أو البالوعات.',      dur:45, price:120, quick:true},
   {id:'p3', cat:'plumb', ico:'🔩', name:'تغيير خلاط ماء',      desc:'تركيب خلاط مغسلة أو مطبخ جديد.',          dur:40, price:100},
   {id:'p4', cat:'plumb', ico:'💧', name:'إصلاح تسريب مياه',    desc:'كشف ومعالجة تسريب المواسير والوصلات.',    dur:60, price:150, quick:true},
-  {id:'p5', cat:'plumb', ico:'♨️', name:'تركيب/إصلاح سخان',    desc:'تركيب سخان جديد أو صيانة القديم — بدون قطع الغيار.', dur:90, price:250},
+  {id:'p5', cat:'plumb', ico:'♨️', name:'تركيب/إصلاح سخان',    desc:'تركيب سخان جديد أو صيانة القديم · بدون قطع الغيار.', dur:90, price:250},
   {id:'p6', cat:'plumb', ico:'🚽', name:'إصلاح سيفون الحمام',  desc:'إصلاح أو تغيير طرمبة/سيفون الكرسي.',      dur:45, price:110},
   {id:'e1', cat:'elec',  ico:'💡', name:'تغيير لمبة/إضاءة',    desc:'تركيب أو تغيير لمبات وإضاءة.',            dur:20, price:50,  quick:true},
   {id:'e2', cat:'elec',  ico:'✨', name:'تركيب ثريا',          desc:'تركيب ثريا أو نجفة مع التثبيت.',          dur:60, price:180},
@@ -1729,7 +1736,7 @@ const SERVICES = [
   {id:'e4', cat:'elec',  ico:'🔌', name:'تغيير مفتاح/بريزة',   desc:'تغيير مفتاح إضاءة أو بريزة كهرباء.',      dur:30, price:70},
   {id:'e5', cat:'elec',  ico:'🌀', name:'تركيب مروحة سقف',     desc:'تركيب وتوصيل مروحة سقف.',                 dur:75, price:200},
   {id:'e6', cat:'elec',  ico:'🧰', name:'فحص لوحة الكهرباء',   desc:'فحص الطبلون والقواطع والأحمال.',          dur:45, price:130},
-  {id:'ac1',cat:'ac',    ico:'❄️', name:'تنظيف مكيف سبليت',    desc:'غسيل وتنظيف الوحدة الداخلية والخارجية — للمكيف الواحد.', dur:45, price:45, quick:true},
+  {id:'ac1',cat:'ac',    ico:'❄️', name:'تنظيف مكيف سبليت',    desc:'غسيل وتنظيف الوحدة الداخلية والخارجية · للمكيف الواحد.', dur:45, price:45, quick:true},
   {id:'ac2',cat:'ac',    ico:'🌀', name:'تعبئة فريون',         desc:'شحن غاز الفريون وفحص التبريد.',           dur:60, price:200, quick:true},
   {id:'c1', cat:'carp',  ico:'🚪', name:'إصلاح باب/مفصلات',    desc:'ضبط أو تغيير مفصلات وأقفال الأبواب.',     dur:45, price:120, quick:true},
   {id:'c2', cat:'carp',  ico:'🗄️', name:'إصلاح دولاب/مطبخ',    desc:'إصلاح أدراج وأبواب الدواليب والمطبخ.',    dur:60, price:150},
@@ -1773,19 +1780,19 @@ function svcName(s,lang){ if(lang==='ar'||!s) return s?s.name:''; const tr=SVC_I
 
 /* ---- نصوص صفحة الفنيين بثلاث لغات ---- */
 const I18N={
-  ne:{ techTitle:'कामहरूको सूची', techSub:'तपाईंका काम — समय, स्थान र आवश्यक काम',
+  ne:{ techTitle:'कामहरूको सूची', techSub:'तपाईंका काम · समय, स्थान र आवश्यक काम',
        when:'समय', location:'स्थान', whatNeeded:'आवश्यक काम', duration:'अनुमानित समय',
        customer:'ग्राहक', call:'📞 कल', notes:'टिप्पणी', house:'घर नं.', landmark:'चिनो',
        openMap:'खोल्नुहोस्', start:'काम सुरु गर्नुहोस्', complete:'सम्पन्न भयो', doneLbl:'✓ सम्पन्न',
        noJobs:'अहिले कुनै काम छैन', byInspection:'निरीक्षणपछि',
        st:{new:'नयाँ',confirmed:'पुष्टि भयो',progress:'चलिरहेको',done:'सम्पन्न'} },
-  en:{ techTitle:'Job list', techSub:'Your jobs — time, location and work needed',
+  en:{ techTitle:'Job list', techSub:'Your jobs · time, location and work needed',
        when:'Time', location:'Location', whatNeeded:'Work needed', duration:'Est. time',
        customer:'Customer', call:'📞 Call', notes:'Notes', house:'House no.', landmark:'Landmark',
        openMap:'Open map', start:'Start job', complete:'Mark complete', doneLbl:'✓ Completed',
        noJobs:'No jobs right now', byInspection:'After inspection',
        st:{new:'New',confirmed:'Confirmed',progress:'In progress',done:'Done'} },
-  ar:{ techTitle:'قائمة المهام', techSub:'مهامك — الوقت والموقع والعمل المطلوب',
+  ar:{ techTitle:'قائمة المهام', techSub:'مهامك · الوقت والموقع والعمل المطلوب',
        when:'الوقت', location:'الموقع', whatNeeded:'العمل المطلوب', duration:'المدة التقريبية',
        customer:'العميل', call:'📞 اتصال', notes:'ملاحظات', house:'منزل رقم', landmark:'علامة',
        openMap:'افتح الخريطة', start:'بدء العمل', complete:'تم الإنجاز', doneLbl:'✓ مكتمل',
@@ -1823,11 +1830,11 @@ function load(){
 function save(){ try{ localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }catch(e){} }
 
 /* ============================================================
-   السحابة (Supabase) — الطلبات تتزامن بين كل الأجهزة لحظياً
+   السحابة (Supabase) · الطلبات تتزامن بين كل الأجهزة لحظياً
    لو ما توفّر اتصال/مكتبة: يشتغل الموقع محلياً بدون مشاكل
    ============================================================ */
 let sb=null, cloudReady=false, cloudFails=0, cloudLoading=false;
-/* هوية مجهولة للعميل — تربط طلباته بجهازه بدون ما يسجّل حساب.
+/* هوية مجهولة للعميل · تربط طلباته بجهازه بدون ما يسجّل حساب.
    بدونها ما نقدر نقفل قاعدة البيانات (لأن الخادم ما يعرف مين صاحب الطلب). */
 let myUid=null;
 let isVerified=false;   // سجّل برقمه عبر الرمز؟ (يحدّد هل نقاطه تتبعه لأي جهاز)
@@ -1867,15 +1874,15 @@ async function initCloud(){
 
 /* ---------- إشعارات التطبيق (Push) ----------
    تشتغل بس لما الموقع يكون داخل تطبيق Capacitor.
-   على المتصفح العادي ما يصير شي — بدون أي خطأ. */
+   على المتصفح العادي ما يصير شي · بدون أي خطأ. */
 function inApp(){ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }
 
-/* حالة الإشعارات — تُعرض بصفحة «حسابي» عشان نشخّص بدون أدوات مطوّر */
+/* حالة الإشعارات · تُعرض بصفحة «حسابي» عشان نشخّص بدون أدوات مطوّر */
 let pushState='—';
 function setPushState(s){ pushState=s; try{ const el=document.getElementById('push-status'); if(el) el.textContent=s; }catch(e){} }
 
 /* الطريقة الصحيحة للوصول لإضافة أصلية بدون حزم JS:
-   Capacitor.registerPlugin — أما Capacitor.Plugins فطريقة قديمة قد لا تعمل بالإصدار ٦. */
+   Capacitor.registerPlugin · أما Capacitor.Plugins فطريقة قديمة قد لا تعمل بالإصدار ٦. */
 function getPushPlugin(){
   const C=window.Capacitor;
   if(!C) return null;
@@ -1885,24 +1892,24 @@ function getPushPlugin(){
 let _pn=null, _pnReady=false;
 function devicePlatform(){ try{ return (window.Capacitor&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform())||'ios'; }catch(e){ return 'ios'; } }
 async function initPush(){
-  if(!inApp()){ setPushState('متصفح — الإشعارات للتطبيق فقط'); return; }
+  if(!inApp()){ setPushState('متصفح · الإشعارات للتطبيق فقط'); return; }
   try{
     const PN = _pn || getPushPlugin();
     if(!PN){ setPushState('❌ إضافة الإشعارات غير مثبّتة'); return; }
     _pn = PN;
-    if(_pnReady) return void registerNow(PN);   // المستمعات مركّبة — أعد الطلب فقط
+    if(_pnReady) return void registerNow(PN);   // المستمعات مركّبة · أعد الطلب فقط
 
-    // ⚠️ لازم *ننتظر* تركيب المستمعات قبل register — وإلا يوصل ردّ آبل وما فيه أحد يسمعه
+    // ⚠️ لازم *ننتظر* تركيب المستمعات قبل register · وإلا يوصل ردّ آبل وما فيه أحد يسمعه
     await PN.addListener('registration', async (t)=>{
       try{
-        // انتظر الهوية — القفل يرفض أي كتابة بلا auth.uid()
+        // انتظر الهوية · القفل يرفض أي كتابة بلا auth.uid()
         for(let i=0; i<20 && !myUid; i++){ await ensureAnonSession(); if(!myUid) await new Promise(r=>setTimeout(r,300)); }
-        if(!myUid){ setPushState('❌ تعذّر تجهيز الهوية — حدّث الصفحة'); return; }
-        // التسجيل عبر دالة الخادم (تفرض auth.uid() بنفسها) — أوثق من الكتابة المباشرة
+        if(!myUid){ setPushState('❌ تعذّر تجهيز الهوية · حدّث الصفحة'); return; }
+        // التسجيل عبر دالة الخادم (تفرض auth.uid() بنفسها) · أوثق من الكتابة المباشرة
         const { data, error } = await sb.rpc('register_device', { p_token: t.value, p_platform: devicePlatform() });
         if(error) throw error;
         if(!data || data.ok !== true) throw new Error(data && data.reason ? data.reason : 'رفض الخادم');
-        setPushState('✅ الجهاز مسجّل — الإشعارات شغّالة');
+        setPushState('✅ الجهاز مسجّل · الإشعارات شغّالة');
       }catch(e){
         console.error('device save:', e);
         setPushState('❌ فشل الحفظ: '+(e.message||e.hint||e.details||JSON.stringify(e)));
@@ -1918,11 +1925,11 @@ async function registerNow(PN){
   try{
     let perm = await PN.checkPermissions();
     if(perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') perm = await PN.requestPermissions();
-    if(perm.receive !== 'granted'){ setPushState('⚠️ الإذن مرفوض ('+perm.receive+') — فعّله من إعدادات الآيفون'); return; }
+    if(perm.receive !== 'granted'){ setPushState('⚠️ الإذن مرفوض ('+perm.receive+') · فعّله من إعدادات الآيفون'); return; }
     setPushState('⏳ نسجّل الجهاز…');
     await PN.register();
     // لو آبل ما ردّت خلال ١٥ ثانية، قل ذلك بدل ما تعلّق للأبد
-    setTimeout(()=>{ if(pushState.indexOf('⏳')===0) setPushState('⚠️ آبل ما ردّت — تأكد من الإنترنت واضغط «أعد المحاولة»'); }, 15000);
+    setTimeout(()=>{ if(pushState.indexOf('⏳')===0) setPushState('⚠️ آبل ما ردّت · تأكد من الإنترنت واضغط «أعد المحاولة»'); }, 15000);
   }catch(e){ setPushState('❌ خطأ بالتسجيل: '+(e.message||e)); }
 }
 /* ══ الكتالوج من لوحة المؤسسة: الأقسام، وكل قسم تحته خدماته وأسعارها ══ */
@@ -1933,17 +1940,19 @@ function applyCatalog(cats, svcs){
   const activeCats=cats.filter(c=>c&&c.id&&c.active!==false).sort((a,b)=>(+a.sort||0)-(+b.sort||0));
   if(!activeCats.length) return false;
   Object.keys(CATS).forEach(k=>{ delete CATS[k]; });
-  activeCats.forEach(c=>{ CATS[c.id]={name:c.name, ico:c.icon||'🛠️', featured:!!c.featured, name_en:c.name_en||''}; });
+  activeCats.forEach(c=>{ CATS[c.id]={name:c.name, ico:c.icon||'🛠️', featured:!!c.featured, name_en:c.name_en||'', soon:!!c.soon}; });
   CAT_FEATURED=activeCats.filter(c=>c.featured).map(c=>c.id);
   // الخدمات المخفية (مثل خدمات صفحة الحلول) تبقى قابلة للحجز حتى لو قسمها مخفي، لكنها لا تظهر في القوائم
   const list=svcs.filter(s=>s&&s.id&&s.active!==false&&(CATS[s.cat_id]||s.hidden)).sort((a,b)=>(+a.sort||0)-(+b.sort||0))
-    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, hidden:!!s.hidden||!CATS[s.cat_id], name_en:s.name_en||''}));
+    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, hidden:!!s.hidden||!CATS[s.cat_id]||CATS[s.cat_id].soon, name_en:s.name_en||''}));
   SERVICES.length=0; list.forEach(s=>SERVICES.push(s));
   try{ if(typeof T_DICT_N!=='undefined'){ activeCats.forEach(c=>{ if(c.name_en) T_DICT_N[_west(c.name).trim()]=c.name_en; }); list.forEach(s=>{ if(s.name_en) T_DICT_N[_west(s.name).trim()]=s.name_en; }); } }catch(e){}
   try{ Object.keys((state&&state.cart)||{}).forEach(id=>{ if(!svc(id)) delete state.cart[id]; }); }catch(e){}
   return true;
 }
-function otherCats(){ return Object.keys(CATS).filter(k=>!CAT_FEATURED.includes(k) && catCount(k)>0); }
+function catSoon(k){ return !!(CATS[k]&&CATS[k].soon); }
+function catShown(k){ return !!CATS[k] && (catSoon(k) || catCount(k)>0); }   // «قريبًا» يظهر حتى بلا خدمات
+function otherCats(){ return Object.keys(CATS).filter(k=>!CAT_FEATURED.includes(k) && catShown(k)); }
 function applyCachedCatalog(){ try{ const c=JSON.parse(localStorage.getItem(CATALOG_KEY)||'null'); if(c){ applyCatalog(c.c, c.s); if(c.p) applyParts(c.p); } }catch(e){} }
 /* ═══ القطع المرتبطة بالخدمات: تنضاف تلقائيًا للطلب، بخيارات (أبيض/أصفر)، ويقدر العميل يشيلها ═══ */
 let PARTS=[];
@@ -2021,7 +2030,7 @@ function orderToPayload(o){
     price:o.price, final_price:o.finalPrice, free:o.free,
     status:o.status, rating:o.rating||0, reminded:!!o.reminded,
     quick:!!o.quick, note:o.note||'', video_url:o.videoUrl||'', invoice:o.invoice||null, provider_phone:o.providerPhone||null, wants_earlier:!!o.wantsEarlier, promo_code:o.promoCode||'', discount_pct:+o.discountPct||0,
-    user_id:myUid,   // صاحب الطلب — عليه يعتمد قفل القراءة
+    user_id:myUid,   // صاحب الطلب · عليه يعتمد قفل القراءة
     sub_id:(state.subReq&&state.subReq.id)||null, sub_svc:(state.subReq&&state.subReq.svc)||null,   // طلب مشمول بعقد الصيانة
     // الخادم يعيد التحقق من هذه ويتجاهل أي تلاعب
     referred_by:o.referredBy||null, credit_used:+o.creditUsed||0, loyalty_disc:+o.loyaltyDisc||0, advance_disc:+o.advanceDisc||0, promo_disc:+o.promoDisc||0, promo_kind:o.promoKind||null,
@@ -2035,7 +2044,7 @@ function orderToPayload(o){
    فما أحد يقدر يتصفّح صور بيوت العملاء حتى لو حصل على الرابط لاحقاً. */
 async function uploadVideo(file){
   const ext=(file.name.split('.').pop()||'mp4').toLowerCase();
-  // اسم طويل عشوائي — ما يُخمّن
+  // اسم طويل عشوائي · ما يُخمّن
   const rnd=(crypto.randomUUID?crypto.randomUUID():Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)).replace(/-/g,'');
   const path='v_'+Date.now()+'_'+rnd+'.'+ext;
   const { error } = await sb.storage.from('khafet-videos').upload(path, file, {upsert:false, contentType:file.type||'video/mp4'});
@@ -2064,7 +2073,7 @@ async function loadOrdersFromCloud(){
   if(!cloudReady || cloudLoading) return;
   cloudLoading=true;
   try{
-    // اقصرها على طلبات صاحب الحساب صراحةً — لا نتّكل على RLS وحدها
+    // اقصرها على طلبات صاحب الحساب صراحةً · لا نتّكل على RLS وحدها
     // (لو كان الحساب من الطاقم، RLS تسمح له بالكل وما نبي تختلط طلبات غيره هنا)
     let qy = sb.from('khafet_orders').select('*').order('created_at',{ascending:false});
     if(myUid) qy = qy.eq('user_id', myUid);
@@ -2122,7 +2131,7 @@ async function cloudInsert(order){
   const { data, error } = await sb.from('khafet_orders').insert(orderToPayload(order)).select().single();
   if(!error) state.subReq=null;   // استُهلك ربط العقد بهذا الطلب
   if(error) throw error;
-  loadMyRef();   // الخادم خصم الرصيد — حدّثه عندنا
+  loadMyRef();   // الخادم خصم الرصيد · حدّثه عندنا
   return rowToOrder(data);
 }
 /* رسالة مفهومة لأخطاء الخادم (حرّاس القاعدة ترفع أكواد KHAFET_*) */
@@ -2140,7 +2149,7 @@ function serverMsg(e){
     KHAFET_SUB:          LX('عقد الصيانة غير فعّال أو منتهٍ، تواصل معنا','Your maintenance contract is not active, contact us'),
     KHAFET_WARRANTY:     LX('انتهت مدة الضمان لهذا الطلب أو الطلب غير مكتمل','The warranty period for this order has ended'),
     KHAFET_WARRANTY_DUP: LX('بلاغ الضمان لهذا الطلب مسجّل عندنا من قبل','A warranty claim for this order is already registered'),
-    KHAFET_PLANS_OFF:    LX('الاشتراكات السنوية غير متاحة حاليًا','Annual plans are not available right now'),
+    KHAFET_PLANS_OFF:    LX('الباقات السنوية غير متاحة حاليًا','Annual plans are not available right now'),
     KHAFET_NOT_SIGNED_IN:LX('سجّل دخولك ثم أعد المحاولة','Sign in and try again'),
     KHAFET_TOO_MANY_OPEN:LX('عندك طلبات مفتوحة كثيرة، أكملها أو ألغِ واحدًا ثم أعد المحاولة','You have too many open orders, finish or cancel one first'),
     KHAFET_TOO_MANY_ITEMS: LX('عدد الخدمات في الطلب كبير، قسّمها على طلبين','Too many services in one order, split them'),
@@ -2238,8 +2247,8 @@ const AR_MONTHS=['يناير','فبراير','مارس','أبريل','مايو',
 function dateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 /* ---- خصم ذكي ٥٪: يظهر فقط إذا امتلأ أول يومَي عمل، ويُطبَّق لمن يحجز يوماً بعدهما ----
-   (مو خصم ثابت يطلع من لا شي — بل حافز لتوزيع الضغط لما الأيام القريبة تنحجز) */
-let ADVANCE_PCT=5; const NEAR_FULL_DAYS=2;   // النسبة من الإعدادات advance_pct
+   (مو خصم ثابت يطلع من لا شي · بل حافز لتوزيع الضغط لما الأيام القريبة تنحجز) */
+let ADVANCE_PCT=5, ADVANCE_MIN=5; const NEAR_FULL_DAYS=2;   // النسبة والمدة من الإعدادات advance_pct / advance_min_days
 function daysUntil(iso){
   if(!iso) return -1;
   const t=new Date(); t.setHours(0,0,0,0);
@@ -2260,13 +2269,10 @@ function nearWorkdays(n){
     const iso=dateISO(d); if(!isOffDay(iso)) out.push(iso); }
   return out;
 }
-// مؤهّل للخصم: أول يومَي عمل ممتلئان، والموعد المختار بعدهما
+// مؤهّل للخصم: الحجز قبل المدة المعلنة أو أكثر · نفس شرط الخادم بالضبط حتى لا يختلف المعروض عن المحسوب
 function advanceEligible(iso){
-  if(!iso) return false;
-  const near=nearWorkdays(NEAR_FULL_DAYS);
-  if(near.length<NEAR_FULL_DAYS) return false;
-  if(iso <= near[near.length-1]) return false;   // لازم يكون بعد اليومين القريبين
-  return near.every(dayFull);
+  if(!iso || !(ADVANCE_PCT>0)) return false;   // النسبة صفر = الخصم موقوف من اللوحة
+  return daysUntil(iso) >= ADVANCE_MIN;
 }
 function advanceDiscFor(iso, base, quick){
   if(quick || !iso) return 0;
@@ -2317,22 +2323,24 @@ function phoneLoyalty(phone){
 }
 /* نقاط الولاء = طلبات *هذه الهوية* المنجزة.
    القفل يضمن إن state.orders فيها طلبات هذا العميل فقط، فالعدّ عليها مباشرة
-   أدقّ من المطابقة بالجوال — اللي كانت تنكسر بعد القفل (كل جهاز يشوف هويته فقط).
+   أدقّ من المطابقة بالجوال · اللي كانت تنكسر بعد القفل (كل جهاز يشوف هويته فقط).
    ولما يسجّل بالرمز تنربط أجهزته بهوية وحدة وتتجمّع نقاطه تلقائياً. */
 /* الولاء: كل ٦ طلبات عادية منجزة → الطلب التالي يُخصم منه متوسط أسعار طلباته.
    المكافأة (طلب فيه خصم ولاء، أو طلب مجاني قديم) لا تُحسب ضمن الـ٦. */
 function myLoyalty(){
-  const mine=state.orders.filter(o=>o.status==='done' && !((o.note||'').includes('مشمول بعقد')));
+  const notSub=o=>!((o.note||'').includes('مشمول بعقد'));
   const isReward=o=> o.free || (+o.loyaltyDisc>0);
+  const mine=state.orders.filter(o=>o.status==='done' && notSub(o));
   const regs=mine.filter(o=>!isReward(o));
-  const rewardDone=mine.filter(isReward).length;
+  // المكافأة تُعدّ مستهلكة من لحظة حجزها (الخادم يعدّها كذلك) وإلا انخصمت مرتين
+  const rewardUsed=state.orders.filter(o=>o.status!=='cancelled' && notSub(o) && isReward(o)).length;
   const paidDone=regs.length;
   const earned=Math.floor(paidDone/LOYALTY_TARGET);
   const avg=regs.length ? Math.round(regs.reduce((a,o)=>a+(+o.price||0),0)/regs.length) : 0;
   return { done:paidDone, progress:paidDone%LOYALTY_TARGET,
-           rewardAvailable: Math.max(0, earned-rewardDone)>0, rewardAmount: avg };
+           rewardAvailable: Math.max(0, earned-rewardUsed)>0, rewardAmount: avg };
 }
-/* خصم الولاء المطبّق على الطلب الحالي (بحد أقصى سعر السلة) — الخادم يعيد التحقق */
+/* خصم الولاء المطبّق على الطلب الحالي (بحد أقصى سعر السلة) · الخادم يعيد التحقق */
 /* خصم الإطلاق / خصم أول طلب: على أجرة اليد فقط، لا يجتمع مع كود صديق أو الولاء (الخادم يعيد حسابه) */
 function deliveryPromo(){
   if(quickMode||state.subReq||!FIRST_FREE_DELIVERY) return 0;
@@ -2382,7 +2390,7 @@ function removeFromCart(id){ delete state.cart[id]; save(); render(); }
 /* ---- المواعيد المتاحة ---- */
 function bookingsOn(iso,excludeId){ return state.orders.filter(o=>o.date===iso && o.status!=='cancelled' && o.id!==excludeId); }
 function isOffDay(iso){ return OFF_DAYS.includes(parseISO(iso).getDay()); }
-/* الجدول المشغول الحقيقي — كل عملاء المنصة، مو بس هذا الجهاز.
+/* الجدول المشغول الحقيقي · كل عملاء المنصة، مو بس هذا الجهاز.
    بدونه كان عميلان يحجزان نفس الوقت والفني يتأخر. البيانات: يوم/وقت/مدة/مدينة فقط. */
 let BUSY=[], busyAt=0;
 /* فرق العمل: كل فريق له جدوله، فحجز التكييف ما يقفل موعد السباكة والكهرباء.
@@ -2418,8 +2426,8 @@ async function loadBusy(){
   }catch(e){}
   return false;
 }
-function slotAvailable(iso,startMin,needMin,excludeId){
-  if(isOffDay(iso)) return false;              // إجازة — ما فيه مواعيد
+function slotAvailable(iso,startMin,needMin,excludeId,groups){
+  if(isOffDay(iso)) return false;              // إجازة · ما فيه مواعيد
   const end=startMin+needMin+BUFFER;
   if(end-BUFFER>WORK_END) return false;
   const now=new Date();
@@ -2431,7 +2439,7 @@ function slotAvailable(iso,startMin,needMin,excludeId){
   // ندمج حجوزات هذا الجهاز مع الجدول الحقيقي لكل العملاء
   const ex=excludeId?state.orders.find(o=>o.id===excludeId):null;
   const myCity=((state.address&&state.address.city)||'').trim();
-  const myGroups=cartGroups();
+  const myGroups=(groups&&groups.length)?groups:cartGroups();
   let exSkipped=false;
   const cloud=BUSY.filter(b=>b.date===iso).filter(b=>{
     if(ex && !exSkipped && b.start===ex.startMin){ exSkipped=true; return false; }   // الطلب الجاري تعديله
@@ -2443,7 +2451,7 @@ function slotAvailable(iso,startMin,needMin,excludeId){
   const local=bookingsOn(iso,excludeId)
     .filter(o=>groupsClash(myGroups, groupsOfItems(o.items)))
     .map(o=>({start:o.startMin,dur:o.duration||60}))
-    .filter(o=>!seen.has(o.start));   // طلباتي موجودة بالجدولين — بلا تكرار
+    .filter(o=>!seen.has(o.start));   // طلباتي موجودة بالجدولين · بلا تكرار
   const all=cloud.concat(local);
   const cap=capOf(myGroups);
   if(all.length >= MAX_JOBS_PER_DAY*cap) return false;   // جدول الفريق ممتلئ هذا اليوم
@@ -2547,7 +2555,7 @@ function renderComplaints(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead(LX('الشكاوى','Complaints'),'account')}
-      <div class="flow-sum">📣 <span>${LX('كل شكوى تاخذ رقم متابعة، ونرد عليك هنا خلال '+ar(sla)+' أيام عمل.','Every complaint gets a tracking number and a reply here within '+sla+' working days.')}</span></div>
+      <div class="flow-sum">📣 <span>${LX('كل شكوى تأخذ رقم متابعة، ونرد عليك هنا خلال '+ar(sla)+' أيام عمل.','Every complaint gets a tracking number and a reply here within '+sla+' working days.')}</span></div>
       ${form}${list}
       <div style="height:26px"></div>
     </div>`;
@@ -2656,7 +2664,7 @@ function renderTips(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('🛡️ نصائح السلامة','home')}
-      <p style="color:var(--muted);text-align:center;margin-top:2px">نصائح مفيدة تحمي بيتك وتوفّر عليك — من خبرة فنيّي خافِت.</p>
+      <p style="color:var(--muted);text-align:center;margin-top:2px">نصائح مفيدة تحمي بيتك وتوفّر عليك · من خبرة فنيّي خافِت.</p>
       <div style="margin-top:16px">${ARTICLES.length?cards:(articlesLoaded?'<div class="empty"><div class="ico">🛡️</div><h3>قريباً نصائح مفيدة</h3></div>':'<p style="color:var(--muted);text-align:center;padding:30px">جارٍ التحميل…</p>')}</div>
       <div style="height:26px"></div>
     </div>`;
@@ -2685,8 +2693,8 @@ const FAQS=[
   ['متى يجي الفني؟','تختار وقت الوصول اللي يناسبك والفني يوصلك فيه. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».'],
   ['كيف أدفع؟','بطريقتين: <b>ادفع أونلاين</b> بمدى أو البطاقة أو Apple Pay من التطبيق، أو <b>بجهاز الدفع مع الفني</b> عند إتمام العمل. ما نستقبل نقداً.'],
   ['وش أسوي لو تأخّر الفني؟','تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.'],
-  ['فيه ضمان على الشغل؟','نعم — ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.'],
-  ['كيف أستفيد من الخصومات؟','احجز قبل ٥ أيام أو أكثر = خصم ٥٪ تلقائي. وكل ٦ طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.'],
+  ['فيه ضمان على الشغل؟','نعم، ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.'],
+  ['كيف أستفيد من الخصومات؟','كل ٦ طلبات لك خصم ولاء، وكود الإحالة يعطيك وصديقك خصمًا.'],
   ['كيف ألغي طلبي؟','من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى <b>4 ساعات قبل الموعد</b>، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.'],
 ];
 function renderFaq(){
@@ -2725,7 +2733,7 @@ function renderSuggest(){
         <div class="field" style="margin-top:16px"><label>رسالتك <span class="req">*</span></label>
           <textarea id="sug_body" rows="6" placeholder="مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس"></textarea></div>
         <div class="field"><label>اسمك (اختياري)</label><input id="sug_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
-        <div class="field"><label>جوالك (اختياري — لو تحب نرد عليك)</label><input id="sug_phone" inputmode="tel" value="${esc(c.phone||'')}" placeholder="05xxxxxxxx" /></div>
+        <div class="field"><label>جوالك (اختياري، لو تحب نرد عليك)</label><input id="sug_phone" inputmode="tel" value="${esc(c.phone||'')}" placeholder="05xxxxxxxx" /></div>
         <button class="cta" onclick="sendSuggestion()">📤 أرسل</button>
         <p style="color:var(--muted);font-size:.84rem;margin-top:10px;line-height:1.7">🔒 رسالتك تصل للإدارة فقط، وما تظهر لأي عميل ثاني.</p>
       </div>
@@ -2740,22 +2748,23 @@ async function sendSuggestion(){
   try{
     if(!cloudReady||!sb) throw new Error('لا يوجد اتصال بالإنترنت');
     if(!myUid) await ensureAnonSession();
-    if(!myUid) throw new Error('تعذّر التجهيز — حدّث الصفحة');
+    if(!myUid) throw new Error('تعذّر التجهيز، حدّث الصفحة');
     const { error }=await sb.from('khafet_suggestions').insert({
       user_id:myUid, name:g('sug_name')||null, phone:g('sug_phone')||null, kind:sugKind, body });
     if(error) throw error;
-    toast('✅ وصلتنا رسالتك — شكراً لك 🌟');
+    toast('✅ وصلتنا رسالتك، شكراً لك 🌟');
     sugKind='اقتراح'; go('home');
   }catch(e){
     if(btn){ btn.disabled=false; btn.textContent='📤 أرسل'; }
     toast('⚠️ '+(e.message||'تعذّر الإرسال'));
   }
 }
-function myOrders(){ const ids=state.myOrderIds||[]; const ph=state.customer&&state.customer.phone; return state.orders.filter(o=> ids.includes(o.id) || (ph && o.customer && o.customer.phone===ph) ); }
+/* طلبات الخادم محصورة أصلًا بحساب العميل (user_id)، فتظهر كلها حتى لو دخل من جهاز جديد */
+function myOrders(){ const ids=state.myOrderIds||[]; const ph=state.customer&&state.customer.phone; return state.orders.filter(o=> o.dbId || ids.includes(o.id) || (ph && o.customer && o.customer.phone===ph) ); }
 /* ---------- تسجيل دخول العميل (جوال + رمز تحقق SMS) + روابط الفريق ----------
-   الرمز يُرسل ويُتحقق منه في خادم Supabase — المتصفح ما يقدر يتجاوزه.
+   الرمز يُرسل ويُتحقق منه في خادم Supabase · المتصفح ما يقدر يتجاوزه.
    لو العميل داخل بهوية مجهولة، نربط الرقم بنفس الهوية عشان طلباته القديمة تنتقل معه. */
-/* قناة إرسال الرمز: 'sms' (رسالة نصية) — آبل ترفض إجبار المستخدم على تثبيت
+/* قناة إرسال الرمز: 'sms' (رسالة نصية) · آبل ترفض إجبار المستخدم على تثبيت
    تطبيق ثانٍ مثل واتساب للدخول (Guideline 4.2.3). للرجوع لواتساب، غيّرها لـ'whatsapp'. */
 const OTP_CHANNEL='sms';
 /* حساب مراجعة آبل: يُجبَر على مسار الدخول المباشر (لا «تغيير رقم») ليقبل
@@ -2815,7 +2824,7 @@ async function sendOtp(){
     otpMode='signin'; otpStep=true; render();
   }catch(e){
     console.warn('otp send:', e.message||e);
-    toast('تعذّر إرسال الرمز — تأكد من الرقم وحاول مرة ثانية');
+    toast('تعذّر إرسال الرمز، تأكد من الرقم وحاول مرة ثانية');
     otpStep=false; render();   // أعد بناء الشاشة (الزر يرجع لنصه الصحيح)
   }
 }
@@ -2832,7 +2841,7 @@ async function verifyOtpCode(){
     const { data:{ user } } = await sb.auth.getUser();
     if(user){ myUid=user.id; isVerified=true; }
     state.customer=state.customer||{};
-    state.customer.phone=(document.getElementById('lg_cust_phone')||{}).value || state.customer.phone || otpPhone;
+    state.customer.phone = state.customer.phone || String(otpPhone||'').replace(/^\+?966/,'0');   // 05xxxxxxxx مثل باقي التطبيق
     save();
     otpStep=false;
     await loadOrdersFromCloud();
@@ -2846,7 +2855,7 @@ async function verifyOtpCode(){
 }
 /* ---------- حسابي ---------- */
 /* ---------- الإحالة والرصيد ----------
-   الكود عشوائي ويُولّده الخادم (مو مشتقاً من رقم الجوال — كان يُخمّن بسهولة).
+   الكود عشوائي ويُولّده الخادم (مو مشتقاً من رقم الجوال · كان يُخمّن بسهولة).
    الرصيد يُصرف بعد إنجاز الطلب فقط، فما فيه خسارة. */
 let myRef={ code:null, balance:0, referrals:0 };
 let refStats=null, REF_BONUS=10, FRIEND_PCT=0, FRIEND_BONUS=10;
@@ -2883,7 +2892,7 @@ function shareCode(code){
   if(navigator.share){ navigator.share({text:txt}).catch(()=>{}); }
   else copyCode(txt);
 }
-/* عنوان مختصر محفوظ للعرض في «حسابي» — نفضّل المحفوظ يدوياً، وإلا نبنيه من مكوّنات آخر طلب */
+/* عنوان مختصر محفوظ للعرض في «حسابي» · نفضّل المحفوظ يدوياً، وإلا نبنيه من مكوّنات آخر طلب */
 function savedAddrLabel(){
   const a=state.address||{};
   return [a.city,a.district,a.street,a.house?('منزل '+a.house):''].filter(Boolean).join(' · ');
@@ -2891,7 +2900,7 @@ function savedAddrLabel(){
 // حالة الموقع المحفوظ في صفحة الحساب
 function accLocOkHtml(){
   const a=state.address||{};
-  return `<div class="loc-ok">✅ موقع بيتك محفوظ — <a href="${esc(safeUrl(a.mapUrl))}" target="_blank" rel="noopener">شوف على الخريطة</a> · بيظهر تلقائياً عند الحجز</div>`;
+  return `<div class="loc-ok">✅ موقع بيتك محفوظ · <a href="${esc(safeUrl(a.mapUrl))}" target="_blank" rel="noopener">شوف على الخريطة</a> · بيظهر تلقائياً عند الحجز</div>`;
 }
 function saveAccount(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():undefined;};
@@ -2904,7 +2913,7 @@ function saveAccount(){
   save(); toast('💾 تم حفظ التعديلات'); renderAccount();
 }
 async function logoutAccount(){
-  if(!confirm('تسجيل الخروج من حسابك؟')) return;
+  if(!confirm(LX('تسجيل الخروج من حسابك؟','Sign out of your account?'))) return;
   // اخرج من جلسة Supabase فعلياً، ثم ارجع لهوية مجهولة جديدة
   try{ if(sb){ await sb.auth.signOut(); myUid=null; await ensureAnonSession(); } }catch(e){}
   // نمسح بياناته الشخصية من الجهاز: الاسم والجوال والعناوين والطلبات والرصيد
@@ -2934,12 +2943,12 @@ function openDeleteAccount(){
 }
 function closeDeleteAccount(){ const m=document.getElementById('locModal'); m.classList.remove('show'); m.innerHTML=''; }
 async function confirmDeleteAccount(){
-  if(!confirm('تأكيد أخير — سيُحذف حسابك وكل بياناتك نهائياً. متابعة؟')) return;
+  if(!confirm(LX('تأكيد أخير، سيُحذف حسابك وكل بياناتك نهائياً. متابعة؟','Final confirmation: your account and all your data will be deleted permanently. Continue?'))) return;
   const btn=document.getElementById('delGo'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الحذف…'; }
   try{
     if(!sb) throw new Error('لا يوجد اتصال بالإنترنت');
     const { data:{ session } }=await sb.auth.getSession();
-    if(!session) throw new Error('انتهت الجلسة — سجّل الدخول وأعد المحاولة');
+    if(!session) throw new Error('انتهت الجلسة، سجّل الدخول وأعد المحاولة');
     const r=await fetch(SUPABASE_URL+'/functions/v1/delete-account',{ method:'POST',
       headers:{ apikey:SUPABASE_ANON, Authorization:'Bearer '+session.access_token, 'Content-Type':'application/json' },
       body:'{}' });
@@ -3000,7 +3009,7 @@ function renderAccount(){
         <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
         <div class="field"><label>🏠 رقم المنزل / الشقة</label>
           <input id="acc_house" value="${esc((state.address||{}).house||'')}" placeholder="مثال: ٢٤٥١ · الدور الأول" /></div>
-        <p class="loc-hint" style="margin-top:14px">📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط — ينحفظ ويظهر تلقائياً عند كل حجز</p>
+        <p class="loc-hint" style="margin-top:14px">📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط، ينحفظ ويظهر تلقائياً عند كل حجز</p>
         <div id="pickmap" class="pickmap"></div>
         <div id="acc-loc-status">${(state.address&&state.address.lat&&state.address.lng)?accLocOkHtml():''}</div>
         <button class="cta" style="margin-top:14px" onclick="saveAccount()">💾 حفظ التعديلات</button>
@@ -3022,11 +3031,11 @@ function renderAccount(){
       </div>
       <div style="height:24px"></div>
     </div>`;
-  initPickMap();   // خريطة اختيار موقع البيت — نفس خريطة الحجز
+  initPickMap();   // خريطة اختيار موقع البيت · نفس خريطة الحجز
 }
 /* ---------- باقات الاشتراك ---------- */
 let subPlan=null;
-/* ══════════ الصيانة السنوية — اختيار نوع السكن ثم ورقة الباقة المعتمدة ══════════ */
+/* ══════════ الصيانة السنوية · اختيار نوع السكن ثم ورقة الباقة المعتمدة ══════════ */
 /* الباقات السنوية تظهر فقط لما تفعّلها الإدارة من الإعدادات (plans_enabled) */
 function plansEnabled(){ const v=SETTINGS.plans_enabled; return v==='1'||v==='true'; }
 function renderPlans(){
@@ -3187,16 +3196,16 @@ async function submitSubscription(){
                 terms_accepted: true, terms_version: TERMS_VERSION, terms_at: new Date().toISOString() };
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
   let ok=false;
-  /* نولّد الرقم هنا — لأن قراءة الصف بعد الإدراج ممنوعة (حماية خصوصية المشتركين) */
+  /* نولّد الرقم هنا · لأن قراءة الصف بعد الإدراج ممنوعة (حماية خصوصية المشتركين) */
   const subId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
               : ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
                   const r=Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); }));
   data.id = subId;
   if(cloudReady){ try{ const r=await sb.from('khafet_subscriptions').insert(data);
       if(!r.error) ok=true; else { console.warn('sub insert:',r.error.message); const m=serverMsg(r.error); if(m){ toast(m); if(btn){ btn.disabled=false; btn.textContent='💳 ادفع الآن'; } return; } } }catch(e){ console.warn(e); } }
-  /* نحفظ اشتراكه محلياً — عليه تُبنى صفحة «صيانتي السنوية» */
+  /* نحفظ اشتراكه محلياً · عليه تُبنى صفحة «صيانتي السنوية» */
   try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:subId, plan_id:data.plan_id, plan:data.plan, name, phone, home_no:homeNo, ts:Date.now()})); }catch(e){}
-  /* بيانات منزله تنحفظ بحسابه — تتعبّى تلقائياً بكل طلب بعدين */
+  /* بيانات منزله تنحفظ بحسابه · تتعبّى تلقائياً بكل طلب بعدين */
   try{
     state.customer.name = state.customer.name||name;
     state.customer.phone = state.customer.phone||phone;
@@ -3215,12 +3224,12 @@ async function submitSubscription(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen"><div class="panel" style="margin-top:30px">
       <div class="success"><div class="circle">🛡️</div><h2>شكراً لاشتراكك 🎉</h2>
-      <p style="color:var(--muted);margin-top:10px">أهلاً ${esc(name)} — «${esc(subPlan?subPlan.name:'')}» صارت جاهزة. من الحين، صيانة بيتك علينا — ارتَح 👌</p></div>
+      <p style="color:var(--muted);margin-top:10px">أهلاً ${esc(name)} · «${esc(subPlan?subPlan.name:'')}» صارت جاهزة. من الحين، صيانة بيتك علينا · ارتَح 👌</p></div>
       <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
     </div></div>`;
 }
 
-/* ══════════ كود خصم الاشتراك — الخصم يلغي خيار تمارا ══════════ */
+/* ══════════ كود خصم الاشتراك · الخصم يلغي خيار تمارا ══════════ */
 const SUB_PROMOS={ 'خافت10':10 };
 let _subDisc=0,_subPromo='';
 function subPromoCheck(v){
@@ -3233,7 +3242,7 @@ function subPromoCheck(v){
     if(tam) tam.style.display='none';
     if(payMethod==='tamara') setPayMethod('online');
     const p=subPlan?Math.round(subPlan.price*(100-pct)/100):0;
-    if(m){ m.style.color='var(--good,#15803D)'; m.textContent='✅ خصم '+en(pct)+'% — الإجمالي '+en(p)+' ريال'; }
+    if(m){ m.style.color='var(--good,#15803D)'; m.textContent='✅ خصم '+en(pct)+'% · الإجمالي '+en(p)+' ريال'; }
   }else{
     if(tam) tam.style.display='';
     if(m){ if(v){ m.style.color='#c0392b'; m.textContent='الكود غير صحيح'; } else m.textContent=''; }
@@ -3252,9 +3261,9 @@ function subGPS(){
   }, function(){ if(el) el.textContent='⚠️ اسمح بإذن الموقع وحاول ثانية'; }, {enableHighAccuracy:true,timeout:12000});
 }
 
-/* ══════════ صيانتي السنوية — خدمات المشترك وعدّاداتها ══════════ */
+/* ══════════ صيانتي السنوية · خدمات المشترك وعدّاداتها ══════════ */
 const SUB_SVCS=[
-  {k:'visit',  n:'زيارة صيانة إضافية — سباكة وكهرباء وتركيبات', ic:'🔧', qty:{apt:6, home:8}},
+  {k:'visit',  n:'زيارة صيانة إضافية · سباكة وكهرباء وتركيبات', ic:'🔧', qty:{apt:6, home:8}},
   {k:'ac',     n:'تنظيف المكيفات',                               ic:'❄️', qty:{apt:1, home:1}},
   {k:'fans',   n:'تنظيف مراوح دورات المياه',                     ic:'🌀', qty:{apt:1, home:1}},
   {k:'safety', n:'فحص أمان المنزل',                              ic:'⚡', qty:{apt:1, home:1}},
@@ -3267,7 +3276,7 @@ async function fetchMySub(){
   if(!cloudReady) return null;
   try{ const { data }=await sb.rpc('my_subscription');
     if(data && data.found){ _subSrv=data;
-      /* لو الخادم يعرف اشتراكاً وما عندنا محلي — نبنيه */
+      /* لو الخادم يعرف اشتراكاً وما عندنا محلي · نبنيه */
       if(!mySubLocal()) try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:data.id, plan_id:data.plan_id, plan:data.plan, home_no:data.home_no, ts:Date.now()})); }catch(e){}
       return data; }
   }catch(e){}
@@ -3314,7 +3323,7 @@ function subRequest(k){
   const s=SUB_SVCS.find(x=>x.k===k); const local=mySubLocal();
   const subId=(_subSrv&&_subSrv.id)||(local&&local.id)||null;
   state.subReq={ id:subId, svc:k };
-  /* بيانات العقد المسجّلة تُعتمد للطلب — ما تتعدل من شاشة الحجز */
+  /* بيانات العقد المسجّلة تُعتمد للطلب · ما تتعدل من شاشة الحجز */
   try{
     if(local&&local.name) state.customer.name=local.name;
     if(local&&local.phone) state.customer.phone=local.phone;
@@ -3322,7 +3331,7 @@ function subRequest(k){
     if(hn) state.address.house=hn;
     save();
   }catch(e){}
-  state.quickNote='🛡️ طلب مشمول بعقد الصيانة السنوي — '+(s?s.n:k)+(local&&local.home_no?(' · المنزل: '+local.home_no):'');
+  state.quickNote='🛡️ طلب مشمول بعقد الصيانة السنوي · '+(s?s.n:k)+(local&&local.home_no?(' · المنزل: '+local.home_no):'');
   startQuick();
   setTimeout(function(){ const t=document.getElementById('q_note')||document.getElementById('note'); if(t && !t.value) t.value=state.quickNote; },350);
 }
@@ -3349,7 +3358,7 @@ function payBox(amount, opts){
       <label data-m="tamara" onclick="setPayMethod('tamara')">
         <input type="radio" name="paym" value="tamara">
         <div><div class="t">${LX('قسّطها مع تمارا','Split it with Tamara')}</div>
-        <div class="d">${LX('ادفع '+money(Math.round(amount/4))+' اليوم والباقي على دفعات — بدون فوائد','Pay '+en(Math.round(amount/4))+' SAR today, rest in instalments — interest free')}</div>
+        <div class="d">${LX('ادفع '+money(Math.round(amount/4))+' اليوم والباقي على دفعات · بدون فوائد','Pay '+en(Math.round(amount/4))+' SAR today, rest in instalments · interest free')}</div>
         <div class="badges"><span class="tamara-badge">tamara</span><span>${LX('بدون فوائد','No interest')}</span></div>
         </div>
       </label>` : '';
@@ -3367,7 +3376,7 @@ function payBox(amount, opts){
       ${opts.onlineOnly?``:`<label data-m="device" onclick="setPayMethod('device')">
         <input type="radio" name="paym" value="device">
         <div><div class="t">${LX('بجهاز الدفع مع الفني','Card machine with the technician')}</div>
-        <div class="d">${LX('تدفع بمدى أو البطاقة عند إتمام العمل · الفني معه جهاز','Pay by card when the work is done — the technician carries a terminal')}</div></div>
+        <div class="d">${LX('تدفع بمدى أو البطاقة عند إتمام العمل · الفني معه جهاز','Pay by card when the work is done · the technician carries a terminal')}</div></div>
       </label>`}
     </div>
   </div>`;
@@ -3422,8 +3431,8 @@ function orderPayBox(amount, labor){
   const tamara = tmOk ? `
       <label data-m="tamara" class="tm-ad ${orderPayMethod==='tamara'?'on':''}" onclick="setOrderPay('tamara')">
         <input type="radio" name="opaym" value="tamara" ${orderPayMethod==='tamara'?'checked':''}>
-        <div><div class="t">${LX('قسّطها على 4 دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
-        <div class="tm-amt"><b>${money(Math.round(amount/4))}</b> ${LX('فقط اليوم، والباقي على 3 أشهر','only today, the rest over 3 months')}</div>
+        <div><div class="t">${LX('قسّطها على ٤ دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
+        <div class="tm-amt"><b>${money(Math.round(amount/4))}</b> ${LX('فقط اليوم، والباقي على ٣ أشهر','only today, the rest over 3 months')}</div>
         <div class="badges"><span class="tamara-badge">tamara</span></div></div>
       </label>`
     : (tamaraEnabled() && left>0 && left<=150) ? `
@@ -3495,6 +3504,19 @@ function cardRead(){
   if(!name) name='Khafet Customer'; else if(name.split(' ').length<2) name+=' Customer';
   return {number, month:String(mm).padStart(2,'0'), year:String(2000+yy), cvc, name, save:!!((document.getElementById('cc_save')||{}).checked)};
 }
+/* يسأل خادمنا عن حالة الدفعة عدة مرات · يمنع الدفع مرتين لو انقطع الاتصال بعد ما وصلت ميسر */
+async function pollPaid(payId, tries){
+  for(let i=0;i<(tries||4);i++){
+    try{
+      const st=await (await fetch(PAY_FN+'/status?id='+encodeURIComponent(payId),{headers:{'Authorization':'Bearer '+(await authToken()),'apikey':SUPABASE_ANON}})).json();
+      const s=st&&st.ok&&st.payment&&st.payment.status;
+      if(s==='paid') return true;
+      if(s && s!=='pending' && s!=='initiated') return false;
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,2000));
+  }
+  return false;
+}
 /* يدفع الطلب بالبطاقة. يرجّع: paid / opened (فتحنا رمز البنك) / failed / fallback (نكمل بصفحة ميسر) */
 async function payWithCard(o){
   const c=_cardData; _cardData=null; if(!c) return 'failed';
@@ -3510,14 +3532,13 @@ async function payWithCard(o){
       try{ const r=await fetch('https://api.moyasar.com/v1/payments',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Basic '+btoa(String(SETTINGS.moyasar_pk)+':')},
         body:JSON.stringify({given_id:init.payment_id, amount:Math.round(init.amount*100), currency:'SAR', description:init.description, callback_url:init.callback_url, metadata:init.metadata,
           source:{type:'creditcard', name:c.name, number:c.number, month:c.month, year:c.year, cvc:c.cvc, save_card:!!c.save}})}); j=await r.json(); }
-      catch(e){ return 'fallback'; }   // تعذّر الوصول لميسر من التطبيق: نكمل بصفحة الدفع
+      catch(e){ if(await pollPaid(init.payment_id,4)){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(_){} try{ await loadOrdersFromCloud(); }catch(_){} showPaidScreen(o); return 'paid'; } return 'fallback'; }   // ما وصلنا ميسر: نتأكد إنها ما اندفعت ثم نكمل بصفحة الدفع
       if(j&&j.status==='initiated'&&j.source&&j.source.transaction_url) url=j.source.transaction_url;
       else if(!(j&&(j.status==='paid'||j.status==='captured'))){ const m=(j&&j.source&&j.source.message)||''; toast(j&&j.errors?LX('تأكد من بيانات البطاقة','Check the card details'):LX('ما انقبلت البطاقة','The card was not accepted')+(m?' · '+m:'')); return 'failed'; }
     }
     if(url){ await openPayUrl(url, init.payment_id, o); return 'opened'; }
     // اندفعت بدون رمز بنك: الخادم يتحقق ويثبّت
-    const st=await (await fetch(PAY_FN+'/status?id='+encodeURIComponent(init.payment_id),{headers:{'Authorization':'Bearer '+(await authToken()),'apikey':SUPABASE_ANON}})).json();
-    if(st&&st.ok&&st.payment&&st.payment.status==='paid'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(o); return 'paid'; }
+    if(await pollPaid(init.payment_id,4)){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(o); return 'paid'; }
     return 'failed';
   }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return 'failed'; }
 }
@@ -3604,7 +3625,7 @@ async function checkPendingPayment(){
   let id=null; try{ id=localStorage.getItem('khafet_pay_pending'); }catch(e){}
   if(!id||_payPoll||!PAY_FN) return; _payPoll=true;
   try{
-    const r=await fetch(PAY_FN+'/status?id='+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+SUPABASE_ANON,'apikey':SUPABASE_ANON}});
+    const r=await fetch(PAY_FN+'/status?id='+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+(await authToken()),'apikey':SUPABASE_ANON}});
     const j=await r.json();
     const st=j&&j.payment&&j.payment.status;
     if(st==='paid'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} toast(LX('✅ تم الدفع','✅ Payment received')); if(cloudReady) loadOrdersFromCloud(); }
@@ -3635,7 +3656,7 @@ async function startPayment(kind, refId, amount, name, phone, orderNo){
     const j = await r.json();
     if(!j.ok || !j.url){
       console.warn('pay:', j);
-      toast(viaTamara ? LX('تعذّر فتح صفحة تمارا — جرّب الدفع الإلكتروني','Could not open Tamara — try online payment')
+      toast(viaTamara ? LX('تعذّر فتح صفحة تمارا · جرّب الدفع الإلكتروني','Could not open Tamara · try online payment')
                       : LX('تعذّر فتح صفحة الدفع','Could not open the payment page'));
       return false;
     }
@@ -3686,7 +3707,7 @@ async function checkPaymentReturn(){
 
 /* ══════════ الشروط والأحكام ══════════ */
 const TERMS_VERSION = '2.0';
-const TERMS_SEC = [{"n":"1","t":"التعريفات","i":["<b>«المزوّد»</b>: مؤسسة خافت للسباكة والكهرباء، سجل تجاري رقم <b>2052105014</b>، الرقم الموحد 7042751284.","<b>«المشترك»</b>: الشخص أو الجهة المسجّلة باسمها العقد والمذكور رقم جوالها عند الاشتراك.","<b>«العقار المشمول»</b>: وحدة سكنية <b>واحدة</b> فقط، بالعنوان المسجّل وقت الاشتراك.","<b>«الباقة»</b>: إحدى باقتي «ريّح بالك» المعلنتين في التطبيق: <b>باقة الشقة</b> (6 زيارات صيانة إضافية بالسنة) أو <b>باقة الفيلا</b> (8 زيارات صيانة إضافية بالسنة)، وما تتضمنه كل منهما من خدمات دورية بالحدود الواردة في البند الثالث.","<b>«الخدمات المشمولة»</b>: قائمة الـ64 خدمة المنشورة في التطبيق وقت الاشتراك، وهي جزء لا يتجزأ من هذا العقد.","<b>«الزيارة»</b>: حضور الفني إلى العقار المشمول بناءً على طلب واحد لتنفيذ عمل أو أكثر من الخدمات المشمولة، وتُخصم من رصيد الباقة.","<b>«الخدمات الدورية»</b>: الخدمات التي تُنفَّذ مرة واحدة في سنة العقد بحسب الباقة (تنظيف المكيفات، تنظيف مراوح الشفط، فحص أمان المنزل، صيانة السخان، ترويبة الصفاية)، ولا تُخصم من رصيد الزيارات.","<b>«أجرة اليد»</b>: قيمة عمل الفني فقط، دون قطع الغيار أو المواد."]},{"n":"2","t":"مدة العقد وقيمته وسريانه","i":["يبدأ سريان العقد من <b>تاريخ سداد قيمته كاملة</b>، ولمدة <b>سنة ميلادية واحدة</b>.","لا يبدأ السريان بمجرد تقديم الطلب أو الحجز، بل بالسداد فقط.","قيمة الاشتراك هي السعر المعلن في التطبيق للباقة المختارة وقت السداد، <b>شاملاً ضريبة القيمة المضافة</b>؛ وأي خصم ترويجي («خصم الآن») يسري على الاشتراكات المسدَّدة خلال فترة سريان العرض فقط، ولا يمتد تلقائياً إلى التجديد أو إلى اشتراكات لاحقة.","لا يُجدَّد العقد تلقائياً؛ يُرسل للمشترك إشعار قبل انتهائه بـ30 يوماً لتجديده باختياره وبالسعر المعلن وقت التجديد.","الزيارات والخدمات الدورية غير المستخدمة خلال سنة العقد <b>لا تُرحَّل</b> إلى سنة لاحقة، <b>ولا تُسترد</b> قيمتها ولا تُستبدل بمبالغ نقدية أو خدمات أخرى، باستثناء خصم تجديد السخان الوارد في البند الثامن."]},{"n":"3","t":"نطاق التغطية","i":["يغطي العقد <b>أجرة اليد فقط</b> لزيارات الصيانة الإضافية (سباكة · كهرباء · تركيبات) للأعمال البسيطة الواردة في قائمة الخدمات المشمولة، إضافةً إلى الخدمات الدورية المحددة في الباقة.","الأعمال المشمولة هي أعمال إصلاح وتركيب بسيطة لا تتطلب تكسيراً أو تمديدات جديدة أو معدات ثقيلة.","رصيد زيارات الصيانة الإضافية: <b>باقة الشقة 6 زيارات</b> بالسنة، و<b>باقة الفيلا 8 زيارات</b> بالسنة؛ تُطلب عند الحاجة عبر التطبيق، وتُخصم كل زيارة من الرصيد، ولا تُحتسب الخدمات الدورية منه.","الخدمات الدورية تُنفَّذ <b>مرة واحدة</b> في سنة العقد بمواعيد يُتفق عليها مسبقاً، وهي: تنظيف المكيفات (الوحدة الداخلية والخارجية)، تنظيف مراوح الشفط لدورات المياه، فحص أمان المنزل (اللوحة والتأريض والحماية والأفياش)، الصيانة الوقائية للسخان، وترويبة الصفاية (<b>باقة الشقة فقط</b>).","<b>الحدود القصوى للخدمات الدورية</b> في المرة الواحدة: تنظيف المكيفات حتى <b>8 مكيفات</b> في باقة الشقة و<b>12 مكيفاً</b> في باقة الفيلا؛ مراوح الشفط حتى <b>5 مراوح</b> في باقة الشقة و<b>6 مراوح</b> في باقة الفيلا؛ ترويبة صفاية <b>واحدة</b> في باقة الشقة <b>بالمواد القياسية من المزوّد</b>؛ صيانة السخان <b>لسخان واحد</b>. وما زاد على هذه الحدود أو طُلب بمواد خاصة يُحتسب بأجرة منفصلة وفق قائمة الأسعار المعتمدة.","يقتصر تنظيف المكيفات على <b>مكيفات السبليت فقط</b> سهلة الوصول؛ ولا يشمل المكيفات الشباك أو المركزية أو الوحدات التي يتطلب الوصول إليها رافعات أو سقالات أو فك تمديدات.","بعد استنفاد رصيد الزيارات أو الخدمات الدورية، تُقدَّم أي خدمة إضافية للمشترك بأجرة مستقلة وفق قائمة الأسعار المعتمدة وقت الطلب."]},{"n":"4","t":"الاستثناءات — ما لا يشمله العقد","i":["<b>قطع الغيار والمواد بجميع أنواعها</b> — تُحتسب على المشترك وفق البند الثامن، عدا ما نُصّ صراحةً على شموله (مواد ترويبة الصفاية القياسية في باقة الشقة).","أي عمل يتطلب <b>تكسيراً أو ترميماً أو تمديدات جديدة</b> أو تغيير مسارات المواسير والأسلاك.","الأعمال الإنشائية، العزل، الأسطح، الخزانات الأرضية، وشبكات الصرف الرئيسية خارج حدود العقار.","صيانة أو إصلاح <b>المكيفات</b> (العقد يشمل التنظيف فقط)، والسخان فيما يتجاوز الصيانة الوقائية السنوية لسخان واحد.","<b>كل ما لم يرد صراحةً</b> في قائمة الخدمات المشمولة من أجهزة أو أنظمة أو أعمال.","الأعطال الناتجة عن: سوء الاستخدام، الإهمال، العبث، أعمال طرف آخر غير المزوّد، ارتفاع الجهد، انقطاع أو رداءة الخدمات العامة.","الأضرار الناتجة عن <b>القوة القاهرة</b>: الأمطار والسيول والحرائق والزلازل والحوادث والقرارات الحكومية.","الأعطال <b>القائمة قبل بدء العقد</b> أو الناتجة عن عيوب إنشائية بالعقار.","الاستخدام <b>التجاري</b> للعقار أو تأجيره المفروش قصير المدى، ما لم يُتفق على ذلك كتابةً."]},{"n":"5","t":"الاستخدام العادل للزيارات (مهم)","i":["رصيد الزيارات في كل باقة <b>محدد العدد</b> (6 للشقة · 8 للفيلا) ومخصص للأعطال <b>الطبيعية</b> للعقار المشمول، ولا يجوز استخدامه لأعمال غير مشمولة أو لعقار آخر.","الزيارة الواحدة تقابل <b>طلباً واحداً</b>؛ وتُجمع الطلبات المتعددة في العقار الواحد بزيارة واحدة كلما أمكن فنياً، وتُخصم زيارة واحدة فقط.","إذا تعذّر إتمام العمل في الزيارة لسبب يعود إلى المزوّد (كعدم توفر قطعة لديه)، فلا تُحتسب زيارة العودة لإكمال العمل من الرصيد.","يحق للمزوّد الاعتراض كتابةً على الاستخدام المخالف لطبيعة العقد أو المتكرر بشكل غير طبيعي، ومنح المشترك مهلة 15 يوماً لتصحيح الاستخدام قبل إيقاف الخدمة.","العقد <b>شخصي</b> ويقتصر على العقار المسجّل؛ ولا يجوز استخدامه لعقار آخر أو لطرف ثالث."]},{"n":"6","t":"المواعيد والاستجابة","i":["الحجز يتم عبر تطبيق خافِت. تُبذل العناية لتقديم الخدمة خلال المدة المعلنة في الباقة.","المواعيد المعلنة <b>أهداف خدمة</b> يلتزم المزوّد ببذل عناية معقولة لتحقيقها، وليست ضماناً مطلقاً، ولا يترتب على تجاوزها تعويض.","يُعذر التأخير الناتج عن الظروف الجوية، ازدحام الطلبات، تعذّر الوصول، أو أي سبب خارج إرادة المزوّد.","إلغاء الموعد أو تعذّر الدخول بعد وصول الفني دون إشعار قبل 3 ساعات يُحتسب <b>زيارة مستهلكة</b> من رصيد الباقة."]},{"n":"7","t":"التزامات المشترك","i":["تمكين الفني من الوصول الآمن للموقع، ووجود شخص بالغ طوال مدة العمل.","توفير الكهرباء والماء وإخلاء محيط العمل من الأثاث والمقتنيات الثمينة.","الإفصاح عن أي عطل سابق أو إصلاح سابق يخص موضوع الطلب.","سداد قيمة قطع الغيار عند التركيب.","معاملة الفنيين باحترام؛ وأي إساءة لفظية أو جسدية تُنهي العقد فوراً دون استرداد."]},{"n":"8","t":"توريد قطع الغيار — حصري للمزوّد","i":["يلتزم المزوّد بتوفير جميع قطع الغيار والمواد اللازمة لتنفيذ الأعمال المشمولة، وهو <b>الجهة الوحيدة المخوّلة</b> بتوريدها وتركيبها ضمن هذا العقد.","توريد القطع من المزوّد <b>شرط أساسي</b> لسريان العقد وضماناته، وقد رُوعي ذلك عند تحديد قيمة الاشتراك.","تُحتسب قيمة القطع على المشترك وفق <b>قائمة أسعار المزوّد المعتمدة</b> السارية وقت التنفيذ، وتُدرج في فاتورة مستقلة.","<b>لا يجوز</b> للمشترك توريد قطع من خارج المزوّد، ولا مطالبة الفني بتركيب قطع لم يوردها المزوّد.","إذا أصرّ المشترك على تركيب قطعة من خارج المزوّد: يُنفَّذ العمل على <b>مسؤوليته الكاملة</b>، ويسقط الضمان عن العمل والقطعة معاً، وتُحتسب أجرة يد كاملة خارج نطاق العقد.","تشمل باقتا «ريّح بالك» <b>الصيانة الوقائية لسخان واحد مرة بالسنة</b> (أجرة اليد فقط، دون قطع الغيار التي تُحتسب وفق قائمة الأسعار)؛ وإذا لم يستخدم المشترك خدمة صيانة السخان خلال سنة العقد كاملة، يحصل عند التجديد على خصم قدره <b>250 ريالاً</b> من قيمة اشتراك السنة التالية.","ضمان القطع الموردة من المزوّد: <b>سنتان</b> ضد عيوب الصناعة فقط، ولا يشمل الكسر أو سوء الاستخدام أو التآكل الطبيعي.","جميع الأسعار المعلنة — قيمة الباقات وقطع الغيار وأجور الزيارات الفردية — <b>شاملة ضريبة القيمة المضافة</b>.","<b>توصيل</b> قطع الغيار والأغراض التي يوردها المزوّد إلى العقار المشمول <b>مجاني</b> للمشترك ضمن نطاق التغطية الجغرافي."]},{"n":"9","t":"ضمان الإصلاح — 30 يوماً","i":["يضمن المزوّد أعمال اليد (الإصلاح) لمدة <b>30 يوماً</b> من تاريخ التنفيذ، وضمن مدة سريان العقد؛ ويُعاد تنفيذ العمل المشمول بالضمان دون مقابل ودون خصم زيارة من الرصيد.","ضمان قطع الغيار الموردة من المزوّد <b>سنتان</b> وفق البند الثامن، وهو مستقل عن ضمان الإصلاح.","يسقط الضمان إذا: عبث بالإصلاح طرف آخر · تغيّرت ظروف التشغيل · نتج العطل عن سبب مختلف · استُخدمت قطعة من خارج المزوّد.","الضمان يقتصر على <b>إعادة التنفيذ</b> دون مقابل، ولا يشمل تعويضاً نقدياً."]},{"n":"10","t":"حدود المسؤولية","i":["مسؤولية المزوّد تقتصر على الأضرار <b>المباشرة</b> الناتجة عن خطأ جسيم مثبت من فنييه.","<b>الحد الأقصى للتعويض في جميع الأحوال = قيمة العقد المدفوعة</b>، مهما تعددت الحوادث خلال السنة.","لا يتحمّل المزوّد أي مسؤولية عن: الأضرار غير المباشرة أو التبعية، فوات المنفعة، فقد الأرباح، تلف المقتنيات غير المعلن عنها، أو الأعطال المترتبة على عيوب سابقة بالعقار.","لا يتحمّل المزوّد مسؤولية أي عمل نفّذه طرف آخر بناءً على توصيته أو ترشيحه."]},{"n":"11","t":"الإلغاء والاسترداد","i":["يحق للمشترك الإلغاء خلال <b>7 أيام</b> من السداد وقبل تنفيذ أي زيارة، ويُسترد المبلغ كاملاً بعد خصم رسوم التحويل البنكي.","بعد تنفيذ أول زيارة: يُحتسب المستحق على أساس <b>قيمة الخدمات المنفّذة بأسعار الأفراد المعلنة</b> ويُسترد الفارق إن وُجد، ولا يُسترد شيء إذا تجاوزت قيمتها قيمة العقد.","لا استرداد بعد مضي 30 يوماً من بدء العقد.","يحق للمزوّد إنهاء العقد فوراً ودون استرداد في حال: التلاعب أو تقديم بيانات غير صحيحة، استخدام العقد لعقار غير مسجّل، الإساءة للفنيين، أو مخالفة بند الاستخدام العادل بعد الإنذار."]},{"n":"12","t":"نقل العقد","i":["يجوز نقل العقد للمستأجر الجديد <b>لنفس العقار</b> دون رسوم، بإشعار المزوّد وتحديث بيانات التواصل؛ ويستمر العقد للمدة المتبقية وبالرصيد المتبقي من الزيارات والخدمات الدورية.","لا يجوز نقل العقد <b>لعقار آخر</b> إلا بموافقة المزوّد الكتابية وضمن نطاق التغطية الجغرافي.","نطاق التغطية: <b>الخبر · الظهران · الدمام</b> — وأي موقع خارجه قد يستوجب رسوم انتقال إضافية أو رفض الطلب."]},{"n":"13","t":"البيانات والخصوصية","i":["يوافق المشترك على معالجة بياناته (الاسم، الجوال، العنوان، سجل الطلبات) لأغراض تنفيذ العقد وفق نظام حماية البيانات الشخصية بالمملكة.","قد يُصوَّر موقع العمل قبل وبعد التنفيذ لأغراض التوثيق والضمان فقط."]},{"n":"14","t":"تعديل الشروط","i":["يحق للمزوّد تعديل هذه الشروط للعقود <b>الجديدة</b> في أي وقت.","العقود السارية تبقى خاضعة للشروط المتفق عليها وقت الاشتراك حتى انتهاء مدتها."]},{"n":"15","t":"الأنظمة والاختصاص","i":["يخضع هذا العقد لأنظمة المملكة العربية السعودية.","يُسعى لتسوية أي خلاف ودياً خلال 30 يوماً، وإلا فالاختصاص <b>للمحاكم المختصة بالمنطقة الشرقية</b>.","النسخة العربية من هذه الشروط هي المعتمدة عند أي اختلاف في الترجمة."]}];
+const TERMS_SEC = [{"n":"1","t":"التعريفات","i":["<b>«المزوّد»</b>: مؤسسة خافت للسباكة والكهرباء، سجل تجاري رقم <b>2052105014</b>، الرقم الموحد 7042751284.","<b>«المشترك»</b>: الشخص أو الجهة المسجّلة باسمها العقد والمذكور رقم جوالها عند الاشتراك.","<b>«العقار المشمول»</b>: وحدة سكنية <b>واحدة</b> فقط، بالعنوان المسجّل وقت الاشتراك.","<b>«الباقة»</b>: إحدى باقتي «ريّح بالك» المعلنتين في التطبيق: <b>باقة الشقة</b> (6 زيارات صيانة إضافية بالسنة) أو <b>باقة البيت</b> (8 زيارات صيانة إضافية بالسنة)، وما تتضمنه كل منهما من خدمات دورية بالحدود الواردة في البند الثالث.","<b>«الخدمات المشمولة»</b>: قائمة الـ64 خدمة المنشورة في التطبيق وقت الاشتراك، وهي جزء لا يتجزأ من هذا العقد.","<b>«الزيارة»</b>: حضور الفني إلى العقار المشمول بناءً على طلب واحد لتنفيذ عمل أو أكثر من الخدمات المشمولة، وتُخصم من رصيد الباقة.","<b>«الخدمات الدورية»</b>: الخدمات التي تُنفَّذ مرة واحدة في سنة العقد بحسب الباقة (تنظيف المكيفات، تنظيف مراوح الشفط، فحص أمان المنزل، صيانة السخان، ترويبة الصفاية)، ولا تُخصم من رصيد الزيارات.","<b>«أجرة اليد»</b>: قيمة عمل الفني فقط، دون قطع الغيار أو المواد."]},{"n":"2","t":"مدة العقد وقيمته وسريانه","i":["يبدأ سريان العقد من <b>تاريخ سداد قيمته كاملة</b>، ولمدة <b>سنة ميلادية واحدة</b>.","لا يبدأ السريان بمجرد تقديم الطلب أو الحجز، بل بالسداد فقط.","قيمة الاشتراك هي السعر المعلن في التطبيق للباقة المختارة وقت السداد، <b>شاملاً ضريبة القيمة المضافة</b>؛ وأي خصم ترويجي («خصم الآن») يسري على الاشتراكات المسدَّدة خلال فترة سريان العرض فقط، ولا يمتد تلقائياً إلى التجديد أو إلى اشتراكات لاحقة.","لا يُجدَّد العقد تلقائياً؛ يُرسل للمشترك إشعار قبل انتهائه بـ30 يوماً لتجديده باختياره وبالسعر المعلن وقت التجديد.","الزيارات والخدمات الدورية غير المستخدمة خلال سنة العقد <b>لا تُرحَّل</b> إلى سنة لاحقة، <b>ولا تُسترد</b> قيمتها ولا تُستبدل بمبالغ نقدية أو خدمات أخرى، باستثناء خصم تجديد السخان الوارد في البند الثامن."]},{"n":"3","t":"نطاق التغطية","i":["يغطي العقد <b>أجرة اليد فقط</b> لزيارات الصيانة الإضافية (سباكة · كهرباء · تركيبات) للأعمال البسيطة الواردة في قائمة الخدمات المشمولة، إضافةً إلى الخدمات الدورية المحددة في الباقة.","الأعمال المشمولة هي أعمال إصلاح وتركيب بسيطة لا تتطلب تكسيراً أو تمديدات جديدة أو معدات ثقيلة.","رصيد زيارات الصيانة الإضافية: <b>باقة الشقة 6 زيارات</b> بالسنة، و<b>باقة البيت 8 زيارات</b> بالسنة؛ تُطلب عند الحاجة عبر التطبيق، وتُخصم كل زيارة من الرصيد، ولا تُحتسب الخدمات الدورية منه.","الخدمات الدورية تُنفَّذ <b>مرة واحدة</b> في سنة العقد بمواعيد يُتفق عليها مسبقاً، وهي: تنظيف المكيفات (الوحدة الداخلية والخارجية)، تنظيف مراوح الشفط لدورات المياه، فحص أمان المنزل (اللوحة والتأريض والحماية والأفياش)، الصيانة الوقائية للسخان، وترويبة الصفاية (<b>باقة الشقة فقط</b>).","<b>الحدود القصوى للخدمات الدورية</b> في المرة الواحدة: تنظيف المكيفات حتى <b>8 مكيفات</b> في باقة الشقة و<b>12 مكيفاً</b> في باقة البيت؛ مراوح الشفط حتى <b>5 مراوح</b> في باقة الشقة و<b>6 مراوح</b> في باقة البيت؛ ترويبة صفاية <b>واحدة</b> في باقة الشقة <b>بالمواد القياسية من المزوّد</b>؛ صيانة السخان <b>لسخان واحد</b>. وما زاد على هذه الحدود أو طُلب بمواد خاصة يُحتسب بأجرة منفصلة وفق قائمة الأسعار المعتمدة.","يقتصر تنظيف المكيفات على <b>مكيفات السبليت فقط</b> سهلة الوصول؛ ولا يشمل المكيفات الشباك أو المركزية أو الوحدات التي يتطلب الوصول إليها رافعات أو سقالات أو فك تمديدات.","بعد استنفاد رصيد الزيارات أو الخدمات الدورية، تُقدَّم أي خدمة إضافية للمشترك بأجرة مستقلة وفق قائمة الأسعار المعتمدة وقت الطلب."]},{"n":"4","t":"الاستثناءات · ما لا يشمله العقد","i":["<b>قطع الغيار والمواد بجميع أنواعها</b> · تُحتسب على المشترك وفق البند الثامن، عدا ما نُصّ صراحةً على شموله (مواد ترويبة الصفاية القياسية في باقة الشقة).","أي عمل يتطلب <b>تكسيراً أو ترميماً أو تمديدات جديدة</b> أو تغيير مسارات المواسير والأسلاك.","الأعمال الإنشائية، العزل، الأسطح، الخزانات الأرضية، وشبكات الصرف الرئيسية خارج حدود العقار.","صيانة أو إصلاح <b>المكيفات</b> (العقد يشمل التنظيف فقط)، والسخان فيما يتجاوز الصيانة الوقائية السنوية لسخان واحد.","<b>كل ما لم يرد صراحةً</b> في قائمة الخدمات المشمولة من أجهزة أو أنظمة أو أعمال.","الأعطال الناتجة عن: سوء الاستخدام، الإهمال، العبث، أعمال طرف آخر غير المزوّد، ارتفاع الجهد، انقطاع أو رداءة الخدمات العامة.","الأضرار الناتجة عن <b>القوة القاهرة</b>: الأمطار والسيول والحرائق والزلازل والحوادث والقرارات الحكومية.","الأعطال <b>القائمة قبل بدء العقد</b> أو الناتجة عن عيوب إنشائية بالعقار.","الاستخدام <b>التجاري</b> للعقار أو تأجيره المفروش قصير المدى، ما لم يُتفق على ذلك كتابةً."]},{"n":"5","t":"الاستخدام العادل للزيارات (مهم)","i":["رصيد الزيارات في كل باقة <b>محدد العدد</b> (6 للشقة · 8 للفيلا) ومخصص للأعطال <b>الطبيعية</b> للعقار المشمول، ولا يجوز استخدامه لأعمال غير مشمولة أو لعقار آخر.","الزيارة الواحدة تقابل <b>طلباً واحداً</b>؛ وتُجمع الطلبات المتعددة في العقار الواحد بزيارة واحدة كلما أمكن فنياً، وتُخصم زيارة واحدة فقط.","إذا تعذّر إتمام العمل في الزيارة لسبب يعود إلى المزوّد (كعدم توفر قطعة لديه)، فلا تُحتسب زيارة العودة لإكمال العمل من الرصيد.","يحق للمزوّد الاعتراض كتابةً على الاستخدام المخالف لطبيعة العقد أو المتكرر بشكل غير طبيعي، ومنح المشترك مهلة 15 يوماً لتصحيح الاستخدام قبل إيقاف الخدمة.","العقد <b>شخصي</b> ويقتصر على العقار المسجّل؛ ولا يجوز استخدامه لعقار آخر أو لطرف ثالث."]},{"n":"6","t":"المواعيد والاستجابة","i":["الحجز يتم عبر تطبيق خافِت. تُبذل العناية لتقديم الخدمة خلال المدة المعلنة في الباقة.","المواعيد المعلنة <b>أهداف خدمة</b> يلتزم المزوّد ببذل عناية معقولة لتحقيقها، وليست ضماناً مطلقاً، ولا يترتب على تجاوزها تعويض.","يُعذر التأخير الناتج عن الظروف الجوية، ازدحام الطلبات، تعذّر الوصول، أو أي سبب خارج إرادة المزوّد.","إلغاء الموعد أو تعذّر الدخول بعد وصول الفني دون إشعار قبل 3 ساعات يُحتسب <b>زيارة مستهلكة</b> من رصيد الباقة."]},{"n":"7","t":"التزامات المشترك","i":["تمكين الفني من الوصول الآمن للموقع، ووجود شخص بالغ طوال مدة العمل.","توفير الكهرباء والماء وإخلاء محيط العمل من الأثاث والمقتنيات الثمينة.","الإفصاح عن أي عطل سابق أو إصلاح سابق يخص موضوع الطلب.","سداد قيمة قطع الغيار عند التركيب.","معاملة الفنيين باحترام؛ وأي إساءة لفظية أو جسدية تُنهي العقد فوراً دون استرداد."]},{"n":"8","t":"توريد قطع الغيار · حصري للمزوّد","i":["يلتزم المزوّد بتوفير جميع قطع الغيار والمواد اللازمة لتنفيذ الأعمال المشمولة، وهو <b>الجهة الوحيدة المخوّلة</b> بتوريدها وتركيبها ضمن هذا العقد.","توريد القطع من المزوّد <b>شرط أساسي</b> لسريان العقد وضماناته، وقد رُوعي ذلك عند تحديد قيمة الاشتراك.","تُحتسب قيمة القطع على المشترك وفق <b>قائمة أسعار المزوّد المعتمدة</b> السارية وقت التنفيذ، وتُدرج في فاتورة مستقلة.","<b>لا يجوز</b> للمشترك توريد قطع من خارج المزوّد، ولا مطالبة الفني بتركيب قطع لم يوردها المزوّد.","إذا أصرّ المشترك على تركيب قطعة من خارج المزوّد: يُنفَّذ العمل على <b>مسؤوليته الكاملة</b>، ويسقط الضمان عن العمل والقطعة معاً، وتُحتسب أجرة يد كاملة خارج نطاق العقد.","تشمل باقتا «ريّح بالك» <b>الصيانة الوقائية لسخان واحد مرة بالسنة</b> (أجرة اليد فقط، دون قطع الغيار التي تُحتسب وفق قائمة الأسعار)؛ وإذا لم يستخدم المشترك خدمة صيانة السخان خلال سنة العقد كاملة، يحصل عند التجديد على خصم قدره <b>250 ريالاً</b> من قيمة اشتراك السنة التالية.","ضمان القطع الموردة من المزوّد: <b>سنتان</b> ضد عيوب الصناعة فقط، ولا يشمل الكسر أو سوء الاستخدام أو التآكل الطبيعي.","جميع الأسعار المعلنة · قيمة الباقات وقطع الغيار وأجور الزيارات الفردية · <b>شاملة ضريبة القيمة المضافة</b>.","<b>توصيل</b> قطع الغيار والأغراض التي يوردها المزوّد إلى العقار المشمول <b>مجاني</b> للمشترك ضمن نطاق التغطية الجغرافي."]},{"n":"9","t":"ضمان الإصلاح · 30 يوماً","i":["يضمن المزوّد أعمال اليد (الإصلاح) لمدة <b>30 يوماً</b> من تاريخ التنفيذ، وضمن مدة سريان العقد؛ ويُعاد تنفيذ العمل المشمول بالضمان دون مقابل ودون خصم زيارة من الرصيد.","ضمان قطع الغيار الموردة من المزوّد <b>سنتان</b> وفق البند الثامن، وهو مستقل عن ضمان الإصلاح.","يسقط الضمان إذا: عبث بالإصلاح طرف آخر · تغيّرت ظروف التشغيل · نتج العطل عن سبب مختلف · استُخدمت قطعة من خارج المزوّد.","الضمان يقتصر على <b>إعادة التنفيذ</b> دون مقابل، ولا يشمل تعويضاً نقدياً."]},{"n":"10","t":"حدود المسؤولية","i":["مسؤولية المزوّد تقتصر على الأضرار <b>المباشرة</b> الناتجة عن خطأ جسيم مثبت من فنييه.","<b>الحد الأقصى للتعويض في جميع الأحوال = قيمة العقد المدفوعة</b>، مهما تعددت الحوادث خلال السنة.","لا يتحمّل المزوّد أي مسؤولية عن: الأضرار غير المباشرة أو التبعية، فوات المنفعة، فقد الأرباح، تلف المقتنيات غير المعلن عنها، أو الأعطال المترتبة على عيوب سابقة بالعقار.","لا يتحمّل المزوّد مسؤولية أي عمل نفّذه طرف آخر بناءً على توصيته أو ترشيحه."]},{"n":"11","t":"الإلغاء والاسترداد","i":["يحق للمشترك الإلغاء خلال <b>7 أيام</b> من السداد وقبل تنفيذ أي زيارة، ويُسترد المبلغ كاملاً بعد خصم رسوم التحويل البنكي.","بعد تنفيذ أول زيارة: يُحتسب المستحق على أساس <b>قيمة الخدمات المنفّذة بأسعار الأفراد المعلنة</b> ويُسترد الفارق إن وُجد، ولا يُسترد شيء إذا تجاوزت قيمتها قيمة العقد.","لا استرداد بعد مضي 30 يوماً من بدء العقد.","يحق للمزوّد إنهاء العقد فوراً ودون استرداد في حال: التلاعب أو تقديم بيانات غير صحيحة، استخدام العقد لعقار غير مسجّل، الإساءة للفنيين، أو مخالفة بند الاستخدام العادل بعد الإنذار."]},{"n":"12","t":"نقل العقد","i":["يجوز نقل العقد للمستأجر الجديد <b>لنفس العقار</b> دون رسوم، بإشعار المزوّد وتحديث بيانات التواصل؛ ويستمر العقد للمدة المتبقية وبالرصيد المتبقي من الزيارات والخدمات الدورية.","لا يجوز نقل العقد <b>لعقار آخر</b> إلا بموافقة المزوّد الكتابية وضمن نطاق التغطية الجغرافي.","نطاق التغطية: <b>الخبر · الظهران · الدمام</b> · وأي موقع خارجه قد يستوجب رسوم انتقال إضافية أو رفض الطلب."]},{"n":"13","t":"البيانات والخصوصية","i":["يوافق المشترك على معالجة بياناته (الاسم، الجوال، العنوان، سجل الطلبات) لأغراض تنفيذ العقد وفق نظام حماية البيانات الشخصية بالمملكة.","قد يُصوَّر موقع العمل قبل وبعد التنفيذ لأغراض التوثيق والضمان فقط."]},{"n":"14","t":"تعديل الشروط","i":["يحق للمزوّد تعديل هذه الشروط للعقود <b>الجديدة</b> في أي وقت.","العقود السارية تبقى خاضعة للشروط المتفق عليها وقت الاشتراك حتى انتهاء مدتها."]},{"n":"15","t":"الأنظمة والاختصاص","i":["يخضع هذا العقد لأنظمة المملكة العربية السعودية.","يُسعى لتسوية أي خلاف ودياً خلال 30 يوماً، وإلا فالاختصاص <b>للمحاكم المختصة بالمنطقة الشرقية</b>.","النسخة العربية من هذه الشروط هي المعتمدة عند أي اختلاف في الترجمة."]}];
 let termsOK = false;
 
 function termsHtml(){
@@ -3744,8 +3765,8 @@ function agreeBox(){
 }
 
 
-/* ══════════ بناء مجلس — ساندوتش بانل ══════════ */
-/* ⚠️ الأسعار للمراجعة — عدّليها بأسعارك الفعلية */
+/* ══════════ بناء مجلس · ساندوتش بانل ══════════ */
+/* ⚠️ الأسعار للمراجعة · عدّليها بأسعارك الفعلية */
 const MJ_RATE = {
   panel: { 5:150, 7.5:165, 10:185 },   // ريال/م² للجدران والسقف حسب السماكة (سم)
   door:  { steel:850, glass:1400 },     // باب حديد / زجاج سيكوريت
@@ -3814,7 +3835,7 @@ function renderMajlis(){
 
     <div class="mj-hero">
       <h3>🏗️ ${T('مجلس ساندوتش بانل','Sandwich panel majlis')}</h3>
-      <p>${T('حدّد المقاس والخيارات وتطلع لك التكلفة التقديرية فوراً — عزل حراري ممتاز، تنفيذ سريع، ونظافة بالموقع.','Set the size and options and get an instant estimate — excellent insulation, fast and clean installation.')}</p>
+      <p>${T('حدّد المقاس والخيارات وتطلع لك التكلفة التقديرية فوراً · عزل حراري ممتاز، تنفيذ سريع، ونظافة بالموقع.','Set the size and options and get an instant estimate · excellent insulation, fast and clean installation.')}</p>
     </div>
 
     <div class="mj-card">
@@ -3858,7 +3879,7 @@ function renderMajlis(){
     <div class="mj-card">
       <h4>✨ ${T('إضافات','Add-ons')}</h4>
       ${add('elec', T('تأسيس الكهرباء','Electrical'), T('إنارة + بريزات + لوحة فرعية','Lighting + sockets + sub-panel'))}
-      ${add('ac',   T('تأسيس التكييف','AC preparation'), T('تمديد وتركيب سبليت (الجهاز غير مشمول)','Split install — unit not included'))}
+      ${add('ac',   T('تأسيس التكييف','AC preparation'), T('تمديد وتركيب سبليت (الجهاز غير مشمول)','Split install · unit not included'))}
       ${add('floor',T('الأرضية','Flooring'), T('عزل وتغطية أرضية','Insulated floor covering'))}
       ${add('paint',T('تشطيب خارجي','Exterior finish'), T('عزل ودهان خارجي','Sealing and exterior paint'))}
       <div class="mj-add" style="opacity:.62;cursor:default">
@@ -3870,10 +3891,10 @@ function renderMajlis(){
       <div class="l"><span>${T('الجدران والسقف','Walls & roof')} (<b class="num" id="mjWalls">${en(Math.round(c.walls+c.roof))}</b> ${T('م²','m²')})</span><b class="num" id="mjPanel">${en(Math.round(c.panelCost))}</b></div>
       <div class="l"><span>${T('الأبواب والشبابيك','Doors & windows')}</span><b class="num" id="mjDoors">${en(Math.round(c.doorCost+c.winCost))}</b></div>
       <div class="l"><span>${T('الإضافات','Add-ons')}</span><b class="num" id="mjExtra">${en(Math.round(c.elecCost+c.acCost+c.floorCost+c.paintCost))}</b></div>
-      ${MJ.key?`<div class="l"><span>🔑 ${T('تسليم مفتاح — الأثاث والتجهيز','Turnkey — furniture & fit-out')}</span><b>${T('حسب التصميم','per design')}</b></div>`:''}
+      ${MJ.key?`<div class="l"><span>🔑 ${T('تسليم مفتاح · الأثاث والتجهيز','Turnkey · furniture & fit-out')}</span><b>${T('حسب التصميم','per design')}</b></div>`:''}
       <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}${MJ.key?T(' (بدون التجهيز)',' (excl. fit-out)'):''}</span><b><span class="num" id="mjTotal">${en(c.total)}</span> ${T('ريال','SAR')}</b></div>
       <div class="mj-note">⏱ ${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="mjDays">${en(c.days)}</b> ${T('أيام','days')}<br>
-        ${T('السعر تقديري ويُعتمد نهائياً بعد المعاينة المجانية بالموقع.','Estimate only — confirmed after the free on-site visit.')}</div>
+        ${T('السعر تقديري ويُعتمد نهائياً بعد المعاينة المجانية بالموقع.','Estimate only · confirmed after the free on-site visit.')}</div>
     </div>
 
     <button class="cta gold" style="margin-top:12px" onclick="mjBook()">📋 ${T('احجز معاينة مجانية','Book a free site visit')}</button>
@@ -3882,14 +3903,14 @@ function renderMajlis(){
   mjUpdate();
 }
 
-/* حجز المعاينة — يفتح الطلب السريع مع ملاحظة تلقائية */
+/* حجز المعاينة · يفتح الطلب السريع مع ملاحظة تلقائية */
 function mjBook(){
   const c=mjCalc();
-  const note='طلب بناء مجلس ساندوتش بانل — '+MJ.L+'×'+MJ.W+' م · ارتفاع '+MJ.H+' م · بانل '+MJ.th+' سم · '
+  const note='طلب بناء مجلس ساندوتش بانل · '+MJ.L+'×'+MJ.W+' م · ارتفاع '+MJ.H+' م · بانل '+MJ.th+' سم · '
     +MJ.doors+' باب ('+(MJ.doorType==='steel'?'حديد':'زجاج')+') · '+MJ.windows+' شباك'
     +(MJ.elec?' · كهرباء':'')+(MJ.ac?' · تكييف':'')+(MJ.floor?' · أرضية':'')+(MJ.paint?' · تشطيب خارجي':'')
-    +(MJ.key?' · 🔑 تسليم مفتاح (تجهيز كامل بالأثاث — يُسعّر بعد المعاينة)':'')
-    +' — التقدير '+c.total+' ريال'+(MJ.key?' (بدون التجهيز)':'');
+    +(MJ.key?' · 🔑 تسليم مفتاح (تجهيز كامل بالأثاث · يُسعّر بعد المعاينة)':'')
+    +' · التقدير '+c.total+' ريال'+(MJ.key?' (بدون التجهيز)':'');
   try{ localStorage.setItem('khafet_majlis_note', note); }catch(e){}
   state.quickNote = note;
   startQuick();
@@ -3920,7 +3941,7 @@ function detectCityGPS(){
   navigator.geolocation.getCurrentPosition(function(pos){
     const lat=pos.coords.latitude.toFixed(6), lng=pos.coords.longitude.toFixed(6);
     state.address.lat=lat; state.address.lng=lng; state.address.mapUrl='https://www.google.com/maps?q='+lat+','+lng;
-    save(); toast('تم تحديد موقعك بدقة ✅ — اختر مدينتك للتوصيل');
+    save(); toast('تم تحديد موقعك بدقة ✅ · اختر مدينتك للتوصيل');
   }, function(){ toast('⚠️ اسمح بإذن الموقع أو اختر مدينتك يدوياً'); }, {enableHighAccuracy:true,timeout:12000});
 }
 function renderLocation(){
@@ -3945,7 +3966,7 @@ const LOGO_BIG=`<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" 
   <path d="M8 23 L24 9 L40 23"/><path d="M12 21 V38 a2 2 0 0 0 2 2 H34 a2 2 0 0 0 2-2 V21"/><path d="M33 15 V11 h4 v8"/>
   <g transform="translate(11,18) scale(0.6)"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></g></svg>`;
 
-/* أيقونات خطّية احترافية (بدل الإيموجي) — نفس أسلوب الشعار */
+/* أيقونات خطّية احترافية (بدل الإيموجي) · نفس أسلوب الشعار */
 const IC={
   zap:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
   tag:'<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/>',
@@ -3957,7 +3978,7 @@ const IC={
 };
 function icon(n,s){ return `<svg style="width:${s||22}px;height:${s||22}px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`; }
 
-/* ---------- الرئيسية: زرّان — طلب سريع / باقي الخدمات ---------- */
+/* ---------- الرئيسية: زرّان · طلب سريع / باقي الخدمات ---------- */
 function renderHome(){
   const L=myLoyalty();
   const dots=Array.from({length:LOYALTY_TARGET},(_,i)=>`<i class="${i<L.progress?'on':''}"></i>`).join('');
@@ -3977,7 +3998,7 @@ function renderHome(){
           ${reviews.map(o=>`<div class="rv-card">
             <div class="rv-stars">${'⭐'.repeat(o.rating)}</div>
             <p class="rv-text">${esc(o.feedback.trim())}</p>
-            <div class="rv-name">— ${o.reviewAnon?'عميل':esc(firstName(o.customer.name))}</div>
+            <div class="rv-name">· ${o.reviewAnon?'عميل':esc(firstName(o.customer.name))}</div>
           </div>`).join('')}
         </div>
       </div>` : '';
@@ -3997,7 +4018,7 @@ function renderHome(){
       <div class="maint">
         <div class="mt-head">${LX('صيانة','Maintenance')}</div>
         <div class="mt-grid">
-          ${CAT_FEATURED.filter(k=>CATS[k]&&catCount(k)>0).map(k=>`<button class="mt-tile" onclick="openCat('${k}')"><span class="mt-ic">${catIcon(k,30)}</span><b>${esc(CATS[k].name)}</b></button>`).join('')}
+          ${CAT_FEATURED.filter(catShown).map(k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${k}')"><span class="mt-ic">${catIcon(k,30)}</span><b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`).join('')}
           ${otherCats().length?`<button class="mt-tile more" onclick="go('services')"><span class="mt-ic">${catIcon('majlis',30)}</span><b>${LX('باقي خدمات المنزل','Other home services')}</b></button>`:''}
         </div>
       </div>
@@ -4011,7 +4032,7 @@ function renderHome(){
       ${mySubLocal()?`
       <button class="services-btn mysub-btn" onclick="go('mysub')">
         <span class="sb-ic">🛡️</span>
-        <span class="sb-t"><b>صيانتي السنوية</b><small>خدمات عقدك — اطلب منها بضغطة، بدون رسوم</small></span>
+        <span class="sb-t"><b>صيانتي السنوية</b><small>خدمات عقدك · اطلب منها بضغطة، بدون رسوم</small></span>
         <span class="qb-ar">←</span>
       </button>`:(plansEnabled()?`
       <button class="services-btn" onclick="go('plans')">
@@ -4071,7 +4092,7 @@ function showLoyaltyInfo(){
   const statusLine = (L.rewardAvailable && L.rewardAmount>0)
     ? `<div class="loy-eg" style="background:#e8f7ee;border-color:#0b7a3b;color:#0b7a3b"><b>🎉 مكافأتك جاهزة!</b><br>طلبك القادم يُخصم منه <b>${money(L.rewardAmount)}</b> (متوسط طلباتك).</div>`
     : (L.done>0
-        ? LX(`<div class="loy-eg"><b>تقدّمك:</b> أنجزت <b>${ar(L.progress)}</b> من <b>${ar(LOYALTY_TARGET)}</b> — باقي لك <b>${ar(left)}</b> ${left===1?'طلب':'طلبات'} للمكافأة.</div>`,`<div class="loy-eg"><b>Progress:</b> Completed <b>${L.progress}</b> of <b>${LOYALTY_TARGET}</b> — <b>${left}</b> ${left===1?'order':'orders'} left for the reward.</div>`)
+        ? LX(`<div class="loy-eg"><b>تقدّمك:</b> أنجزت <b>${ar(L.progress)}</b> من <b>${ar(LOYALTY_TARGET)}</b> · باقي لك <b>${ar(left)}</b> ${left===1?'طلب':'طلبات'} للمكافأة.</div>`,`<div class="loy-eg"><b>Progress:</b> Completed <b>${L.progress}</b> of <b>${LOYALTY_TARGET}</b> · <b>${left}</b> ${left===1?'order':'orders'} left for the reward.</div>`)
         : `<div class="loy-eg">ابدأ أول طلب، وبعد <b>${ar(LOYALTY_TARGET)}</b> طلبات تجيك مكافأتك 🎁</div>`);
   const sheet=`<div class="loc-sheet">
     <div class="loc-head"><h3>🎁 برنامج الولاء</h3><button class="loc-x" onclick="closeLoyaltyInfo()">✕</button></div>
@@ -4083,7 +4104,7 @@ function showLoyaltyInfo(){
       <div class="loy-step"><div class="ls-n">🎁</div><div class="ls-t"><b>خصم = متوسط طلباتك</b><span>يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.</span></div></div>
     </div>
     <div class="loy-eg"><b>مثال:</b> لو متوسط طلباتك <b>١٥٠ ر.س</b>، فطلبك السابع عليه <b>خصم ١٥٠ ر.س</b>.</div>
-    <div style="color:var(--muted);font-size:.82rem;margin-top:10px;line-height:1.7">💡 الخصم على أجرة اليد (الخدمة) فقط — قطع الغيار والأغراض تبقى على العميل بسعرها.</div>
+    <div style="color:var(--muted);font-size:.82rem;margin-top:10px;line-height:1.7">💡 الخصم على أجرة اليد (الخدمة) فقط · قطع الغيار والأغراض تبقى على العميل بسعرها.</div>
     <button class="cta" style="margin-top:16px" onclick="closeLoyaltyInfo()">تمام</button>
   </div>`;
   const m=document.getElementById('locModal');
@@ -4116,14 +4137,14 @@ function renderPrices(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen" style="padding-bottom:100px">
       ${pageHead('💰 قائمة الأسعار','home')}
-      <p style="color:var(--muted);text-align:center;margin-top:2px">اختر الخدمة اللي تحتاجها — الأسعار تقديرية وقد تختلف حسب المعاينة.</p>
+      <p style="color:var(--muted);text-align:center;margin-top:2px">اختر الخدمة اللي تحتاجها · أسعار تقديرية تتأكد بعد المعاينة.</p>
       <div class="value-card">
         <div class="vc-head">✨ ليش خدمة خافِت تستاهل؟</div>
         <div class="vc-list">
           <div class="vc-item"><span class="vc-ic">👔</span><span>فنيّون نظيفون بمظهر لائق وتعامل محترم</span></div>
           <div class="vc-item"><span class="vc-ic">🏅</span><span>جودة عمل عالية ومتقنة</span></div>
           <div class="vc-item"><span class="vc-ic">🧹</span><span>ننظّف المكان بعد انتهاء العمل</span></div>
-          <div class="vc-item"><span class="vc-ic">🛡️</span><span>ضمان على شغل اليد والقطع — لو رجعت المشكلة نرجع بلا تكلفة</span></div>
+          <div class="vc-item"><span class="vc-ic">🛡️</span><span>ضمان على شغل اليد والقطع · لو رجعت المشكلة نرجع بلا تكلفة</span></div>
           <div class="vc-item"><span class="vc-ic">✅</span><span>أسعار واضحة، بلا مفاجآت بعد الشغل</span></div>
         </div>
       </div>
@@ -4138,14 +4159,14 @@ function renderJoin(){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('انضم كمزوّد صيانة','home')}
-      <div class="flow-sum">🤝 <span>سجّل الآن — <b>التفعيل فوري</b>: أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.</span></div>
+      <div class="flow-sum">🤝 <span>سجّل الآن · <b>التفعيل فوري</b>: أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.</span></div>
       <div class="panel" style="margin-top:14px"><h3>👤 بياناتك</h3>
         <div class="field"><label>الاسم / اسم المؤسسة <span class="req">*</span></label><input id="pv_name" value="${esc(p.name||'')}" placeholder="مثال: مؤسسة النور للصيانة" /></div>
         <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="pv_phone" value="${esc(p.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
-        <div class="field"><label>كلمة مرور للدخول <span class="req">*</span></label><input id="pv_pass" type="password" placeholder="٦ أحرف أو أكثر — تدخل بها بوابة المزوّدين" /></div>
+        <div class="field"><label>كلمة مرور للدخول <span class="req">*</span></label><input id="pv_pass" type="password" placeholder="٦ أحرف أو أكثر · تدخل بها بوابة المزوّدين" /></div>
       </div>
       <div class="panel"><h3>📍 مدن الخدمة <span class="req">*</span></h3>
-        <div class="field"><label>اكتب المدن مفصولة بفاصلة — أي طلب من هذه المدن يوصلك وأنت تقبله أو تتركه</label>
+        <div class="field"><label>اكتب المدن مفصولة بفاصلة · أي طلب من هذه المدن يوصلك وأنت تقبله أو تتركه</label>
           <input id="pv_cities" value="${esc(Array.isArray(p.cities)?p.cities.join('، '):(p.city||''))}" placeholder="مثال: الخبر، الدمام، الظهران" /></div>
       </div>
       <div class="panel"><h3>🛠️ نوع الخدمات <span class="req">*</span></h3>
@@ -4171,29 +4192,29 @@ async function submitProvider(){
   if(pass.length<6){ toast('كلمة المرور ٦ أحرف على الأقل'); return; }
   if(!cities.length){ toast('اكتب مدن الخدمة'); return; }
   if(!services.length){ toast('اختر نوع الخدمات'); return; }
-  if(!cloudReady){ toast('لا يوجد اتصال — حاول بعد قليل'); return; }
+  if(!cloudReady){ toast('لا يوجد اتصال، حاول بعد قليل'); return; }
   const e164=normJoinPhone(phone);
   joinCtx={ name, phone, pass, cities, services, note:g('pv_note'), e164, mode:'signup' };
   state.provider={ name, phone, cities, services, note:joinCtx.note }; save();
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نرسل رمز التحقق...'; }
   try{
-    /* ينشئ حساب دخول (جوال + كلمة مرور) — Supabase يرسل رمز تحقق SMS تلقائياً */
+    /* ينشئ حساب دخول (جوال + كلمة مرور) · Supabase يرسل رمز تحقق SMS تلقائياً */
     const { data, error }=await sb.auth.signUp({ phone:e164, password:pass });
     if(error){
       if(/already|registered|exists/i.test(error.message||'')){
-        joinCtx.mode='existing';                       /* رقم له حساب (عميل سابق مثلاً) — نتحقق ثم نضبط كلمة المرور */
+        joinCtx.mode='existing';                       /* رقم له حساب (عميل سابق مثلاً) · نتحقق ثم نضبط كلمة المرور */
         const r2=await sb.auth.signInWithOtp({ phone:e164 });
         if(r2.error) throw r2.error;
       } else throw error;
     } else if(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
-      /* رقم له حساب مسبقاً: signUp يرجّع «نجاحاً وهمياً» بلا رسالة — نرسل رمز دخول فعلياً */
+      /* رقم له حساب مسبقاً: signUp يرجّع «نجاحاً وهمياً» بلا رسالة · نرسل رمز دخول فعلياً */
       joinCtx.mode='existing';
       const r2=await sb.auth.signInWithOtp({ phone:e164 });
       if(r2.error) throw r2.error;
     }
     renderJoinOtp('');
   }catch(e2){
-    toast('تعذّر إرسال الرمز — تأكد من الرقم وحاول ثانية');
+    toast('تعذّر إرسال الرمز، تأكد من الرقم وحاول ثانية');
     if(btn){ btn.disabled=false; btn.textContent='✅ سجّل وفعّل حسابك'; }
   }
 }
@@ -4218,9 +4239,9 @@ async function verifyJoinOtp(){
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نتحقق...'; }
   try{
     const { error }=await sb.auth.verifyOtp({ phone:joinCtx.e164, token:code, type:'sms' });
-    if(error){ renderJoinOtp('❌ الرمز غير صحيح — حاول ثانية'); return; }
+    if(error){ renderJoinOtp('❌ الرمز غير صحيح، حاول ثانية'); return; }
     if(joinCtx.mode==='existing'){ try{ await sb.auth.updateUser({ password:joinCtx.pass }); }catch(e){} }
-    /* أنشئ ملف المزوّد — الخادم وحده يقرر الحالة: الملف المكتمل يُعتمد فوراً */
+    /* أنشئ ملف المزوّد · الخادم وحده يقرر الحالة: الملف المكتمل يُعتمد فوراً */
     let already=false;
     const r=await sb.from('khafet_providers').insert({ name:joinCtx.name, phone:joinCtx.phone, city:joinCtx.cities[0]||'', cities:joinCtx.cities, services:joinCtx.services, note:joinCtx.note });
     if(r.error){ if((r.error.code||'')==='23505'||/duplicate/i.test(r.error.message||'')) already=true; else throw r.error; }
@@ -4232,16 +4253,16 @@ async function verifyJoinOtp(){
           <div class="success">
             <div class="circle">🎉</div>
             <h2>${already?'رقمك مسجّل مزوّداً من قبل':'تم تفعيل حسابك فوراً!'}</h2>
-            <p style="color:var(--muted);margin-top:10px;line-height:1.9">${already?'ادخل بوابة المزوّدين بجوالك وكلمة مرورك مباشرة.':'حسابك جاهز — افتح بوابة المزوّدين وادخل بجوالك وكلمة المرور وابدأ استقبال طلبات مدنك.'}</p>
+            <p style="color:var(--muted);margin-top:10px;line-height:1.9">${already?'ادخل بوابة المزوّدين بجوالك وكلمة مرورك مباشرة.':'حسابك جاهز، افتح بوابة المزوّدين وادخل بجوالك وكلمة المرور وابدأ استقبال طلبات مدنك.'}</p>
           </div>
           <a class="cta" style="margin-top:16px;display:block;text-align:center;text-decoration:none" href="https://fadiaalzhrani-debug.github.io/khaft-partners/www/provider.html" target="_blank" rel="noopener">🤝 افتح بوابة المزوّدين</a>
           <button class="cta gold" style="margin-top:10px" onclick="go('home')">العودة للرئيسية</button>
         </div>
       </div>`;
-  }catch(e){ renderJoinOtp('تعذّر الإكمال — حاول مرة ثانية'); }
+  }catch(e){ renderJoinOtp('تعذّر الإكمال، حاول مرة ثانية'); }
 }
 
-/* ═ أيقونات الأقسام المرسومة — نفس أسلوب خطوط الشعار (بدل الإيموجي) ═ */
+/* ═ أيقونات الأقسام المرسومة · نفس أسلوب خطوط الشعار (بدل الإيموجي) ═ */
 const CAT_IC={
   plumb:'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
   elec:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
@@ -4261,13 +4282,13 @@ function catIcon(k,s){
 
 /* ---------- باقي الخدمات: الأقسام ---------- */
 function renderServices(){
-  const keys=otherCats().length?otherCats():Object.keys(CATS).filter(k=>catCount(k)>0);
+  const keys=otherCats().length?otherCats():Object.keys(CATS).filter(catShown);
   const cats=keys.map(k=>{
     const c=CATS[k];
-    return `<button class="catbtn" onclick="openCat('${k}')">
+    return `<button class="catbtn ${catSoon(k)?'soon':''}" onclick="openCat('${k}')">
       <span class="cb-ic" style="color:var(--gold-deep)">${catIcon(k,30)}</span>
       <span class="cb-t"><b>${c.name}</b></span>
-      <span class="cb-ar">←</span>
+      ${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:`<span class="cb-ar">←</span>`}
     </button>`;
   }).join('');
   document.getElementById('app').innerHTML=`
@@ -4287,7 +4308,7 @@ function startQuick(){
 }
 
 /* ---------- خطوة ١: اختر الخدمة ---------- */
-function openCat(k){ quickMode=false; currentCat=k; go('pick'); }
+function openCat(k){ if(catSoon(k)){ toast(LX('قريبًا إن شاء الله ✨','Coming soon ✨')); return; } quickMode=false; currentCat=k; go('pick'); }
 function toggleService(id){
   if(state.cart[id]) delete state.cart[id]; else state.cart[id]=1;
   save(); if(view==='prices') renderPrices(); else renderPick();
@@ -4314,7 +4335,7 @@ function renderPick(){
     <div class="wrap screen" style="padding-bottom:100px">
       ${pageHead(catIcon(currentCat,22)+' '+CATS[currentCat].name,'home')}
       ${stepBar(1)}
-      <p style="text-align:center;color:var(--muted);font-size:.9rem;margin-top:6px">اختر اللي تحتاجه — تقدر تختار أكثر من خدمة</p>
+      <p style="text-align:center;color:var(--muted);font-size:.9rem;margin-top:6px">اختر اللي تحتاجه · تقدر تختار أكثر من خدمة</p>
       <div class="srows">${rows}</div>
       <a class="addmore" onclick="go('home')">＋ أضف من قسم آخر</a>
     </div>
@@ -4370,7 +4391,7 @@ function onHousePhotoPick(el){
   else { if(nm) nm.textContent='صوّر أو ارفع صورة لواجهة المنزل ليعرفه الفني بسهولة'; if(wrap) wrap.classList.remove('has'); }
 }
 function locOkHtml(){
-  return `<div class="loc-ok">✅ تم تحديد موقعك بدقة — <a href="${state.address.mapUrl}" target="_blank" rel="noopener">شوف على الخريطة</a></div>`;
+  return `<div class="loc-ok">✅ تم تحديد موقعك بدقة · <a href="${state.address.mapUrl}" target="_blank" rel="noopener">شوف على الخريطة</a></div>`;
 }
 function detectLocation(){
   const el=document.getElementById('loc-status');
@@ -4389,13 +4410,13 @@ function detectLocation(){
     }
     if(el) el.innerHTML=locOkHtml();
     toast('تم تحديد موقعك ✅');
-    reverseGeocodeCity(lat,lng);   // استنتج المدينة من الموقع (لتوزيع المزوّدين) — بصمت
+    reverseGeocodeCity(lat,lng);   // استنتج المدينة من الموقع (لتوزيع المزوّدين) · بصمت
   }, function(err){
     if(btn) btn.classList.remove('busy');
     if(el) el.innerHTML='<div class="loc-err">⚠️ ما قدرنا نحدد موقعك. اسمح بإذن الموقع، أو اكتب العنوان تحت.</div>';
   }, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
 }
-// استنتاج اسم المدينة من الإحداثيات (اختياري — لتوزيع الطلب على مزوّدي نفس المدينة)
+// استنتاج اسم المدينة من الإحداثيات (اختياري · لتوزيع الطلب على مزوّدي نفس المدينة)
 async function reverseGeocodeCity(lat,lng){
   try{
     const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=ar&zoom=10&lat='+lat+'&lon='+lng);
@@ -4406,8 +4427,8 @@ async function reverseGeocodeCity(lat,lng){
   }catch(e){/* تجاهل بصمت */}
 }
 function pickDate(iso){
-  // يحمي «التاريخ الأبعد» كمان — لأن تقويم الجهاز يسمح باختيار أي يوم
-  if(isOffDay(iso)){ toast('يوم '+AR_DAYS[parseISO(iso).getDay()]+' إجازة — اختر يوماً آخر'); return; }
+  // يحمي «التاريخ الأبعد» كمان · لأن تقويم الجهاز يسمح باختيار أي يوم
+  if(isOffDay(iso)){ toast('يوم '+AR_DAYS[parseISO(iso).getDay()]+' إجازة، اختر يوماً آخر'); return; }
   state.booking.date=iso; state.booking.time=null; renderTime();
 }
 function pickTime(min){ state.booking.time=min; renderTime(); }
@@ -4423,7 +4444,7 @@ function earlierSlotFor(o){
     if(iso > o.date) break;                       // ما نتجاوز موعده الحالي
     for(let t=WORK_START;t+need<=WORK_END;t+=ARRIVAL_WINDOW){
       if(iso+String(t).padStart(4,'0') >= curKey) break;   // وصلنا موعده أو بعده
-      if(slotAvailable(iso,t,need,o.id)) return {date:iso,time:t};
+      if(slotAvailable(iso,t,need,o.id,groupsOfItems(o.items))) return {date:iso,time:t};
     }
   }
   return null;
@@ -4439,7 +4460,7 @@ async function advanceOrder(id){
   const o=state.orders.find(x=>x.id===id); if(!o) return;
   const e=earlierSlotFor(o);
   if(!e){ toast('ما عاد فيه موعد أبكر متاح'); render(); return; }
-  if(!confirm('تقديم موعدك إلى '+dayLabel(e.date)+' · '+windowLabel(e.time)+'؟')) return;
+  if(!confirm(LX('تقديم موعدك إلى ','Move your visit to ')+dayLabel(e.date)+' · '+windowLabel(e.time)+'؟')) return;
   o.date=e.date; o.startMin=e.time; o.endMin=e.time+(o.duration||60);
   save();
   render();
@@ -4448,9 +4469,10 @@ async function advanceOrder(id){
 
 function renderTime(){
   if(!quickMode && cartCount()===0){ go('home'); return; }
-  // حدّث الجدول المشغول الحقيقي — لو تغيّر أعد رسم المواعيد
+  // حدّث الجدول المشغول الحقيقي · لو تغيّر أعد رسم المواعيد
   loadBusy().then(ch=>{ if(ch && view==='time') render(); });
   const b=state.booking;
+  if(b.date && daysUntil(b.date)<0){ b.date=null; b.time=null; }   // حجز قديم محفوظ بالجهاز
   const today=new Date(); today.setHours(0,0,0,0);
   const need0=scheduleDuration();
   // افتراضياً: أقرب يوم فيه وقت متاح فعلاً
@@ -4460,7 +4482,7 @@ function renderTime(){
       if(has){ b.date=iso; break; } }
     if(!b.date) b.date=dateISO(today);
   }
-  // نتخطّى أيام الإجازة تماماً — ما تظهر بالشريط
+  // نتخطّى أيام الإجازة تماماً · ما تظهر بالشريط
   const days=[]; for(let i=0;i<16;i++){ const d=new Date(today); d.setDate(today.getDate()+i);
     if(!OFF_DAYS.includes(d.getDay())) days.push(d); }
   const dchips=days.map(d=>{
@@ -4470,7 +4492,7 @@ function renderTime(){
       ${early?`<span style="position:absolute;top:-7px;left:-4px;background:#0b7a3b;color:#fff;font-size:.6rem;font-weight:900;padding:2px 5px;border-radius:7px;line-height:1">٥٪-</span>`:''}
       <small>${isToday?'اليوم':AR_DAYS[d.getDay()]}</small><b>${ar(d.getDate())}</b><span class="mon">${AR_MONTHS[d.getMonth()]}</span></button>`;
   }).join('');
-  // مربع «تاريخ أبعد» — تقويم لاختيار أي يوم (بعد أسبوعين، شهر...)
+  // مربع «تاريخ أبعد» · تقويم لاختيار أي يوم (بعد أسبوعين، شهر...)
   const farActive = b.date && !days.some(d=>dateISO(d)===b.date);
   const fd = farActive ? parseISO(b.date) : null;
   const farChip = `<label class="dchip more-date ${farActive?'active':''}">
@@ -4495,14 +4517,14 @@ function renderTime(){
       ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
       ${stepBar(2)}
       <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
-      <div class="panel" id="slotsPanel"><h3>🕐 ${LX('اختر وقت الوصول','Choose arrival time')}</h3>
-        ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
-      </div>
-      ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>${LX(`المدة المتوقعة لطلبك: <b>${fmtDuration(need)}</b>، نحجز لك الفترة كاملة مع احتياط تنقّل، فلا نتأخر عليك ولا على من بعدك.`,`Estimated time for your order: <b>${fmtDuration(need)}</b>, we reserve the full window with a travel buffer, so we're never late for you or the next customer.`)}</span></div>`}
       <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
         <span class="nt-check">${we?'✓':''}</span>
         <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
       </div>
+      <div class="panel" id="slotsPanel"><h3>🕐 ${LX('اختر وقت الوصول','Choose arrival time')}</h3>
+        ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
+      </div>
+      ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>${LX(`مدة الزيارة التقريبية: <b>${fmtDuration(need)}</b> · نحجزها لك كاملة.`,`Estimated visit time: <b>${fmtDuration(need)}</b> · we reserve it all for you.`)}</span></div>`}
     </div>
     ${ready?`<div class="nextbar"><div class="wrap">
       <div class="nb-info"><b>${windowLabel(b.time,need)}</b><small>${dayLabel(b.date)}</small></div>
@@ -4555,7 +4577,7 @@ function receiptHtml(priceTxt, d){
     ${discRows?`<div class="iv-sub"><span>${LX('المجموع','Subtotal')}</span><b>${money(sub)}</b></div>`+discRows:''}
     <div class="iv-total"><span>${d.credit>0||discRows?LX('تدفع الآن','You pay now'):LX('الإجمالي','Total')}</span><b>${(d.credit>0||discRows)?money(d.payNow):priceTxt}</b></div>
   </div>
-  <div class="rc-note out">${LX('لو احتاج الشغل قطعة إضافية، يضيفها الفني في فاتورته.','If the job needs an extra part, the technician adds it to his invoice.')}</div>`;
+  <div class="rc-note out">${LX('أي قطعة إضافية يضيفها الفني بفاتورته.','Any extra part is added to the technician’s invoice.')}</div>`;
 }
 function renderInfo(){
   if(!state.booking.date||state.booking.time==null){ go('time'); return; }
@@ -4565,7 +4587,7 @@ function renderInfo(){
   const base=cartPrice();
   const loyDisc=loyaltyDiscFor();
   const free = loyDisc>0;   // مكافأة ولاء → نخفي كود الإحالة ونعرض 🎁 بدل 💳
-  const pPct = (loyDisc>0||quickMode||!refCheck.ok)?0:FRIEND_PCT;   // الإحالة لأول طلب، الولاء للسابع — لا يجتمعان
+  const pPct = (loyDisc>0||quickMode||!refCheck.ok)?0:FRIEND_PCT;   // الإحالة لأول طلب، الولاء للسابع · لا يجتمعان
   const promo = promoInfo(loyDisc>0||pPct>0);   // خصم الإطلاق / أول طلب على أجرة اليد
   const advDisc = advanceDiscFor(b.date, base, quickMode);   // خصم الحجز المبكر ٥٪
   const afterAll=Math.max(0, Math.round(base*(1-pPct/100)) - loyDisc - advDisc - promo.amt);
@@ -4576,13 +4598,13 @@ function renderInfo(){
     : (loyDisc>0 ? `${strike} ${money(afterAll)} ${badge('🎁 خصم ولاء '+money(loyDisc))}${advDisc>0?' '+badge('📅 حجز مبكر '+ar(ADVANCE_PCT)+'٪'):''}`
     : (pPct>0 ? `${strike} ${money(afterAll)} ${badge('خصم '+ar(pPct)+'٪ 🎟️')}${advDisc>0?' '+badge('📅 حجز مبكر '+ar(ADVANCE_PCT)+'٪'):''}`
     : (promo.amt>0 ? `${strike} ${money(afterAll)} ${badge(promoLabel(promo.kind,promo.pct))}${advDisc>0?' '+badge('📅 حجز مبكر '+ar(ADVANCE_PCT)+'٪'):''}`
-    : (advDisc>0 ? `${strike} ${money(afterAll)} ${badge('📅 خصم حجز مبكر '+ar(ADVANCE_PCT)+'٪ — '+money(advDisc))}`
+    : (advDisc>0 ? `${strike} ${money(afterAll)} ${badge('📅 خصم حجز مبكر '+ar(ADVANCE_PCT)+'٪ · '+money(advDisc))}`
     : money(base)))));
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       ${pageHead('آخر خطوة','time')}
       ${stepBar(3)}
-      <div class="flow-sum">📋 <span>${svcNames} · <b>${dayLabel(b.date)} — ${fmtTime(b.time)}</b></span></div>
+      <div class="flow-sum">📋 <span>${svcNames} · <b>${dayLabel(b.date)} · ${fmtTime(b.time)}</b></span></div>
 
       ${state.subReq?`
       <div class="panel" style="margin-top:14px;border-color:var(--gold);background:var(--gold-tint)">
@@ -4654,21 +4676,21 @@ function renderInfo(){
       ${payNow>0
         ? `<button class="cta${(orderPayMethod==='applepay'&&APPLEPAY_OK)?' apbtn':''}" id="orderPayCta" aria-label="${(orderPayMethod==='applepay'&&APPLEPAY_OK)?'Apple Pay':''}" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&payNow>=TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):(orderPayMethod==='applepay'&&APPLEPAY_OK)?' Pay · '+money(payNow):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
         : `<button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>`}
-      <div class="policy-note">${payNow>0?'بالضغط على الدفع':'بتأكيد الطلب'} أنت توافق على <a href="privacy.html#terms" target="_blank" rel="noopener">الشروط</a> و<a href="privacy.html#refund" target="_blank" rel="noopener">سياسة الإلغاء</a> و<a href="privacy.html" target="_blank" rel="noopener">الخصوصية</a>.</div>
+      <div class="policy-note">${payNow>0?'بالضغط على الدفع':'بتأكيد الطلب'} أنت توافق على <a href="privacy.html#terms" target="_blank" rel="noopener">الشروط</a>، <a href="privacy.html#refund" target="_blank" rel="noopener">سياسة الإلغاء</a> و<a href="privacy.html" target="_blank" rel="noopener">الخصوصية</a>.</div>
       <div style="height:28px"></div>
     </div>`;
   initPickMap();
 }
 /* ---------- كود الخصم ---------- */
-/* التحقّق من كود الإحالة يصير في *الخادم* — المتصفح ما يقرّر خصماً.
+/* التحقّق من كود الإحالة يصير في *الخادم* · المتصفح ما يقرّر خصماً.
    يرجع سبباً واضحاً: كود غلط / كودك أنت / مو أول طلب. */
 let refCheck={ code:'', ok:false, reason:'', busy:false };
 const REF_MSG={
   unknown: '❌ الكود غير صحيح',
   self:    '❌ ما تقدر تستخدم كودك أنت',
-  not_new: 'ℹ️ الخصم لأول طلب فقط — وأنت عميل عندنا من قبل 🙏',
+  not_new: 'ℹ️ الخصم لأول طلب فقط · وأنت عميل عندنا من قبل 🙏',
   not_signed_in: '❌ تعذّر التحقق، حدّث الصفحة',
-  network: '⚠️ تعذّر التحقق — تأكد من الإنترنت وحاول ثانية'
+  network: '⚠️ تعذّر التحقق، تأكد من الإنترنت وحاول ثانية'
 };
 /* كود الإحالة محفوظ «خافت-XXXXXX»: بالإنجليزي نعرضه KHAFET-XXXXXX، ونقبل الشكلين عند الإدخال */
 function codeShow(c){ c=String(c||''); return _uiEN() ? c.replace(/^خافت[-\s]?/,'KHAFET-') : c; }
@@ -4685,7 +4707,7 @@ async function setPromo(v){
     refCheck={ code:state.promo, ok:!!(data&&data.ok), reason:(data&&data.reason)||'', busy:false };
     if(refCheck.ok && !(WELCOME_CREDIT>0) && FRIEND_BONUS>0 && isVerified){ try{ const fc=await sb.rpc('claim_friend_credit',{ p_code: state.promo }); if(fc && fc.data && fc.data.ok){ await loadMyRef(); toast(LX('🎁 انضاف لك '+ar(fc.data.amount)+' ريال رصيد','🎁 '+fc.data.amount+' SAR credit added')); } }catch(e){} }
   }catch(e){ console.warn('ref check:', e.message||e);
-    // فشل الاتصال ≠ كود خاطئ — نميّزهما فلا نتّهم كود العميل ظلماً
+    // فشل الاتصال ≠ كود خاطئ · نميّزهما فلا نتّهم كود العميل ظلماً
     refCheck={ code:state.promo, ok:false, reason:'network', busy:false }; }
   renderInfo();
 }
@@ -4722,7 +4744,7 @@ function rememberAddress(){
   if(state.addresses.length>6) state.addresses=state.addresses.slice(-6);
   save();
 }
-function deleteAddress(i){ const a=(state.addresses||[])[i]; if(!a) return; if(!confirm('حذف العنوان «'+addrTitle(a,i)+'»؟')) return; state.addresses.splice(i,1); if(state.address&&state.address.id===a.id) state.address.id=null; save(); render(); }
+function deleteAddress(i){ const a=(state.addresses||[])[i]; if(!a) return; if(!confirm(LX('حذف العنوان «','Delete the address “')+addrTitle(a,i)+LX('»؟','”?'))) return; state.addresses.splice(i,1); if(state.address&&state.address.id===a.id) state.address.id=null; save(); render(); }
 function initPickMap(){
   const el=document.getElementById('pickmap'); if(!el) return;
   if(!window.L){ setTimeout(initPickMap,300); return; }   // انتظر تحميل مكتبة الخريطة
@@ -4751,7 +4773,7 @@ function locateMe(){
   navigator.geolocation.getCurrentPosition(function(pos){
     const lat=pos.coords.latitude, lng=pos.coords.longitude;
     if(_pmap){ _pmap.setView([lat,lng],17); ensureMarker(lat,lng); }
-    setPin(lat,lng); toast('تم تحديد موقعك ✅ — تقدر تعدّله بسحب الدبوس');
+    setPin(lat,lng); toast('تم تحديد موقعك ✅ تقدر تعدّله بسحب الدبوس');
   }, function(){ toast('اسمح بإذن الموقع أو اضغط على الخريطة يدوياً'); }, {enableHighAccuracy:true,timeout:12000,maximumAge:0});
 }
 
@@ -4776,9 +4798,9 @@ async function confirmOrder(){
   const loyDisc = quickMode ? 0 : loyaltyDiscFor();
   const duration=scheduleDuration();
   const _subnote=(document.getElementById('f_subnote')||{}).value||'';
-  const note=state.subReq ? ((state.quickNote||'')+(_subnote.trim()?(' — ملاحظات العميل: '+_subnote.trim()):'')) : ((state.problem&&state.problem.desc)||'');
+  const note=state.subReq ? ((state.quickNote||'')+(_subnote.trim()?(' · ملاحظات العميل: '+_subnote.trim()):'')) : ((state.problem&&state.problem.desc)||'');
   const promoCodeIn=(document.getElementById('f_promo')||{}).value ? document.getElementById('f_promo').value.trim() : (state.promo||'');
-  // الخصم والرصيد والولاء يُعاد حسابهم في الخادم — هذي بس للعرض
+  // الخصم والرصيد والولاء يُعاد حسابهم في الخادم · هذي بس للعرض
   const discPct = (loyDisc>0 || !refCheck.ok) ? 0 : FRIEND_PCT;
   const refOk = !!refCheck.ok && !(loyDisc>0) && !quickMode;
   const promo = promoInfo(quickMode||loyDisc>0||discPct>0);
@@ -4802,11 +4824,11 @@ async function confirmOrder(){
       try{ videoUrl=await uploadVideo(videoFile[0]); }
       catch(e){ toast('تعذّر رفع المقطع، بنكمّل الطلب بدونه'); }
     } else {
-      toast('رفع المقطع يحتاج اتصال بالخادم — بنكمّل بدونه');
+      toast('رفع المقطع يحتاج اتصال بالخادم · بنكمّل بدونه');
     }
     if(btn) btn.textContent='⏳ جارٍ الإرسال...';
   }
-  // ارفع صورة المنزل (إن وُجدت) — تُخزَّن داخل العنوان
+  // ارفع صورة المنزل (إن وُجدت) · تُخزَّن داخل العنوان
   if(houseFile && houseFile[0] && cloudReady){
     if(btn) btn.textContent='⏳ جارٍ رفع صورة المنزل...';
     try{ a.photoUrl=await uploadVideo(houseFile[0]); }
@@ -4845,12 +4867,14 @@ async function confirmOrder(){
   if(cloudReady){
     try{ order=await cloudInsert(base); }
     catch(e){
-      // اطبع السبب كامل — لا تبتلعه بصمت
+      // اطبع السبب كامل · لا تبتلعه بصمت
       console.error('❌ فشل حفظ الطلب في الخادم:', {
         message: e && e.message, code: e && e.code,
         details: e && e.details, hint: e && e.hint, raw: e
       });
-      toast('⏳ ما فيه إنترنت، يُرسل طلبك تلقائيًا أول ما يرجع الاتصال');
+      const m=serverMsg(e);
+      if(m){ toast(m); if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; }   // سبب من الخادم: نوقف ولا نسجّل طلبًا ما وصل
+      toast(LX('⏳ ما فيه إنترنت، يُرسل طلبك تلقائيًا أول ما يرجع الاتصال','⏳ No connection, your order will be sent automatically when you are back online'));
       setTimeout(resendPending, 8000);
     }
   }
@@ -4927,13 +4951,13 @@ function renderMyBookings(){
       const delay = canCancel && !arrivedNow ? expectedDelayFor(o) : 0;
       const earlier = canCancel && !arrivedNow && !delay && o.wantsEarlier ? earlierSlotFor(o) : null;
       const canRate=o.status==='done';
-      const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار — ما يتغيّر
+      const rated=o.rating>0;   // التقييم يُقفل بعد أول اختيار · ما يتغيّر
       const awaitingPay = !!o.dbId && o.payRequired && !o.released && o.status!=='cancelled';
       const showDue = !!o.dbId && o.status!=='cancelled' && o.amountDue>0 && (awaitingPay || (o.released && (o.payRequired || (o.invoice&&o.invoice.items&&o.invoice.items.length))));
       const tamaraOk = tamaraEnabled() && (+o.amountDue||+o.finalPrice||0) >= TAMARA_MIN_LABOR;
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${o.id}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
-        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?'⏳ جاري الإرسال':(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?'🔍 جاري التعيين':STATUS_AR[o.status]))}</span></div>
+        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?LX('⏳ جارٍ الإرسال','⏳ Sending'):(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?LX('🔍 جارٍ التعيين','🔍 Assigning'):STATUS_AR[o.status]))}</span></div>
         <div class="ometa">
           <span class="pill time">📅 ${dayLabel(o.date)}</span>
           <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
@@ -4955,11 +4979,11 @@ function renderMyBookings(){
             ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${LX('خدمتك مضمونة '+ar(o.warrantyDays)+' يوم · باقي '+ar(Math.max(1,Math.ceil(o.warrantyDays-ageDays)))+' يوم','Your service is covered for '+o.warrantyDays+' days · '+Math.max(1,Math.ceil(o.warrantyDays-ageDays))+' days left')}</b><span>رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.</span><div><button class="wbtn" style="margin-top:8px" onclick="openLaborClaim('${o.id}')">🛡️ المشكلة رجعت</button></div></div></div>`
             : `<div class="warranty-note" style="background:#f3f1ea;border-color:var(--line)"><span class="wn-ic">🛡️</span><div class="wn-t"><b style="color:var(--muted)">انتهت مدة الضمان (${ar(o.warrantyDays)} يوم)</b></div></div>`)):''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
-        ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> — نرجو التكرّم باستقباله.</span></div>`:''}
+        ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> · نرجو التكرّم باستقباله.</span></div>`:''}
         ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>الفني متأخّر قليلاً</b><span>موعدك المتوقّع صار حوالي ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
         ${earlier?`<div class="advance-note">
           <span class="an-ic">🎉</span>
-          <div class="an-t"><b>صار فيه موعد أبكر متاح!</b><span>${dayLabel(earlier.date)} · ${windowLabel(earlier.time)} — بدل موعدك الحالي</span></div>
+          <div class="an-t"><b>صار فيه موعد أبكر متاح!</b><span>${dayLabel(earlier.date)} · ${windowLabel(earlier.time)} · بدل موعدك الحالي</span></div>
           <button class="an-btn" onclick="advanceOrder('${o.id}')">قدّم موعدي</button>
         </div>`:''}
         ${['new','confirmed'].includes(o.status)?`<div class="reminder-note" style="margin-top:12px">⏰ <span>سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.</span></div>`:''}
@@ -4972,7 +4996,7 @@ function renderMyBookings(){
                ${o.feedback
                  ? `<div class="fb-saved">📝 ملاحظتك: ${esc(o.feedback)}</div>`
                  : `<div class="fb-box"><textarea placeholder="حاب تضيف كلمة طيبة عن الخدمة؟ (اختياري)"></textarea><button class="sbtn fb-send" onclick="saveFeedback('${o.id}', this)">إرسال</button></div>`}`
-            : `<div class="complaint-note">😔 نعتذر عن عدم رضاك التام — اكتب لنا شكواك وبنتواصل معك ونعالجها.</div>
+            : `<div class="complaint-note">😔 نعتذر عن عدم رضاك التام، اكتب لنا شكواك وبنتواصل معك ونعالجها.</div>
                ${o.feedback
                  ? `<div class="fb-saved">📩 شكواك وصلتنا وبنعالجها: ${esc(o.feedback)}</div>`
                  : `<div class="fb-box"><textarea placeholder="اكتب رسالتك / شكواك هنا..."></textarea><button class="sbtn complaint-send" onclick="saveFeedback('${o.id}', this)">📩 إرسال الشكوى</button></div>`}`
@@ -5009,14 +5033,23 @@ function partsBox(o){
   }).join('');
   return `<div class="parts-box"><div class="pb-head"><b>🧰 الأغراض المستخدمة</b><small>${inW?'مضمونة سنتين':'انتهت مدة الضمان'}</small></div>${rows}</div>`;
 }
+/* أقرب موعد صالح لبلاغ الضمان · الخادم يرفض أي وقت فات أو يوم إجازة */
+function nextClaimSlot(){
+  const now=new Date(); const nowMin=now.getHours()*60+now.getMinutes();
+  const d=new Date(); d.setHours(0,0,0,0);
+  let sm=Math.max(WORK_START, Math.ceil((nowMin+LEAD_MIN+5)/ARRIVAL_WINDOW)*ARRIVAL_WINDOW);
+  if(sm+60>WORK_END){ d.setDate(d.getDate()+1); sm=WORK_START; }
+  for(let i=0;i<14 && isOffDay(dateISO(d));i++){ d.setDate(d.getDate()+1); sm=WORK_START; }
+  return { date:dateISO(d), startMin:sm };
+}
 async function claimWarranty(orderId, idx){
   const o=state.orders.find(x=>x.id===orderId); if(!o) return;
   const p=orderParts(o)[idx]; if(!p) return;
   if(!confirm('تبلّغ إن «'+p.name+'» تعطّلت وهي على الضمان؟\nبنرسل فنياً يفحصها ويبدّلها مجاناً إذا كانت مشمولة.')) return;
   if(!cloudReady||!o.dbId){ toast('يحتاج اتصال بالإنترنت'); return; }
-  const today=dateISO(new Date());
+  const cs=nextClaimSlot();
   const base={ createdAt:Date.now(), items:[{ico:'🛡️', name:'ضمان: تبديل '+p.name, qty:+p.qty||1, price:0}],
-    customer:Object.assign({},o.customer), address:Object.assign({},o.address), date:today, startMin:540, duration:60, endMin:600,
+    customer:Object.assign({},o.customer), address:Object.assign({},o.address), date:cs.date, startMin:cs.startMin, duration:60, endMin:cs.startMin+60,
     price:0, finalPrice:0, free:false, status:'new', rating:0, reminded:false, quick:true,
     note:'🛡️ بلاغ ضمان قطع: '+p.name+' · من الطلب '+o.id+' بتاريخ '+(o.date||''), videoUrl:'', wantsEarlier:true,
     providerPhone:o.providerPhone||'', promoCode:'', discountPct:0, referredBy:'', creditUsed:0, loyaltyDisc:0, advanceDisc:0,
@@ -5032,7 +5065,7 @@ async function claimWarranty(orderId, idx){
 /* كم ساعة باقية على موعد الطلب (سالب = فات الموعد) */
 function hoursUntil(o){ if(!o||!o.date) return 999; const d=parseISO(o.date); d.setHours(0,0,0,0); return (d.getTime()+(+o.startMin||0)*60000-Date.now())/3600000; }
 /* سياسة الإلغاء: مجاني حتى 4 ساعات قبل الموعد، وبعدها عبر التواصل فقط */
-async function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا للإلغاء'); return; } if(!confirm('متأكد من إلغاء الطلب '+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return;
+async function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا للإلغاء'); return; } if(!confirm(LX('متأكد من إلغاء الطلب ','Cancel order ')+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return;
   const prev=o.status; o.status='cancelled'; save(); render();
   const ok=await cloudPatch(o.dbId,{status:'cancelled'});
   if(ok){ toast('تم إلغاء الطلب'); } else { const x=state.orders.find(y=>y.id===id); if(x&&x.status==='cancelled'&&!x.dbId){ x.status=prev; } save(); render(); } }
@@ -5072,7 +5105,7 @@ function rsRender(){
   for(let t=WORK_START;t+need<=WORK_END;t+=ARRIVAL_WINDOW){
     const past = _rs.date===dateISO(today) && t < nowMin+LEAD_MIN;
     const same = _rs.date===o.date && t===o.startMin;
-    const ok = !past && !same && slotAvailable(_rs.date,t,need,o.id);
+    const ok = !past && !same && slotAvailable(_rs.date,t,need,o.id,groupsOfItems(o.items));
     slots.push(`<button type="button" class="slot win ${_rs.time===t?'active':''}" ${ok?'':'disabled'} onclick="rsTime(${t})">${windowLabel(t)}</button>`);
   }
   const anyFree=slots.some(s=>!s.includes('disabled'));
@@ -5120,9 +5153,9 @@ async function sendLaborClaim(id){
   // بدون معرّفات خدمات عشان الخادم ما يعيد تسعيرها: بلاغ الضمان مجاني
   const items=(o.items||[]).filter(i=>!i.part&&!isFeeId(i.id)&&i.id!=='quick').map(i=>({ico:'🛡️', name:'ضمان: '+i.name, qty:+i.qty||1, dur:+i.dur||0, price:0}));
   if(!items.length) items.push({ico:'🛡️', name:'ضمان: إعادة الفحص والإصلاح', qty:1, price:0});
-  const dur=o.duration||60;
+  const dur=o.duration||60, _lcSlot=nextClaimSlot();
   const base={ createdAt:Date.now(), items, customer:Object.assign({},o.customer), address:Object.assign({},o.address),
-    date:dateISO(new Date()), startMin:540, duration:dur, endMin:540+dur,
+    date:_lcSlot.date, startMin:_lcSlot.startMin, duration:dur, endMin:_lcSlot.startMin+dur,
     price:0, finalPrice:0, free:false, status:'new', rating:0, reminded:false, quick:true,
     note:'🛡️ بلاغ ضمان شغل من الطلب '+o.id+' بتاريخ '+(o.date||'')+': '+desc, videoUrl:'', wantsEarlier:true,
     providerPhone:o.providerPhone||'', promoCode:'', discountPct:0, referredBy:'', creditUsed:0, loyaltyDisc:0, advanceDisc:0,
@@ -5215,8 +5248,8 @@ function saveFeedback(id, btn){
   const ta = btn && btn.parentElement ? btn.parentElement.querySelector('textarea') : null;
   const val = ta ? ta.value.trim() : '';
   if(!val){ toast('اكتب رسالتك أولاً'); return; }
-  if(o.feedback){ return; }   // مقفلة — ما تتغيّر بعد الإرسال
-  o.feedback=val; save(); cloudPatch(o.dbId,{feedback:val}); toast('شكراً — وصلتنا رسالتك 🌟'); render();
+  if(o.feedback){ return; }   // مقفلة · ما تتغيّر بعد الإرسال
+  o.feedback=val; save(); cloudPatch(o.dbId,{feedback:val}); toast('شكراً، وصلتنا رسالتك 🌟'); render();
 }
 
 /* ---- مكوّنات مشتركة ---- */
@@ -5224,12 +5257,12 @@ function pageHead(title,backTo){ return `<div class="pagehead"><button class="ba
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* رابط آمن: https فقط، وإلا نبني رابط بحث من العنوان */
-function safeUrl(u, fallback){ try{ var s=String(u==null?'':u).trim(); if(s.slice(0,8).toLowerCase()==='https://' && !/s/.test(s) && s.indexOf('"')<0 && s.indexOf(String.fromCharCode(39))<0 && s.indexOf('<')<0 && s.indexOf('>')<0 && s.indexOf(String.fromCharCode(92))<0) return s; }catch(e){} return fallback||''; }
+function safeUrl(u, fallback){ try{ var s=String(u==null?'':u).trim(); if(s.slice(0,8).toLowerCase()==='https://' && !/\s/.test(s) && s.indexOf('"')<0 && s.indexOf(String.fromCharCode(39))<0 && s.indexOf('<')<0 && s.indexOf('>')<0 && s.indexOf(String.fromCharCode(92))<0) return s; }catch(e){} return fallback||''; }
 let toastTimer;
 function toast(msg){ const t=document.getElementById('toast'); t.textContent=(typeof TR==='function'?TR(msg):msg); t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2600); }
 
 /* ============================================================
-   🌐 ترجمة الواجهة عربي/إنجليزي — طبقة تلقائية على كامل الصفحة
+   🌐 ترجمة الواجهة عربي/إنجليزي · طبقة تلقائية على كامل الصفحة
    تعمل بعد كل رسم عبر مراقب DOM. العربية هي الأصل، والإنجليزية ترجمة.
    ============================================================ */
 let UILANG = localStorage.getItem('khafet_uilang') || 'ar';
@@ -5242,7 +5275,7 @@ const T_DICT = {
   "الخدمات":"Services","طلباتي":"My orders","📋 متابعة طلباتي":"📋 My orders","العودة للرئيسية":"Back to home",
   // الرئيسية
   "🔧 احجز خدمة صيانة":"🔧 Book a service","احجز الآن":"Book now","احجز أول خدمة صيانة الآن.":"Book your first service now.",
-  "اطلب صيانة":"Request service","اطلب صيانتك عادي":"Request your service normally","اطلب صيانتك عادي — أجرة اليد مجانية":"Request service — free labor",
+  "اطلب صيانة":"Request service","اطلب صيانتك عادي":"Request your service normally","اطلب صيانتك عادي · أجرة اليد مجانية":"Request service · free labor",
   "صيانة احترافية تستاهلها":"Professional service you deserve","منزلك في أيادٍ أمينة":"Your home in trusted hands",
   "صيانة منزلك بضغطة":"Home maintenance in one tap","تصفّح الخدمات وأسعارها واطلب ما يناسبك":"Browse services and prices and order what suits you",
   "✨ ليش خدمة خافِت تستاهل؟":"✨ Why choose Khafet?","💬 وش قالوا عملاؤنا":"💬 What our clients said",
@@ -5257,11 +5290,11 @@ const T_DICT = {
   "أسعار واضحة، بلا مفاجآت بعد الشغل":"Clear prices, no surprises after the work","جودة عمل عالية ومتقنة":"High-quality, precise workmanship",
   "ننظّف المكان بعد انتهاء العمل":"We clean up after finishing the work","نوصلك بأقرب فني/مزوّد في منطقتك.":"We connect you to the nearest provider in your area.",
   "نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.":"We send your order to the nearest rated technician and confirm within minutes.",
-  "جاري تعيين أفضل فني لك":"Assigning the best technician for you","ضمان على شغل اليد والقطع — لو رجعت المشكلة نرجع بلا تكلفة":"Warranty on labor and parts — if the problem returns we come back free",
+  "جاري تعيين أفضل فني لك":"Assigning the best technician for you","ضمان على شغل اليد والقطع · لو رجعت المشكلة نرجع بلا تكلفة":"Warranty on labor and parts · if the problem returns we come back free",
   // فئات الخدمات
   "🛠️ نوع الخدمات":"🛠️ Service type","اختر نوع الخدمات":"Choose a service type","نوع الخدمات":"Service type",
-  "اختر النوع، وبعدها الخدمة اللي تحتاجها.":"Choose the type, then the service you need.","اختر اللي تحتاجه — تقدر تختار أكثر من خدمة":"Pick what you need — you can choose more than one service",
-  "اختر الخدمة اللي تحتاجها — الأسعار تقديرية وقد تختلف حسب المعاينة.":"Choose the service you need — prices are estimates and may vary after inspection.",
+  "اختر النوع، وبعدها الخدمة اللي تحتاجها.":"Choose the type, then the service you need.","اختر اللي تحتاجه · تقدر تختار أكثر من خدمة":"Pick what you need · you can choose more than one service",
+  "اختر الخدمة اللي تحتاجها · أسعار تقديرية تتأكد بعد المعاينة.":"Choose the service you need · prices are estimates and may vary after inspection.",
   "سباكة":"Plumbing","كهرباء":"Electrical","تكييف وتبريد":"AC & Cooling","نجارة":"Carpentry","دهان":"Painting","تنظيف":"Cleaning","أعمال عامة":"General work","أجهزة منزلية":"Home appliances",
   // خدمات مفردة
   "تغيير شطّاف":"Change bidet sprayer","تسليك مجاري/بالوعة":"Unclog drain / sewer","تغيير خلاط ماء":"Change water mixer","إصلاح تسريب مياه":"Fix water leak",
@@ -5292,7 +5325,7 @@ const T_DICT = {
   "إصلاح غسالة الأطباق.":"Fix the dishwasher.","صيانة الأفران والبوتاجازات.":"Service ovens and stoves.","مشكلة غير مذكورة؟ نعاينها ونحدد السعر.":"Not listed? We inspect and set the price.",
   // الحجز والوقت
   "اختر اليوم والوقت":"Choose day and time","📅 اختر اليوم":"📅 Choose a day","🕐 اختر نافذة الوصول":"🕐 Choose arrival window","🕐 اختر نافذة الوصول أولاً":"🕐 Choose an arrival window first",
-  "نافذة وصول":"Arrival window","تاريخ أبعد":"Later date","إجازة — اختر يوماً آخر":"Day off — choose another day","لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.":"No slots available this day, try another.",
+  "نافذة وصول":"Arrival window","تاريخ أبعد":"Later date","إجازة، اختر يوماً آخر":"Day off · choose another day","لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.":"No slots available this day, try another.",
   "المدة المتوقعة لطلبك:":"Estimated time for your order:","المدة التقريبية للتنفيذ":"Approx. duration","المدة التقريبية":"Approx. duration","💡 متوسط الزيارة":"💡 Average visit",
   "ممتلئ":"Full","حسب المعاينة":"After inspection","يُحدد بعد المعاينة":"Set after inspection","بعد المعاينة":"After inspection",
   // الموقع
@@ -5300,17 +5333,17 @@ const T_DICT = {
   "📍 استخدم موقعي الحالي (GPS)":"📍 Use my current location (GPS)","استخدم موقعي الحالي":"Use my current location","شوف على الخريطة":"View on map","افتح الخريطة":"Open map",
   "حدّد موقعك على الخريطة أو اكتب رقم المنزل":"Set your location on the map or enter the house number","حدّد موقعك بدقة: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط 📌":"Pin your exact location: tap the map or drag the pin 📌",
   "نحدّد موقعك تلقائياً، وتقدر تعدّله على الخريطة":"We locate you automatically, and you can adjust it on the map","اسمح بإذن الموقع أو اضغط على الخريطة يدوياً":"Allow location access or tap the map manually",
-  "تم تحديد موقعك ✅":"Location set ✅","تم تحديد موقعك ✅ — تقدر تعدّله بسحب الدبوس":"Location set ✅ — drag the pin to adjust","تم تحديد موقعك بدقة ✅ — اختر مدينتك للتوصيل":"Location pinned ✅ — choose your city for delivery",
+  "تم تحديد موقعك ✅":"Location set ✅","تم تحديد موقعك ✅ تقدر تعدّله بسحب الدبوس":"Location set ✅ · drag the pin to adjust","تم تحديد موقعك بدقة ✅ · اختر مدينتك للتوصيل":"Location pinned ✅ · choose your city for delivery",
   "⚠️ اسمح بإذن الموقع أو اختر مدينتك يدوياً":"⚠️ Allow location access or choose your city manually","جهازك لا يدعم تحديد الموقع":"Your device doesn't support location","جهازك ما يدعم تحديد الموقع":"Your device doesn't support location",
   "⏳ جارٍ تحديد موقعك...":"⏳ Locating you...","⏳ جارٍ تحديد موقعك... اسمح بالإذن":"⏳ Locating you... allow permission","🏠 رقم المنزل / الشقة":"🏠 House / apartment no.","رقم المنزل / الشقة":"House / apartment no.","منزل رقم":"House no.",
-  "📍 مدن الخدمة":"📍 Service cities","اكتب اسم المدينة":"Type the city name","اكتب مدن الخدمة":"Type your service cities","اكتب المدن مفصولة بفاصلة — أي طلب من هذه المدن يوصلك وأنت تقبله أو تتركه":"Type cities separated by commas — any order from them reaches you to accept or skip",
+  "📍 مدن الخدمة":"📍 Service cities","اكتب اسم المدينة":"Type the city name","اكتب مدن الخدمة":"Type your service cities","اكتب المدن مفصولة بفاصلة · أي طلب من هذه المدن يوصلك وأنت تقبله أو تتركه":"Type cities separated by commas · any order from them reaches you to accept or skip",
   // المدن
   "الرياض":"Riyadh","جدة":"Jeddah","مكة المكرمة":"Makkah","المدينة المنورة":"Madinah","الدمام":"Dammam","الخبر":"Khobar","الظهران":"Dhahran","القطيف":"Qatif","الجبيل":"Jubail","الأحساء":"Al-Ahsa",
   "الطائف":"Taif","تبوك":"Tabuk","أبها":"Abha","خميس مشيط":"Khamis Mushait","حائل":"Hail","نجران":"Najran","جازان":"Jazan","ينبع":"Yanbu","بريدة":"Buraidah","الخرج":"Al-Kharj",
   // البيانات وتسجيل الدخول
   "👤 بياناتك":"👤 Your details","بياناتك":"Your details","👤 معلومات التواصل":"👤 Contact info","الاسم":"Name","الاسم / اسم المؤسسة":"Name / business name","اسمك (اختياري)":"Your name (optional)",
   "اكتب الاسم":"Enter the name","اكتب الاسم من فضلك":"Please enter the name","رقم الجوال":"Mobile number","اكتب رقم الجوال":"Enter mobile number","اكتب رقم جوال سعودي صحيح (05xxxxxxxx)":"Enter a valid Saudi mobile (05xxxxxxxx)",
-  "جوالك (اختياري — لو تحب نرد عليك)":"Your mobile (optional — if you'd like a reply)","أدخل رقم جوالك ويوصلك رمز عبر":"Enter your mobile and a code will be sent via","نرسل رمز تحقق لجوالك مرة واحدة لتأكيد الرقم.":"We send a one-time code to verify your number.",
+  "جوالك (اختياري، لو تحب نرد عليك)":"Your mobile (optional · if you'd like a reply)","أدخل رقم جوالك ويوصلك رمز عبر":"Enter your mobile and a code will be sent via","نرسل رمز تحقق لجوالك مرة واحدة لتأكيد الرقم.":"We send a one-time code to verify your number.",
   "أدخل رمز التحقق":"Enter the verification code","اكتب الرمز المرسل":"Enter the sent code","اكتب الرمز كاملاً":"Enter the full code","أرسلنا رمزاً إلى":"We sent a code to","الرمز":"Code","الرمز غير صحيح أو انتهت صلاحيته":"Code is wrong or expired",
   "كلمة مرور للدخول":"Password to sign in","كلمة المرور ٦ أحرف على الأقل":"Password at least 6 characters","تأكيد ودخول":"Confirm and sign in","← تغيير الرقم":"← Change number",
   "رسالة نصية":"SMS","واتساب":"WhatsApp","سجّل وفعّل حسابك":"Register and activate your account","✅ سجّل وفعّل حسابك":"✅ Register and activate your account",
@@ -5331,9 +5364,9 @@ const T_DICT = {
   "🔔 بلّغوني لو صار موعد أبكر":"🔔 Notify me if an earlier slot opens","صار فيه موعد أبكر متاح!":"An earlier slot is now available!","قدّم موعدي":"Move my appointment earlier","تقديم موعدك إلى":"Move your appointment to","قدّم موعدي":"Bring my appointment forward",
   "ما عاد فيه موعد أبكر متاح":"No earlier slot available anymore","تم تقديم موعدك ✅":"Your appointment was moved earlier ✅","لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك":"If someone cancels and an earlier time opens, we'll contact you to move it up",
   // حسابي
-  "أهلاً بك 👋":"Welcome 👋","⚙️ معلوماتي":"⚙️ My info","🎟️ كودك · شاركه واكسب":"🎟️ Your code — share and earn","📤 شارك كودك":"📤 Share your code","رصيدك":"Your balance","🚪 تسجيل الخروج":"🚪 Sign out","تسجيل الخروج من حسابك؟":"Sign out of your account?","تم تسجيل الخروج":"Signed out",
+  "أهلاً بك 👋":"Welcome 👋","⚙️ معلوماتي":"⚙️ My info","🎟️ كودك · شاركه واكسب":"🎟️ Your code · share and earn","📤 شارك كودك":"📤 Share your code","رصيدك":"Your balance","🚪 تسجيل الخروج":"🚪 Sign out","تسجيل الخروج من حسابك؟":"Sign out of your account?","تم تسجيل الخروج":"Signed out",
   "🗑️ حذف الحساب":"🗑️ Delete account","حذف حسابك":"Delete your account","حذف حسابي نهائياً":"Delete my account permanently","نعم، احذف حسابي نهائياً":"Yes, delete my account permanently","حذف بياناتك الشخصية":"Delete your personal data",
-  "تأكيد أخير — سيُحذف حسابك وكل بياناتك نهائياً. متابعة؟":"Final confirmation — your account and all data will be permanently deleted. Continue?","عند تأكيد الحذف سيتم":"On confirming deletion, the following happens","لا يمكن التراجع":"Cannot be undone","نهائياً":"permanently",
+  "تأكيد أخير، سيُحذف حسابك وكل بياناتك نهائياً. متابعة؟":"Final confirmation · your account and all data will be permanently deleted. Continue?","عند تأكيد الحذف سيتم":"On confirming deletion, the following happens","لا يمكن التراجع":"Cannot be undone","نهائياً":"permanently",
   "اسمك، جوالك، عنوانك، صورك ومقاطعك، ورصيدك وكود الإحالة.":"Your name, mobile, address, photos and clips, balance and referral code.","رصيدك ونقاط ولائك تُفقد نهائياً.":"Your balance and loyalty points are lost permanently.","ما راح تقدر تدخل برقمك مرة ثانية إلا بحساب جديد.":"You won't be able to sign in with your number again except with a new account.",
   "✅ تم حذف حسابك نهائياً":"✅ Your account was permanently deleted","تعذّر حذف الحساب":"Couldn't delete the account",
   // الولاء
@@ -5342,10 +5375,10 @@ const T_DICT = {
   "🎟️ كود صديق (اختياري)":"🎟️ Friend code (optional)","صديقك يحصل على":"Your friend gets","خصم = متوسط طلباتك":"Discount = your average order",
   // التقييم والشكاوى
   "قيّم الخدمة:":"Rate the service:","تقييمك للخدمة":"Your service rating","تقييمك للخدمة":"Rate the service","حاب تضيف كلمة طيبة عن الخدمة؟ (اختياري)":"Want to add a kind word about the service? (optional)","🙏 شكراً لتقييمك! رأيك يهمّنا ويساعدنا نتحسّن.":"🙏 Thanks for your rating! Your feedback helps us improve.","شكراً لتقييمك":"Thanks for your rating",
-  "😔 نعتذر عن عدم رضاك التام — اكتب لنا شكواك وبنتواصل معك ونعالجها.":"😔 Sorry you're not fully satisfied — write your complaint and we'll contact you to resolve it.","📩 إرسال الشكوى":"📩 Send complaint","🔒 رسالتك تصل للإدارة فقط، وما تظهر لأي عميل ثاني.":"🔒 Your message goes to management only and isn't shown to any other client.",
-  "💡 عندك اقتراح أو ملاحظة؟ اكتب لنا · رأيك يهمنا":"💡 Have a suggestion or note? Write to us — your opinion matters","اكتب لنا وبنقرأ كل كلمة — رأيك يطوّر خدمتنا فعلاً.":"Write to us and we read every word — your feedback truly improves our service.","رأيك يهمنا":"Your opinion matters",
+  "😔 نعتذر عن عدم رضاك التام، اكتب لنا شكواك وبنتواصل معك ونعالجها.":"😔 Sorry you're not fully satisfied · write your complaint and we'll contact you to resolve it.","📩 إرسال الشكوى":"📩 Send complaint","🔒 رسالتك تصل للإدارة فقط، وما تظهر لأي عميل ثاني.":"🔒 Your message goes to management only and isn't shown to any other client.",
+  "💡 عندك اقتراح أو ملاحظة؟ اكتب لنا · رأيك يهمنا":"💡 Have a suggestion or note? Write to us · your opinion matters","اكتب لنا وبنقرأ كل كلمة · رأيك يطوّر خدمتنا فعلاً.":"Write to us and we read every word · your feedback truly improves our service.","رأيك يهمنا":"Your opinion matters",
   "اكتب رسالتك / شكواك هنا...":"Write your message / complaint here...","اكتب رسالتك أولاً":"Write your message first","نوع الرسالة":"Message type","رسالتك":"Your message","شكوى":"Complaint","اقتراح":"Suggestion","شكر":"Thanks","اقتراح · شكوى":"Suggestion · Complaint",
-  "شكراً — وصلتنا رسالتك 🌟":"Thanks — we received your message 🌟","✅ وصلتنا رسالتك — شكراً لك 🌟":"✅ We received your message — thank you 🌟",
+  "شكراً، وصلتنا رسالتك 🌟":"Thanks · we received your message 🌟","✅ وصلتنا رسالتك، شكراً لك 🌟":"✅ We received your message · thank you 🌟",
   // الأسئلة الشائعة
   "الأسئلة الشائعة":"FAQ","إجابات سريعة":"Quick answers","ما لقيت جوابك؟":"Didn't find your answer?","محتاج مساعدة فني؟":"Need help from a technician?","💬 كلّمنا على واتساب":"💬 Chat with us on WhatsApp","📞 اتصال":"📞 Call",
   "كيف أحجز طلب صيانة؟":"How do I book a service?","متى يجي الفني؟":"When does the technician come?","كيف أدفع؟":"How do I pay?","فيه ضمان على الشغل؟":"Is there a warranty on the work?","كيف ألغي طلبي؟":"How do I cancel my order?","كيف أستفيد من الخصومات؟":"How do I benefit from discounts?","وش أسوي لو تأخّر الفني؟":"What if the technician is late?",
@@ -5355,17 +5388,17 @@ const T_DICT = {
   "خصم ١٠٪ على الأعمال الكبيرة":"10% off major work","خصم ١٥٪ على الأعمال الكبيرة":"15% off major work","خصم ٢٥٪ على الأعمال الكبيرة":"25% off major work","بنتواصل معك على جوالك لتأكيد الباقة وتفعيلها.":"We'll contact you on your mobile to confirm and activate the plan.","* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.":"* Major work is discounted per plan · we'll contact you to activate.",
   "وفّر أكثر":"Save more","خدمات مجانية":"Free services","أسعار مناسبة":"Fair prices","سلتك":"Your cart","اختياري":"optional","الأكثر طلباً":"Most popular","الأكثر طلباً":"Most requested",
   // النصائح
-  "نصائح السلامة":"Safety tips","مقالات تحمي بيتك":"Articles that protect your home","نصائح مفيدة تحمي بيتك وتوفّر عليك — من خبرة فنيّي خافِت.":"Useful tips that protect your home and save you money — from Khafet technicians' experience.","قريباً نصائح مفيدة":"Useful tips coming soon","جارٍ التحميل…":"Loading…",
+  "نصائح السلامة":"Safety tips","مقالات تحمي بيتك":"Articles that protect your home","نصائح مفيدة تحمي بيتك وتوفّر عليك · من خبرة فنيّي خافِت.":"Useful tips that protect your home and save you money · from Khafet technicians' experience.","قريباً نصائح مفيدة":"Useful tips coming soon","جارٍ التحميل…":"Loading…",
   // رسائل التحميل والأخطاء
   "⏳ جارٍ الإرسال...":"⏳ Sending...","⏳ جارٍ الحذف…":"⏳ Deleting…","⏳ جارٍ رفع المقطع...":"⏳ Uploading clip...","⏳ جارٍ رفع صورة المنزل...":"⏳ Uploading house photo...","⏳ نتحقق...":"⏳ Verifying...","⏳ نرسل الرمز...":"⏳ Sending code...","⏳ نرسل رمز التحقق...":"⏳ Sending verification code...","⏳ نسجّل الجهاز…":"⏳ Registering device…",
-  "❌ الرمز غير صحيح — حاول ثانية":"❌ Wrong code — try again","❌ الكود غير صحيح":"❌ Wrong code","❌ تعذّر التحقق، حدّث الصفحة":"❌ Couldn't verify, refresh the page","❌ ما تقدر تستخدم كودك أنت":"❌ You can't use your own code","تعذّر إرسال الرمز — تأكد من الرقم وحاول ثانية":"Couldn't send code — check the number and try again","تعذّر إرسال الرمز — تأكد من الرقم وحاول مرة ثانية":"Couldn't send code — check the number and try again",
-  "⚠️ تعذّر التحقق — تأكد من الإنترنت وحاول ثانية":"⚠️ Couldn't verify — check your internet and try again","لا يوجد اتصال بالإنترنت":"No internet connection","لا يوجد اتصال بالخادم":"No server connection","لا يوجد اتصال — حاول بعد قليل":"No connection — try again shortly","انتهت الجلسة — سجّل الدخول وأعد المحاولة":"Session expired — sign in and try again",
-  "تعذّر الإرسال":"Couldn't send","تعذّر الإكمال — حاول مرة ثانية":"Couldn't complete — try again","تعذّر التجهيز — حدّث الصفحة":"Couldn't initialize — refresh the page","تعذّر فتح الملف":"Couldn't open the file","تعذّر رفع المقطع، بنكمّل الطلب بدونه":"Couldn't upload the clip, we'll continue without it","تعذّر رفع صورة المنزل، بنكمّل بدونها":"Couldn't upload the house photo, we'll continue without it","اسمح بالنوافذ المنبثقة للطباعة":"Allow pop-ups to print",
+  "❌ الرمز غير صحيح، حاول ثانية":"❌ Wrong code · try again","❌ الكود غير صحيح":"❌ Wrong code","❌ تعذّر التحقق، حدّث الصفحة":"❌ Couldn't verify, refresh the page","❌ ما تقدر تستخدم كودك أنت":"❌ You can't use your own code","تعذّر إرسال الرمز، تأكد من الرقم وحاول ثانية":"Couldn't send code · check the number and try again","تعذّر إرسال الرمز، تأكد من الرقم وحاول مرة ثانية":"Couldn't send code · check the number and try again",
+  "⚠️ تعذّر التحقق، تأكد من الإنترنت وحاول ثانية":"⚠️ Couldn't verify · check your internet and try again","لا يوجد اتصال بالإنترنت":"No internet connection","لا يوجد اتصال بالخادم":"No server connection","لا يوجد اتصال، حاول بعد قليل":"No connection · try again shortly","انتهت الجلسة، سجّل الدخول وأعد المحاولة":"Session expired · sign in and try again",
+  "تعذّر الإرسال":"Couldn't send","تعذّر الإكمال، حاول مرة ثانية":"Couldn't complete · try again","تعذّر التجهيز، حدّث الصفحة":"Couldn't initialize · refresh the page","تعذّر فتح الملف":"Couldn't open the file","تعذّر رفع المقطع، بنكمّل الطلب بدونه":"Couldn't upload the clip, we'll continue without it","تعذّر رفع صورة المنزل، بنكمّل بدونها":"Couldn't upload the house photo, we'll continue without it","اسمح بالنوافذ المنبثقة للطباعة":"Allow pop-ups to print",
   // المزوّد / الانضمام
-  "سجّل الآن —":"Register now —",": أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.":": Complete your details and start receiving orders in your cities.","الاسم / اسم المؤسسة":"Name / business name","مثال: خافت-K7F2M9":"e.g. Khafet-K7F2M9","مثال:":"e.g.",
+  "سجّل الآن ·":"Register now ·",": أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.":": Complete your details and start receiving orders in your cities.","الاسم / اسم المؤسسة":"Name / business name","مثال: خافت-K7F2M9":"e.g. Khafet-K7F2M9","مثال:":"e.g.",
   // برامج/عناصر متفرقة
   "ضمان ٧ أيام":"7-day warranty","رصيد ترحيبي":"Welcome credit","ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Warranty on labor and parts. If the same issue returns, we come back at no extra cost.","لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.":"If the same issue recurs within the period, contact us and we'll fix it.",
-  "قائمة الأسعار":"Price list","قائمة المهام":"Job list","العمل المطلوب":"Work needed","العميل":"Customer","عميل":"Customer","علامة":"Landmark","المدة التقريبية":"Est. time","مهامك — الوقت والموقع والعمل المطلوب":"Your jobs — time, location and work needed","لا توجد مهام حالياً":"No jobs right now",
+  "قائمة الأسعار":"Price list","قائمة المهام":"Job list","العمل المطلوب":"Work needed","العميل":"Customer","عميل":"Customer","علامة":"Landmark","المدة التقريبية":"Est. time","مهامك · الوقت والموقع والعمل المطلوب":"Your jobs · time, location and work needed","لا توجد مهام حالياً":"No jobs right now",
   // الوحدات والوقت
   "دقيقة":"min","ساعة":"hour","ساعتان":"2 hours","ساعتين":"2 hours","ساعات":"hours","يوم":"day","ر.س":"SAR",
   // أيام الأسبوع
@@ -5373,15 +5406,15 @@ const T_DICT = {
   // الأشهر
   "يناير":"January","فبراير":"February","مارس":"March","أبريل":"April","مايو":"May","يونيو":"June","يوليو":"July","أغسطس":"August","سبتمبر":"September","أكتوبر":"October","نوفمبر":"November","ديسمبر":"December",
   // إشعارات
-  "✅ الجهاز مسجّل — الإشعارات شغّالة":"✅ Device registered — notifications on","إشعارات أندرويد قريباً":"Android notifications coming soon","متصفح — الإشعارات للتطبيق فقط":"Browser — notifications are for the app only","سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.":"We'll remind you an hour before by SMS.",
+  "✅ الجهاز مسجّل · الإشعارات شغّالة":"✅ Device registered · notifications on","إشعارات أندرويد قريباً":"Android notifications coming soon","متصفح · الإشعارات للتطبيق فقط":"Browser · notifications are for the app only","سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.":"We'll remind you an hour before by SMS.",
   // متفرقات
-  "خصم ١٠٪":"10% off","✅ خصم ١٠٪ مطبّق — أهلاً بك في خافِت 🎉":"✅ 10% off applied — welcome to Khafet 🎉","ℹ️ الخصم لأول طلب فقط — وأنت عميل عندنا من قبل 🙏":"ℹ️ The discount is for first orders only — you're already our client 🙏","يومياً ٨ ص – ١٠ م":"Daily 8 AM – 10 PM",
+  "خصم ١٠٪":"10% off","✅ خصم ١٠٪ مطبّق · أهلاً بك في خافِت 🎉":"✅ 10% off applied · welcome to Khafet 🎉","ℹ️ الخصم لأول طلب فقط · وأنت عميل عندنا من قبل 🙏":"ℹ️ The discount is for first orders only · you're already our client 🙏","يومياً ٨ ص – ١٠ م":"Daily 8 AM – 10 PM",
   // إضافات المسح
   "باقي الخدمات":"All services","أرسل الرمز عبر رسالة نصية":"Send code via SMS","أرسل الرمز عبر واتساب":"Send code via WhatsApp","انضم كمزوّد صيانة":"Join as a provider",
   "لو دفعت لكل زيارة:":"If you paid per visit:","صيانة منزلية موثوقة · الخبر":"Trusted home maintenance · Khobar","تكييف":"AC","سلامة":"Safety","تركيب مكيف سبليت":"Install split AC",
   "أرسل الرمز":"Send code","تغيير الرقم":"Change number","نافذة الوصول":"Arrival window","اختر مدينتك":"Choose your city","المدينة":"City","اختر مدينتك للتوصيل":"Choose your city for delivery",
   "متى يناسبك؟":"When suits you?","اليوم":"Today","المدة":"Duration","الرصيد":"Balance","نقاط الولاء":"Loyalty points","الحالة":"Status","رقم الطلب":"Order no.","تفاصيل الطلب":"Order details","إجمالي":"Total",
-  "الأغراض والقطع — لمبات، مواسير، قطع غيار، مواد... — يشتريها العميل بسعر التكلفة.":"Parts & materials — bulbs, pipes, spare parts, supplies... — are bought by the client at cost.",
+  "الأغراض والقطع · لمبات، مواسير، قطع غيار، مواد... · يشتريها العميل بسعر التكلفة.":"Parts & materials · bulbs, pipes, spare parts, supplies... · are bought by the client at cost.",
   "زيارات":"visits","البيت يحتاج":"home needs",
   /* ── شاشة العقود السنوية ── */
   "العقود السنوية":"Annual Contracts",
@@ -5394,22 +5427,22 @@ const T_DICT = {
   "بدون عقد":"Without contract",
   "ريال/سنة":"SAR/year",
   "شهري":"Monthly",
-  "اشترك بـباقة أساسي":"Subscribe — Basic",
-  "اشترك بـباقة البيت":"Subscribe — Home",
-  "اشترك بـباقة بريميوم":"Subscribe — Premium",
+  "اشترك بـباقة أساسي":"Subscribe · Basic",
+  "اشترك بـباقة البيت":"Subscribe · Home",
+  "اشترك بـباقة بريميوم":"Subscribe · Premium",
   "عدد الزيارات":"Visits",
   "اليد العاملة مجانية":"Labor is free",
   "زيارات":"visits",
   "لا محدودة":"Unlimited",
   "سباكة وكهرباء وتركيبات":"Plumbing, electrical & installs",
-  "كل الخدمات بالأسفل — 64 خدمة":"All services below — 64 services",
+  "كل الخدمات بالأسفل · 64 خدمة":"All services below · 64 services",
   "التوصيل":"Delivery",
   "رسوم المشوار":"Trip charge",
   "مجاني":"Free",
   "تذكيرات الصيانة":"Maintenance reminders",
-  "بالتطبيق — نذكّرك بمواعيدك":"In-app — we remind you",
+  "بالتطبيق · نذكّرك بمواعيدك":"In-app · we remind you",
   "نقل العقد للمستأجر الجديد":"Transfer to new tenant",
-  "لو أجّرت بيتك، العقد ينتقل":"Rent out your home — the contract moves with it",
+  "لو أجّرت بيتك، العقد ينتقل":"Rent out your home · the contract moves with it",
   "تنظيف المكيفات":"AC cleaning",
   "كل مكيفات البيت":"Every AC in the home",
   "مرة بالسنة":"Once a year",
@@ -5423,15 +5456,15 @@ const T_DICT = {
   "قبل الشتاء":"Before winter",
   "مع صيانة شاملة":"with full service",
   "ضمان الإصلاح":"Repair warranty",
-  "365 يوماً — مضمون طول مدة العقد":"365 days — covered for the whole contract",
+  "365 يوماً · مضمون طول مدة العقد":"365 days · covered for the whole contract",
   "ضمان الأغراض":"Parts warranty",
   "قطع الغيار":"Spare parts",
   "سنتان على جميع القطع":"Two years on all parts",
-  "⚠️ الرقم جنب كل خدمة = أجرة اليد فقط — بدون عقد يضاف عليها رسوم الزيارة":"⚠️ The price next to each service is labor only — without a contract a trip charge is added",
+  "⚠️ الرقم جنب كل خدمة = أجرة اليد فقط · بدون عقد يضاف عليها رسوم الزيارة":"⚠️ The price next to each service is labor only · without a contract a trip charge is added",
   "أجرة اليد فقط":"labor only",
   "متوسط الفاتورة الوحدة بدون عقد 225 ريال · ومع العقد كل هذي الخدمات مجانية مهما تكررت":"Average single invoice without a contract is 225 SAR · with a contract all these services are free, however often you need them",
   "كل هذي الخدمات مجانية":"all these services are free",
-  "🛠 64 خدمة مشمولة — بكل الباقات":"🛠 64 services included — in every plan",
+  "🛠 64 خدمة مشمولة · بكل الباقات":"🛠 64 services included · in every plan",
   "🚿 السباكة":"🚿 Plumbing",
   "💡 الكهرباء":"💡 Electrical",
   "🔨 التركيبات المنزلية":"🔨 Home installations",
@@ -5504,8 +5537,8 @@ const T_DICT = {
 function _west(s){ return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)); }
 const _TOK=[["/ سنة","/ year"],["/سنة","/year"],["توفّر","Save "],["ريال","SAR"],["ر.س","SAR"],["٪","%"]];
 /* إضافات التدقيق 2026-09-19 */
-Object.assign(T_DICT, {"احجز قبل ٥ أيام أو أكثر = خصم ٥٪ تلقائي. وكل ٦ طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.":"Book 5 days or more ahead for an automatic 5% discount. Every 6 orders earn a loyalty discount. A referral code gives you and your friend a discount."});
-Object.assign(T_DICT, {"تصفّح الخدمات واطلب":"Browse services and order","طلبك السابع عليه خصم كبير 🎁":"Your 7th order gets a big discount 🎁","طلبك السابع عليه خصم كبير":"Your 7th order gets a big discount","English / عربي":"English / Arabic","السلة":"Cart","رجوع":"Back","أقل":"Less","أكثر":"More","إغلاق":"Close","آخر خطوة":"Last step","🛠️ وصف المشكلة (اختياري)":"🛠️ Describe the issue (optional)","وصف المشكلة (اختياري)":"Describe the issue (optional)","اسم العنوان (اختياري)":"Address name (optional)","صورة المنزل":"House photo","أبيض":"White","أصفر":"Warm yellow","أوف وايت 12 وات":"Off white 12W","بالضغط على الدفع أنت توافق على":"By tapping Pay you agree to the","بتأكيد الطلب أنت توافق على":"By confirming you agree to the","الشروط":"Terms","و":"and","سياسة الإلغاء":"Cancellation policy","الخصوصية":"Privacy","مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...":"e.g. a leak under the kitchen sink, or the lights keep tripping...","مثال: أبو محمد":"e.g. Abu Mohammed","مثال: ٢٤٥١ · الدور الأول":"e.g. 2451 · first floor","مثال: بيتي · بيت أهلي · الاستراحة":"e.g. My home · Family home","اقتراح أو شكر":"Suggestion or thanks","الشكاوى":"Complaints","برقم متابعة":"With a tracking number","، ولك":", and you get","رصيد":"credit","عن كل طلب يُنجزه.":"for every order they complete.","📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط — ينحفظ ويظهر تلقائياً عند كل حجز":"📍 Your home location: tap the map or drag the pin to your exact spot. It is saved and used for every booking.","🔒 الخصوصية":"🔒 Privacy","📜 الشروط":"📜 Terms","اسمك":"Your name","رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.":"Same issue back? Tell us and we return for free.","🛡️ المشكلة رجعت":"🛡️ The issue is back","🔁 اطلب مرة ثانية":"🔁 Order again","📅 تغيير الموعد":"📅 Reschedule","الإلغاء أو تغيير الموعد مجاني حتى 4 ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.":"Cancelling or rescheduling is free up to 4 hours before the visit. After that, contact us.","اختر الخدمة من القائمة، حدّد اليوم ووقت الوصول، ثم أدخل موقعك وأكّد. تجيك رسالة تأكيد.":"Pick the service, choose the day and arrival time, then enter your location and confirm. You get a confirmation message.","تختار وقت الوصول اللي يناسبك والفني يوصلك فيه. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».":"You choose the arrival time that suits you and the technician arrives at it. You get notifications: On the way, then Arrived.","بطريقتين:":"In two ways:","ادفع أونلاين":"Pay online","بمدى أو البطاقة أو Apple Pay من التطبيق، أو":"with mada, card or Apple Pay in the app, or","بجهاز الدفع مع الفني":"on the technician’s card machine","عند إتمام العمل. ما نستقبل نقداً.":"when the work is done. We do not take cash.","تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.":"Track your order under My orders. If there is a delay we tell you the expected time. Or message us on WhatsApp.","نعم — ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Yes. Labor and parts are covered. If the same issue returns, we come back at no extra cost.","احجز قبل 5 أيام أو أكثر = خصم 5% تلقائي. وكل 6 طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.":"Book 5 days or more ahead for an automatic 5% discount. Every 6 orders earn a loyalty discount. A referral code gives you and your friend a discount.","من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى":"Under My orders you can cancel or reschedule for free up to","4 ساعات قبل الموعد":"4 hours before the visit","، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.":", and if you paid you get a full refund. Less than 4 hours before the visit, contact us directly.","🎁 برنامج الولاء":"🎁 Loyalty program","اطلب صيانتك عادي":"Order as usual","كل طلب تُنجزه يُحتسب في رصيد ولائك.":"Every completed order counts toward your loyalty.","بعد ٦ طلبات":"After 6 orders","تستحق مكافأة على طلبك السابع.":"you earn a reward on your 7th order.","خصم = متوسط طلباتك":"Discount = your average order","يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.":"Your 7th order gets a discount equal to the average of your previous six orders.","مثال:":"Example:","لو متوسط طلباتك":"if your average order is","، فطلبك السابع عليه":", your 7th order gets","خصم ١٥٠ ر.س":"150 SAR off","١٥٠ ر.س":"150 SAR","💡 الخصم على أجرة اليد (الخدمة) فقط — قطع الغيار والأغراض تبقى على العميل بسعرها.":"💡 The discount applies to labor only. Parts stay at their price.","تمام":"OK","اكتب لنا وبنقرأ كل كلمة، رأيك يطوّر خدمتنا فعلاً.":"Write to us, we read every word. Your opinion really improves our service.","عندك شكوى؟":"Have a complaint?","قدّمها برقم متابعة":"File it with a tracking number","مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس":"e.g. please add water tank cleaning, or: the technician was late yesterday","هدية أول طلب":"First order gift","رسوم الزيارة":"Visit fee","قيمة التوصيل":"Delivery","رسوم توصيل الأغراض":"Parts delivery","ضيفها":"Add it","الكمية":"Quantity","الخدمات":"Services","الأغراض":"Parts","توصيل الأغراض":"Parts delivery","المجموع":"Subtotal","رجّعها":"Add back","تدفع الآن":"You pay now","لو احتاج الشغل قطعة إضافية، يضيفها الفني في فاتورته.":"If the job needs an extra part, the technician adds it to his invoice.","اكتب التفاصيل:":"Write the details:","أضف خدمة ثانية":"Add another service","توصلني إشعارات العروض":"Send me offer notifications","الشطاف":"Bidet sprayer","اللمبة":"Bulb","الخلاط":"Mixer tap","المحبس":"Angle valve","عدة السيفون":"Flush kit","المفتاح أو البريزة":"Switch or socket","بريزة الباور":"Power socket","السيليكون":"Silicone","الحنفية":"Tap","وصلة الكرسي":"Toilet connector","اختر اللي تحتاجه — تقدر تختار أكثر من خدمة":"Pick what you need. You can choose more than one service."});
+Object.assign(T_DICT, {"كل ٦ طلبات لك خصم ولاء، وكود الإحالة يعطيك وصديقك خصمًا.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount."});
+Object.assign(T_DICT, {"تصفّح الخدمات واطلب":"Browse services and order","طلبك السابع عليه خصم كبير 🎁":"Your 7th order gets a big discount 🎁","طلبك السابع عليه خصم كبير":"Your 7th order gets a big discount","English / عربي":"English / Arabic","السلة":"Cart","رجوع":"Back","أقل":"Less","أكثر":"More","إغلاق":"Close","آخر خطوة":"Last step","🛠️ وصف المشكلة (اختياري)":"🛠️ Describe the issue (optional)","وصف المشكلة (اختياري)":"Describe the issue (optional)","اسم العنوان (اختياري)":"Address name (optional)","صورة المنزل":"House photo","أبيض":"White","أصفر":"Warm yellow","أوف وايت 12 وات":"Off white 12W","بالضغط على الدفع أنت توافق على":"By tapping Pay you agree to the","بتأكيد الطلب أنت توافق على":"By confirming you agree to the","الشروط":"Terms","و":"and ","،":", ","سياسة الإلغاء":"Cancellation policy","الخصوصية":"Privacy","مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...":"e.g. a leak under the kitchen sink, or the lights keep tripping...","مثال: أبو محمد":"e.g. Abu Mohammed","مثال: ٢٤٥١ · الدور الأول":"e.g. 2451 · first floor","مثال: بيتي · بيت أهلي · الاستراحة":"e.g. My home · Family home","اقتراح أو شكر":"Suggestion or thanks","الشكاوى":"Complaints","برقم متابعة":"With a tracking number","، ولك":", and you get","رصيد":"credit","عن كل طلب يُنجزه.":"for every order they complete.","📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط، ينحفظ ويظهر تلقائياً عند كل حجز":"📍 Your home location: tap the map or drag the pin to your exact spot. It is saved and used for every booking.","🔒 الخصوصية":"🔒 Privacy","📜 الشروط":"📜 Terms","اسمك":"Your name","رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.":"Same issue back? Tell us and we return for free.","🛡️ المشكلة رجعت":"🛡️ The issue is back","🔁 اطلب مرة ثانية":"🔁 Order again","📅 تغيير الموعد":"📅 Reschedule","الإلغاء أو تغيير الموعد مجاني حتى 4 ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.":"Cancelling or rescheduling is free up to 4 hours before the visit. After that, contact us.","اختر الخدمة من القائمة، حدّد اليوم ووقت الوصول، ثم أدخل موقعك وأكّد. تجيك رسالة تأكيد.":"Pick the service, choose the day and arrival time, then enter your location and confirm. You get a confirmation message.","تختار وقت الوصول اللي يناسبك والفني يوصلك فيه. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».":"You choose the arrival time that suits you and the technician arrives at it. You get notifications: On the way, then Arrived.","بطريقتين:":"In two ways:","ادفع أونلاين":"Pay online","بمدى أو البطاقة أو Apple Pay من التطبيق، أو":"with mada, card or Apple Pay in the app, or","بجهاز الدفع مع الفني":"on the technician’s card machine","عند إتمام العمل. ما نستقبل نقداً.":"when the work is done. We do not take cash.","تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.":"Track your order under My orders. If there is a delay we tell you the expected time. Or message us on WhatsApp.","نعم، ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Yes. Labor and parts are covered. If the same issue returns, we come back at no extra cost.","احجز قبل 5 أيام أو أكثر = خصم 5% تلقائي. وكل 6 طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount.","من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى":"Under My orders you can cancel or reschedule for free up to","4 ساعات قبل الموعد":"4 hours before the visit","، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.":", and if you paid you get a full refund. Less than 4 hours before the visit, contact us directly.","🎁 برنامج الولاء":"🎁 Loyalty program","اطلب صيانتك عادي":"Order as usual","كل طلب تُنجزه يُحتسب في رصيد ولائك.":"Every completed order counts toward your loyalty.","بعد ٦ طلبات":"After 6 orders","تستحق مكافأة على طلبك السابع.":"you earn a reward on your 7th order.","خصم = متوسط طلباتك":"Discount = your average order","يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.":"Your 7th order gets a discount equal to the average of your previous six orders.","مثال:":"Example:","لو متوسط طلباتك":"if your average order is","، فطلبك السابع عليه":", your 7th order gets","خصم ١٥٠ ر.س":"150 SAR off","١٥٠ ر.س":"150 SAR","💡 الخصم على أجرة اليد (الخدمة) فقط · قطع الغيار والأغراض تبقى على العميل بسعرها.":"💡 The discount applies to labor only. Parts stay at their price.","تمام":"OK","اكتب لنا وبنقرأ كل كلمة، رأيك يطوّر خدمتنا فعلاً.":"Write to us, we read every word. Your opinion really improves our service.","عندك شكوى؟":"Have a complaint?","قدّمها برقم متابعة":"File it with a tracking number","مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس":"e.g. please add water tank cleaning, or: the technician was late yesterday","هدية أول طلب":"First order gift","رسوم الزيارة":"Visit fee","قيمة التوصيل":"Delivery","رسوم توصيل الأغراض":"Parts delivery","ضيفها":"Add it","الكمية":"Quantity","الخدمات":"Services","الأغراض":"Parts","توصيل الأغراض":"Parts delivery","المجموع":"Subtotal","رجّعها":"Add back","تدفع الآن":"You pay now","أي قطعة إضافية يضيفها الفني بفاتورته.":"Any extra part is added to the technician’s invoice.","اكتب التفاصيل:":"Write the details:","أضف خدمة ثانية":"Add another service","توصلني إشعارات العروض":"Send me offer notifications","الشطاف":"Bidet sprayer","اللمبة":"Bulb","الخلاط":"Mixer tap","المحبس":"Angle valve","عدة السيفون":"Flush kit","المفتاح أو البريزة":"Switch or socket","بريزة الباور":"Power socket","السيليكون":"Silicone","الحنفية":"Tap","وصلة الكرسي":"Toilet connector","بزبوز نحاس نص إنش":"Brass spout 1/2 inch","خلاط مطبخ رقبة عالية":"Kitchen mixer, high neck","خلاط مغسلة":"Basin mixer","سيليكون ألماني GP":"German silicone GP","ستارك كروم مع لي":"Stark chrome with hose","إيطالي جروهي":"Italian, Grohe","بريزة 13 أمبير":"13A socket","بريزة دبل":"Double socket","مفتاح ثلاثي":"3 gang switch","مفتاح دبل":"2 gang switch","مفتاح رباعي":"4 gang switch","مفتاح مفرد":"1 gang switch","بريزة دبل 7×14":"Double socket 7×14","مفتاح مكيف 45 أمبير":"AC isolator 45A","إسباني جانبي":"Spanish, side entry","وصلة كرسي 12 سم":"Toilet connector 12 cm","اختر اللي تحتاجه · تقدر تختار أكثر من خدمة":"Pick what you need. You can choose more than one service."});
 const T_DICT_N={}; for(const _k in T_DICT){ T_DICT_N[_west(_k).trim()]=T_DICT[_k]; }
 applyCachedCatalog();   // آخر كتالوج محفوظ بالجهاز (قبل ما يوصل الجديد من الخادم)
 const _EMO=/^((?:[←-⯿️‍\u{1F000}-\u{1FAFF}]+\s*)+)([\s\S]+)$/u;
@@ -5587,7 +5620,7 @@ syncLangBtn();
 // تُحمّل السحابة بالخلفية بعد جاهزية مكتبة Supabase (لا تعطّل فتح الصفحة)
 (function(){ function go(){ if(window.supabase){ initCloud(); return true; } return false; } if(!go()){ document.addEventListener('DOMContentLoaded',function(){ if(!go()) window.addEventListener('load',go); }); } })();   // نبدأ أول ما تجهز المكتبة المحلية بدون انتظار تحميل الخطوط والصور
 
-/* 👁 إظهار/إخفاء كلمة المرور — يُطبَّق تلقائياً على أي حقل كلمة مرور يظهر بالصفحة */
+/* 👁 إظهار/إخفاء كلمة المرور · يُطبَّق تلقائياً على أي حقل كلمة مرور يظهر بالصفحة */
 const _EYE_OPEN='<svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const _EYE_OFF='<svg viewBox="0 0 24 24"><path d="M10.6 5.2A9.9 9.9 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3 3.8M6.2 6.2A17 17 0 0 0 2 12s3.6 7 10 7a9.8 9.8 0 0 0 4.2-.9"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
 function _pwToggle(btn){
