@@ -13,7 +13,8 @@
     "@capacitor/preferences": "^6.0.3",
     "capacitor-secure-storage-plugin": "^0.10.0",
     "@capawesome/capacitor-app-update": "^6.1.0",
-    "khafet-applepay": "file:plugins/khafet-applepay"
+    "khafet-applepay": "file:plugins/khafet-applepay",
+    "@capacitor/browser": "^6.0.0"
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.0",

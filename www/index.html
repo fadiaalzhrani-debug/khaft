@@ -1649,7 +1649,7 @@ const KH_STORE={
   async removeItem(k){ try{ localStorage.removeItem(k); }catch(e){} try{ if(_khPrefs) await _khPrefs.remove({key:k}); }catch(e){} _secRm(k); }
 };
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=109;
+const APP_BUILD=111;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2419,7 +2419,9 @@ function windowLabel(startMin, need){ return fmtTime(startMin)+' – '+fmtTime(M
    التنقل / العرض
    ============================================================ */
 function go(v){ view=v; if(v!=='admin') isAdmin=false; if(v!=='login') otpStep=false; window.scrollTo(0,0); render(); }
+let _payingNow=false;   // أثناء الدفع من صفحة الفاتورة: لا نعيد رسم الصفحة (السلة تفرغت والطلب انحفظ)
 function render(){
+  if(_payingNow && view==='info') return;
   syncHeader();
   /* رجوع من صفحة الدفع؟ نعرض النتيجة بدل الشاشة العادية */
   if(!_payChecked && /[?&]pay=/.test(location.search)){ _payChecked=true; checkPaymentReturn(); return; }
@@ -3366,6 +3368,7 @@ function orderPayBox(amount, labor){
   const tmOk = tamaraEnabled() && labor>=TAMARA_MIN_LABOR;
   if(orderPayMethod==='tamara' && !tmOk) orderPayMethod='online';
   if(orderPayMethod==='applepay' && !APPLEPAY_OK) orderPayMethod='online';
+  if(APPLEPAY_OK && orderPayMethod==='online') orderPayMethod='applepay';
   checkApplePay();
   const left = Math.max(0, Math.ceil(TAMARA_MIN_LABOR - labor));
   const tamara = tmOk ? `
@@ -3388,17 +3391,31 @@ function orderPayBox(amount, labor){
         <input type="radio" name="opaym" value="applepay" ${orderPayMethod==='applepay'?'checked':''}>
         <div><div class="t"> Pay</div></div>
       </label>`:''}
-      <label data-m="online" class="${orderPayMethod==='online'?'on':''}" onclick="setOrderPay('online')">
+      ${APPLEPAY_OK?'':`<label data-m="online" class="${orderPayMethod==='online'?'on':''}" onclick="setOrderPay('online')">
         <input type="radio" name="opaym" value="online" ${orderPayMethod==='online'?'checked':''}>
         <div><div class="t">${LX('ادفع الآن','Pay now')}</div>
-        <div class="badges"><span>mada</span><span>Apple&nbsp;Pay</span><span>Visa</span><span>STC&nbsp;Pay</span></div></div>
-      </label>
+        <div class="badges"><span>mada</span><span>Visa</span><span>STC&nbsp;Pay</span></div></div>
+      </label>`}
       ${tamara}
     </div>
   </div>`;
 }
 async function userToken(){
   try{ if(!myUid) await ensureAnonSession(); const { data } = await sb.auth.getSession(); return (data&&data.session&&data.session.access_token)||''; }catch(e){ return ''; }
+}
+/* صفحة الدفع داخل التطبيق: نافذة متصفح فوق التطبيق، ونراقب الدفعة ونسكر النافذة أول ما تندفع. على الويب العادي ننتقل للصفحة كالمعتاد */
+let _payWatch=null, _paidJust=null;
+function payBrowserPlugin(){ try{ const C=window.Capacitor; if(C&&C.isNativePlatform&&C.isNativePlatform()) return (C.Plugins&&C.Plugins.Browser)||(typeof C.registerPlugin==='function'?C.registerPlugin('Browser'):null); }catch(e){} return null; }
+async function openPayUrl(url, payId, o){
+  const B=payBrowserPlugin();
+  if(!B){ location.href=url; return; }
+  try{ await B.open({url:url, presentationStyle:'popover', toolbarColor:'#F1E9DF'}); }catch(e){ location.href=url; return; }
+  if(_payWatch) clearInterval(_payWatch); let n=0, lis=null, paidDone=false;
+  const stop=()=>{ if(_payWatch){ clearInterval(_payWatch); _payWatch=null; } try{ lis&&lis.remove&&lis.remove(); }catch(e){} };
+  _payWatch=setInterval(async()=>{ if(++n>240){ stop(); return; }
+    try{ const r=await fetch(PAY_FN+'/status?id='+encodeURIComponent(payId),{headers:{'Authorization':'Bearer '+(await authToken()),'apikey':SUPABASE_ANON}}); const j=await r.json();
+      if(j&&j.ok&&j.payment&&j.payment.status==='paid'){ stop(); try{ await B.close(); }catch(e){} try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} try{ await loadOrdersFromCloud(); }catch(e){} paidDone=true; showPaidScreen(o); } }catch(e){} },3000);
+  try{ lis=await B.addListener('browserFinished',async()=>{ stop(); if(paidDone) return; await checkPendingPayment(); if(view==='info') go('mybookings'); }); }catch(e){}
 }
 /* Apple Pay الأصلي: المبلغ من الخادم، التوكن من شاشة أبل، والخصم في الخادم. يرجع: paid / cancelled / failed / unavailable */
 async function nativeApplePay(o){
@@ -3415,7 +3432,8 @@ async function nativeApplePay(o){
   try{ await A.completePayment({success:ok}); }catch(e){}
   return ok?'paid':'failed';
 }
-function showPaidScreen(){
+function showPaidScreen(o){
+  if(o && o.id && state.orders.some(x=>x.id===o.id)){ lastOrderId=o.id; _paidJust=o.id; go('confirm'); return; }
   document.getElementById('app').innerHTML=`<div class="wrap screen"><div class="panel" style="margin-top:30px"><div class="payresult"><div class="ic">✅</div><h2>${LX('تم الدفع بنجاح','Payment successful')}</h2><p>${LX('وصلك إيصال على جوالك. تقدر تتابع من «طلباتي».','A receipt was sent to your phone. Track it from "My orders".')}</p></div><button class="cta gold" style="margin-top:14px" onclick="go('mybookings')">${LX('طلباتي','My orders')}</button><button class="cta" style="margin-top:8px" onclick="go('home')">${LX('الرئيسية','Home')}</button></div></div>`;
   window.scrollTo(0,0);
 }
@@ -3425,7 +3443,7 @@ async function startOrderPayment(o, method){
   apDiag({step:'pay', method:method, apOk:APPLEPAY_OK, picked:orderPayMethod});
   if(method==='applepay'){
     const r=await nativeApplePay(o);
-    if(r==='paid'){ try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(); return true; }
+    if(r==='paid'){ try{ await loadOrdersFromCloud(); }catch(e){} showPaidScreen(o); return true; }
     if(r==='cancelled') return false;
     if(r==='failed') toast(LX('ما تمت العملية، كمّل الدفع بالبطاقة','Payment did not go through, continue with a card'));
     method='online';   // أي تعذّر: نكمل بصفحة الدفع العادية
@@ -3444,7 +3462,7 @@ async function startOrderPayment(o, method){
       return false;
     }
     try{ localStorage.setItem('khafet_pay_pending', j.payment_id); }catch(e){}
-    location.href=j.url;
+    await openPayUrl(j.url, j.payment_id, o);
     return true;
   }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return false; }
 }
@@ -3491,7 +3509,7 @@ async function startPayment(kind, refId, amount, name, phone, orderNo){
       return false;
     }
     try{ localStorage.setItem('khafet_pay_pending', j.payment_id); }catch(e){}
-    location.href = j.url;      // صفحة ميسر / تمارا الآمنة
+    await openPayUrl(j.url, j.payment_id);      // صفحة ميسر / تمارا الآمنة، داخل التطبيق
     return true;
   }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return false; }
 }
@@ -4345,20 +4363,20 @@ function renderTime(){
     <div class="wrap screen" style="padding-bottom:100px">
       ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
       ${stepBar(2)}
-      ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>${LX(`المدة المتوقعة لطلبك: <b>${fmtDuration(need)}</b> — نحجز لك الفترة كاملة مع احتياط تنقّل، فلا نتأخر عليك ولا على من بعدك.`,`Estimated time for your order: <b>${fmtDuration(need)}</b> — we reserve the full window with a travel buffer, so we're never late for you or the next customer.`)}</span></div>`}
-      <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
-        <span class="nt-check">${we?'✓':''}</span>
-        <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
-      </div>
       <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
       <div class="panel" id="slotsPanel"><h3>🕐 اختر نافذة الوصول</h3>
         ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
       </div>
+      ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>${LX(`المدة المتوقعة لطلبك: <b>${fmtDuration(need)}</b>، نحجز لك الفترة كاملة مع احتياط تنقّل، فلا نتأخر عليك ولا على من بعدك.`,`Estimated time for your order: <b>${fmtDuration(need)}</b>, we reserve the full window with a travel buffer, so we're never late for you or the next customer.`)}</span></div>`}
+      <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
+        <span class="nt-check">${we?'✓':''}</span>
+        <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
+      </div>
     </div>
-    <div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${ready?windowLabel(b.time,need):'🕐 اختر نافذة الوصول'}</b><small>${dayLabel(b.date)}</small></div>
-      <button class="nb-go${ready?'':' need'}" onclick="nextFromTime()">التالي <span>←</span></button>
-    </div></div>`;
+    ${ready?`<div class="nextbar"><div class="wrap">
+      <div class="nb-info"><b>${windowLabel(b.time,need)}</b><small>${dayLabel(b.date)}</small></div>
+      <button class="nb-go" onclick="nextFromTime()">التالي <span>←</span></button>
+    </div></div>`:''}`;
 }
 // عند الضغط على «التالي» بدون اختيار نافذة وصول: نبّه العميل ووجّهه للسلوتات بدل ما يسكت الزر
 function nextFromTime(){
@@ -4685,9 +4703,10 @@ async function confirmOrder(){
     state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
     save(); lastOrderId=order.id;
     if(order.payRequired && order.amountDue>0){
-      go('mybookings');   // لما يرجع من صفحة الدفع يلقى طلبه وحالته
-      if(payMethodNow!=='applepay') toast(LX('⏳ نفتح صفحة الدفع...','⏳ Opening payment...'));
-      await startOrderPayment(order, payMethodNow);
+      // الدفع في مكانه: العميل يبقى على صفحة الفاتورة. بعد الدفع تطلع تفاصيل طلبه، ولو لغى أو تعذّر يلقى طلبه في «طلباتي»
+      _payingNow=true; let started=false;
+      try{ started=await startOrderPayment(order, payMethodNow); } finally { _payingNow=false; }
+      if(!started) go('mybookings');
     } else go('confirm');
     return;
   }
@@ -4714,19 +4733,24 @@ async function confirmOrder(){
 function renderConfirm(){
   const o=state.orders.find(x=>x.id===lastOrderId)||state.orders[0];
   if(!o){ go('home'); return; }
-  const itemsList=o.items.map(i=>`${i.ico} ${itemLabel(i)}${i.qty>1?' ×'+ar(i.qty):''}`).join(' · ');
+  const _isPart=i=>!!(i.part||i.id==='stock'||i.stockId||String(i.id||'').startsWith('part:'));
+  const _fmt=i=>`${i.ico||''} ${itemLabel(i)}${i.qty>1?' ×'+ar(i.qty):''}`;
+  const itemsList=o.items.filter(i=>!_isPart(i)&&!isFeeId(i.id)).map(_fmt).join(' · ');
+  const partsList=o.items.filter(_isPart).map(_fmt).join(' · ');
+  const paidNow=(_paidJust===o.id)||o.payStatus==='paid';
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       <div class="panel" style="margin-top:26px">
         <div class="success">
           <div class="circle">${o.dbId?'✅':'⏳'}</div>
-          <h2>${o.dbId?'تم تأكيد طلبك':'جاري إرسال طلبك'}</h2>
+          <h2>${o.dbId?(paidNow?LX('تم الدفع وتأكيد طلبك','Paid and confirmed'):'تم تأكيد طلبك'):'جاري إرسال طلبك'}</h2>
           ${o.dbId?`<p style="color:var(--muted);margin-top:6px;font-weight:700">ارتَح، خلّ الباقي علينا 👌</p>`:''}
           <div class="ordno">رقم الطلب ${o.id}</div>
           ${o.dbId?'':`<p style="color:var(--muted);margin-top:10px">ما فيه إنترنت الآن. يُرسل طلبك تلقائيًا أول ما يرجع الاتصال، وتشوفه في «طلباتي».</p>`}
         </div>
         ${o.dbId?'':`<a class="cta" style="display:block;text-align:center;text-decoration:none;margin-bottom:14px" href="tel:${PHONE}">📞 اتصل بنا ${PHONE}</a>`}
         <div class="kv"><span>الخدمات</span><b style="max-width:60%">${itemsList}</b></div>
+        ${partsList?`<div class="kv"><span>${LX('الأغراض','Parts')}</span><b style="max-width:60%">${partsList}</b></div>`:''}
         <div class="kv"><span>الموعد</span><b>${dayLabel(o.date)} · ${windowLabel(o.startMin)}</b></div>
         <div class="kv"><span>المدة التقريبية</span><b>${fmtDuration(o.duration)} (ينتهي ~ ${fmtTime(o.endMin)})</b></div>
         <div class="kv"><span>الموقع</span><b>${[esc(o.address.city),esc(o.address.district),o.address.house?'منزل '+esc(o.address.house):''].filter(Boolean).join(' · ')||(o.address.lat&&o.address.lng?'📍 موقع محدد على الخريطة':'—')}</b></div>
@@ -4780,7 +4804,7 @@ function renderMyBookings(){
         </div>
         ${showDue?`<div class="pay-due">
           <div class="pd-t"><span>${awaitingPay?LX('ادفع لتأكيد الحجز','Pay to confirm your booking'):LX('المتبقي عليك','Amount due')}</span><b>${money(o.amountDue)}</b></div>
-          <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${o.id}','applepay')"> Pay</button>`:''}<button onclick="payOrder('${o.id}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>${tamaraOk?`<button class="tmr" onclick="payOrder('${o.id}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
+          <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${o.id}','applepay')"> Pay</button>`:`<button onclick="payOrder('${o.id}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>`}${tamaraOk?`<button class="tmr" onclick="payOrder('${o.id}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
         </div>`:''}
         ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
         ${o.status==='cancelled'&&['refund_pending','refund_failed'].includes(o.payStatus)?`<div class="pay-note wait">${LX('⏳ جاري استرجاع المبلغ','⏳ Refund in progress')}</div>`:''}
