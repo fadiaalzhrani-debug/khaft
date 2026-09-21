@@ -1,0 +1,23 @@
+# لا تُرفع نسخ العمل ولا الأسرار ولا الملفات المؤقتة إلى مستودع النشر
+*.bak
+*.bak-*
+*.bak.*
+*bak-*.html
+*.orig
+*.zip
+*.aab
+*.apk
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+.env
+.env.*
+*.key
+.key
+.DS_Store
+Thumbs.db
+node_modules/
+_tmp*/
+_*.html
