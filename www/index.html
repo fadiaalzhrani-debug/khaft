@@ -1798,7 +1798,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=129;
+const APP_BUILD=130;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -3669,6 +3669,16 @@ async function payCardModal(id){ const o=state.orders.find(x=>x.id===id); if(!o)
   const r=await payWithCard(o); closeCardModal(); if(r==='fallback') startOrderPayment(o,'online'); }
 /* صفحة الدفع داخل التطبيق: نافذة متصفح فوق التطبيق، ونراقب الدفعة ونسكر النافذة أول ما تندفع. على الويب العادي ننتقل للصفحة كالمعتاد */
 let _payWatch=null, _paidJust=null;
+/* رابط خارجي: داخل التطبيق يفتح متصفح النظام، وفي الويب تبويب جديد،
+   ولو منعت البيئة النوافذ (معاينة داخل إطار) ينتقل في نفس الصفحة بدل ما ما يصير شي. */
+function openExternal(url){
+  try{ url=safeUrl(url); }catch(e){}
+  if(!url) return false;
+  try{ var B=payBrowserPlugin(); if(B&&B.open){ B.open({url:url}); return true; } }catch(e){}
+  try{ var w=window.open(url,"_blank","noopener"); if(w) return true; }catch(e){}
+  try{ location.href=url; return true; }catch(e){}
+  return false;
+}
 function payBrowserPlugin(){ try{ const C=window.Capacitor; if(C&&C.isNativePlatform&&C.isNativePlatform()) return (C.Plugins&&C.Plugins.Browser)||(typeof C.registerPlugin==='function'?C.registerPlugin('Browser'):null); }catch(e){} return null; }
 async function openPayUrl(url, payId, o){
   const B=payBrowserPlugin();
@@ -4198,7 +4208,7 @@ function renderHome(){
       <footer class="site-footer">
         <div class="foot-brand"><b>${BRAND}</b><span>${TAGLINE}</span></div>
         <div style="margin-top:16px"><a class="join-link" onclick="go('suggest')">💡 عندك اقتراح أو ملاحظة؟ اكتب لنا · رأيك يهمنا</a></div>
-        <div style="margin-top:16px"><a class="join-link" href="https://fadiaalzhrani-debug.github.io/khaft-partners/www/join.html" target="_blank" rel="noopener">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
+        <div style="margin-top:16px"><a class="join-link" role="button" tabindex="0" onclick="openExternal('https://fadiaalzhrani-debug.github.io/khaft-partners/www/join.html')">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
       </footer>
     </div>`;
 }
@@ -4374,7 +4384,7 @@ async function verifyJoinOtp(){
             <h2>${already?'رقمك مسجّل مزوّداً من قبل':'تم تفعيل حسابك فوراً!'}</h2>
             <p style="color:var(--muted);margin-top:10px;line-height:1.9">${already?'ادخل بوابة المزوّدين بجوالك وكلمة مرورك مباشرة.':'حسابك جاهز، افتح بوابة المزوّدين وادخل بجوالك وكلمة المرور وابدأ استقبال طلبات مدنك.'}</p>
           </div>
-          <a class="cta" style="margin-top:16px;display:block;text-align:center;text-decoration:none" href="https://fadiaalzhrani-debug.github.io/khaft-partners/www/provider.html" target="_blank" rel="noopener">🤝 افتح بوابة المزوّدين</a>
+          <a class="cta" style="margin-top:16px;display:block;text-align:center;text-decoration:none" onclick="openExternal('https://fadiaalzhrani-debug.github.io/khaft-partners/www/provider.html')">🤝 افتح بوابة المزوّدين</a>
           <button class="cta gold" style="margin-top:10px" onclick="go('home')">العودة للرئيسية</button>
         </div>
       </div>`;
