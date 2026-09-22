@@ -1286,6 +1286,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .tm-free{display:inline-block;background:#7B2FF7;color:#fff;border-radius:999px;padding:1px 10px;font-size:.72rem;font-weight:800;margin-inline-start:6px;vertical-align:middle}
 .tm-amt{margin-top:4px;font-size:.88rem;color:var(--ink-soft);font-weight:600}
 .tm-amt b{font-family:var(--f-head);font-size:1.35rem;color:#5A1FBF}
+.payopt label.tm-ad.off{opacity:.55;pointer-events:none;filter:saturate(.6)}
 .tm-tease{display:flex;align-items:center;gap:12px;width:100%;text-align:start;margin-top:10px;background:linear-gradient(135deg,#F3E9FF 0%,#FFE9F3 100%);border-radius:var(--r-sm);padding:13px 14px;transition:transform .25s var(--spring)}
 .tm-tease:active{transform:scale(.97)}
 .tm-tease .tt{display:flex;flex-direction:column;gap:2px}
@@ -1798,7 +1799,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=130;
+const APP_BUILD=131;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2481,6 +2482,16 @@ function setQty(id,delta){
   save(); render();
 }
 function removeFromCart(id){ delete state.cart[id]; save(); render(); }
+/* في ملخص الطلب: تعديل الكمية وشيل الخدمة، مع منع تفريغ الطلب بالكامل */
+function ivSvcQty(id,delta){
+  const cur=state.cart[id]||0;
+  if(delta<0 && cur<=1 && Object.keys(state.cart).length<=1) return;
+  setQty(id,delta);
+}
+function ivSvcDel(id){
+  if(Object.keys(state.cart).length<=1) return;
+  removeFromCart(id);
+}
 
 /* ---- المواعيد المتاحة ---- */
 function bookingsOn(iso,excludeId){ return state.orders.filter(o=>o.date===iso && o.status!=='cancelled' && o.id!==excludeId); }
@@ -2577,6 +2588,7 @@ function render(){
   if(view==='join') return renderJoin();
   if(view==='prices') return renderPrices();
   if(view==='majlis') return renderMajlis();
+  if(view==='shades') return renderShades();
   if(view==='mysub') return renderMySub();
   if(view==='services') return renderServices();
   if(view==='pick') return renderPick();
@@ -2680,7 +2692,10 @@ async function loadSolutions(){
   }catch(e){}
 }
 function solutionsEnabled(){ return stOn('solutions_enabled',true) && SOLUTIONS.length>0; }
-function solText(k,d){ const v=SETTINGS[k]; return (v==null||String(v).trim()==='')?d:String(v); }
+function solText(k,d){
+  if(_uiEN()){ const e=SETTINGS[k+'_en']; if(e!=null && String(e).trim()!=='') return String(e); }
+  const v=SETTINGS[k]; return (v==null||String(v).trim()==='')?d:String(v);
+}
 function solGroups(){ const g={}; SOLUTIONS.forEach(s=>{ (g[s.group_key||'ajyal']=g[s.group_key||'ajyal']||[]).push(s); }); return g; }
 function renderSolutions(){
   if(!solutionsLoaded && cloudReady) loadSolutions();
@@ -3519,14 +3534,21 @@ async function checkApplePay(){ if(_apChecked) return; _apChecked=true;
       return; }
     const c=await A.canMakePayments(); APPLEPAY_OK=!!(c&&c.available&&c.hasCards);
     if(APPLEPAY_OK && view==='pay'){ if(!_apPicked&&(orderPayMethod==='online'||orderPayMethod==='card')) orderPayMethod='applepay'; render(); } }catch(e){ APPLEPAY_OK=false; apDiag({step:'check', err:String((e&&(e.message||e.code))||e)}); } }
+/* أبل باي عبر صفحة ميسر: للآيفون لما يكون أبل باي الأصلي غير مربوط. يظهر دائمًا مع البطاقة. */
+function applePayWebOn(){
+  if(APPLEPAY_OK) return false;
+  try{ if(inApp()) return devicePlatform()==='ios'; }catch(e){}
+  try{ return !!window.ApplePaySession && /iPhone|iPad|Macintosh/.test(navigator.userAgent||''); }catch(e){ return false; }
+}
+function isApplePayMethod(m){ return (m==='applepay'&&APPLEPAY_OK) || m==='applepay_web'; }
 function setOrderPay(m,keep){
   const was=orderPayMethod; if(was==='card') cardDraftSave();
   orderPayMethod=m; if(!keep) _apPicked=true;
   if(!keep && (m==='card')!==(was==='card')){ rerenderPayBox(); return; }
   document.querySelectorAll('.payopt label').forEach(l=>{ l.classList.toggle('on', l.dataset.m===m); const inp=l.querySelector('input'); if(inp) inp.checked=(l.dataset.m===m); });
   const b=document.getElementById('orderPayCta');
-  if(b) b.classList.toggle('apbtn', m==='applepay');
-  if(b) b.textContent = m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara') : m==='applepay' ? LX(' Pay · ',' Pay · ')+b.dataset.amt : LX('💳 ادفع ','💳 Pay ')+b.dataset.amt;
+  if(b) b.classList.toggle('apbtn', isApplePayMethod(m));
+  if(b) b.textContent = m==='tamara' ? LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara') : isApplePayMethod(m) ? LX(' Apple Pay · ',' Apple Pay · ')+b.dataset.amt : LX('💳 ادفع ','💳 Pay ')+b.dataset.amt;
 }
 /* إشعار الرصيد الترحيبي: لغير الموثّق اللي ما له طلبات، ويتقفل بـ× */
 function welcomeNoteHtml(){
@@ -3537,8 +3559,11 @@ function welcomeNoteHtml(){
 function closeWelcomeNote(){ try{ localStorage.setItem('kh_welcome_note_x','1'); }catch(e){} const el=document.getElementById('wnote'); if(el) el.remove(); }
 function orderPayBox(amount, labor){
   _pbArgs=[amount,labor]; const cardOn=cardInappOn(); if(cardOn) loadMyCards();
+  const apWeb=applePayWebOn();
+  if(orderPayMethod==='applepay_web' && !apWeb) orderPayMethod='online';
   if(cardOn && orderPayMethod==='online') orderPayMethod='card';
   if(!cardOn && orderPayMethod==='card') orderPayMethod='online';
+  if(apWeb && !_apPicked && (orderPayMethod==='online'||orderPayMethod==='card')) orderPayMethod='applepay_web';
   const tmOk = tamaraEnabled() && labor>=TAMARA_MIN_LABOR;
   if(orderPayMethod==='tamara' && !tmOk) orderPayMethod='online';
   if(orderPayMethod==='applepay' && !APPLEPAY_OK) orderPayMethod='online';
@@ -3552,18 +3577,23 @@ function orderPayBox(amount, labor){
         <div class="tm-amt"><b>${money(Math.round(amount/4))}</b> ${LX('فقط اليوم، والباقي على ٣ أشهر','only today, the rest over 3 months')}</div>
         <div class="badges"><span class="tamara-badge">tamara</span></div></div>
       </label>`
-    : (tamaraEnabled() && left>0 && left<=150) ? `
-      <button type="button" class="tm-tease" onclick="go('home')">
-        <span class="tamara-badge">tamara</span>
-        <span class="tt"><b>${LX('باقي لك '+money(left)+' وتقسّط طلبك على 4 دفعات بدون فوائد','Add '+en(left)+' SAR more to split your order into 4 interest free payments')}</b><small>${LX('أضف خدمة ثانية بنفس الزيارة ＋','Add another service to the same visit ＋')}</small></span>
-      </button>` : '';
+    : tamaraEnabled() ? `
+      <label data-m="tamara" class="tm-ad off" aria-disabled="true">
+        <input type="radio" name="opaym" value="tamara" disabled>
+        <div><div class="t">${LX('قسّطها على ٤ دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
+        <div class="tm-amt">🔒 ${LX('للطلبات من '+money(TAMARA_MIN_LABOR),'For orders from '+money(TAMARA_MIN_LABOR))}</div>
+        <div class="badges"><span class="tamara-badge">tamara</span></div></div>
+      </label>` : '';
   return `<div class="paybox">
     <h4>💳 ${LX('الدفع','Payment')}</h4>
     ${(isVerified||myRef.balance>0)?`<div class="mybal"><span>💰 ${LX('رصيدي','My credit')}</span><b>${money(myRef.balance||0)}</b></div>`:''}
     <div class="payopt">
       ${APPLEPAY_OK?`<label data-m="applepay" class="${orderPayMethod==='applepay'?'on':''}" onclick="setOrderPay('applepay')">
         <input type="radio" name="opaym" value="applepay" ${orderPayMethod==='applepay'?'checked':''}>
-        <div><div class="t"> Pay</div></div>
+        <div><div class="t">Apple Pay</div></div>
+      </label>`:apWeb?`<label data-m="applepay_web" class="${orderPayMethod==='applepay_web'?'on':''}" onclick="setOrderPay('applepay_web')">
+        <input type="radio" name="opaym" value="applepay_web" ${orderPayMethod==='applepay_web'?'checked':''}>
+        <div><div class="t">Apple Pay</div></div>
       </label>`:''}
       ${cardOn?`<label data-m="card" class="${orderPayMethod==='card'?'on':''}" onclick="setOrderPay('card')">
         <input type="radio" name="opaym" value="card" ${orderPayMethod==='card'?'checked':''}>
@@ -3894,6 +3924,98 @@ function agreeBox(){
 
 /* ══════════ بناء مجلس · ساندوتش بانل ══════════ */
 /* ⚠️ الأسعار للمراجعة · عدّليها بأسعارك الفعلية */
+/* ═══ المظلات والسواتر: المتر بسعر من الإعدادات (افتراضي ٧٠) ═══ */
+let SHD = { L:6, W:5, kind:'k0', light:false, gutter:false };
+function shdRate(){ return Math.max(1, stNum("shade_price_m2", 70) || 70); }
+/* الأنواع من لوحة الإدارة: سطر لكل نوع «الأيقونة|عربي|إنجليزي» */
+const SHD_KIND_DEF = '🚗|مظلة سيارات|Car shade\n🏡|مظلة حوش|Yard shade\n🏊|مظلة مسبح|Pool shade\n🧱|ساتر|Privacy screen';
+function shdKinds(){
+  return String((SETTINGS['shade_kinds']||SHD_KIND_DEF)).split('\n').map(function(line,i){
+    const p=String(line).split('|').map(x=>x.trim());
+    if(!p.length || !(p[1]||p[0])) return null;
+    return { k:'k'+i, ic:(p.length>1?p[0]:'⛱️'), ar:(p.length>1?p[1]:p[0]), en:(p[2]||p[1]||p[0]) };
+  }).filter(Boolean);
+}
+function shdCalc(){
+  const area = Math.max(0, (+SHD.L||0) * (+SHD.W||0));
+  const rate = shdRate();
+  const base = area * rate;
+  const lightCost  = SHD.light  ? area * Math.max(0, stNum('shade_light_m2', 12)) : 0;
+  const gutterCost = SHD.gutter ? Math.max(0, 2*((+SHD.L||0)+(+SHD.W||0))) * Math.max(0, stNum('shade_gutter_m', 25)) : 0;
+  const raw = base + lightCost + gutterCost;
+  const total = Math.max(Math.max(0, stNum('shade_min', 0)), Math.round(raw/10)*10);
+  const days  = Math.max(1, Math.ceil(area/25));
+  return {area, rate, base, lightCost, gutterCost, total, days};
+}
+function shdSet(k,v){ SHD[k]=v; renderShades(); }
+function shdNum(k,el){ const v=parseFloat(el.value); if(!isNaN(v)) SHD[k]=Math.max(0,v); shdUpdate(); }
+function shdTog(k){ SHD[k]=!SHD[k]; renderShades(); }
+function shdUpdate(){
+  const c=shdCalc(), g=id=>document.getElementById(id), set=(id,t)=>{ const e=g(id); if(e) e.textContent=t; };
+  set('shdArea', en(Math.round(c.area)));
+  set('shdRate', en(c.rate));
+  set('shdBase', en(Math.round(c.base)));
+  set('shdExtra', en(Math.round(c.lightCost + c.gutterCost)));
+  set('shdTotal', en(c.total));
+  set('shdDays', en(c.days));
+  const b=g('shdBox');
+  if(b){ b.style.width=Math.min(150, Math.max(60, (+SHD.L||0)*14))+"px"; b.style.height=Math.min(120, Math.max(45, (+SHD.W||0)*14))+"px"; }
+}
+function renderShades(){
+  const E=_uiEN(), T=(a,b)=>E?b:a, c=shdCalc();
+  const KL = shdKinds();
+  if(!KL.some(k=>k.k===SHD.kind) && KL.length) SHD.kind=KL[0].k;
+  const kinds = KL.map(k=>`<button class="${SHD.kind===k.k?'on':''}" onclick="shdSet('kind','${k.k}')">${k.ic} ${E?k.en:k.ar}</button>`).join('');
+  document.getElementById('app').innerHTML=`
+  <div class="wrap screen">
+    ${pageHead(T('مظلات وسواتر','Shades & screens'),'home')}
+
+    <div class="mj-hero">
+      <h3>⛱️ ${T('احسب مظلتك','Size your shade')}</h3>
+      <p>${T('حدّد المقاس والنوع ويطلع لك السعر فورًا.','Set the size and type and the price shows instantly.')}</p>
+      <p style="margin-top:6px;font-weight:800">🛡️ ${T('ضمان '+ar(stNum('shade_warranty_years',5))+' سنوات', stNum('shade_warranty_years',5)+'-year warranty')}</p>
+    </div>
+
+    <div class="mj-card">
+      <h4>📐 ${T('المقاس','Dimensions')}</h4>
+      <div class="mj-row">
+        <div class="mj-f"><label>${T('الطول (م)','Length (m)')}</label>
+          <input type="number" min="1" max="60" step="0.5" value="${SHD.L}" oninput="shdNum('L',this)"></div>
+        <div class="mj-f"><label>${T('العرض (م)','Width (m)')}</label>
+          <input type="number" min="1" max="60" step="0.5" value="${SHD.W}" oninput="shdNum('W',this)"></div>
+      </div>
+      <div class="mj-vis"><div class="box" id="shdBox"></div>
+        <div class="dim">${T('المساحة','Area')}: <b class="num" id="shdArea">${en(Math.round(c.area))}</b> ${T('م²','m²')}</div></div>
+    </div>
+
+    <div class="mj-card">
+      <h4>⛱️ ${T('نوع المظلة','Shade type')}</h4>
+      <div class="mj-opts">${kinds}</div>
+    </div>
+
+    <div class="mj-sum">
+      <div class="l"><span>${T('المظلة','Shade')} (<b class="num" id="shdArea2">${en(Math.round(c.area))}</b> ${T('م²','m²')} × <b class="num" id="shdRate">${en(c.rate)}</b>)</span><b class="num" id="shdBase">${en(Math.round(c.base))}</b></div>
+      <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}</span><b><span class="num" id="shdTotal">${en(c.total)}</span> ${T('ر.س','SAR')}</b></div>
+      <div class="mj-note">⏱ ${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="shdDays">${en(c.days)}</b> ${T('أيام','days')}<br>
+        ${T('السعر تقديري ويُعتمد بعد المعاينة المجانية.','Estimate only · confirmed after the free site visit.')}</div>
+    </div>
+
+    <button class="cta gold" style="margin-top:12px" onclick="shdBook()">📋 ${T('احجز معاينة مجانية','Book a free site visit')}</button>
+    <div style="height:24px"></div>
+  </div>`;
+  shdUpdate();
+}
+function shdBook(){
+  const c=shdCalc();
+  const kind=(shdKinds().find(k=>k.k===SHD.kind)||{}).ar||'مظلة';
+  const note='طلب '+kind+' · '+SHD.L+'×'+SHD.W+' م ('+Math.round(c.area)+' م²)'
+    +(SHD.light?' · إنارة LED':'')+(SHD.gutter?' · مزراب':'')
+    +' · التقدير '+c.total+' ريال · ضمان '+stNum('shade_warranty_years',5)+' سنوات';
+  state.quickNote = note;
+  startQuick();
+  setTimeout(function(){ const t=document.getElementById('q_note')||document.getElementById('note'); if(t && !t.value) t.value=note; }, 300);
+}
+
 const MJ_RATE = {
   panel: { 5:150, 7.5:165, 10:185 },   // ريال/م² للجدران والسقف حسب السماكة (سم)
   door:  { steel:850, glass:1400 },     // باب حديد / زجاج سيكوريت
@@ -4177,6 +4299,11 @@ function renderHome(){
         <span class="qb-ar">←</span>
       </button>`:''}
 
+      ${stOn('shades_enabled',true)?`<button class="services-btn" onclick="go('shades')">
+        <span class="sb-ic" style="color:var(--gold-deep)">⛱️</span>
+        <span class="sb-t"><b>${LX('مظلات وسواتر','Shades & screens')}</b><small>${LX('حدّد الأمتار والنوع ويطلع السعر فورًا','Set the size and type, price shows instantly')}</small></span>
+        <span class="sb-go">${icon('chev',18)}</span>
+      </button>`:''}
       ${stOn('majlis_enabled',true)?`<button class="services-btn" onclick="go('majlis')">
         <span class="sb-ic" style="color:var(--gold-deep)">${catIcon('majlis',26)}</span>
         <span class="sb-t"><b>ابنِ مجلسك <span style="background:var(--gold);color:#1a1408;font-size:.68rem;font-weight:800;padding:2px 9px;border-radius:20px;margin-inline-start:6px;vertical-align:middle">قريباً</span></b><small>مجلس ساندوتش بانل · حدّد المقاس واعرف التكلفة فوراً</small></span>
@@ -4189,8 +4316,8 @@ function renderHome(){
       </div>
 
       <div class="trust">
-        <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+' day warranty')}</b></div>
         <div class="trust-item"><span class="ti-ic">${icon('wrench',14)}</span><b>فنيون معتمدون</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+' day warranty')}</b></div>
         <div class="trust-item"><span class="ti-ic">${icon('tag',14)}</span><b>أسعار مناسبة</b></div>
       </div>
 
@@ -4711,7 +4838,16 @@ function receiptHtml(priceTxt, d){
       <div class="iv-total"><span>${LX('الإجمالي','Total')}</span><b>${priceTxt}</b></div></div>`;
   }
   const parts=partLines();
-  const svcRows=cartItems().map(i=>line(esc(i.ico), esc(svcName(i, _uiEN()?'en':'ar')), i.qty, money(lineLabor(i)))).join('');
+  const only=Object.keys(state.cart).length<=1;
+  const svcRows=cartItems().map(i=>{
+    const del = only ? '' : `<button type="button" class="iv-x" data-id="${esc(i.id)}" onclick="ivSvcDel(this.dataset.id)" aria-label="${LX('شيل الخدمة','Remove service')}">✕</button>`;
+    const qty = i.custom ? '' : `<div class="iv-qtyrow"><span class="iv-qlbl">${LX('الكمية','Quantity')}</span><span class="srow-qty sm">
+      <button type="button" data-id="${esc(i.id)}" onclick="ivSvcQty(this.dataset.id,-1)" aria-label="${LX('أنقص','Decrease')}">−</button>
+      <b>${ar(i.qty)}</b>
+      <button type="button" data-id="${esc(i.id)}" onclick="ivSvcQty(this.dataset.id,1)" aria-label="${LX('زد','Increase')}">＋</button>
+    </span></div>`;
+    return line(esc(i.ico), esc(svcName(i, _uiEN()?'en':'ar')), i.qty, money(lineLabor(i)), '', del+qty);
+  }).join('');
   const partRows=parts.map(l=> l.off
     ? line('🔩', esc(l.groupName), 1, money(0), 'off', `<button type="button" class="iv-add" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,false)">＋ ${LX('ضيفها','Add it')}</button>`)
     : line('🔩', esc(partName(l.chosen)), 1, money(l.price*l.qty), '', `<button type="button" class="iv-x" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,true)" aria-label="${LX('شيل القطعة','Remove part')}">×</button>`
@@ -4759,7 +4895,6 @@ function renderInfo(){
     <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead('بياناتك','time')}
       ${stepBar(3)}
-      <div class="flow-sum">📋 <span>${svcNames} · <b>${dayLabel(b.date)} · ${fmtTime(b.time)}</b></span></div>
 
       ${(quickMode&&!state.subReq)?`
       <div class="panel" style="margin-top:14px"><h3>🛠️ اشرح المشكلة</h3>
@@ -4891,7 +5026,6 @@ function renderPay(){
     <div class="wrap screen">
       ${pageHead('آخر خطوة','info')}
       ${stepBar(4)}
-      <div class="flow-sum">📋 <span>${svcNames} · <b>${dayLabel(b.date)} · ${fmtTime(b.time)}</b></span></div>
       <div class="flow-sum" style="margin-top:8px">👤 <span>${esc(c.name||'')} · <b dir="ltr">${esc(c.phone||'')}</b>${(a.district||a.house||a.city)?' · 📍 '+esc([a.city,a.district,a.house].filter(Boolean).join(' · ')):''}</span></div>
 
       ${state.subReq?`
@@ -4911,7 +5045,7 @@ function renderPay(){
       </div></div>`:''}
       ${payNow>0?orderPayBox(payNow, payNow):''}
       ${payNow>0
-        ? `<button class="cta${(orderPayMethod==='applepay'&&APPLEPAY_OK)?' apbtn':''}" id="orderPayCta" aria-label="${(orderPayMethod==='applepay'&&APPLEPAY_OK)?'Apple Pay':''}" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&payNow>=TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):(orderPayMethod==='applepay'&&APPLEPAY_OK)?' Pay · '+money(payNow):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
+        ? `<button class="cta${isApplePayMethod(orderPayMethod)?' apbtn':''}" id="orderPayCta" aria-label="${isApplePayMethod(orderPayMethod)?'Apple Pay':''}" data-amt="${money(payNow)}" style="margin-top:16px" onclick="confirmOrder()">${orderPayMethod==='tamara'&&payNow>=TAMARA_MIN_LABOR?LX('🛍️ قسّطها مع تمارا','🛍️ Split with Tamara'):isApplePayMethod(orderPayMethod)?' Apple Pay · '+money(payNow):LX('💳 ادفع ','💳 Pay ')+money(payNow)}</button>`
         : `<button class="cta" style="margin-top:16px" onclick="confirmOrder()">✅ أكّد الطلب</button>`}
       <div class="policy-note">${payNow>0?'بالضغط على الدفع':'بتأكيد الطلب'} أنت توافق على <a href="privacy.html#terms" target="_blank" rel="noopener">الشروط</a>، <a href="privacy.html#refund" target="_blank" rel="noopener">سياسة الإلغاء</a> و<a href="privacy.html" target="_blank" rel="noopener">الخصوصية</a>.</div>
       <div style="height:28px"></div>
@@ -5504,6 +5638,9 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=(ty
    ============================================================ */
 let UILANG = localStorage.getItem('khafet_uilang') || 'ar';
 const T_DICT = {
+  "حلول منازل أجيال":"Ajyal home fixes",
+  "مشاكل نعرفها في بيوت أجيال، وحلّها بسعر ثابت":"Problems we know in Ajyal homes, fixed at a set price",
+  "مشاكل نعرفها في بيوت أجيال. حل واضح وسعر ثابت.":"Problems we know in Ajyal homes. A clear fix at a set price.",
   "الصيانات السنوية":"Annual maintenance plans","وفّر أكثر":"Save more",
   // العلامة والهيدر والتنقّل
   "خافِت":"Khafet","للصيانة المنزلية":"Home Maintenance","خافِت | صيانة منزلية شاملة":"Khafet | Complete Home Maintenance",
