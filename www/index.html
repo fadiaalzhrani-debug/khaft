@@ -1302,6 +1302,13 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .price-row2 .pr-l3{display:flex;justify-content:flex-end;margin-top:6px}
 
 /* ═ دفعة 3: إشعار هدية أول طلب، شرائح السعر والوقت، الفاتورة الجديدة ═ */
+/* ══ رئيسية خافِت: الهدية بطاقة بنية، وبلاطات الصيانة على بطاقة فاتحة ══ */
+.band{margin:16px 0 14px}
+.band .gift-note{background:var(--brown);border-radius:22px;padding:12px 14px;margin:0;max-width:none;box-shadow:0 18px 30px -20px rgba(58,48,41,.8)}
+.band .maint{margin:14px 0 0;background:var(--card);border-radius:22px;padding:14px 12px 16px;box-shadow:var(--shadow-sm)}
+.band .maint .mt-head{margin:2px 6px 12px}
+.band .maint .mt-tile{align-content:start}
+.band .maint .mt-tile b{min-height:2.6em;display:flex;align-items:center;text-align:center}
 .gift-note{display:flex;align-items:center;gap:14px;max-width:420px;margin:18px auto 0;background:var(--brown);color:#FFF8EF;border-radius:var(--r);padding:12px 14px;position:relative;box-shadow:0 18px 30px -20px rgba(58,48,41,.8)}
 .gift-note .gn-amt{flex:none;width:58px;height:58px;border-radius:17px;background:var(--gold);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;box-shadow:inset 0 2px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,0,.08)}
 .gift-note .gn-amt b{font-family:var(--f-head);font-size:1.3rem}
@@ -1791,7 +1798,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=123;
+const APP_BUILD=129;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2044,6 +2051,10 @@ function applyCatalog(cats, svcs){
 function catSoon(k){ return !!(CATS[k]&&CATS[k].soon); }
 function catShown(k){ return !!CATS[k] && (catSoon(k) || catCount(k)>0); }   // «قريبًا» يظهر حتى بلا خدمات
 function otherCats(){ return Object.keys(CATS).filter(k=>!CAT_FEATURED.includes(k) && catShown(k)); }
+/* أقسام الرئيسية: المميزة أولًا ثم الباقي · القسم المخفي من اللوحة يختفي تلقائيًا
+   والسقف من الإعدادات home_cats_max (٨ = صفّان) */
+function homeCats(){ const max=Math.max(1, stNum('home_cats_max', 8)||8);
+  return CAT_FEATURED.filter(catShown).concat(otherCats()).slice(0, max); }
 function applyCachedCatalog(){ try{ const c=JSON.parse(localStorage.getItem(CATALOG_KEY)||'null'); if(c){ applyCatalog(c.c, c.s); if(c.p) applyParts(c.p); } }catch(e){} }
 /* ═══ القطع المرتبطة بالخدمات: تنضاف تلقائيًا للطلب، بخيارات (أبيض/أصفر)، ويقدر العميل يشيلها ═══ */
 let PARTS=[];
@@ -2549,7 +2560,8 @@ function slotAvailable(iso,startMin,needMin,excludeId,groups){
 function scheduleDuration(){ if(quickMode) return QUICK_DURATION; const d=cartDuration(); return d>0?d:60; }
 // نافذة الوصول المعروضة للعميل
 function windowSpan(need){ if(!stOn('long_window_enabled',true)) return ARRIVAL_WINDOW; const from=stNum('long_window_from_min',ARRIVAL_WINDOW)||ARRIVAL_WINDOW; return (need>from) ? Math.ceil(need/ARRIVAL_WINDOW)*ARRIVAL_WINDOW : ARRIVAL_WINDOW; }
-function windowLabel(startMin, need){ return fmtTime(startMin); }   // العميل يشوف وقت الوصول (بداية الفترة) بدل نافذة من إلى
+/* نافذة الوصول: من كذا إلى كذا · أوضح للعميل من وقت واحد */
+function windowLabel(startMin, need){ return fmtTime(startMin)+' – '+fmtTime(Math.min(startMin+windowSpan(need||0), WORK_END)); }
 
 /* ============================================================
    التنقل / العرض
@@ -4115,18 +4127,19 @@ function renderHome(){
       <div class="hero-in">
         <h1>${esc(solText('hero_title','اطلب صيانة'))}</h1>
         <p class="hero-sub"><b>${esc(solText('hero_sub','صيانة احترافية تستاهلها'))}</b><span>${esc(solText('hero_sub2','منزلك في أيادٍ أمينة'))}</span></p>
-        ${launchPromoHtml()}
       </div>
       <svg class="hero-wave" viewBox="0 0 1440 40" preserveAspectRatio="none"><path fill="currentColor" d="M0 40 L0 20 Q 360 40 720 20 T 1440 20 L1440 40 Z"/></svg>
     </div>
 
     <div class="wrap screen">
+      <div class="band">
+      ${launchPromoHtml()}
       <div class="maint">
         <div class="mt-head">${LX('صيانة','Maintenance')}</div>
         <div class="mt-grid">
-          ${CAT_FEATURED.filter(catShown).map(k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')"><span class="mt-ic">${catIcon(k,30)}</span><b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`).join('')}
-          ${otherCats().length?`<button class="mt-tile more" onclick="go('services')"><span class="mt-ic">${catIcon('majlis',30)}</span><b>${LX('باقي خدمات المنزل','Other home services')}</b></button>`:''}
+          ${homeCats().map(k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')"><span class="mt-ic">${catIcon(k,30)}</span><b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`).join('')}
         </div>
+      </div>
       </div>
 
       ${quickEnabled()?`<button class="quick-btn" onclick="startQuick()">
@@ -4185,7 +4198,7 @@ function renderHome(){
       <footer class="site-footer">
         <div class="foot-brand"><b>${BRAND}</b><span>${TAGLINE}</span></div>
         <div style="margin-top:16px"><a class="join-link" onclick="go('suggest')">💡 عندك اقتراح أو ملاحظة؟ اكتب لنا · رأيك يهمنا</a></div>
-        <div style="margin-top:16px"><a class="join-link" onclick="go('join')">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
+        <div style="margin-top:16px"><a class="join-link" href="https://fadiaalzhrani-debug.github.io/khaft-partners/www/join.html" target="_blank" rel="noopener">🤝 انضم كمزوّد صيانة واستقبل طلبات في منطقتك</a></div>
       </footer>
     </div>`;
 }
@@ -4241,7 +4254,7 @@ function renderPrices(){
       <button class="nb-go" onclick="goTimeChecked()">التالي <span>←</span></button>
     </div></div>` : '';
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen" style="padding-bottom:100px">
+    <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead('💰 قائمة الأسعار','home')}
       <p style="color:var(--muted);text-align:center;margin-top:2px">اختر الخدمة اللي تحتاجها · أسعار تقديرية تتأكد بعد المعاينة.</p>
       <div class="value-card">
@@ -4440,7 +4453,7 @@ function renderPick(){
     </div></div>` : '';
 
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen" style="padding-bottom:100px">
+    <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead(catIcon(currentCat,22)+' '+CATS[currentCat].name,'home')}
       ${stepBar(1)}
       <p style="text-align:center;color:var(--muted);font-size:.9rem;margin-top:6px">اختر اللي تحتاجه · تقدر تختار أكثر من خدمة</p>
@@ -4466,7 +4479,7 @@ function renderCart(){
       <span class="srow-qty"><button type="button" onclick="setQty('${aid(i.id)}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${aid(i.id)}',1)" aria-label="أكثر">+</button></span>
     </div>`).join('');
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen" style="padding-bottom:120px">
+    <div class="wrap screen" style="padding-bottom:170px">
       ${pageHead('🛒 '+LX('سلتك','Your cart'),'home')}
       <div class="srows">${rows}</div>
       <a class="addmore" onclick="go('home')">＋ ${LX('أضف خدمة ثانية','Add another service')}</a>
@@ -4621,7 +4634,7 @@ function renderTime(){
   const we=state.booking.wantsEarlier!==false;
 
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen" style="padding-bottom:100px">
+    <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
       ${stepBar(2)}
       <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
@@ -4733,7 +4746,7 @@ function renderInfo(){
     : (promo.amt>0 ? `${strike} ${money(afterAll)} ${badge(promoLabel(promo.kind,promo.pct))}`
     : money(base))));
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen">
+    <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead('بياناتك','time')}
       ${stepBar(3)}
       <div class="flow-sum">📋 <span>${svcNames} · <b>${dayLabel(b.date)} · ${fmtTime(b.time)}</b></span></div>
@@ -4769,9 +4782,12 @@ function renderInfo(){
         </label>
       </div>
 
-      <button class="cta" style="margin-top:16px" onclick="infoNext()">${LX('التالي · الفاتورة والدفع','Next · Invoice and payment')}</button>
       <div style="height:28px"></div>
-    </div>`;
+    </div>
+    <div class="nextbar"><div class="wrap">
+      <div class="nb-info"><b>${LX('الفاتورة والدفع','Invoice and payment')}</b><small>${esc(c.name||'')}${a.city?' · '+esc(a.city):''}</small></div>
+      <button class="nb-go" onclick="infoNext()">${LX('التالي','Next')} <span>←</span></button>
+    </div></div>`;
   initPickMap();
 }
 /* من «بياناتك» إلى «الدفع»: نتحقق من البيانات هنا حتى ما يكتشف العميل النقص بعد ما يوصل للدفع */
