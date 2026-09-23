@@ -313,6 +313,14 @@
   .mj-opts button small{display:block;font-size:.68rem;font-weight:700;color:var(--muted);margin-top:2px}
   .mj-opts button.on{border-color:var(--gold-strong);background:var(--gold-tint);box-shadow:0 3px 12px rgba(245,197,24,.18)}
   .mj-opts button.on small{color:var(--ink-soft)}
+  .shd-sws{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:12px}
+  .shd-sw{aspect-ratio:1;border:0;padding:0;border-radius:18px;background-size:cover;background-position:center;background-color:var(--group);box-shadow:inset 0 0 0 1px rgba(0,0,0,.08);position:relative;cursor:pointer}
+  .shd-sw.on{box-shadow:0 0 0 3px var(--card),0 0 0 5.5px var(--gold-strong)}
+  .shd-sw.on::after{content:"✓";position:absolute;bottom:7px;inset-inline-start:7px;width:24px;height:24px;border-radius:50%;background:var(--gold);color:var(--ink);font-size:.72rem;font-weight:900;display:grid;place-items:center}
+  .mj-card h4 .shd-cname{font-weight:800;color:var(--ink-soft)}
+  .shd-pts{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:7px}
+  .shd-pts li{position:relative;padding-inline-start:16px;font-size:.88rem;font-weight:600;color:var(--ink-soft);line-height:1.55}
+  .shd-pts li::before{content:"";position:absolute;inset-inline-start:2px;top:.62em;width:7px;height:7px;border-radius:50%;background:var(--gold-strong)}
   .mj-add{display:flex;align-items:center;gap:10px;border:1.5px solid var(--line);border-radius:13px;padding:11px 12px;
     background:var(--bg);cursor:pointer;margin-bottom:8px}
   .mj-add:last-child{margin-bottom:0}
@@ -335,6 +343,17 @@
   .mj-vis .box{display:inline-block;border:3px solid var(--gold-deep);border-radius:8px;background:var(--gold-tint);
     position:relative;min-width:70px;min-height:50px}
   .mj-vis .dim{font-size:.78rem;font-weight:800;color:var(--muted);margin-top:7px}
+  .mj-vis .shd-scene{position:relative;height:188px}
+  .mj-vis .shd-scene .box{position:absolute;display:block;min-width:0;min-height:0;border-radius:6px;margin:0}
+  .shd-car{position:absolute;z-index:2;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+  .shd-car.drag{cursor:grabbing;filter:drop-shadow(0 8px 10px rgba(0,0,0,.28))}
+  .shd-car svg{display:block;width:100%;height:100%;pointer-events:none}
+  .shd-car .shd-car-b{position:absolute;left:50%;top:50%;transition:transform .3s cubic-bezier(.3,.7,.3,1)}
+  .shd-car span{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:3px;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:.7rem;font-weight:800;line-height:1.25;color:var(--muted);white-space:nowrap;pointer-events:none;transition:opacity .25s}
+  .shd-car.moved span{opacity:0}
+  .shd-car span i{font-style:normal;display:inline-flex;align-items:center;gap:3px}
+  .shd-car span i+i{font-weight:700;opacity:.85}
+  .shd-car span svg{width:11px;height:11px}
   /* ── الموافقة على الشروط ── */
   .agree{display:flex;align-items:flex-start;gap:10px;background:var(--gold-tint);border:1.5px solid var(--gold-soft);
     border-radius:13px;padding:12px 13px;margin-top:12px;cursor:pointer}
@@ -1111,6 +1130,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
   box-shadow:0 12px 20px -10px color-mix(in srgb,var(--c) 85%,transparent),inset 0 2px 0 rgba(255,255,255,.4),inset 0 -4px 0 rgba(0,0,0,.08);border:0}
 .maint .mt-tile .mt-ic{width:68px;height:68px;border-radius:21px}
 .maint .mt-tile .mt-ic svg{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
+.maint .mt-tile .mt-ic.mt-img{background-size:cover;background-position:center;background-repeat:no-repeat;box-shadow:0 0 0 3px var(--c),0 12px 20px -10px color-mix(in srgb,var(--c) 85%,transparent)}
 .maint .mt-tile:nth-child(2) .mt-ic{--c:var(--c-2)} .maint .mt-tile:nth-child(3) .mt-ic{--c:var(--c-3)} .maint .mt-tile:nth-child(4) .mt-ic{--c:var(--c-4)}
 .maint .mt-tile:nth-child(5) .mt-ic{--c:var(--c-5)} .maint .mt-tile:nth-child(6) .mt-ic{--c:var(--c-6)} .maint .mt-tile:nth-child(7) .mt-ic{--c:var(--c-7)} .maint .mt-tile:nth-child(8) .mt-ic{--c:var(--c-8)}
 .maint .mt-tile.more .mt-ic{--c:var(--c-8)}
@@ -1261,12 +1281,18 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .srow-qty button:last-child{background:var(--gold)}
 .srow-qty button:active{transform:scale(.88)}
 .srow-qty b{min-width:30px;text-align:center;font-family:var(--f-head);font-size:1.15rem}
+/* العدد تحت السعر داخل صف الخدمة عشان ما يضيّق الاسم */
+.srow .srow-t .srow-qty{margin-top:8px;padding:3px;gap:4px}
+.srow .srow-t .srow-qty button{width:32px;height:32px;font-size:1.15rem}
+.srow .srow-t .srow-qty b{min-width:24px;font-size:1rem}
+.sv-meta em{white-space:nowrap}
 .addmore{border:0;border-radius:999px;background:var(--group);color:var(--ink-soft)}
 .nextbar .wrap{height:auto;min-height:74px;padding-block:10px}
-.nb-sum{display:flex;flex-direction:column;gap:2px}
-.nb-sum div{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.nb-sum span{font-size:.84rem;opacity:.75;font-weight:700}
-.nb-sum b{font-family:var(--f-head);font-size:1.02rem}
+/* شريط التالي ثابت: خانتين جنب بعض وكل نص في سطر واحد */
+.nb-sum{display:flex;flex-direction:row;align-items:center;gap:22px;min-width:0}
+.nb-sum div{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
+.nb-sum span{font-size:.8rem;opacity:.75;font-weight:700;white-space:nowrap}
+.nb-sum b{font-family:var(--f-head);font-size:1.08rem;white-space:nowrap;font-variant-numeric:tabular-nums}
 .nb-sum div:first-child b{font-size:1.18rem;color:var(--gold)}
 .hbtn.cartbtn{position:relative;background:var(--gold);color:var(--ink);padding:10px 14px}
 .hbtn.cartbtn .badge{background:var(--brown);color:#FFF8EF}
@@ -1449,10 +1475,10 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 </style><!--/kh-skin-->
 </head>
 <body>
-<!--kh-splash--><div id="khSplash" onclick="this.classList.add('out')"><div class="logo3" role="img" aria-label="خافت"><svg class="flat dr3" viewBox="129 55 800 800" aria-hidden="true"><defs><clipPath id="spcH"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/></clipPath><clipPath id="spcW"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcL"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcT"><rect x="129" y="55" width="800" height="800" rx="179"/></clipPath><linearGradient id="spfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".035" stop-color="#fff" stop-opacity=".9"/><stop offset=".07" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><linearGradient id="spshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#E9D3A0" stop-opacity=".45"/></linearGradient><linearGradient id="spwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><radialGradient id="spnut" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8E4"/><stop offset=".6" stop-color="#F3DC9C"/><stop offset="1" stop-color="#D9AE3E"/></radialGradient><filter id="spb30" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter><filter id="spb10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="spb4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs><g class="wg"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="url(#spwf)"/></g><polygon class="ln lh" pathLength="1" points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><g clip-path="url(#spcH)"><rect class="fl fh" x="129" y="770" width="800" height="720" fill="url(#spfill)"/></g><g clip-path="url(#spcL)" class="shd"><rect x="129" y="400" width="800" height="400" fill="url(#spshade)"/></g><g clip-path="url(#spcT)"><g class="sw"><g transform="skewX(-22)"><rect x="340" y="-100" width="260" height="1100" fill="#fff" opacity=".22" filter="url(#spb30)"/><rect x="455" y="-100" width="34" height="1100" fill="#fff" opacity=".55" filter="url(#spb10)"/></g></g></g><g clip-path="url(#spcL)"><g class="sw"><g transform="skewX(-22)"><rect x="360" y="-100" width="70" height="1100" fill="#C9962A" opacity=".28" filter="url(#spb10)"/><rect x="452" y="-100" width="18" height="1100" fill="#fff" filter="url(#spb4)"/><rect x="478" y="-100" width="7" height="1100" fill="#FFFDF5" opacity=".9"/></g></g></g></svg></div><p>صيانة منزلك في أيادٍ أمينة</p></div>
-<script>(function(){var el=document.getElementById('khSplash');if(!el)return;var first=true;try{first=!localStorage.getItem('kh_splash_seen');localStorage.setItem('kh_splash_seen','1');}catch(e){}
-var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;var deep=/[?&](s|v)=/.test(location.search);var d=rm?0.6:(deep?1.2:(first?4.8:2.6));el.style.setProperty('--sp',d+'s');
-setTimeout(function(){el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},600);},d*1000+250);})();</script><!--/kh-splash-->
+<!--kh-splash--><div id="khSplash"><div class="logo3" role="img" aria-label="خافت"><svg class="flat dr3" viewBox="129 55 800 800" aria-hidden="true"><defs><clipPath id="spcH"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/></clipPath><clipPath id="spcW"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcL"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcT"><rect x="129" y="55" width="800" height="800" rx="179"/></clipPath><linearGradient id="spfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".035" stop-color="#fff" stop-opacity=".9"/><stop offset=".07" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><linearGradient id="spshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#E9D3A0" stop-opacity=".45"/></linearGradient><linearGradient id="spwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><radialGradient id="spnut" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8E4"/><stop offset=".6" stop-color="#F3DC9C"/><stop offset="1" stop-color="#D9AE3E"/></radialGradient><filter id="spb30" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter><filter id="spb10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="spb4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs><g class="wg"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="url(#spwf)"/></g><polygon class="ln lh" pathLength="1" points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><g clip-path="url(#spcH)"><rect class="fl fh" x="129" y="770" width="800" height="720" fill="url(#spfill)"/></g><g clip-path="url(#spcL)" class="shd"><rect x="129" y="400" width="800" height="400" fill="url(#spshade)"/></g><g clip-path="url(#spcT)"><g class="sw"><g transform="skewX(-22)"><rect x="340" y="-100" width="260" height="1100" fill="#fff" opacity=".22" filter="url(#spb30)"/><rect x="455" y="-100" width="34" height="1100" fill="#fff" opacity=".55" filter="url(#spb10)"/></g></g></g><g clip-path="url(#spcL)"><g class="sw"><g transform="skewX(-22)"><rect x="360" y="-100" width="70" height="1100" fill="#C9962A" opacity=".28" filter="url(#spb10)"/><rect x="452" y="-100" width="18" height="1100" fill="#fff" filter="url(#spb4)"/><rect x="478" y="-100" width="7" height="1100" fill="#FFFDF5" opacity=".9"/></g></g></g></svg></div><p>صيانة منزلك في أيادٍ أمينة</p></div>
+<script>(function(){var el=document.getElementById('khSplash');if(!el)return;
+var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;var d=rm?0.6:4.8;el.style.setProperty('--sp',d+'s');
+function out(){if(el.classList.contains('out'))return;el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},600);}setTimeout(function(){if(window.__khCatReady)return out();document.addEventListener('kh-cat-ready',out,{once:true});setTimeout(out,3000);},d*1000+250);})();</script><!--/kh-splash-->
 
 <header class="top">
   <div class="wrap">
@@ -1800,7 +1826,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=133;
+const APP_BUILD=134;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2040,7 +2066,7 @@ function applyCatalog(cats, svcs){
   const activeCats=cats.filter(c=>c&&c.id&&c.active!==false).sort((a,b)=>(+a.sort||0)-(+b.sort||0));
   if(!activeCats.length) return false;
   Object.keys(CATS).forEach(k=>{ delete CATS[k]; });
-  activeCats.forEach(c=>{ CATS[c.id]={name:c.name, ico:c.icon||'🛠️', featured:!!c.featured, name_en:c.name_en||'', soon:!!c.soon}; });
+  activeCats.forEach(c=>{ CATS[c.id]={name:c.name, ico:c.icon||'🛠️', featured:!!c.featured, name_en:c.name_en||'', soon:!!c.soon, img:c.image_url||''}; });
   CAT_FEATURED=activeCats.filter(c=>c.featured).map(c=>c.id);
   // الخدمات المخفية (مثل خدمات صفحة الحلول) تبقى قابلة للحجز حتى لو قسمها مخفي، لكنها لا تظهر في القوائم
   const list=svcs.filter(s=>s&&s.id&&s.active!==false&&(CATS[s.cat_id]||s.hidden)).sort((a,b)=>(+a.sort||0)-(+b.sort||0))
@@ -2086,6 +2112,8 @@ function setPartQty(key,delta){ state.parts=state.parts||{}; const st=state.part
 function choosePart(key,itemId){ state.parts=state.parts||{}; state.parts[key]=Object.assign({}, state.parts[key]||{}, {itemId, off:false}); captureBookingInputs(); save(); render(); }
 function togglePart(key,off){ state.parts=state.parts||{}; state.parts[key]=Object.assign({}, state.parts[key]||{}, off?{off:true}:{off:false, adj:0}); captureBookingInputs(); save(); render(); }
 let _catalogAt=0;
+/* يعلّم إن محاولة تحميل الكتالوج خلصت، عشان الحركة الأولى تختفي على الشكل الأخير */
+function khCatReady(){ if(window.__khCatReady) return; window.__khCatReady=true; try{ document.dispatchEvent(new Event('kh-cat-ready')); }catch(e){} }
 // حمّل الأقسام والخدمات والأسعار من لوحة المؤسسة
 async function loadPrices(){
   if(!cloudReady) return;
@@ -2098,9 +2126,11 @@ async function loadPrices(){
       applyDeepLink(true);
       try{ localStorage.setItem(CATALOG_KEY, JSON.stringify({c:c.data, s:s.data, p:(!p.error&&p.data)||[], t:Date.now()})); }catch(e){}
       if(['home','prices','pick','services','cart'].includes(view)) render();
+      khCatReady();
       return;
     }
   }catch(e){}
+  khCatReady();   // فشل التحميل: لا نعلّق الشاشة الأولى
   try{
     const { data } = await sb.from('khafet_prices').select('*');
     if(data && data.length){ const map={}; data.forEach(r=>{ map[r.sid]=Number(r.price); });
@@ -2340,6 +2370,17 @@ function fmtDuration(mins){
   if(h===1) parts.push('ساعة'); else if(h===2) parts.push('ساعتان'); else if(h>2) parts.push(ar(h)+' ساعات');
   if(m) parts.push(ar(m)+' دقيقة');
   return parts.join(' و');
+}
+/* للشريط السفلي: نص قصير ما يلتف (٤ س ٤٠ د) عشان الشريط يبقى ثابت */
+function fmtDurShort(mins){
+  if(!mins) return LX('حسب المعاينة','On inspection');
+  const h=Math.floor(mins/60), m=mins%60;
+  if(_uiEN()) return [h?h+'h':'', m?m+'m':''].filter(Boolean).join(' ');
+  return [h?ar(h)+' س':'', m?ar(m)+' د':''].filter(Boolean).join(' ');
+}
+function nbSvcLabel(n){
+  if(_uiEN()) return n+' '+(n===1?'service':'services');
+  return n===1 ? 'خدمة واحدة' : n===2 ? 'خدمتين' : ar(n)+(n<=10?' خدمات':' خدمة');
 }
 function fmtTime(mins){
   let h=Math.floor(mins/60), m=mins%60; let h12=h%12; if(h12===0)h12=12;
@@ -3926,16 +3967,55 @@ function agreeBox(){
 /* ══════════ بناء مجلس · ساندوتش بانل ══════════ */
 /* ⚠️ الأسعار للمراجعة · عدّليها بأسعارك الفعلية */
 /* ═══ المظلات والسواتر: المتر بسعر من الإعدادات (افتراضي ٧٠) ═══ */
-let SHD = { L:6, W:5, kind:'k0', light:false, gutter:false };
-function shdRate(){ return Math.max(1, stNum("shade_price_m2", 70) || 70); }
+const SHD_CAR_SVG='<svg viewBox="0 0 188 493" aria-hidden="true"><rect x="0" y="168" width="20" height="13" rx="6" fill="#6F7984"/><rect x="168" y="168" width="20" height="13" rx="6" fill="#6F7984"/><path d="M94 2C150 2 176 18 180 60L184 150L184 400C184 460 160 491 94 491C28 491 4 460 4 400L4 150L8 60C12 18 38 2 94 2Z" fill="#8E98A5"/><path d="M60 34Q94 22 128 34" stroke="#AAB3BE" stroke-width="4" fill="none" opacity=".75"/><path d="M30 170Q94 140 158 170L150 222Q94 208 38 222Z" fill="#35404E"/><rect x="38" y="226" width="112" height="140" rx="18" fill="#A5AEB9"/><path d="M40 370Q94 380 148 370L156 408Q94 424 32 408Z" fill="#35404E"/><path d="M50 440Q94 450 138 440" stroke="#AAB3BE" stroke-width="4" fill="none" opacity=".75"/><path d="M22 40Q34 22 58 16" stroke="#EEF2F5" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M166 40Q154 22 130 16" stroke="#EEF2F5" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M16 452Q30 476 60 482" stroke="#C0392B" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M172 452Q158 476 128 482" stroke="#C0392B" stroke-width="7" fill="none" stroke-linecap="round"/></svg>';
+const SHD_MOVE_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const SHD_ROT_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8M21 3v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const SHD_CAR_L=4.93, SHD_CAR_W=1.88;   /* فورد تورس */
+let SHD = { L:6, W:5, kind:'k0', light:false, gutter:false, fab:'hdpe', color:'beige' };
+/* القماش وألوانه: الصور من عينات القماش الحقيقية (siyanah/_tools/photos/shades) */
+const SHD_IMG='https://zulogtqxbuqxmdmjpzqj.supabase.co/storage/v1/object/public/khafet-parts/shade/';
+const SHD_FABRICS=[
+  {k:'hdpe', ar:'قماش شبك', en:'Mesh fabric', colors:[['beige','بيج','Beige'],['sand','رملي','Sand'],['cream','كريمي','Cream'],['silver','رمادي فاتح','Light gray'],['darkgray','رمادي غامق','Dark gray'],['black','أسود','Black'],['brown','بني','Brown'],['terracotta','طوبي','Terracotta'],['orange','برتقالي','Orange'],['yellow','أصفر','Yellow'],['red','أحمر','Red'],['green','أخضر غامق','Dark green'],['teal','بترولي','Petrol blue'],['blue','أزرق','Blue']]},
+  {k:'pvc',  ar:'قماش PVC', en:'PVC fabric',  colors:[['white','أبيض','White'],['cream','كريمي','Cream'],['beige','بيج','Beige'],['camel','جملي','Camel'],['silver','رمادي فاتح','Light gray'],['black','أسود','Black'],['red','أحمر','Red'],['orange','برتقالي','Orange'],['yellow','أصفر','Yellow'],['teal','فيروزي','Turquoise'],['blue','أزرق','Blue']]}
+];
+function shdFab(){ return SHD_FABRICS.find(f=>f.k===SHD.fab)||SHD_FABRICS[0]; }
+function shdColor(){ const f=shdFab(); return f.colors.find(c=>c[0]===SHD.color)||f.colors[0]; }
+function shdFabRate(k){ return k==='pvc' ? Math.max(1, stNum('shade_price_pvc_m2', 90) || 90) : Math.max(1, stNum('shade_price_m2', 70) || 70); }
+function shdRate(){ return shdFabRate(SHD.fab); }
+/* مميزات كل قماش تطلع تحت الأزرار */
+function shdPoints(k){
+  if(k==='pvc'){
+    const r=shdFabRate('pvc'), dearer=r>shdFabRate('hdpe');
+    return [
+      ['سطحه ناعم ولامع، ويتنظف بسهولة بالموية.','Smooth, glossy surface that is easy to clean with water.'],
+      ['ما يمر منه مطر ولا شمس، فيحمي تمامًا من المطر والغبار.','Neither rain nor sun gets through, so it fully protects from rain and dust.'],
+      ['أثقل وأقوى، ويبين مرتب ومشدود.','Heavier and stronger, and looks neat and taut.'],
+      [(dearer?'أغلى: ':'السعر: ')+ar(r)+' ر.س للمتر.', (dearer?'Pricier: ':'Price: ')+r+' SAR per m².'],
+      ['يناسب مظلات السيارات، وأي مكان تبي فيه حماية كاملة من المطر.','Suits car shades and anywhere you want full protection from rain.']
+    ];
+  }
+  if(k!=='hdpe') return [];
+  const r=shdFabRate('hdpe'), cheaper=r<shdFabRate('pvc');
+  return [
+    ['الهوا يمر منه، فتحته أبرد في الصيف وما يحبس الحرارة.','Air flows through it, so it stays cooler underneath in summer and does not trap heat.'],
+    ['الريح تمر منه، فالضغط على الهيكل أخف.','Wind passes through it, so there is less load on the frame.'],
+    ['المطر ينزل منه.','Rain passes through it.'],
+    [(cheaper?'أرخص: ':'السعر: ')+ar(r)+' ر.س للمتر.', (cheaper?'Cheaper: ':'Price: ')+r+' SAR per m².'],
+    (shdScreens() ? ['يناسب السواتر ومظلات الحوش والجلسات والمسابح.','Suits privacy screens, yard shades, seating areas and pools.']
+                  : ['يناسب مظلات الحوش والجلسات والمسابح.','Suits yard shades, seating areas and pools.'])
+  ];
+}
 /* الأنواع من لوحة الإدارة: سطر لكل نوع «الأيقونة|عربي|إنجليزي» */
 const SHD_KIND_DEF = '🚗|مظلة سيارات|Car shade\n🏡|مظلة حوش|Yard shade\n🏊|مظلة مسبح|Pool shade\n🧱|ساتر|Privacy screen';
+/* السواتر مقفلة لين تفتحها من لوحة المؤسسة: ⚙️ الإعدادات > المظلات والسواتر */
+function shdScreens(){ return stOn('screens_enabled', false); }
+function shdIsScreen(k){ return /ساتر/.test(k.ar||'') || /screen/i.test(k.en||''); }
 function shdKinds(){
   return String((SETTINGS['shade_kinds']||SHD_KIND_DEF)).split('\n').map(function(line,i){
     const p=String(line).split('|').map(x=>x.trim());
     if(!p.length || !(p[1]||p[0])) return null;
     return { k:'k'+i, ic:(p.length>1?p[0]:'⛱️'), ar:(p.length>1?p[1]:p[0]), en:(p[2]||p[1]||p[0]) };
-  }).filter(Boolean);
+  }).filter(Boolean).filter(k=>shdScreens() || !shdIsScreen(k));
 }
 function shdCalc(){
   const area = Math.max(0, (+SHD.L||0) * (+SHD.W||0));
@@ -3948,7 +4028,27 @@ function shdCalc(){
   const days  = Math.max(1, Math.ceil(area/25));
   return {area, rate, base, lightCost, gutterCost, total, days};
 }
-function shdSet(k,v){ SHD[k]=v; renderShades(); }
+/* سحب السيارة بالإصبع أو الماوس داخل الرسم، وضغطتين تلفّها ٩٠ درجة */
+function shdCarDrag(car, sc){
+  if(car._drag) return; car._drag=true; let st=null, lastTap=0;
+  car.addEventListener('pointerdown', function(e){ st={x:e.clientX,y:e.clientY,l:car.offsetLeft,t:car.offsetTop,id:e.pointerId,moved:false}; try{ car.setPointerCapture(e.pointerId); }catch(_){} car.classList.add('drag'); e.preventDefault(); });
+  car.addEventListener('pointermove', function(e){ if(!st||e.pointerId!==st.id) return;
+    if(Math.abs(e.clientX-st.x)+Math.abs(e.clientY-st.y)>8){ st.moved=true; SHD.carMoved=true; car.classList.add('moved'); }
+    const l=Math.max(0,Math.min(sc.clientWidth-car.offsetWidth, st.l+e.clientX-st.x)), t=Math.max(0,Math.min(154-car.offsetHeight, st.t+e.clientY-st.y));
+    car.style.left=l+'px'; car.style.top=t+'px'; const k=sc._k||1; SHD.car={x:(l-sc._bx)/k, y:(t-sc._by)/k}; });
+  const end=function(e){ if(!st) return; const tap=!st.moved && e.type==='pointerup'; st=null; car.classList.remove('drag');
+    if(!tap){ lastTap=0; return; }
+    const now=Date.now(); if(now-lastTap<400){ lastTap=0; shdCarTurn(car, sc); } else lastTap=now; };
+  car.addEventListener('pointerup', end); car.addEventListener('pointercancel', end);
+}
+/* لفّة ٩٠ درجة حول وسط السيارة: الطول والعرض يتبادلون والوسط ثابت */
+function shdCarTurn(car, sc){
+  const k=sc._k||1, fw=car.offsetWidth, fh=car.offsetHeight, mx=car.offsetLeft+fw/2, my=car.offsetTop+fh/2;
+  SHD.carRot=(SHD.carRot||0)+90; SHD.carMoved=true; car.classList.add('moved');
+  SHD.car={x:(mx-fh/2-sc._bx)/k, y:(my-fw/2-sc._by)/k};
+  shdUpdate();
+}
+function shdSet(k,v){ SHD[k]=v; if(k==='fab' && !shdFab().colors.some(c=>c[0]===SHD.color)) SHD.color=shdFab().colors[0][0]; renderShades(); }
 function shdNum(k,el){ const v=parseFloat(el.value); if(!isNaN(v)) SHD[k]=Math.max(0,v); shdUpdate(); }
 function shdTog(k){ SHD[k]=!SHD[k]; renderShades(); }
 function shdUpdate(){
@@ -3960,48 +4060,78 @@ function shdUpdate(){
   set('shdTotal', en(c.total));
   set('shdDays', en(c.days));
   const b=g('shdBox');
-  if(b){ b.style.width=Math.min(150, Math.max(60, (+SHD.L||0)*14))+"px"; b.style.height=Math.min(120, Math.max(45, (+SHD.W||0)*14))+"px"; }
+  const sc=g('shdScene'), car=g('shdCar');
+  if(b && sc && car){
+    const L=Math.max(0.5,+SHD.L||0), W=Math.max(0.5,+SHD.W||0), GAP=0.9, BASE=150;
+    const sw=Math.max(160, sc.clientWidth);
+    const k=Math.min((sw-8)/(L+GAP+SHD_CAR_W), BASE/Math.max(W,SHD_CAR_L));
+    const bw=Math.max(12,L*k), bh=Math.max(12,W*k), cw=SHD_CAR_W*k, ch=SHD_CAR_L*k;
+    const bx=(sw-(bw+GAP*k+cw))/2, by=BASE-bh;
+    b.style.left=bx+'px'; b.style.top=by+'px'; b.style.width=bw+'px'; b.style.height=bh+'px';
+    const side=((SHD.carRot||0)/90)%2===1, fw=side?ch:cw, fh=side?cw:ch;
+    car.style.width=fw+'px'; car.style.height=fh+'px';
+    const cb=g('shdCarB'); if(cb){ cb.style.width=cw+'px'; cb.style.height=ch+'px'; cb.style.transform='translate(-50%,-50%) rotate('+(SHD.carRot||0)+'deg)'; }
+    let cx=SHD.car? bx+SHD.car.x*k : bx+bw+GAP*k, cy=SHD.car? by+SHD.car.y*k : BASE-fh;
+    cx=Math.max(0,Math.min(sw-fw,cx)); cy=Math.max(0,Math.min(BASE+4-fh,cy));
+    car.style.left=cx+'px'; car.style.top=cy+'px';
+    sc._k=k; sc._bx=bx; sc._by=by;
+    shdCarDrag(car, sc);
+  }
 }
 function renderShades(){
   const E=_uiEN(), T=(a,b)=>E?b:a, c=shdCalc();
   const KL = shdKinds();
   if(!KL.some(k=>k.k===SHD.kind) && KL.length) SHD.kind=KL[0].k;
-  const kinds = KL.map(k=>`<button class="${SHD.kind===k.k?'on':''}" onclick="shdSet('kind','${k.k}')">${k.ic} ${E?k.en:k.ar}</button>`).join('');
+  const kinds = KL.map(k=>`<button class="${SHD.kind===k.k?'on':''}" onclick="shdSet('kind','${k.k}')">${E?k.en:k.ar}</button>`).join('');
+  const FB=shdFab(), CL=shdColor();
+  const fabs = SHD_FABRICS.map(f=>`<button class="${SHD.fab===f.k?'on':''}" onclick="shdSet('fab','${f.k}')">${E?f.en:f.ar}<small>${T(ar(shdFabRate(f.k))+' ر.س للمتر', shdFabRate(f.k)+' SAR per m²')}</small></button>`).join('');
+  const sws = FB.colors.map(c=>`<button type="button" class="shd-sw ${CL[0]===c[0]?'on':''}" style="background-image:url('${SHD_IMG}${FB.k}/${c[0]}.jpg')" onclick="shdSet('color','${c[0]}')" aria-label="${E?c[2]:c[1]}" title="${E?c[2]:c[1]}"></button>`).join('');
   document.getElementById('app').innerHTML=`
   <div class="wrap screen">
-    ${pageHead(T('مظلات وسواتر','Shades & screens'),'home')}
+    ${pageHead(shdScreens()?T('مظلات وسواتر','Shades & screens'):T('مظلات','Shades'),'home')}
 
     <div class="mj-hero">
-      <h3>⛱️ ${T('احسب مظلتك','Size your shade')}</h3>
+      <h3>${T('احسب مظلتك','Size your shade')}</h3>
       <p>${T('حدّد المقاس والنوع ويطلع لك السعر فورًا.','Set the size and type and the price shows instantly.')}</p>
-      <p style="margin-top:6px;font-weight:800">🛡️ ${T('ضمان '+ar(stNum('shade_warranty_years',5))+' سنوات', stNum('shade_warranty_years',5)+'-year warranty')}</p>
+      <p style="margin-top:6px;font-weight:800">${T('ضمان '+ar(stNum('shade_warranty_years',5))+' سنوات', stNum('shade_warranty_years',5)+'-year warranty')}</p>
     </div>
 
     <div class="mj-card">
-      <h4>📐 ${T('المقاس','Dimensions')}</h4>
+      <h4>${T('المقاس','Dimensions')}</h4>
       <div class="mj-row">
         <div class="mj-f"><label>${T('الطول (م)','Length (m)')}</label>
           <input type="number" min="1" max="60" step="0.5" value="${SHD.L}" oninput="shdNum('L',this)"></div>
         <div class="mj-f"><label>${T('العرض (م)','Width (m)')}</label>
           <input type="number" min="1" max="60" step="0.5" value="${SHD.W}" oninput="shdNum('W',this)"></div>
       </div>
-      <div class="mj-vis"><div class="box" id="shdBox"></div>
+      <div class="mj-vis"><div class="shd-scene" id="shdScene"><div class="box" id="shdBox"></div><div class="shd-car${SHD.carMoved?' moved':''}" id="shdCar" role="img" aria-label="${T('فورد تورس','Ford Taurus')}"><div class="shd-car-b" id="shdCarB" style="transform:translate(-50%,-50%) rotate(${SHD.carRot||0}deg)">${SHD_CAR_SVG}</div><span><i>${SHD_MOVE_SVG}${T('اسحب السيارة','Drag the car')}</i><i>${SHD_ROT_SVG}${T('ضغطتين تلفّها','Double-tap to rotate')}</i></span></div></div>
         <div class="dim">${T('المساحة','Area')}: <b class="num" id="shdArea">${en(Math.round(c.area))}</b> ${T('م²','m²')}</div></div>
     </div>
 
     <div class="mj-card">
-      <h4>⛱️ ${T('نوع المظلة','Shade type')}</h4>
+      <h4>${T('نوع المظلة','Shade type')}</h4>
       <div class="mj-opts">${kinds}</div>
+    </div>
+
+    <div class="mj-card">
+      <h4>${T('نوع القماش','Fabric')}</h4>
+      <div class="mj-opts">${fabs}</div>
+      ${(()=>{ const P=shdPoints(FB.k); return P.length?`<ul class="shd-pts">${P.map(p=>`<li>${E?p[1]:p[0]}</li>`).join('')}</ul>`:''; })()}
+    </div>
+
+    <div class="mj-card">
+      <h4>${T('اللون','Color')}: <span class="shd-cname">${E?CL[2]:CL[1]}</span></h4>
+      <div class="shd-sws">${sws}</div>
     </div>
 
     <div class="mj-sum">
       <div class="l"><span>${T('المظلة','Shade')} (<b class="num" id="shdArea2">${en(Math.round(c.area))}</b> ${T('م²','m²')} × <b class="num" id="shdRate">${en(c.rate)}</b>)</span><b class="num" id="shdBase">${en(Math.round(c.base))}</b></div>
       <div class="mj-total"><span>${T('التكلفة التقديرية','Estimated total')}</span><b><span class="num" id="shdTotal">${en(c.total)}</span> ${T('ر.س','SAR')}</b></div>
-      <div class="mj-note">⏱ ${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="shdDays">${en(c.days)}</b> ${T('أيام','days')}<br>
+      <div class="mj-note">${T('مدة التنفيذ التقديرية','Estimated duration')}: <b class="num" id="shdDays">${en(c.days)}</b> ${T('أيام','days')}<br>
         ${T('السعر تقديري ويُعتمد بعد المعاينة المجانية.','Estimate only · confirmed after the free site visit.')}</div>
     </div>
 
-    <button class="cta gold" style="margin-top:12px" onclick="shdBook()">📋 ${T('احجز معاينة مجانية','Book a free site visit')}</button>
+    <button class="cta gold" style="margin-top:12px" onclick="shdBook()">${T('احجز معاينة مجانية','Book a free site visit')}</button>
     <div style="height:24px"></div>
   </div>`;
   shdUpdate();
@@ -4010,6 +4140,7 @@ function shdBook(){
   const c=shdCalc();
   const kind=(shdKinds().find(k=>k.k===SHD.kind)||{}).ar||'مظلة';
   const note='طلب '+kind+' · '+SHD.L+'×'+SHD.W+' م ('+Math.round(c.area)+' م²)'
+    +' · '+shdFab().ar+' · لون '+shdColor()[1]
     +(SHD.light?' · إنارة LED':'')+(SHD.gutter?' · مزراب':'')
     +' · التقدير '+c.total+' ريال · ضمان '+stNum('shade_warranty_years',5)+' سنوات';
   state.quickNote = note;
@@ -4270,7 +4401,7 @@ function renderHome(){
       <div class="maint">
         <div class="mt-head">${LX('صيانة','Maintenance')}</div>
         <div class="mt-grid">
-          ${homeCats().map(k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')"><span class="mt-ic">${catIcon(k,30)}</span><b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`).join('')}
+          ${homeCats().map(k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')">${catTileIc(k)}<b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`).join('')}
         </div>
       </div>
       </div>
@@ -4302,7 +4433,7 @@ function renderHome(){
 
       ${stOn('shades_enabled',true)?`<button class="services-btn" onclick="go('shades')">
         <span class="sb-ic" style="color:var(--gold-deep)">⛱️</span>
-        <span class="sb-t"><b>${LX('مظلات وسواتر','Shades & screens')}</b><small>${LX('حدّد الأمتار والنوع ويطلع السعر فورًا','Set the size and type, price shows instantly')}</small></span>
+        <span class="sb-t"><b>${shdScreens()?LX('مظلات وسواتر','Shades & screens'):LX('مظلات','Shades')}</b><small>${LX('حدّد الأمتار والنوع ويطلع السعر فورًا','Set the size and type, price shows instantly')}</small></span>
         <span class="sb-go">${icon('chev',18)}</span>
       </button>`:''}
       ${stOn('majlis_enabled',true)?`<button class="services-btn" onclick="go('majlis')">
@@ -4388,7 +4519,7 @@ function renderPrices(){
   const n=cartCount();
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info nb-sum"><div><span>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة التقريبية','Estimated time')}</span><b>${fmtDuration(cartDuration())}</b></div></div>
+      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(n)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="goTimeChecked()">التالي <span>←</span></button>
     </div></div>` : '';
   document.getElementById('app').innerHTML=`
@@ -4531,6 +4662,8 @@ const CAT_IC={
   gen:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
   majlis:'<path d="M3 11 12 4l9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/><path d="M5 14h14"/><path d="M5 17h14"/>',
 };
+/* صورة القسم في مربع الرئيسية إن وُجدت، وإلا الأيقونة */
+function catTileIc(k){ const c=CATS[k]||{}; const u=c.img?safeUrl(c.img,''):''; return u ? `<span class="mt-ic mt-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(c.name||'')}"></span>` : `<span class="mt-ic">${catIcon(k,30)}</span>`; }
 /* صورة الخدمة الحقيقية إن وُجدت، وإلا الإيموجي */
 function svcIc(s){ const u=(s&&s.img)?safeUrl(s.img,''):''; return u ? `<span class="srow-ic srow-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(s.name||'')}"></span>` : `<span class="srow-ic">${(s&&s.ico)||'🔧'}</span>`; }
 function catIcon(k,s){
@@ -4581,14 +4714,14 @@ function renderPick(){
     const q=state.cart[s.id]||0;
     return `<div role="button" tabindex="0" class="srow ${sel?'sel':''}" onclick="pickRowTap('${aid(s.id)}')">
       ${svcIc(s)}
-      <span class="srow-t"><b>${esc(s.name)}</b><span class="sv-meta"><em class="sv-price">${s.custom?LX('بعد المعاينة','After inspection'):money(s.price)}</em><em class="sv-time">⏱ ${fmtDuration(s.dur)}</em>${(q>1&&!s.custom)?`<em class="sv-tot">${ar(q)} × = ${money(s.price*q)}</em>`:''}</span></span>
-      ${sel&&!s.custom?`<span class="srow-qty" onclick="event.stopPropagation()"><button type="button" onclick="setQty('${aid(s.id)}',-1)" aria-label="أقل">−</button><b>${ar(q)}</b><button type="button" onclick="setQty('${aid(s.id)}',1)" aria-label="أكثر">+</button></span>`:`<span class="srow-ck">${sel?'✓':''}</span>`}
+      <span class="srow-t"><b>${esc(s.name)}</b><span class="sv-meta"><em class="sv-price">${s.custom?LX('بعد المعاينة','After inspection'):money(s.price)}</em><em class="sv-time">⏱ ${fmtDuration(s.dur)}</em></span>${sel&&!s.custom?`<span class="srow-qty" onclick="event.stopPropagation()"><button type="button" onclick="setQty('${aid(s.id)}',-1)" aria-label="أقل">−</button><b>${ar(q)}</b><button type="button" onclick="setQty('${aid(s.id)}',1)" aria-label="أكثر">+</button></span>`:''}</span>
+      <span class="srow-ck">${sel?'✓':''}</span>
     </div>`;
   }).join('');
   const n=cartCount();
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info nb-sum"><div><span>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة التقريبية','Estimated time')}</span><b>${fmtDuration(cartDuration())}</b></div></div>
+      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(n)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="goTimeChecked()">التالي <span>←</span></button>
     </div></div>` : '';
 
@@ -4596,7 +4729,6 @@ function renderPick(){
     <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead(catIcon(currentCat,22)+' '+CATS[currentCat].name,'home')}
       ${stepBar(1)}
-      <p style="text-align:center;color:var(--muted);font-size:.9rem;margin-top:6px">اختر اللي تحتاجه · تقدر تختار أكثر من خدمة</p>
       <div class="srows">${rows}</div>
       <a class="addmore" onclick="go('home')">＋ أضف من قسم آخر</a>
     </div>
@@ -4615,8 +4747,7 @@ function renderCart(){
   const n=cartCount();
   const rows=items.map(i=>`<div class="srow sel" style="cursor:default">
       ${svcIc(i)}
-      <span class="srow-t"><b>${esc(svcName(i, _uiEN()?'en':'ar'))}</b><span class="sv-meta"><em class="sv-price">${i.custom?LX('بعد المعاينة','After inspection'):money(i.price*i.qty)}</em><em class="sv-time">⏱ ${fmtDuration(i.dur*i.qty)}</em></span></span>
-      <span class="srow-qty"><button type="button" onclick="setQty('${aid(i.id)}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${aid(i.id)}',1)" aria-label="أكثر">+</button></span>
+      <span class="srow-t"><b>${esc(svcName(i, _uiEN()?'en':'ar'))}</b><span class="sv-meta"><em class="sv-price">${i.custom?LX('بعد المعاينة','After inspection'):money(i.price*i.qty)}</em><em class="sv-time">⏱ ${fmtDuration(i.dur*i.qty)}</em></span><span class="srow-qty"><button type="button" onclick="setQty('${aid(i.id)}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${aid(i.id)}',1)" aria-label="أكثر">+</button></span></span>
     </div>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen" style="padding-bottom:170px">
@@ -4625,7 +4756,7 @@ function renderCart(){
       <a class="addmore" onclick="go('home')">＋ ${LX('أضف خدمة ثانية','Add another service')}</a>
     </div>
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info nb-sum"><div><span>${LX(ar(n)+' '+(n===1?'خدمة':'خدمات'), n+' '+(n===1?'service':'services'))}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة التقريبية','Estimated time')}</span><b>${fmtDuration(cartDuration())}</b></div></div>
+      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(n)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="goTimeChecked()">${LX('التالي','Next')} <span>←</span></button>
     </div></div>`;
 }
