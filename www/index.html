@@ -1273,8 +1273,14 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .srow:active{transform:scale(.98)}
 .srow.sel{background:var(--card);box-shadow:inset 0 0 0 2.5px var(--c-1),var(--shadow-sm)}
 .srow .srow-ic{border-radius:16px;background:var(--gold-soft)}
-.srow .srow-img{width:100px;height:100px;border-radius:20px;background-color:var(--group);background-size:cover;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(58,48,41,.06)}
+.srow .srow-img{width:124px;height:124px;border-radius:22px;background-color:var(--group);background-size:125%;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(58,48,41,.06)}
 .srow .srow-t b{font-family:var(--f-head)}
+/* الصف اللي فيه صورة: الصورة لين حواف الكرت فوق ويمين وتحت، ومقرّبة 20% من المنتصف */
+.srow.has-img{padding:0;padding-inline-end:14px;gap:14px;align-items:stretch;overflow:hidden}
+.srow.has-img .srow-img{position:relative;overflow:hidden;width:132px;height:auto;min-height:148px;align-self:stretch;border-radius:0;box-shadow:none;background-size:cover}
+.srow.has-img .srow-img::before{content:"";position:absolute;inset:0;background-image:inherit;background-size:cover;background-position:center;transform:scale(1.25)}
+.srow.has-img .srow-t{padding:14px 0;align-self:center}
+.srow.has-img .srow-ck{align-self:center}
 .srow.sel .srow-ck{background:var(--c-1);border-color:var(--c-1);color:#fff}
 .srow-qty{display:inline-flex;align-items:center;gap:2px;background:var(--group);border-radius:999px;padding:4px;flex:none}
 .srow-qty button{width:38px;height:38px;border-radius:50%;background:#fff;font-size:1.35rem;font-weight:800;line-height:1;color:var(--ink);display:grid;place-items:center;transition:transform .2s var(--spring)}
@@ -1826,7 +1832,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=134;
+const APP_BUILD=135;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -4665,6 +4671,7 @@ const CAT_IC={
 /* صورة القسم في مربع الرئيسية إن وُجدت، وإلا الأيقونة */
 function catTileIc(k){ const c=CATS[k]||{}; const u=c.img?safeUrl(c.img,''):''; return u ? `<span class="mt-ic mt-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(c.name||'')}"></span>` : `<span class="mt-ic">${catIcon(k,30)}</span>`; }
 /* صورة الخدمة الحقيقية إن وُجدت، وإلا الإيموجي */
+function svcImgOn(s){ return !!((s&&s.img)?safeUrl(s.img,''):''); }
 function svcIc(s){ const u=(s&&s.img)?safeUrl(s.img,''):''; return u ? `<span class="srow-ic srow-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(s.name||'')}"></span>` : `<span class="srow-ic">${(s&&s.ico)||'🔧'}</span>`; }
 function catIcon(k,s){
   const p=CAT_IC[k];
@@ -4712,7 +4719,7 @@ function renderPick(){
   const rows=list.map(s=>{
     const sel=!!state.cart[s.id];
     const q=state.cart[s.id]||0;
-    return `<div role="button" tabindex="0" class="srow ${sel?'sel':''}" onclick="pickRowTap('${aid(s.id)}')">
+    return `<div role="button" tabindex="0" class="srow ${sel?'sel':''} ${svcImgOn(s)?'has-img':''}" onclick="pickRowTap('${aid(s.id)}')">
       ${svcIc(s)}
       <span class="srow-t"><b>${esc(s.name)}</b><span class="sv-meta"><em class="sv-price">${s.custom?LX('بعد المعاينة','After inspection'):money(s.price)}</em><em class="sv-time">⏱ ${fmtDuration(s.dur)}</em></span>${sel&&!s.custom?`<span class="srow-qty" onclick="event.stopPropagation()"><button type="button" onclick="setQty('${aid(s.id)}',-1)" aria-label="أقل">−</button><b>${ar(q)}</b><button type="button" onclick="setQty('${aid(s.id)}',1)" aria-label="أكثر">+</button></span>`:''}</span>
       <span class="srow-ck">${sel?'✓':''}</span>
@@ -4745,7 +4752,7 @@ function renderCart(){
   const items=cartItems();
   if(!items.length){ go('home'); return; }
   const n=cartCount();
-  const rows=items.map(i=>`<div class="srow sel" style="cursor:default">
+  const rows=items.map(i=>`<div class="srow sel ${svcImgOn(i)?'has-img':''}" style="cursor:default">
       ${svcIc(i)}
       <span class="srow-t"><b>${esc(svcName(i, _uiEN()?'en':'ar'))}</b><span class="sv-meta"><em class="sv-price">${i.custom?LX('بعد المعاينة','After inspection'):money(i.price*i.qty)}</em><em class="sv-time">⏱ ${fmtDuration(i.dur*i.qty)}</em></span><span class="srow-qty"><button type="button" onclick="setQty('${aid(i.id)}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${aid(i.id)}',1)" aria-label="أكثر">+</button></span></span>
     </div>`).join('');
