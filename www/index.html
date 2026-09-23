@@ -5,7 +5,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>خافِت | صيانة منزلية شاملة</title>
-<meta name="description" content="خافِت · منصة صيانة منزلية شاملة: سباكة، كهرباء، تكييف، نجارة، دهان، أجهزة وتنظيف. احجز فني موثوق في الوقت المناسب لك." />
+<meta name="description" content="خافِت · منصة صيانة منزلية شاملة: سباكة، كهرباء، تكييف، أبواب، دهان، أجهزة وتنظيف. احجز فني موثوق في الوقت المناسب لك." />
 <link rel="icon" href="logo.png" />
 <meta name="theme-color" content="#F5C518" />
 <!-- سياسة أمان المحتوى: أي سكربت أو اتصال خارج هذي القائمة يُمنع من المتصفح نفسه -->
@@ -1253,6 +1253,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .srow:active{transform:scale(.98)}
 .srow.sel{background:var(--card);box-shadow:inset 0 0 0 2.5px var(--c-1),var(--shadow-sm)}
 .srow .srow-ic{border-radius:16px;background:var(--gold-soft)}
+.srow .srow-img{width:80px;height:80px;border-radius:18px;background-color:var(--group);background-size:cover;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(58,48,41,.06)}
 .srow .srow-t b{font-family:var(--f-head)}
 .srow.sel .srow-ck{background:var(--c-1);border-color:var(--c-1);color:#fff}
 .srow-qty{display:inline-flex;align-items:center;gap:2px;background:var(--group);border-radius:999px;padding:4px;flex:none}
@@ -1799,7 +1800,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=131;
+const APP_BUILD=132;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -1814,7 +1815,7 @@ const CATS = {
   plumb: {name:'سباكة',        ico:'🔧'},
   elec:  {name:'كهرباء',       ico:'⚡'},
   ac:    {name:'تكييف وتبريد',  ico:'❄️'},
-  carp:  {name:'نجارة',        ico:'🪚'},
+  carp:  {name:'أبواب',        ico:'🚪'},
   paint: {name:'دهان',         ico:'🎨'},
   appl:  {name:'أجهزة منزلية',  ico:'🔌'},
   clean: {name:'تنظيف',        ico:'🧽'},
@@ -1837,10 +1838,10 @@ const SERVICES = [
   {id:'e6', cat:'elec',  ico:'🧰', name:'فحص لوحة الكهرباء',   desc:'فحص الطبلون والقواطع والأحمال.',          dur:45, price:130},
   {id:'ac1',cat:'ac',    ico:'❄️', name:'تنظيف مكيف سبليت',    desc:'غسيل وتنظيف الوحدة الداخلية والخارجية · للمكيف الواحد.', dur:45, price:45, quick:true},
   {id:'ac2',cat:'ac',    ico:'🌀', name:'تعبئة فريون',         desc:'شحن غاز الفريون وفحص التبريد.',           dur:60, price:200, quick:true},
-  {id:'c1', cat:'carp',  ico:'🚪', name:'إصلاح باب/مفصلات',    desc:'ضبط أو تغيير مفصلات وأقفال الأبواب.',     dur:45, price:120, quick:true},
-  {id:'c2', cat:'carp',  ico:'🗄️', name:'إصلاح دولاب/مطبخ',    desc:'إصلاح أدراج وأبواب الدواليب والمطبخ.',    dur:60, price:150},
-  {id:'c3', cat:'carp',  ico:'🪟', name:'إصلاح نافذة/شيش',     desc:'إصلاح نوافذ أو شيش حديد/خشب.',            dur:45, price:130},
-  {id:'c4', cat:'carp',  ico:'🛏️', name:'تركيب/تجميع أثاث',    desc:'تجميع وتركيب الأثاث الجاهز.',             dur:60, price:140, quick:true},
+  {id:'c1', cat:'carp',  ico:'🚪', name:'إصلاح باب أو تغيير مفصلات', desc:'ضبط أو تغيير مفصلات وأقفال الأبواب.',     dur:45, price:120, quick:true},
+  {id:'c2', cat:'gen',   ico:'🗄️', name:'إصلاح دولاب/مطبخ',    desc:'إصلاح أدراج وأبواب الدواليب والمطبخ.',    dur:60, price:150},
+  {id:'c3', cat:'carp',  hidden:true, ico:'🪟', name:'إصلاح شباك أو شيش',   desc:'إصلاح نوافذ أو شيش حديد/خشب.',            dur:45, price:130},
+  {id:'c4', cat:'gen',   ico:'🛏️', name:'تركيب/تجميع أثاث',    desc:'تجميع وتركيب الأثاث الجاهز.',             dur:60, price:140, quick:true},
   {id:'pt1',cat:'paint', ico:'🎨', name:'دهان غرفة',           desc:'دهان غرفة كاملة شامل التجهيز.',           dur:180,price:400},
   {id:'pt2',cat:'paint', ico:'🖌️', name:'ترميم وتلميس دهان',   desc:'معالجة خدوش وتلميس مناطق محددة.',         dur:90, price:200, quick:true},
   {id:'pt3',cat:'paint', ico:'🧱', name:'معالجة تشققات ورطوبة',desc:'إصلاح الشقوق وعزل الرطوبة قبل الدهان.',   dur:120,price:300},
@@ -2043,7 +2044,7 @@ function applyCatalog(cats, svcs){
   CAT_FEATURED=activeCats.filter(c=>c.featured).map(c=>c.id);
   // الخدمات المخفية (مثل خدمات صفحة الحلول) تبقى قابلة للحجز حتى لو قسمها مخفي، لكنها لا تظهر في القوائم
   const list=svcs.filter(s=>s&&s.id&&s.active!==false&&(CATS[s.cat_id]||s.hidden)).sort((a,b)=>(+a.sort||0)-(+b.sort||0))
-    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, hidden:!!s.hidden||!CATS[s.cat_id]||CATS[s.cat_id].soon, name_en:s.name_en||'', extra:(s.extra_price==null||s.custom)?null:+s.extra_price, extraDur:s.extra_duration==null?null:+s.extra_duration}));
+    .map(s=>({id:s.id, cat:s.cat_id, ico:s.icon||'🔧', name:s.name, desc:s.description||'', dur:+s.duration||0, price:s.custom?0:(+s.price||0), quick:!!s.quick, custom:!!s.custom, hidden:!!s.hidden||!CATS[s.cat_id]||CATS[s.cat_id].soon, name_en:s.name_en||'', img:s.image_url||'', extra:(s.extra_price==null||s.custom)?null:+s.extra_price, extraDur:s.extra_duration==null?null:+s.extra_duration}));
   SERVICES.length=0; list.forEach(s=>SERVICES.push(s));
   try{ if(typeof T_DICT_N!=='undefined'){ activeCats.forEach(c=>{ if(c.name_en) T_DICT_N[_west(c.name).trim()]=c.name_en; }); list.forEach(s=>{ if(s.name_en) T_DICT_N[_west(s.name).trim()]=s.name_en; }); } }catch(e){}
   try{ Object.keys((state&&state.cart)||{}).forEach(id=>{ if(!svc(id)) delete state.cart[id]; }); }catch(e){}
@@ -4523,13 +4524,15 @@ const CAT_IC={
   plumb:'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
   elec:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
   ac:'<line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
-  carp:'<path d="m15 12-8.5 8.5a2.12 2.12 0 1 1-3-3L12 9"/><path d="M17.64 15 22 10.64"/><path d="m20.91 11.7-1.25-1.25c-.6-.6-.93-1.4-.93-2.25v-.86L16.01 4.6a5.56 5.56 0 0 0-3.94-1.64H9l.92.82A6.18 6.18 0 0 1 12 8.4v1.56l2 2h2.47l2.26 1.91"/>',
+  carp:'<path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"/><path d="M2 20h20"/><path d="M14 12v.01"/>',
   paint:'<rect x="2" y="3" width="16" height="6" rx="2"/><path d="M18 6h1a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-7a2 2 0 0 0-2 2v1"/><rect x="9" y="17" width="2" height="5" rx="1"/>',
   appl:'<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8z"/>',
   clean:'<path d="M9.9 2.6 11.2 6a1 1 0 0 0 .6.6l3.4 1.3a1 1 0 0 1 0 1.9L11.8 11a1 1 0 0 0-.6.6l-1.3 3.4a1 1 0 0 1-1.9 0L6.7 11.6a1 1 0 0 0-.6-.6L2.7 9.7a1 1 0 0 1 0-1.9L6.1 6.6a1 1 0 0 0 .6-.6l1.3-3.4a1 1 0 0 1 1.9 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
   gen:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
   majlis:'<path d="M3 11 12 4l9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/><path d="M5 14h14"/><path d="M5 17h14"/>',
 };
+/* صورة الخدمة الحقيقية إن وُجدت، وإلا الإيموجي */
+function svcIc(s){ const u=(s&&s.img)?safeUrl(s.img,''):''; return u ? `<span class="srow-ic srow-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(s.name||'')}"></span>` : `<span class="srow-ic">${(s&&s.ico)||'🔧'}</span>`; }
 function catIcon(k,s){
   const p=CAT_IC[k];
   if(!p) return (CATS[k]&&CATS[k].ico)||'';
@@ -4577,7 +4580,7 @@ function renderPick(){
     const sel=!!state.cart[s.id];
     const q=state.cart[s.id]||0;
     return `<div role="button" tabindex="0" class="srow ${sel?'sel':''}" onclick="pickRowTap('${aid(s.id)}')">
-      <span class="srow-ic">${s.ico}</span>
+      ${svcIc(s)}
       <span class="srow-t"><b>${esc(s.name)}</b><span class="sv-meta"><em class="sv-price">${s.custom?LX('بعد المعاينة','After inspection'):money(s.price)}</em><em class="sv-time">⏱ ${fmtDuration(s.dur)}</em>${(q>1&&!s.custom)?`<em class="sv-tot">${ar(q)} × = ${money(s.price*q)}</em>`:''}</span></span>
       ${sel&&!s.custom?`<span class="srow-qty" onclick="event.stopPropagation()"><button type="button" onclick="setQty('${aid(s.id)}',-1)" aria-label="أقل">−</button><b>${ar(q)}</b><button type="button" onclick="setQty('${aid(s.id)}',1)" aria-label="أكثر">+</button></span>`:`<span class="srow-ck">${sel?'✓':''}</span>`}
     </div>`;
@@ -4611,7 +4614,7 @@ function renderCart(){
   if(!items.length){ go('home'); return; }
   const n=cartCount();
   const rows=items.map(i=>`<div class="srow sel" style="cursor:default">
-      <span class="srow-ic">${i.ico}</span>
+      ${svcIc(i)}
       <span class="srow-t"><b>${esc(svcName(i, _uiEN()?'en':'ar'))}</b><span class="sv-meta"><em class="sv-price">${i.custom?LX('بعد المعاينة','After inspection'):money(i.price*i.qty)}</em><em class="sv-time">⏱ ${fmtDuration(i.dur*i.qty)}</em></span></span>
       <span class="srow-qty"><button type="button" onclick="setQty('${aid(i.id)}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${aid(i.id)}',1)" aria-label="أكثر">+</button></span>
     </div>`).join('');
@@ -5669,7 +5672,7 @@ const T_DICT = {
   "🛠️ نوع الخدمات":"🛠️ Service type","اختر نوع الخدمات":"Choose a service type","نوع الخدمات":"Service type",
   "اختر النوع، وبعدها الخدمة اللي تحتاجها.":"Choose the type, then the service you need.","اختر اللي تحتاجه · تقدر تختار أكثر من خدمة":"Pick what you need · you can choose more than one service",
   "اختر الخدمة اللي تحتاجها · أسعار تقديرية تتأكد بعد المعاينة.":"Choose the service you need · prices are estimates and may vary after inspection.",
-  "سباكة":"Plumbing","كهرباء":"Electrical","تكييف وتبريد":"AC & Cooling","نجارة":"Carpentry","دهان":"Painting","تنظيف":"Cleaning","أعمال عامة":"General work","أجهزة منزلية":"Home appliances",
+  "سباكة":"Plumbing","كهرباء":"Electrical","تكييف وتبريد":"AC & Cooling","نجارة":"Carpentry","أبواب ونوافذ":"Doors & windows","أبواب":"Doors","دهان":"Painting","تنظيف":"Cleaning","أعمال عامة":"General work","أجهزة منزلية":"Home appliances",
   // خدمات مفردة
   "تغيير شطّاف":"Change bidet sprayer","تسليك مجاري/بالوعة":"Unclog drain / sewer","تغيير خلاط ماء":"Change water mixer","إصلاح تسريب مياه":"Fix water leak",
   "تركيب/إصلاح سخان":"Install / repair water heater","إصلاح سيفون الحمام":"Fix toilet flush","تنظيف خزان المياه":"Clean water tank",
