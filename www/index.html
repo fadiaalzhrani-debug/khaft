@@ -1123,6 +1123,15 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 /* بلاطات الأقسام الملوّنة */
 .maint .mt-head{font-size:1.05rem;color:var(--muted);font-weight:700;margin:6px 4px 14px}
 .maint .mt-grid{grid-template-columns:repeat(4,1fr);gap:10px}
+.hsearch{position:relative;margin:14px 0 6px}
+.hsearch input{width:100%;padding:13px 46px 13px 14px;border-radius:16px;border:1.5px solid var(--line);background:var(--card);font:inherit;font-size:1rem;font-weight:700;color:var(--ink);box-shadow:var(--shadow-sm)}
+.hsearch input::placeholder{color:var(--muted);font-weight:600}
+.hsearch svg{position:absolute;inset-inline-start:15px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted);pointer-events:none}
+.hs-res{margin-top:10px}
+.hs-res .srow{cursor:pointer}
+.hs-res .hs-cat{background:var(--group);color:var(--ink-soft)}
+.hs-empty{text-align:center;color:var(--muted);font-weight:700;padding:22px 10px}
+.hs-empty .cta{margin-top:12px}
 .maint .mt-tile{background:none;border:0;box-shadow:none;padding:0;min-height:0;gap:10px;justify-content:flex-start;transition:transform .28s var(--spring)}
 .maint .mt-tile:hover{transform:none;border-color:transparent}
 .maint .mt-tile:active{transform:scale(.92)}
@@ -1841,7 +1850,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=136;
+const APP_BUILD=137;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -4412,6 +4421,17 @@ function icon(n,s){ return `<svg style="width:${s||22}px;height:${s||22}px" view
 /* أيقونة الهدية في كوبون الولاء · تُستعمل في الرئيسية وفي خطوة الدفع */
 const GIFT_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/></svg>';
 /* ---------- الرئيسية: زرّان · طلب سريع / باقي الخدمات ---------- */
+/* بحث الخدمات في الرئيسية: من كل الأقسام المفتوحة */
+let homeQ='';
+function _nrm(t){ return String(t||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim(); }
+function homeSearchList(q){ const n=_nrm(q); if(n.length<2) return []; return SERVICES.filter(x=>!x.hidden && CATS[x.cat] && !catSoon(x.cat) && (_nrm(x.name).includes(n) || _nrm(x.name_en).includes(n) || _nrm(x.desc).includes(n) || _nrm(CATS[x.cat].name).includes(n))).slice(0,30); }
+function homeSearchHtml(q){
+  const L=homeSearchList(q);
+  if(!L.length) return `<div class="hs-empty">${LX('ما لقينا خدمة بهذا الاسم','No service matches')}${quickEnabled()?`<br><button class="cta gold" onclick="startQuick()">${LX('اطلب معاينة سريعة','Book a quick visit')}</button>`:''}</div>`;
+  return L.map(x=>`<div role="button" tabindex="0" class="srow ${svcImgOn(x)?'has-img':''}" onclick="homePick('${aid(x.id)}')">${svcIc(x)}<span class="srow-t"><b>${esc(x.name)}</b><span class="sv-meta"><em class="sv-price">${x.custom?LX('بعد المعاينة','After inspection'):money(x.price)}</em><em class="hs-cat">${esc(CATS[x.cat].name)}</em></span></span></div>`).join('');
+}
+function homeSearch(v){ homeQ=String(v||''); const r=document.getElementById('hsRes'), b=document.getElementById('homeBand'); const on=homeQ.trim().length>=2; if(r) r.innerHTML=on?homeSearchHtml(homeQ):''; if(b) b.hidden=on; }
+function homePick(id){ const x=svc(id); if(!x) return; homeQ=''; openCat(x.cat); if(!state.cart[id]) toggleService(id); }
 function renderHome(){
   const L=myLoyalty();
   const dots=Array.from({length:LOYALTY_TARGET},(_,i)=>`<i class="${i<L.progress?'on':''}"></i>`).join('');
@@ -4446,7 +4466,9 @@ function renderHome(){
     </div>
 
     <div class="wrap screen">
-      <div class="band">
+      <div class="hsearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="hSearch" type="search" autocomplete="off" enterkeyhint="search" placeholder="${LX('ابحث عن خدمة: تسريب، مكيف، لمبة…','Search a service: leak, AC, bulb…')}" value="${esc(homeQ)}" oninput="homeSearch(this.value)"></div>
+      <div id="hsRes" class="hs-res">${homeQ.trim().length>=2?homeSearchHtml(homeQ):''}</div>
+      <div class="band" id="homeBand" ${homeQ.trim().length>=2?'hidden':''}>
       ${launchPromoHtml()}
       <div class="maint">
         <div class="mt-head">${LX('صيانة','Maintenance')}</div>
