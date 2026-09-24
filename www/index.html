@@ -9,7 +9,7 @@
 <link rel="icon" href="logo.png" />
 <meta name="theme-color" content="#F5C518" />
 <!-- سياسة أمان المحتوى: أي سكربت أو اتصال خارج هذي القائمة يُمنع من المتصفح نفسه -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://zulogtqxbuqxmdmjpzqj.supabase.co; connect-src 'self' https://zulogtqxbuqxmdmjpzqj.supabase.co wss://zulogtqxbuqxmdmjpzqj.supabase.co https://api.moyasar.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; frame-src 'self' https://api.moyasar.com https://*.moyasar.com https://*.tamara.co; form-action 'self' https://api.moyasar.com" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/ https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com/leaflet@1.9.4/; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://zulogtqxbuqxmdmjpzqj.supabase.co; connect-src 'self' https://zulogtqxbuqxmdmjpzqj.supabase.co wss://zulogtqxbuqxmdmjpzqj.supabase.co https://api.moyasar.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; frame-src 'self' https://api.moyasar.com https://*.moyasar.com https://*.tamara.co; form-action 'self' https://api.moyasar.com" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
@@ -862,7 +862,8 @@
   .sol-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.sol-chips span{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:.8rem;color:var(--muted)}
   .sol-bar{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;align-items:center;gap:12px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(0,0,0,.08)}
   .sol-bar-p{display:flex;flex-direction:column;line-height:1.2;min-width:90px}.sol-bar-p small{color:var(--muted);font-size:.72rem}.sol-bar-p b{font-size:1.15rem}
-  .sol-bar-btn{flex:1;margin:0!important;padding:14px 12px!important}
+  .sol-bar .sol-bar-btn{flex:1}
+.sol-bar-btn{flex:1;margin:0!important;padding:14px 12px!important}
   .sol-btn .sb-ic{background:var(--gold-tint)}
   .tip-card{width:100%;display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px;cursor:pointer;text-align:right;transition:.15s}
   .tip-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:var(--shadow-sm)}
@@ -1276,11 +1277,16 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .srow .srow-img{width:124px;height:124px;border-radius:22px;background-color:var(--group);background-size:125%;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(58,48,41,.06)}
 .srow .srow-t b{font-family:var(--f-head)}
 /* الصف اللي فيه صورة: الصورة لين حواف الكرت فوق ويمين وتحت، ومقرّبة 20% من المنتصف */
-.srow.has-img{padding:0;padding-inline-end:14px;gap:14px;align-items:stretch;overflow:hidden}
-.srow.has-img .srow-img{position:relative;overflow:hidden;width:132px;height:auto;min-height:148px;align-self:stretch;border-radius:0;box-shadow:none;background-size:cover}
+.srow.has-img{position:relative;padding:0;padding-inline-end:14px;gap:14px;align-items:stretch;overflow:hidden}
+.srow.has-img .srow-img{position:relative;overflow:hidden;width:148px;height:auto;min-height:148px;flex:0 0 148px;align-self:stretch;border-radius:0;box-shadow:none;background-size:cover}
+.srow.has-img .sv-meta em{padding:3px 9px;font-size:.8rem}
+.srow.has-img .sv-meta .sv-price{font-size:.92rem}
+.srow.has-img .srow-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.srow.has-img .srow-ck{position:absolute;top:9px;inset-inline-start:9px;background:rgba(255,255,255,.92);border-color:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:1}
+.srow.has-img.sel .srow-ck{background:var(--c-1);border-color:var(--c-1);color:#fff}
 .srow.has-img .srow-img::before{content:"";position:absolute;inset:0;background-image:inherit;background-size:cover;background-position:center;transform:scale(1.25)}
 .srow.has-img .srow-t{padding:14px 0;align-self:center}
-.srow.has-img .srow-ck{align-self:center}
+
 .srow.sel .srow-ck{background:var(--c-1);border-color:var(--c-1);color:#fff}
 .srow-qty{display:inline-flex;align-items:center;gap:2px;background:var(--group);border-radius:999px;padding:4px;flex:none}
 .srow-qty button{width:38px;height:38px;border-radius:50%;background:#fff;font-size:1.35rem;font-weight:800;line-height:1;color:var(--ink);display:grid;place-items:center;transition:transform .2s var(--spring)}
@@ -1446,6 +1452,8 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 #khSplash .shd{opacity:0;animation:dr3Shd var(--sp,4.8s) ease 1 both}
 #khSplash .sw{animation:dr3Sw var(--sp,4.8s) cubic-bezier(.6,.02,.3,1) 1 both}
 @keyframes khFadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+#khSplash .sp-name{font-family:var(--f-head);font-weight:900;font-size:36px;line-height:1.1;color:#2A2118;margin:0 0 4px;opacity:0;animation:khNameIn .75s calc(var(--sp,4.8s)*.56) cubic-bezier(.34,1.56,.64,1) 1 both}
+@keyframes khNameIn{0%{opacity:0;transform:translateY(24px) scale(.84)}55%{opacity:1;transform:translateY(-7px) scale(1.06)}78%{transform:translateY(2px) scale(.99)}100%{opacity:1;transform:none}}
 @keyframes dr3Tile{0%{transform:rotate(-40deg) scale(.8);opacity:0}5%,18%{transform:rotate(-40deg);opacity:1}27%{transform:rotate(-18deg)}29%,40%{transform:rotate(-20deg)}49%{transform:rotate(3deg) scale(1.04)}53%{transform:rotate(-1deg) scale(.99)}56%{transform:none}100%{transform:none;opacity:1}}
 @keyframes dr3Wig{0%,5%{transform:scale(0);opacity:0;animation-timing-function:cubic-bezier(.34,1.35,.64,1)}13%,29%{transform:none;opacity:1;animation-timing-function:ease-in-out}34%{transform:rotate(-18deg);animation-timing-function:ease-in-out}40%,100%{transform:none}}
 @keyframes dr3H{0%,56%{stroke-dashoffset:1}66%,100%{stroke-dashoffset:0}}
@@ -1481,7 +1489,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 </style><!--/kh-skin-->
 </head>
 <body>
-<!--kh-splash--><div id="khSplash"><div class="logo3" role="img" aria-label="خافت"><svg class="flat dr3" viewBox="129 55 800 800" aria-hidden="true"><defs><clipPath id="spcH"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/></clipPath><clipPath id="spcW"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcL"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcT"><rect x="129" y="55" width="800" height="800" rx="179"/></clipPath><linearGradient id="spfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".035" stop-color="#fff" stop-opacity=".9"/><stop offset=".07" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><linearGradient id="spshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#E9D3A0" stop-opacity=".45"/></linearGradient><linearGradient id="spwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><radialGradient id="spnut" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8E4"/><stop offset=".6" stop-color="#F3DC9C"/><stop offset="1" stop-color="#D9AE3E"/></radialGradient><filter id="spb30" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter><filter id="spb10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="spb4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs><g class="wg"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="url(#spwf)"/></g><polygon class="ln lh" pathLength="1" points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><g clip-path="url(#spcH)"><rect class="fl fh" x="129" y="770" width="800" height="720" fill="url(#spfill)"/></g><g clip-path="url(#spcL)" class="shd"><rect x="129" y="400" width="800" height="400" fill="url(#spshade)"/></g><g clip-path="url(#spcT)"><g class="sw"><g transform="skewX(-22)"><rect x="340" y="-100" width="260" height="1100" fill="#fff" opacity=".22" filter="url(#spb30)"/><rect x="455" y="-100" width="34" height="1100" fill="#fff" opacity=".55" filter="url(#spb10)"/></g></g></g><g clip-path="url(#spcL)"><g class="sw"><g transform="skewX(-22)"><rect x="360" y="-100" width="70" height="1100" fill="#C9962A" opacity=".28" filter="url(#spb10)"/><rect x="452" y="-100" width="18" height="1100" fill="#fff" filter="url(#spb4)"/><rect x="478" y="-100" width="7" height="1100" fill="#FFFDF5" opacity=".9"/></g></g></g></svg></div><p>صيانة منزلك في أيادٍ أمينة</p></div>
+<!--kh-splash--><div id="khSplash"><h2 class="sp-name" aria-hidden="true">خافِت</h2><div class="logo3" role="img" aria-label="خافت"><svg class="flat dr3" viewBox="129 55 800 800" aria-hidden="true"><defs><clipPath id="spcH"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/></clipPath><clipPath id="spcW"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcL"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcT"><rect x="129" y="55" width="800" height="800" rx="179"/></clipPath><linearGradient id="spfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".035" stop-color="#fff" stop-opacity=".9"/><stop offset=".07" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><linearGradient id="spshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#E9D3A0" stop-opacity=".45"/></linearGradient><linearGradient id="spwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><radialGradient id="spnut" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8E4"/><stop offset=".6" stop-color="#F3DC9C"/><stop offset="1" stop-color="#D9AE3E"/></radialGradient><filter id="spb30" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter><filter id="spb10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="spb4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs><g class="wg"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="url(#spwf)"/></g><polygon class="ln lh" pathLength="1" points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><g clip-path="url(#spcH)"><rect class="fl fh" x="129" y="770" width="800" height="720" fill="url(#spfill)"/></g><g clip-path="url(#spcL)" class="shd"><rect x="129" y="400" width="800" height="400" fill="url(#spshade)"/></g><g clip-path="url(#spcT)"><g class="sw"><g transform="skewX(-22)"><rect x="340" y="-100" width="260" height="1100" fill="#fff" opacity=".22" filter="url(#spb30)"/><rect x="455" y="-100" width="34" height="1100" fill="#fff" opacity=".55" filter="url(#spb10)"/></g></g></g><g clip-path="url(#spcL)"><g class="sw"><g transform="skewX(-22)"><rect x="360" y="-100" width="70" height="1100" fill="#C9962A" opacity=".28" filter="url(#spb10)"/><rect x="452" y="-100" width="18" height="1100" fill="#fff" filter="url(#spb4)"/><rect x="478" y="-100" width="7" height="1100" fill="#FFFDF5" opacity=".9"/></g></g></g></svg></div><p>صيانة منزلك في أيادٍ أمينة</p></div>
 <script>(function(){var el=document.getElementById('khSplash');if(!el)return;
 var rm=window.matchMedia&&matchMedia('(prefers-reduced-motion:reduce)').matches;var d=rm?0.6:4.8;el.style.setProperty('--sp',d+'s');
 function out(){if(el.classList.contains('out'))return;el.classList.add('out');setTimeout(function(){if(el.parentNode)el.parentNode.removeChild(el);},600);}setTimeout(function(){if(window.__khCatReady)return out();document.addEventListener('kh-cat-ready',out,{once:true});setTimeout(out,3000);},d*1000+250);})();</script><!--/kh-splash-->
@@ -1570,7 +1578,7 @@ function applySettings(rows){
   const pc=SETTINGS.plans_close; if(pc&&/^\d{4}-\d{2}-\d{2}/.test(pc)) PLANS_CLOSE=new Date(pc.slice(0,10)+'T12:00:00+03:00');
   const ap=stNum('plan_apt_price',null), hp=stNum('plan_home_price',null);
   [['apt',ap],['home',hp]].forEach(([id,price])=>{ const p=PLANS.find(x=>x.id===id); if(p&&price>0){ p.price=Math.round(price); p.save=Math.max(0,p.was-p.price); p.pct=Math.round(p.save/p.was*100); } });
-  if(SETTINGS.support_phone) PHONE=String(SETTINGS.support_phone).trim();
+  if(SETTINGS.support_phone){ const sp=String(SETTINGS.support_phone).replace(/[^0-9+]/g,''); if(sp) PHONE=sp; }   // أرقام و+ فقط: يدخل في روابط tel: وفي النصوص
   if(SETTINGS.support_whatsapp) WHATSAPP=String(SETTINGS.support_whatsapp).replace(/\D/g,'');
   const lm=stNum('lead_min',null); if(lm>=0) LEAD_MIN=Math.round(lm);
   const lt=stNum('loyalty_target',null); if(lt>=2) LOYALTY_TARGET=Math.round(lt);
@@ -1582,6 +1590,7 @@ function applySettings(rows){
   WELCOME_CREDIT=stOn('welcome_enabled',true) ? Math.max(0,stNum('welcome_credit',0)) : 0; APP_WARRANTY=Math.max(0,stNum('app_warranty_days',30));
   if(APP_WARRANTY>0) WARRANTY=LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+'-day warranty');
   const lu=String(SETTINGS.launch_until||''); LAUNCH_UNTIL=/^\d{4}-\d{2}-\d{2}/.test(lu)?lu.slice(0,10):null;
+  try{ applySlotGroups(SETTINGS.slot_groups); }catch(e){}   // فرق الجدولة من الإعدادات (وإلا الافتراضي)
   try{ checkAppBuild(); }catch(e){}
 }
 /* مفاتيح التحكم من الإدارة (القيمة الافتراضية: مفعّل) */
@@ -1690,8 +1699,8 @@ function legalInfo(){
            city:s('company_city')||'الخبر، المنطقة الشرقية', vat:stOn('vat_registered',false), vatNo:s('vat_number'), vatPct:stNum('vat_pct',15)||15,
            email:s('legal_email')||'fadiaalzhrani@gmail.com', maroof:s('maroof_url') };
 }
-function legalLine(){ const L=legalInfo(); return `${esc(L.name)} · س.ت ${ar(L.cr)} · الرقم الموحد ${ar(L.uni)} · ${esc(L.city)}`; }
-function vatLine(){ const L=legalInfo(); return L.vat&&L.vatNo ? `الرقم الضريبي ${ar(L.vatNo)} · الأسعار شاملة ضريبة القيمة المضافة ${ar(L.vatPct)}٪` : 'المنشأة غير مسجّلة في ضريبة القيمة المضافة، والأسعار لا تشمل ضريبة'; }
+function legalLine(){ const L=legalInfo(); return `${esc(L.name)} · س.ت ${esc(ar(L.cr))} · الرقم الموحد ${esc(ar(L.uni))} · ${esc(L.city)}`; }
+function vatLine(){ const L=legalInfo(); return L.vat&&L.vatNo ? `الرقم الضريبي ${esc(ar(L.vatNo))} · الأسعار شاملة ضريبة القيمة المضافة ${esc(ar(L.vatPct))}٪` : 'المنشأة غير مسجّلة في ضريبة القيمة المضافة، والأسعار لا تشمل ضريبة'; }
 /* ضريبة مضمّنة في الإجمالي: قيمتها = الإجمالي − الإجمالي ÷ (1 + النسبة) */
 function vatOf(total){ const L=legalInfo(); if(!(L.vat&&L.vatNo)) return 0; return Math.round((total - total/(1+L.vatPct/100))*100)/100; }
 /* رمز QR للفاتورة الضريبية المبسطة (هيئة الزكاة والضريبة: TLV ثم Base64) */
@@ -1832,7 +1841,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=135;
+const APP_BUILD=136;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -1977,6 +1986,8 @@ async function ensureAnonSession(){
     if(session && session.user){
       myUid=session.user.id;
       isVerified = !session.user.is_anonymous;
+      // الرقم الموثّق في الجلسة هو المعتمد لو ما فيه رقم محفوظ بالجهاز
+      try{ if(isVerified && session.user.phone && !((state.customer||{}).phone)){ state.customer=state.customer||{}; state.customer.phone=String(session.user.phone).replace(/^\+?966/,'0'); save(); } }catch(e){}
       return myUid;
     }
     const { data, error } = await sb.auth.signInAnonymously();
@@ -1993,6 +2004,7 @@ async function initCloud(){
       registerInstall('khafet', APP_BUILD);
       cloudReady=true;
       await ensureAnonSession();
+      try{ syncHeader(); }catch(e){}   // زر «حسابي» يعتمد على الجلسة الموثّقة
       loadPrices();
       loadArticles();
       loadBusy();
@@ -2284,7 +2296,9 @@ function serverMsg(e){
     KHAFET_LATE_RESCHEDULE: LX('باقي أقل من '+ar(H)+' ساعات على الموعد، تواصل معنا لتغييره','Less than '+H+' hours to the visit, contact us to reschedule'),
     KHAFET_NO_RESCHEDULE: LX('ما يمكن تغيير موعد هذا الطلب الآن','This order cannot be rescheduled now'),
     KHAFET_BAD_TIME:     LX('الموعد المختار غير متاح، اختر وقتًا آخر','That time is not available, pick another'),
-    KHAFET_BAD_ITEM:     LX('أحد البنود لم يعد متاحًا، أعد اختيار الخدمة','One of the items is no longer available, choose the service again'),
+    KHAFET_BAD_ITEM:     LX('قطعة أو خدمة غير متاحة أو بدون سعر، أعد اختيار الخدمة','A part or service is unavailable or has no price, choose the service again'),
+    KHAFET_BAD_STATUS:   LX('حالة الطلب الحالية لا تسمح بهذا الإجراء','The order status does not allow this action'),
+    KHAFET_NOT_YOURS:    LX('هذا الطلب غير مرتبط بحسابك','This order is not linked to your account'),
     KHAFET_NO_ITEMS:     LX('السلة فارغة','Your cart is empty'),
     KHAFET_SUB:          LX('عقد الصيانة غير فعّال أو منتهٍ، تواصل معنا','Your maintenance contract is not active, contact us'),
     KHAFET_WARRANTY:     LX('انتهت مدة الضمان لهذا الطلب أو الطلب غير مكتمل','The warranty period for this order has ended'),
@@ -2302,6 +2316,8 @@ function serverMsg(e){
     KHAFET_UPDATE_REQUIRED: LX('حدّث التطبيق من المتجر عشان تكمل','Update the app from the store to continue'),
     KHAFET_COMPLAINT_SHORT: LX('اكتب تفاصيل أكثر عن الشكوى','Please add more details to the complaint'),
     KHAFET_BLOCKED:      LX('تعذّر إكمال الطلب من التطبيق، تواصل معنا على '+PHONE,'We could not complete this order in the app, please call '+PHONE),
+    KHAFET_CANCEL_NEEDS_APPROVAL: LX('الإلغاء يحتاج موافقة الإدارة، أرسل طلب إلغاء بالسبب','Cancellation needs management approval, send a cancellation request with the reason'),
+    KHAFET_CANCEL_PENDING: LX('فيه طلب إلغاء لهذا الطلب قيد المراجعة','A cancellation request for this order is under review'),
   };
   for(const k in MAP){ if(m.indexOf(k)>=0) return MAP[k]; }
   if(/fetch|network|Failed to fetch/i.test(m)) return LX('تأكد من الإنترنت وحاول مرة ثانية','Check your connection and try again');
@@ -2546,10 +2562,19 @@ function bookingsOn(iso,excludeId){ return state.orders.filter(o=>o.date===iso &
 function isOffDay(iso){ return OFF_DAYS.includes(parseISO(iso).getDay()); }
 /* الجدول المشغول الحقيقي · كل عملاء المنصة، مو بس هذا الجهاز.
    بدونه كان عميلان يحجزان نفس الوقت والفني يتأخر. البيانات: يوم/وقت/مدة/مدينة فقط. */
-let BUSY=[], busyAt=0;
+let BUSY=[], busyAt=0, busyCity='';
 /* فرق العمل: كل فريق له جدوله، فحجز التكييف ما يقفل موعد السباكة والكهرباء.
    السباكة والكهرباء فريق واحد (core)، والتكييف فريق، وباقي الأقسام كل واحد لحاله. */
-const SLOT_GROUPS={plumb:'core', elec:'core', ac:'ac'};
+/* تتغيّر من الإعدادات (slot_groups: نص JSON مثل {"plumb":"core","elec":"core","ac":"ac","ajyal":"core"}) حتى تطابق خادم khafet_slot_group */
+const SLOT_GROUPS_DEF={plumb:'core', elec:'core', ac:'ac', ajyal:'core'};
+let SLOT_GROUPS=Object.assign({}, SLOT_GROUPS_DEF);
+function applySlotGroups(v){
+  let o=v;
+  try{ if(typeof o==='string'){ o=o.trim()?JSON.parse(o):null; } }catch(e){ o=null; }
+  if(!o || typeof o!=='object' || Array.isArray(o)){ SLOT_GROUPS=Object.assign({}, SLOT_GROUPS_DEF); return; }
+  const out={}; Object.keys(o).forEach(k=>{ const g=o[k]; if(k && (typeof g==='string'||typeof g==='number') && String(g).trim()) out[String(k).trim()]=String(g).trim(); });
+  SLOT_GROUPS = Object.keys(out).length ? out : Object.assign({}, SLOT_GROUPS_DEF);
+}
 function slotGroup(cat){ return SLOT_GROUPS[cat] || cat || 'gen'; }
 function groupsOfItems(items){
   const g=new Set();
@@ -2571,11 +2596,16 @@ function capOf(groups){
 }
 async function loadBusy(){
   if(!cloudReady||!sb) return false;
-  if(Date.now()-busyAt<60000) return false;   // كاش دقيقة
-  busyAt=Date.now();
+  const city=((state.address&&state.address.city)||'').trim();
+  if(Date.now()-busyAt<60000 && busyCity===city) return false;   // كاش دقيقة لنفس المدينة
+  busyAt=Date.now(); busyCity=city;
   try{ const cap=await sb.rpc('khafet_slot_capacity'); if(cap && cap.data && typeof cap.data==='object') CAP=cap.data; }catch(e){}
   try{
-    const { data }=await sb.rpc('khafet_busy_times');
+    // الجدول المشغول لمدينة العميل (khafet_busy_times(p_city))، ولو الخادم ما يقبل الوسيط بعد نرجع للنداء بدونه
+    let r=null;
+    if(city){ try{ r=await sb.rpc('khafet_busy_times',{ p_city:city }); }catch(e){ r=null; } }
+    if(!r || r.error){ r=await sb.rpc('khafet_busy_times'); }
+    const data=r&&r.data;
     if(Array.isArray(data)){ BUSY=data.map(r=>({date:r.d,start:r.s,dur:r.m||60,city:(r.c||'').trim(),groups:Array.isArray(r.g)?r.g:[]})); return true; }
   }catch(e){}
   return false;
@@ -2786,10 +2816,6 @@ function renderSolutionDetail(keep){
       <div class="sd-hero">
         ${s.image_url?`<div class="sd-img" style="background-image:url('${esc(safeUrl(s.image_url))}')"></div>`:`<div class="sd-ic">${esc(s.icon||'🔧')}</div>`}
         <h1>${esc(s.title)}</h1>
-        <div class="sd-facts">
-          <span class="sd-fact gold"><small>${multi?LX('سعر ال'+unit,'Per unit'):LX('أجرة الحل','Price')}</small><b>${T.unit>0?money(T.unit):LX('بعد المعاينة','After inspection')}</b></span>
-          ${T.dur>0?`<span class="sd-fact"><small>${LX('مدة الزيارة','Visit time')}</small><b>${fmtDuration(T.dur)}</b></span>`:''}
-        </div>
       </div>
       ${s.problem?`<section class="sd-card"><h2><span class="sd-dot">١</span>${LX('وش المشكلة؟','The problem')}</h2><p>${esc(s.problem)}</p></section>`:''}
       ${s.cause?`<section class="sd-card"><h2><span class="sd-dot">٢</span>${LX('ليش تصير؟','Why it happens')}</h2><p>${esc(s.cause)}</p></section>`:''}
@@ -2797,10 +2823,12 @@ function renderSolutionDetail(keep){
       ${chips.length?`<section class="sd-card"><h2><span class="sd-dot ck">✓</span>${LX('السعر يشمل','The price includes')}</h2><ul class="sd-inc">${chips.map(x=>'<li>'+esc(x)+'</li>').join('')}</ul></section>`:''}
       ${multi?`<section class="sd-card sd-qty"><div><h2 style="margin:0">${LX('كم '+unit+' تبي نبدّل؟','How many?')}</h2><small>${LX('كلها في زيارة وحدة','All in one visit')}</small></div>
         <div class="srow-qty"><button type="button" onclick="solSetQty(-1)" aria-label="${LX('أقل','Less')}">−</button><b>${ar(T.q)}</b><button type="button" onclick="solSetQty(1)" aria-label="${LX('أكثر','More')}">+</button></div></section>`:''}
+      <div class="sd-facts" style="margin-top:14px;justify-content:center">
+        <span class="sd-fact gold"><small>${LX('سعر الخدمة','Service price')}${multi?' · '+LX('لل'+unit+' الواحد','per unit'):''}</small><b>${T.unit>0?money(T.unit):LX('بعد المعاينة','After inspection')}</b></span>
+      </div>
       <div style="height:104px"></div>
     </div>
     <div class="sol-bar">
-      <div class="sol-bar-p"><small>${multi&&T.q>1?LX('الإجمالي · '+ar(T.q)+' '+unit,'Total · '+T.q):LX('أجرة الحل','Price')}</small><b>${T.price>0?money(T.price):LX('بعد المعاينة','After inspection')}</b></div>
       <button class="cta gold sol-bar-btn" onclick="orderSolution('${aid(s.id)}')">${esc(s.cta||'اطلب الحل')}</button>
     </div>`;
   if(keep) window.scrollTo(0,y);
@@ -2808,11 +2836,10 @@ function renderSolutionDetail(keep){
 function orderSolution(id){
   const s=SOLUTIONS.find(x=>x.id===id); if(!s) return;
   if(s.service_id && svc(s.service_id)){
-    quickMode=false; state.subReq=null; state.cart={}; state.cart[s.service_id]=solUnitOk(s)?solQty:1; save(); go('time');
+    quickMode=false; state.subReq=null; state.cart={}; state.cart[s.service_id]=solUnitOk(s)?solQty:1; clearAutoNote(); save(); go('time');
   } else {
-    state.quickNote='🏘️ '+(s.title||'')+' · حل من صفحة '+solText('solutions_title','حلول منازل أجيال');
-    startQuick();
-    setTimeout(function(){ const t=document.getElementById('q_note')||document.getElementById('note'); if(t && !t.value) t.value=state.quickNote; },350);
+    // حل بدون خدمة محددة: معاينة، والملاحظة تدخل في وصف الطلب فتصل للفني
+    startQuick({ force:true, note:'🏘️ '+(s.title||'')+' · حل من صفحة '+solText('solutions_title','حلول منازل أجيال') });
   }
 }
 /* ---------- 🛡️ نصائح السلامة المنزلية (مقالات) ---------- */
@@ -2894,7 +2921,7 @@ function renderFaq(){
 }
 /* ---------- 💡 رأيك يهمنا: اقتراح / شكوى / شكر ---------- */
 let sugKind='اقتراح';
-function setSugKind(k){ sugKind=k; renderSuggest(); }
+function setSugKind(k){ if(!['اقتراح','شكر'].includes(k)) return; sugKind=k; renderSuggest(); }
 function renderSuggest(){
   const c=state.customer||{};
   const kinds=[['اقتراح','💡'],['شكر','🌟']];
@@ -2906,7 +2933,7 @@ function renderSuggest(){
       <div class="panel" style="margin-top:14px">
         <h3>نوع الرسالة</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${kinds.map(([k,ic])=>`<button class="sbtn ${sugKind===k?'ok':''}" onclick="setSugKind('${aid(k)}')">${ic} ${k}</button>`).join('')}
+          ${kinds.map(([k,ic])=>`<button class="sbtn ${sugKind===k?'ok':''}" data-k="${esc(k)}" onclick="setSugKind(this.dataset.k)">${ic} ${k}</button>`).join('')}
         </div>
         <div class="field" style="margin-top:16px"><label>رسالتك <span class="req">*</span></label>
           <textarea id="sug_body" rows="6" placeholder="مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس"></textarea></div>
@@ -2949,6 +2976,7 @@ const OTP_CHANNEL='sms';
    الرمز التجريبي الثابت المضبوط في Supabase → Auth → Phone → Test OTP. */
 const DEMO_PHONE='+966500000000';
 let otpStep=false, otpPhone='', otpMode='';   // otpMode: 'link' | 'signin'
+let _prevAnonUid=null;   // الهوية المجهولة قبل الدخول برقم له حساب: طلباتها تنتقل للحساب بعد التوثيق (دالة الخادم khafet_adopt_anon_orders)
 
 /* 05xxxxxxxx → +9665xxxxxxxx */
 function normPhone(p){
@@ -2997,6 +3025,7 @@ async function sendOtp(){
       if(!error){ otpMode='link'; otpStep=true; render(); return; }
     }
     // رقم مسجّل من قبل (أو جهاز جديد) → دخول عادي
+    _prevAnonUid = (user && user.is_anonymous) ? user.id : null;   // نتذكر الهوية المجهولة عشان طلباتها تلحق الحساب
     const { error } = await sb.auth.signInWithOtp({ phone, options:{ channel:OTP_CHANNEL } });
     if(error) throw error;
     otpMode='signin'; otpStep=true; render();
@@ -3019,11 +3048,18 @@ async function verifyOtpCode(){
     const { data:{ user } } = await sb.auth.getUser();
     if(user){ myUid=user.id; isVerified=true; }
     state.customer=state.customer||{};
-    state.customer.phone = state.customer.phone || String(otpPhone||'').replace(/^\+?966/,'0');   // 05xxxxxxxx مثل باقي التطبيق
+    state.customer.phone = String(otpPhone||'').replace(/^\+?966/,'0');   // الرقم الموثّق هو المعتمد دائمًا (05xxxxxxxx مثل باقي التطبيق)
     save();
     otpStep=false;
+    // دخول برقم له حساب سابق: طلبات الهوية المجهولة (ومنها المدفوعة) تنتقل للحساب عبر الخادم
+    if(otpMode==='signin' && _prevAnonUid && _prevAnonUid!==myUid){ const pu=_prevAnonUid; _prevAnonUid=null; try{ await sb.rpc('khafet_adopt_anon_orders',{ p_prev_uid:pu }); }catch(e){} }
     await loadOrdersFromCloud();
-    toast('أهلاً بك 👋'); go('account');
+    try{ initPush(); }catch(e){}   // أعد تسجيل الجهاز للإشعارات بالهوية الجديدة
+    toast('أهلاً بك 👋');
+    // جاء من زر معاينة (مظلة/مجلس/حل) وطُلب منه التوثيق: نكمّل له نفس المعاينة بدل ما يرجع يبدأ من أول
+    const pq=state.pendingQuick; state.pendingQuick=null; save();
+    if(pq && pq.note && (Date.now()-(+pq.at||0))<15*60000){ startQuick({ force:!!pq.force, note:pq.note }); }
+    else go('account');
     loadMyRef().then(()=>{ if(['account','info','pay','home','checkout'].includes(view)) render(); });   // الرصيد الترحيبي بعد التوثيق
   }catch(e){
     console.warn('otp verify:', e.message||e);
@@ -3053,12 +3089,15 @@ async function loadMyRef(){
 }
 async function claimWelcome(){
   try{
-    if(!isVerified || !sb) return;
-    try{ if(localStorage.getItem('kh_welcome_done')==='1') return; }catch(e){}
+    if(!isVerified || !sb || !myUid) return;
+    // العلامة مربوطة بالحساب لا بالجهاز: حساب ثاني يسجّل من نفس الجوال يأخذ هديته
+    const wk='kh_welcome_done:'+myUid;
+    try{ if(localStorage.getItem(wk)==='1') return; }catch(e){}
     const { data, error } = await sb.rpc('claim_welcome_credit');
     if(error || !data) return;
     if(data.ok){ toast(LX('🎁 انضاف لك '+ar(data.amount)+' ريال رصيد ترحيبي','🎁 '+data.amount+' SAR welcome credit added')); }
-    if(data.ok || ['already','not_new','off','demo'].includes(data.reason)){ try{ localStorage.setItem('kh_welcome_done','1'); }catch(e){} }
+    // لو العرض مطفي ما نثبّت العلامة، عشان لو رجع اشتغل يستفيد نفس العميل
+    if(data.ok || ['already','not_new','demo'].includes(data.reason)){ try{ localStorage.setItem(wk,'1'); }catch(e){} }
   }catch(e){}
 }
 function copyCode(code){ try{ navigator.clipboard.writeText(code); toast(LX('📋 تم نسخ الكود','📋 Code copied')); }catch(e){ toast(code); } }
@@ -3090,19 +3129,29 @@ function saveAccount(){
   if(hs!==undefined) { state.address=state.address||{}; state.address.house=hs; }
   save(); toast('💾 تم حفظ التعديلات'); renderAccount();
 }
+/* مسح كل البيانات الشخصية من الجهاز (الخروج والحذف): الحالة كاملة ترجع لوضعها الأول مع إبقاء عدّاد الطلبات المحلي،
+   والمفاتيح الحسّاسة تنمسح عبر مخزن التطبيق نفسه (Preferences/Keychain) لا من ذاكرة المتصفح فقط */
+async function wipeLocalData(){
+  const seq=(state&&state.seq)||1000;
+  state=defaultState(); state.seq=seq;
+  myRef={ code:null, balance:0, referrals:0 }; refStats=null; isVerified=false;
+  refCheck={ code:'', ok:false, reason:'', busy:false }; _subSrv=null; _subLoc=null; mktPref=null; COMPLAINTS=[]; cmpLoaded=false;
+  MY_CARDS=[]; _cardsLoaded=false; cardPick='new'; _cardData=null; _cardDraft={}; _housePhotoFile=null; _prevAnonUid=null;
+  for(const k of ['khafet_mysub','khafet_subs','khafet_majlis_note','khafet_pay_pending','khafet_privacy_ack','kh_welcome_done','kh_welcome_note_x']){ try{ await KH_STORE.removeItem(k); }catch(e){} }
+  try{ Object.keys(localStorage).filter(k=>k.indexOf('kh_welcome_done:')===0).forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} }); }catch(e){}
+  save();
+}
 async function logoutAccount(){
   if(!confirm(LX('تسجيل الخروج من حسابك؟','Sign out of your account?'))) return;
   // اخرج من جلسة Supabase فعلياً، ثم ارجع لهوية مجهولة جديدة
   // فكّ ارتباط رمز الإشعارات قبل الخروج، وإلا وصلت إشعارات صاحب الجهاز السابق لمن بعده
   try{ if(sb) await sb.rpc('release_my_devices'); }catch(e){}
-  try{ if(sb){ await sb.auth.signOut(); myUid=null; await ensureAnonSession(); } }catch(e){}
-  // نمسح بياناته الشخصية من الجهاز: الاسم والجوال والعناوين والطلبات والرصيد
-  state.customer={name:'',phone:''};
-  state.address={}; state.addresses=[];
-  state.myOrderIds=[]; state.orders=[]; state.cart={}; state.parts={}; state.subReq=null;
-  myRef={code:'',balance:0,referrals:0}; isVerified=false;
-  ['khafet_mysub','khafet_pay_pending','khafet_privacy_ack'].forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
-  save(); toast('تم تسجيل الخروج'); go('home');
+  try{ if(sb){ await sb.auth.signOut(); myUid=null; } }catch(e){}
+  // نمسح بياناته الشخصية من الجهاز: الاسم والجوال والعناوين والطلبات والرصيد والاشتراك
+  await wipeLocalData();
+  try{ if(sb) await ensureAnonSession(); }catch(e){}
+  try{ initPush(); }catch(e){}   // سجّل الجهاز للإشعارات بالهوية الجديدة
+  toast('تم تسجيل الخروج'); go('home');
   if(cloudReady) loadOrdersFromCloud();
 }
 /* ---------- حذف الحساب نهائياً (متطلّب آبل 5.1.1(v)) ---------- */
@@ -3136,10 +3185,11 @@ async function confirmDeleteAccount(){
     if(!d.ok) throw new Error(d.error||'تعذّر حذف الحساب');
     try{ await sb.auth.signOut(); }catch(e){}
     myUid=null; isVerified=false;
-    state.customer={}; state.address={}; state.myOrderIds=[]; state.orders=[]; state.cart={}; state.promo='';
-    myRef={ code:null, balance:0, referrals:0 };
-    save(); closeDeleteAccount();
+    // كل بياناته الشخصية تنمسح من الجهاز: العناوين وإحداثياتها، والاشتراك، وبيانات المزوّد، وليس الاسم والجوال فقط
+    await wipeLocalData();
+    closeDeleteAccount();
     try{ await ensureAnonSession(); }catch(e){}
+    try{ initPush(); }catch(e){}
     toast('✅ تم حذف حسابك نهائياً');
     go('home');
   }catch(e){
@@ -3148,7 +3198,7 @@ async function confirmDeleteAccount(){
   }
 }
 function renderAccount(){
-  if(!(state.customer&&state.customer.phone)){ go('login'); return; }
+  if(!isVerified){ go('login'); return; }   // «حسابي» للجلسة الموثّقة فقط، لا لأي رقم مكتوب في نموذج الحجز
   if(mktPref===null) loadMktPref();
   const c=state.customer||{}; const n=myOrders().length; const code=myRef.code;
   document.getElementById('app').innerHTML=`
@@ -3374,17 +3424,18 @@ async function submitSubscription(){
                 home_no: homeNo, home_loc: _subLoc,
                 promo_code: _subPromo||null, discount_pct: _subDisc||0,
                 terms_accepted: true, terms_version: TERMS_VERSION, terms_at: new Date().toISOString() };
-  const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
+  const btn=document.getElementById('payCta')||document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
   let ok=false;
   /* نولّد الرقم هنا · لأن قراءة الصف بعد الإدراج ممنوعة (حماية خصوصية المشتركين) */
   const subId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
               : ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{
                   const r=Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16); }));
   data.id = subId;
-  if(cloudReady){ try{ const r=await sb.from('khafet_subscriptions').insert(data);
-      if(!r.error) ok=true; else { console.warn('sub insert:',r.error.message); const m=serverMsg(r.error); if(m){ toast(m); if(btn){ btn.disabled=false; btn.textContent='💳 ادفع الآن'; } return; } } }catch(e){ console.warn(e); } }
-  /* نحفظ اشتراكه محلياً · عليه تُبنى صفحة «صيانتي السنوية» */
-  try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:subId, plan_id:data.plan_id, plan:data.plan, name, phone, home_no:homeNo, ts:Date.now()})); }catch(e){}
+  const fail=(msg)=>{ toast(msg); if(btn){ btn.disabled=false; btn.textContent='💳 ادفع الآن'; } };
+  if(!cloudReady){ fail(LX('الاشتراك يحتاج اتصال بالإنترنت','Subscribing needs an internet connection')); return; }
+  try{ const r=await sb.from('khafet_subscriptions').insert(data);
+      if(!r.error) ok=true; else { console.warn('sub insert:',r.error.message); fail(serverMsg(r.error)||LX('ما انحفظ الاشتراك، حاول مرة ثانية','Could not save the subscription, try again')); return; } }
+  catch(e){ console.warn(e); fail(LX('تأكد من الإنترنت وحاول مرة ثانية','Check your connection and try again')); return; }
   /* بيانات منزله تنحفظ بحسابه · تتعبّى تلقائياً بكل طلب بعدين */
   try{
     state.customer.name = state.customer.name||name;
@@ -3394,38 +3445,35 @@ async function submitSubscription(){
     save();
   }catch(e){}
 
-  /* الدفع الإلكتروني أو تمارا: نفتح صفحة الدفع (وضع التجربة: السعر 0 = بدون دفع) */
-  if(data.price>0 && (payMethod==='online' || payMethod==='tamara') && ok){
-    const started = await startPayment('subscription', subId, data.price, name, phone);
-    if(started) return;                       // ننتقل لصفحة الدفع
-    if(btn){ btn.disabled=false; btn.textContent='💳 ادفع الآن'; }
-  }
-  if(!ok){ try{ const arr=JSON.parse(localStorage.getItem('khafet_subs')||'[]'); arr.push(Object.assign({created_at:Date.now()},data)); localStorage.setItem('khafet_subs',JSON.stringify(arr)); }catch(e){} }
-  document.getElementById('app').innerHTML=`
-    <div class="wrap screen"><div class="panel" style="margin-top:30px">
-      <div class="success"><div class="circle">🛡️</div><h2>شكراً لاشتراكك 🎉</h2>
-      <p style="color:var(--muted);margin-top:10px">أهلاً ${esc(name)} · «${esc(subPlan?subPlan.name:'')}» صارت جاهزة. من الحين، صيانة بيتك علينا · ارتَح 👌</p></div>
-      <button class="cta gold" style="margin-top:16px" onclick="go('home')">العودة للرئيسية</button>
-    </div></div>`;
+  /* العقد يتفعّل بالدفع فقط: نفتح صفحة الدفع، وبعد تأكيد الدفع يظهر «صيانتي السنوية» (my_subscription) */
+  const started = ok && await startPayment('subscription', subId, data.price, name, phone);
+  if(started) return;                       // ننتقل لصفحة الدفع
+  fail(LX('تعذّر فتح صفحة الدفع، حاول مرة ثانية','Could not open the payment page, try again'));
 }
 
-/* ══════════ كود خصم الاشتراك · الخصم يلغي خيار تمارا ══════════ */
-const SUB_PROMOS={ 'خافت10':10 };
-let _subDisc=0,_subPromo='';
-function subPromoCheck(v){
+/* ══════════ كود خصم الاشتراك · يتحقق منه الخادم (khafet_plan_promo_pct) لا المتصفح · الخصم يلغي خيار تمارا ══════════ */
+let _subDisc=0,_subPromo='',_subPromoSeq=0;
+async function subPromoCheck(v){
   v=(v||'').trim();
   const m=document.getElementById('sub_promo_msg');
-  const pct=SUB_PROMOS[v]||0;
-  _subDisc=pct; _subPromo=pct?v:'';
   const tam=document.querySelector('.payopt label[data-m="tamara"]');
+  const seq=++_subPromoSeq;
+  _subDisc=0; _subPromo=v;
+  if(tam) tam.style.display='';
+  if(!v){ if(m) m.textContent=''; return; }
+  if(m){ m.style.color='var(--muted)'; m.textContent='⏳ نتحقق من الكود...'; }
+  let pct=0, known=false;
+  try{ if(cloudReady){ const r=await sb.rpc('khafet_plan_promo_pct',{ p_code:v }); if(!r.error){ known=true; pct=Math.max(0,parseInt(r.data,10)||0); } } }catch(e){}
+  if(seq!==_subPromoSeq) return;   // كتب كودًا ثانيًا أثناء التحقق
+  _subDisc=pct;
   if(pct){
     if(tam) tam.style.display='none';
     if(payMethod==='tamara') setPayMethod('online');
     const p=subPlan?Math.round(subPlan.price*(100-pct)/100):0;
     if(m){ m.style.color='var(--good,#15803D)'; m.textContent='✅ خصم '+en(pct)+'% · الإجمالي '+en(p)+' ريال'; }
-  }else{
-    if(tam) tam.style.display='';
-    if(m){ if(v){ m.style.color='#c0392b'; m.textContent='الكود غير صحيح'; } else m.textContent=''; }
+  }else if(m){
+    m.style.color='#c0392b';
+    m.textContent = known ? 'الكود غير صحيح' : 'تعذّر التحقق من الكود الآن، لو كان صحيحًا ينطبق الخصم عند الدفع';
   }
 }
 
@@ -3456,8 +3504,9 @@ async function fetchMySub(){
   if(!cloudReady) return null;
   try{ const { data }=await sb.rpc('my_subscription');
     if(data && data.found){ _subSrv=data;
-      /* لو الخادم يعرف اشتراكاً وما عندنا محلي · نبنيه */
-      if(!mySubLocal()) try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:data.id, plan_id:data.plan_id, plan:data.plan, home_no:data.home_no, ts:Date.now()})); }catch(e){}
+      /* لو الخادم يعرف اشتراكاً مدفوعًا وما عندنا محلي · نبنيه (عليه تظهر بطاقة «صيانتي السنوية» في الرئيسية) */
+      const paid = data.pay_status==='paid' || data.status==='active';
+      if(paid && !mySubLocal()) try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:data.id, plan_id:data.plan_id, plan:data.plan, home_no:data.home_no, ts:Date.now()})); }catch(e){}
       return data; }
   }catch(e){}
   return null;
@@ -3738,12 +3787,12 @@ async function payWithCard(o){
   }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return 'failed'; }
 }
 /* دفع طلب موجود بالبطاقة من «طلباتي»: نافذة فيها نفس خانات البطاقة */
-function openCardModal(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; closeCardModal(); loadMyCards();
+function openCardModal(id){ const o=findOrder(id); if(!o) return; closeCardModal(); loadMyCards();
   const m=document.createElement('div'); m.className='cc-modal'; m.id='ccModal'; m.onclick=e=>{ if(e.target===m) closeCardModal(); };
-  m.innerHTML=`<div class="sheet"><h3><span>💳 ${LX('مدى / بطاقة','mada / Card')}</span><button type="button" onclick="closeCardModal()" aria-label="${LX('إغلاق','Close')}">×</button></h3><div class="cardform" id="ccModalForm">${cardFormInner()}</div><button class="cta" style="margin-top:14px" id="ccModalPay" onclick="payCardModal('${aid(o.id)}')">${LX('💳 ادفع ','💳 Pay ')}${money(o.amountDue||o.finalPrice||0)}</button></div>`;
+  m.innerHTML=`<div class="sheet"><h3><span>💳 ${LX('مدى / بطاقة','mada / Card')}</span><button type="button" onclick="closeCardModal()" aria-label="${LX('إغلاق','Close')}">×</button></h3><div class="cardform" id="ccModalForm">${cardFormInner()}</div><button class="cta" style="margin-top:14px" id="ccModalPay" onclick="payCardModal('${aid(orderRef(o))}')">${LX('💳 ادفع ','💳 Pay ')}${money(o.amountDue||o.finalPrice||0)}</button></div>`;
   document.body.appendChild(m); }
 function closeCardModal(){ const m=document.getElementById('ccModal'); if(m) m.remove(); }
-async function payCardModal(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; const c=cardRead(); if(!c) return; _cardData=c; const b=document.getElementById('ccModalPay'); if(b){ b.disabled=true; b.textContent='⏳'; }
+async function payCardModal(id){ const o=findOrder(id); if(!o) return; const c=cardRead(); if(!c) return; _cardData=c; const b=document.getElementById('ccModalPay'); if(b){ b.disabled=true; b.textContent='⏳'; }
   const r=await payWithCard(o); closeCardModal(); if(r==='fallback') startOrderPayment(o,'online'); }
 /* صفحة الدفع داخل التطبيق: نافذة متصفح فوق التطبيق، ونراقب الدفعة ونسكر النافذة أول ما تندفع. على الويب العادي ننتقل للصفحة كالمعتاد */
 let _payWatch=null, _paidJust=null;
@@ -3766,7 +3815,7 @@ async function openPayUrl(url, payId, o){
   const stop=()=>{ if(_payWatch){ clearInterval(_payWatch); _payWatch=null; } try{ lis&&lis.remove&&lis.remove(); }catch(e){} };
   _payWatch=setInterval(async()=>{ if(++n>240){ stop(); return; }
     try{ const r=await fetch(PAY_FN+'/status?id='+encodeURIComponent(payId),{headers:{'Authorization':'Bearer '+(await authToken()),'apikey':SUPABASE_ANON}}); const j=await r.json();
-      if(j&&j.ok&&j.payment&&j.payment.status==='paid'){ stop(); try{ await B.close(); }catch(e){} try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} try{ await loadOrdersFromCloud(); }catch(e){} paidDone=true; showPaidScreen(o); } }catch(e){} },3000);
+      if(j&&j.ok&&j.payment&&j.payment.status==='paid'){ stop(); try{ await B.close(); }catch(e){} try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} try{ await loadOrdersFromCloud(); }catch(e){} if(!o){ try{ await fetchMySub(); }catch(e){} } paidDone=true; showPaidScreen(o); } }catch(e){} },3000);
   try{ lis=await B.addListener('browserFinished',async()=>{ stop(); if(paidDone) return; await checkPendingPayment(); if(view==='pay') go('mybookings'); }); }catch(e){}
 }
 /* Apple Pay الأصلي: المبلغ من الخادم، التوكن من شاشة أبل، والخصم في الخادم. يرجع: paid / cancelled / failed / unavailable */
@@ -3823,7 +3872,7 @@ async function startOrderPayment(o, method){
     return true;
   }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال بالدفع','Payment connection failed')); return false; }
 }
-function payOrder(id, method){ checkApplePay(); const o=state.orders.find(x=>x.id===id); if(o) startOrderPayment(o, method||'online'); }
+function payOrder(id, method){ checkApplePay(); const o=findOrder(id); if(o) startOrderPayment(o, method||'online'); }
 /* رجوع العميل للتطبيق بعد صفحة الدفع (في الجوال تفتح بالمتصفح) */
 let _payPoll=false;
 async function checkPendingPayment(){
@@ -3833,7 +3882,7 @@ async function checkPendingPayment(){
     const r=await fetch(PAY_FN+'/status?id='+encodeURIComponent(id), {headers:{'Authorization':'Bearer '+(await authToken()),'apikey':SUPABASE_ANON}});
     const j=await r.json();
     const st=j&&j.payment&&j.payment.status;
-    if(st==='paid'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} toast(LX('✅ تم الدفع','✅ Payment received')); if(cloudReady) loadOrdersFromCloud(); }
+    if(st==='paid'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} toast(LX('✅ تم الدفع','✅ Payment received')); if(cloudReady){ loadOrdersFromCloud(); try{ fetchMySub(); }catch(e){} } }
     else if(st&&st!=='pending'){ try{ localStorage.removeItem('khafet_pay_pending'); }catch(e){} }
   }catch(e){} finally{ _payPoll=false; }
 }
@@ -3891,6 +3940,7 @@ async function checkPaymentReturn(){
     }catch(e){}
     await new Promise(r=>setTimeout(r, 1500));
   }
+  if(paid){ try{ fetchMySub(); }catch(e){} }   // اشتراك مدفوع: تظهر بطاقة «صيانتي السنوية»
 
   document.getElementById('app').innerHTML = paid
     ? `<div class="wrap screen"><div class="panel" style="margin-top:30px">
@@ -4060,9 +4110,9 @@ function shdTog(k){ SHD[k]=!SHD[k]; renderShades(); }
 function shdUpdate(){
   const c=shdCalc(), g=id=>document.getElementById(id), set=(id,t)=>{ const e=g(id); if(e) e.textContent=t; };
   set('shdArea', en(Math.round(c.area)));
+  set('shdArea2', en(Math.round(c.area)));   // رقم المساحة في سطر الملخص يتحدّث مع المقاس
   set('shdRate', en(c.rate));
   set('shdBase', en(Math.round(c.base)));
-  set('shdExtra', en(Math.round(c.lightCost + c.gutterCost)));
   set('shdTotal', en(c.total));
   set('shdDays', en(c.days));
   const b=g('shdBox');
@@ -4088,7 +4138,7 @@ function renderShades(){
   const E=_uiEN(), T=(a,b)=>E?b:a, c=shdCalc();
   const KL = shdKinds();
   if(!KL.some(k=>k.k===SHD.kind) && KL.length) SHD.kind=KL[0].k;
-  const kinds = KL.map(k=>`<button class="${SHD.kind===k.k?'on':''}" onclick="shdSet('kind','${k.k}')">${E?k.en:k.ar}</button>`).join('');
+  const kinds = KL.map(k=>`<button class="${SHD.kind===k.k?'on':''}" onclick="shdSet('kind','${aid(k.k)}')">${esc(E?k.en:k.ar)}</button>`).join('');
   const FB=shdFab(), CL=shdColor();
   const fabs = SHD_FABRICS.map(f=>`<button class="${SHD.fab===f.k?'on':''}" onclick="shdSet('fab','${f.k}')">${E?f.en:f.ar}<small>${T(ar(shdFabRate(f.k))+' ر.س للمتر', shdFabRate(f.k)+' SAR per m²')}</small></button>`).join('');
   const sws = FB.colors.map(c=>`<button type="button" class="shd-sw ${CL[0]===c[0]?'on':''}" style="background-image:url('${SHD_IMG}${FB.k}/${c[0]}.jpg')" onclick="shdSet('color','${c[0]}')" aria-label="${E?c[2]:c[1]}" title="${E?c[2]:c[1]}"></button>`).join('');
@@ -4149,9 +4199,8 @@ function shdBook(){
     +' · '+shdFab().ar+' · لون '+shdColor()[1]
     +(SHD.light?' · إنارة LED':'')+(SHD.gutter?' · مزراب':'')
     +' · التقدير '+c.total+' ريال · ضمان '+stNum('shade_warranty_years',5)+' سنوات';
-  state.quickNote = note;
-  startQuick();
-  setTimeout(function(){ const t=document.getElementById('q_note')||document.getElementById('note'); if(t && !t.value) t.value=note; }, 300);
+  // معاينة المظلة تدخل مسار المعاينة حتى لو «الطلب السريع» مطفي، والمواصفات تظهر في وصف الطلب وتصل للفني
+  startQuick({ force:true, note });
 }
 
 const MJ_RATE = {
@@ -4298,19 +4347,14 @@ function mjBook(){
     +(MJ.elec?' · كهرباء':'')+(MJ.ac?' · تكييف':'')+(MJ.floor?' · أرضية':'')+(MJ.paint?' · تشطيب خارجي':'')
     +(MJ.key?' · 🔑 تسليم مفتاح (تجهيز كامل بالأثاث · يُسعّر بعد المعاينة)':'')
     +' · التقدير '+c.total+' ريال'+(MJ.key?' (بدون التجهيز)':'');
-  try{ localStorage.setItem('khafet_majlis_note', note); }catch(e){}
-  state.quickNote = note;
-  startQuick();
-  setTimeout(function(){
-    const t=document.getElementById('q_note')||document.getElementById('note');
-    if(t && !t.value) t.value=note;
-  },350);
+  // معاينة المجلس تدخل مسار المعاينة حتى لو «الطلب السريع» مطفي، والمواصفات تظهر في وصف الطلب وتصل للفني
+  startQuick({ force:true, note });
 }
 
 function syncHeader(){
   const n=myOrders().length;
   document.getElementById('myCount').textContent=ar(n);
-  const loggedIn=!!(state.customer&&state.customer.phone);   // داخل بحسابه؟
+  const loggedIn=!!isVerified;   // داخل بحسابه؟ (جلسة موثّقة بالرمز، لا مجرد رقم مكتوب في نموذج الحجز)
   const cb=document.getElementById('cartBtn'); if(cb){ const cn=quickMode?0:cartCount(); cb.style.display=cn>0?'':'none'; const cc=document.getElementById('cartCountB'); if(cc) cc.textContent=ar(cn); }
   const ab=document.getElementById('accountBtn'); if(ab) ab.style.display=loggedIn?'':'none';
   const lb=document.getElementById('loginBtn'); if(lb) lb.style.display=loggedIn?'none':'';
@@ -4333,7 +4377,7 @@ function detectCityGPS(){
 }
 function renderLocation(){
   const cur=(state.address&&state.address.city)||'';
-  const cities=CITIES.map(c=>`<button class="${c===cur?'on':''}" onclick="pickCity('${aid(c)}')">${c}</button>`).join('');
+  const cities=CITIES.map(c=>`<button class="${c===cur?'on':''}" data-city="${esc(c)}" onclick="pickCity(this.dataset.city)">${esc(c)}</button>`).join('');
   document.getElementById('locModal').innerHTML=`
     <div class="loc-sheet">
       <div class="loc-head"><b>📍 اختر موقعك</b><button onclick="closeLocation()">✕</button></div>
@@ -4440,7 +4484,7 @@ function renderHome(){
       ${stOn('shades_enabled',true)?`<button class="services-btn" onclick="go('shades')">
         <span class="sb-ic" style="color:var(--gold-deep)">⛱️</span>
         <span class="sb-t"><b>${shdScreens()?LX('مظلات وسواتر','Shades & screens'):LX('مظلات','Shades')}</b><small>${LX('حدّد الأمتار والنوع ويطلع السعر فورًا','Set the size and type, price shows instantly')}</small></span>
-        <span class="sb-go">${icon('chev',18)}</span>
+        <span class="qb-ar">←</span>
       </button>`:''}
       ${stOn('majlis_enabled',true)?`<button class="services-btn" onclick="go('majlis')">
         <span class="sb-ic" style="color:var(--gold-deep)">${catIcon('majlis',26)}</span>
@@ -4498,7 +4542,7 @@ function showLoyaltyInfo(){
       <div class="loy-step"><div class="ls-n">🎁</div><div class="ls-t"><b>خصم = متوسط طلباتك</b><span>يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.</span></div></div>
     </div>
     <div class="loy-eg"><b>مثال:</b> لو متوسط طلباتك <b>١٥٠ ر.س</b>، فطلبك السابع عليه <b>خصم ١٥٠ ر.س</b>.</div>
-    <div style="color:var(--muted);font-size:.82rem;margin-top:10px;line-height:1.7">💡 الخصم على أجرة اليد (الخدمة) فقط · قطع الغيار والأغراض تبقى على العميل بسعرها.</div>
+    <div style="color:var(--muted);font-size:.82rem;margin-top:10px;line-height:1.7">💡 المتوسط يُحسب من إجمالي طلباتك السابقة، والخصم يُطبّق على إجمالي طلبك (الخدمة والأغراض) بحد أقصى قيمة الطلب.</div>
     <button class="cta" style="margin-top:16px" onclick="closeLoyaltyInfo()">تمام</button>
   </div>`;
   const m=document.getElementById('locModal');
@@ -4522,10 +4566,10 @@ function renderPrices(){
     }).join('');
     return rows?`<div class="price-cat"><h3><span style="color:var(--gold-deep)">${catIcon(k,20)}</span> ${esc(c.name)}</h3>${rows}</div>`:'';
   }).join('');
-  const n=cartCount();
+  const n=cartCount(), ns=Object.keys(state.cart).length;   // العدّاد يعدّ الخدمات لا الكميات
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(n)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
+      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(ns)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="goTimeChecked()">التالي <span>←</span></button>
     </div></div>` : '';
   document.getElementById('app').innerHTML=`
@@ -4565,7 +4609,7 @@ function renderJoin(){
       </div>
       <div class="panel"><h3>🛠️ نوع الخدمات <span class="req">*</span></h3>
         <div class="chips-pick">
-          ${Object.keys(CATS).map(k=>`<label><input type="checkbox" value="${CATS[k].name}" ${(p.services||[]).includes(CATS[k].name)?'checked':''} /> ${CATS[k].ico} ${CATS[k].name}</label>`).join('')}
+          ${Object.keys(CATS).map(k=>`<label><input type="checkbox" value="${esc(CATS[k].name)}" ${(p.services||[]).includes(CATS[k].name)?'checked':''} /> ${esc(CATS[k].ico)} ${esc(CATS[k].name)}</label>`).join('')}
         </div>
         <div class="field" style="margin-top:14px"><label>ملاحظة (اختياري)</label><textarea id="pv_note" placeholder="أي معلومة تحب تضيفها...">${esc(p.note||'')}</textarea></div>
       </div>
@@ -4576,6 +4620,16 @@ function renderJoin(){
 }
 let joinCtx=null;
 function normJoinPhone(v){ let d=String(v||'').replace(/[^0-9]/g,''); if(d.startsWith('00')) d=d.slice(2); if(d.startsWith('0')) d='966'+d.slice(1); if(!d.startsWith('966')) d='966'+d; return '+'+d; }
+/* عميل Supabase مستقل لتسجيل المزوّد: جلسته في الذاكرة فقط، فما يلمس جلسة العميل الحالية ولا طلباته */
+let _jsb=null;
+function joinClient(){
+  if(_jsb) return _jsb;
+  if(!(window.supabase && SUPABASE_URL && SUPABASE_ANON)) return null;
+  const mem={}; const store={ getItem:k=>(Object.prototype.hasOwnProperty.call(mem,k)?mem[k]:null), setItem:(k,v)=>{ mem[k]=String(v); }, removeItem:k=>{ delete mem[k]; } };
+  try{ _jsb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, { auth:{ storage:store, storageKey:'khafet-join', persistSession:true, autoRefreshToken:false, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } }); }catch(e){ _jsb=null; }
+  return _jsb;
+}
+async function joinClientDone(){ const j=_jsb; _jsb=null; if(!j) return; try{ await j.auth.signOut({ scope:'local' }); }catch(e){} }
 async function submitProvider(){
   const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
   const name=g('pv_name'), phone=g('pv_phone'), pass=g('pv_pass');
@@ -4587,23 +4641,24 @@ async function submitProvider(){
   if(!cities.length){ toast('اكتب مدن الخدمة'); return; }
   if(!services.length){ toast('اختر نوع الخدمات'); return; }
   if(!cloudReady){ toast('لا يوجد اتصال، حاول بعد قليل'); return; }
+  const jsb=joinClient(); if(!jsb){ toast('لا يوجد اتصال، حاول بعد قليل'); return; }
   const e164=normJoinPhone(phone);
   joinCtx={ name, phone, pass, cities, services, note:g('pv_note'), e164, mode:'signup' };
   state.provider={ name, phone, cities, services, note:joinCtx.note }; save();
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نرسل رمز التحقق...'; }
   try{
-    /* ينشئ حساب دخول (جوال + كلمة مرور) · Supabase يرسل رمز تحقق SMS تلقائياً */
-    const { data, error }=await sb.auth.signUp({ phone:e164, password:pass });
+    /* ينشئ حساب دخول (جوال + كلمة مرور) · Supabase يرسل رمز تحقق SMS تلقائياً · بعميل مستقل عن جلسة العميل */
+    const { data, error }=await jsb.auth.signUp({ phone:e164, password:pass });
     if(error){
       if(/already|registered|exists/i.test(error.message||'')){
         joinCtx.mode='existing';                       /* رقم له حساب (عميل سابق مثلاً) · نتحقق ثم نضبط كلمة المرور */
-        const r2=await sb.auth.signInWithOtp({ phone:e164 });
+        const r2=await jsb.auth.signInWithOtp({ phone:e164 });
         if(r2.error) throw r2.error;
       } else throw error;
     } else if(data && data.user && Array.isArray(data.user.identities) && data.user.identities.length===0){
       /* رقم له حساب مسبقاً: signUp يرجّع «نجاحاً وهمياً» بلا رسالة · نرسل رمز دخول فعلياً */
       joinCtx.mode='existing';
-      const r2=await sb.auth.signInWithOtp({ phone:e164 });
+      const r2=await jsb.auth.signInWithOtp({ phone:e164 });
       if(r2.error) throw r2.error;
     }
     renderJoinOtp('');
@@ -4631,16 +4686,17 @@ async function verifyJoinOtp(){
   const code=((document.getElementById('jn_otp')||{}).value||'').trim();
   if(code.length<4){ renderJoinOtp('اكتب الرمز كاملاً'); return; }
   const btn=document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ نتحقق...'; }
+  const jsb=joinClient(); if(!jsb||!joinCtx){ renderJoinOtp('تعذّر الإكمال، حاول مرة ثانية'); return; }
   try{
-    const { error }=await sb.auth.verifyOtp({ phone:joinCtx.e164, token:code, type:'sms' });
+    const { error }=await jsb.auth.verifyOtp({ phone:joinCtx.e164, token:code, type:'sms' });
     if(error){ renderJoinOtp('❌ الرمز غير صحيح، حاول ثانية'); return; }
-    if(joinCtx.mode==='existing'){ try{ await sb.auth.updateUser({ password:joinCtx.pass }); }catch(e){} }
+    if(joinCtx.mode==='existing'){ try{ await jsb.auth.updateUser({ password:joinCtx.pass }); }catch(e){} }
     /* أنشئ ملف المزوّد · الخادم وحده يقرر الحالة: الملف المكتمل يُعتمد فوراً */
     let already=false;
-    const r=await sb.from('khafet_providers').insert({ name:joinCtx.name, phone:joinCtx.phone, city:joinCtx.cities[0]||'', cities:joinCtx.cities, services:joinCtx.services, note:joinCtx.note });
+    const r=await jsb.from('khafet_providers').insert({ name:joinCtx.name, phone:joinCtx.phone, city:joinCtx.cities[0]||'', cities:joinCtx.cities, services:joinCtx.services, note:joinCtx.note });
     if(r.error){ if((r.error.code||'')==='23505'||/duplicate/i.test(r.error.message||'')) already=true; else throw r.error; }
-    try{ await sb.auth.signOut(); }catch(e){}
-    try{ await ensureAnonSession(); }catch(e){}
+    /* جلسة المزوّد كانت في الذاكرة فقط: نقفلها، وجلسة العميل وطلباته كما هي */
+    await joinClientDone();
     document.getElementById('app').innerHTML=`
       <div class="wrap screen">
         <div class="panel" style="margin-top:30px">
@@ -4672,10 +4728,10 @@ const CAT_IC={
 function catTileIc(k){ const c=CATS[k]||{}; const u=c.img?safeUrl(c.img,''):''; return u ? `<span class="mt-ic mt-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(c.name||'')}"></span>` : `<span class="mt-ic">${catIcon(k,30)}</span>`; }
 /* صورة الخدمة الحقيقية إن وُجدت، وإلا الإيموجي */
 function svcImgOn(s){ return !!((s&&s.img)?safeUrl(s.img,''):''); }
-function svcIc(s){ const u=(s&&s.img)?safeUrl(s.img,''):''; return u ? `<span class="srow-ic srow-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(s.name||'')}"></span>` : `<span class="srow-ic">${(s&&s.ico)||'🔧'}</span>`; }
+function svcIc(s){ const u=(s&&s.img)?safeUrl(s.img,''):''; return u ? `<span class="srow-ic srow-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(s.name||'')}"></span>` : `<span class="srow-ic">${esc((s&&s.ico)||'🔧')}</span>`; }
 function catIcon(k,s){
   const p=CAT_IC[k];
-  if(!p) return (CATS[k]&&CATS[k].ico)||'';
+  if(!p) return esc((CATS[k]&&CATS[k].ico)||'');
   return `<svg viewBox="0 0 24 24" width="${s||26}" height="${s||26}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:middle">${p}</svg>`;
 }
 
@@ -4700,16 +4756,30 @@ function renderServices(){
 }
 
 /* ---------- طلب سريع: مباشرة للموعد + وصف/مقطع ---------- */
-function startQuick(){
-  if(!quickEnabled()){ toast('الطلب السريع غير متاح حاليًا، اختر الخدمة من القائمة'); return; }
+/* opts.force: معاينة المظلات والمجالس والحلول تدخل مسار المعاينة حتى لو «الطلب السريع» مطفي من الإعدادات
+   opts.note: مواصفات جاهزة تظهر في خانة وصف المشكلة (f_desc) فتصل في ملاحظة الطلب للفني */
+function startQuick(opts){
+  opts=opts||{};
+  if(!opts.force && !quickEnabled()){ toast('الطلب السريع غير متاح حاليًا، اختر الخدمة من القائمة'); return; }
   // الطلب السريع مجاني ويصل الفني مباشرة، فالرقم لازم يكون مؤكدًا
-  if(!isVerified){ toast(LX('أكّد رقم جوالك أولاً عشان نرسل لك الفني','Verify your phone first')); go('login'); return; }
-  quickMode=true; state.cart={}; state.booking={date:null,time:null};
+  if(!isVerified){ if(opts.note){ state.pendingQuick={ force:!!opts.force, note:opts.note, at:Date.now() }; save(); } toast(LX('أكّد رقم جوالك أولاً عشان نرسل لك الفني','Verify your phone first')); go('login'); return; }
+  state.pendingQuick=null;
+  quickMode=true; state.cart={}; state.parts={}; state.booking={date:null,time:null};
+  if(opts.note){ state.subReq=null; state.quickNote=opts.note; state.problem={desc:opts.note}; }
+  else if(!state.subReq) clearAutoNote();   // طلب سريع عادي: ما نورّث مواصفات مظلة أو مجلس من محاولة سابقة
+  save();
   go('time');
+}
+/* ملاحظة جاهزة قديمة (مظلة/مجلس/حل) ما تنتقل لطلب ثاني · نمسحها فقط إذا ما عدّلها العميل بنفسه */
+function clearAutoNote(){
+  if(state.subReq) return;
+  const d=(state.problem&&state.problem.desc)||'';
+  if(state.quickNote && d===state.quickNote){ state.problem={desc:''}; }
+  state.quickNote='';
 }
 
 /* ---------- خطوة ١: اختر الخدمة ---------- */
-function openCat(k){ if(catSoon(k)){ toast(LX('قريبًا إن شاء الله ✨','Coming soon ✨')); return; } quickMode=false; currentCat=k; go('pick'); }
+function openCat(k){ if(catSoon(k)){ toast(LX('قريبًا إن شاء الله ✨','Coming soon ✨')); return; } quickMode=false; clearAutoNote(); currentCat=k; go('pick'); }
 function toggleService(id){
   if(state.cart[id]) delete state.cart[id]; else state.cart[id]=1;
   save(); if(view==='prices') renderPrices(); else renderPick();
@@ -4725,16 +4795,16 @@ function renderPick(){
       <span class="srow-ck">${sel?'✓':''}</span>
     </div>`;
   }).join('');
-  const n=cartCount();
+  const n=cartCount(), ns=Object.keys(state.cart).length;   // العدّاد يعدّ الخدمات لا الكميات
   const nextbar = n>0 ? `
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(n)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
+      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(ns)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="goTimeChecked()">التالي <span>←</span></button>
     </div></div>` : '';
 
   document.getElementById('app').innerHTML=`
     <div class="wrap screen" style="padding-bottom:150px">
-      ${pageHead(catIcon(currentCat,22)+' '+CATS[currentCat].name,'home')}
+      ${pageHead(catIcon(currentCat,22)+' '+esc((CATS[currentCat]||{}).name||''),'home')}
       ${stepBar(1)}
       <div class="srows">${rows}</div>
       <a class="addmore" onclick="go('home')">＋ أضف من قسم آخر</a>
@@ -4751,10 +4821,11 @@ function renderCart(){
   quickMode=false;
   const items=cartItems();
   if(!items.length){ go('home'); return; }
-  const n=cartCount();
+  const ns=Object.keys(state.cart).length;   // العدّاد يعدّ الخدمات لا الكميات
+  // سعر السطر ومدته بنفس حسبة المجموع (السعر والمدة الإضافية للوحدة الثانية فما بعد)
   const rows=items.map(i=>`<div class="srow sel ${svcImgOn(i)?'has-img':''}" style="cursor:default">
       ${svcIc(i)}
-      <span class="srow-t"><b>${esc(svcName(i, _uiEN()?'en':'ar'))}</b><span class="sv-meta"><em class="sv-price">${i.custom?LX('بعد المعاينة','After inspection'):money(i.price*i.qty)}</em><em class="sv-time">⏱ ${fmtDuration(i.dur*i.qty)}</em></span><span class="srow-qty"><button type="button" onclick="setQty('${aid(i.id)}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${aid(i.id)}',1)" aria-label="أكثر">+</button></span></span>
+      <span class="srow-t"><b>${esc(svcName(i, _uiEN()?'en':'ar'))}</b><span class="sv-meta"><em class="sv-price">${i.custom?LX('بعد المعاينة','After inspection'):money(lineLabor(i))}</em><em class="sv-time">⏱ ${fmtDuration(lineDur(i))}</em></span><span class="srow-qty"><button type="button" onclick="setQty('${aid(i.id)}',-1)" aria-label="أقل">${i.qty>1?'−':'×'}</button><b>${ar(i.qty)}</b><button type="button" onclick="setQty('${aid(i.id)}',1)" aria-label="أكثر">+</button></span></span>
     </div>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen" style="padding-bottom:170px">
@@ -4763,7 +4834,7 @@ function renderCart(){
       <a class="addmore" onclick="go('home')">＋ ${LX('أضف خدمة ثانية','Add another service')}</a>
     </div>
     <div class="nextbar"><div class="wrap">
-      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(n)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
+      <div class="nb-info nb-sum"><div><span>${nbSvcLabel(ns)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
       <button class="nb-go" onclick="goTimeChecked()">${LX('التالي','Next')} <span>←</span></button>
     </div></div>`;
 }
@@ -4858,7 +4929,7 @@ function expectedDelayFor(o){
     .reduce((a,x)=>a+(x.delayMin||0),0);
 }
 async function advanceOrder(id){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const o=findOrder(id); if(!o) return;
   const e=earlierSlotFor(o);
   if(!e){ toast('ما عاد فيه موعد أبكر متاح'); render(); return; }
   if(!confirm(LX('تقديم موعدك إلى ','Move your visit to ')+dayLabel(e.date)+' · '+windowLabel(e.time)+'؟')) return;
@@ -5392,8 +5463,16 @@ async function confirmOrder(){
   if(!order){ state.seq++; order=Object.assign({id:'#'+ar(state.seq), num:state.seq, dbId:null}, base); }
   state.orders.unshift(order);
   state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id);
-  state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false;
-  save(); lastOrderId=order.id; go('confirm');
+  state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; state.quickNote=''; quickMode=false; _housePhotoFile=null;
+  save(); lastOrderId=order.id;
+  // الخادم يعيد حساب الرصيد والولاء بنفسه: لو طلع مبلغ مستحق نفتح الدفع حسب رده لا حسب الحساب المحلي
+  if(order.dbId && order.payRequired && !order.released && order.amountDue>0 && order.status!=='cancelled'){
+    _payingNow=true; let started=false;
+    try{ started=await startOrderPayment(order, (orderPayMethod==='applepay'&&APPLEPAY_OK)?'applepay':'online'); } finally { _payingNow=false; }
+    if(!started) go('confirm');   // شاشة التأكيد تعرض «بانتظار الدفع» مع زر الدفع
+    return;
+  }
+  go('confirm');
 }
 
 /* ---------- تأكيد ---------- */
@@ -5413,17 +5492,26 @@ function renderConfirm(){
   const dayName=diff===0?LX('اليوم','Today'):diff===1?LX('بكرة','Tomorrow'):(_uiEN()?WEEK.en[d.getDay()]:AR_DAYS[d.getDay()]);
   const mon=_uiEN()?MON.en[d.getMonth()]:AR_MONTHS[d.getMonth()];
   const place=[esc(o.address&&o.address.city),esc(o.address&&o.address.district),(o.address&&o.address.house)?LX('منزل ','House ')+esc(o.address.house):''].filter(Boolean).join(' · ')||((o.address&&o.address.lat)?LX('موقع محدد على الخريطة','Pinned on the map'):'');
-  const title=o.dbId?(paidNow?LX('تم الدفع وتأكيد طلبك','Paid and confirmed'):LX('تم تأكيد طلبك','Your order is confirmed')):LX('جاري إرسال طلبك','Sending your order');
+  // الخادم يقرر إن الطلب يحتاج دفعًا: ما ينرسل للفني إلا بعد الدفع، فنعرض الحالة الصحيحة مع زر الدفع بدل «تم تأكيد طلبك»
+  const awaitingPay = !!o.dbId && !paidNow && o.payRequired && !o.released && +o.amountDue>0 && o.status!=='cancelled';
+  const title=o.dbId?(paidNow?LX('تم الدفع وتأكيد طلبك','Paid and confirmed'):(awaitingPay?LX('طلبك بانتظار الدفع','Your order is awaiting payment'):LX('تم تأكيد طلبك','Your order is confirmed'))):LX('جاري إرسال طلبك','Sending your order');
   const total=paidNow&&+o.paidAmount>0?+o.paidAmount:+o.finalPrice;
+  const oref=aid(orderRef(o));
+  const payBtns = awaitingPay ? `<div class="cf-acts" style="margin-top:14px">
+        ${APPLEPAY_OK?`<button class="cta apbtn" onclick="payOrder('${oref}','applepay')"> Pay · ${money(o.amountDue)}</button>`:''}
+        ${cardInappOn()?`<button class="cta gold" onclick="openCardModal('${oref}')">${LX('💳 ادفع بالبطاقة','💳 Pay by card')} · ${money(o.amountDue)}</button>`:`<button class="cta gold" onclick="payOrder('${oref}','online')">${LX('💳 ادفع الآن','💳 Pay now')} · ${money(o.amountDue)}</button>`}
+      </div>` : '';
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
       <div class="cf-hero">
-        <div class="cf-check${o.dbId?'':' wait'}">${o.dbId?'✓':'⏳'}</div>
+        <div class="cf-check${(o.dbId&&!awaitingPay)?'':' wait'}">${o.dbId?(awaitingPay?'💳':'✓'):'⏳'}</div>
         <h2>${title}</h2>
         <div class="cf-no">${esc(o.id)}</div>
         ${o.dbId?'':`<p style="color:var(--muted);margin-top:12px">${LX('ما فيه إنترنت الآن. يُرسل طلبك تلقائيًا أول ما يرجع الاتصال.','No internet right now. Your order is sent automatically once you are back online.')}</p>`}
+        ${awaitingPay?`<p style="color:var(--muted);margin-top:12px">${LX('ادفع لتأكيد الحجز ويوصل طلبك للفني.','Pay to confirm the booking and send it to the technician.')}</p>`:''}
       </div>
-      ${o.dbId?'':`<a class="cta" style="display:block;text-align:center;text-decoration:none;margin-top:14px" href="tel:${PHONE}">📞 ${LX('اتصل بنا','Call us')} ${PHONE}</a>`}
+      ${payBtns}
+      ${o.dbId?'':`<a class="cta" style="display:block;text-align:center;text-decoration:none;margin-top:14px" href="tel:${esc(PHONE)}">📞 ${LX('اتصل بنا','Call us')} ${esc(PHONE)}</a>`}
       <div class="cf-when">
         <div class="cf-day"><small>${dayName}</small><b>${ar(d.getDate())}</b><span>${mon}</span></div>
         <div class="cf-time"><small>${LX('وقت الوصول','Arrival time')}</small><b>${windowLabel(o.startMin)}</b></div>
@@ -5466,7 +5554,8 @@ function renderMyBookings(){
       const awaitingPay = !!o.dbId && o.payRequired && !o.released && o.status!=='cancelled';
       const showDue = !!o.dbId && o.status!=='cancelled' && o.amountDue>0 && (awaitingPay || (o.released && (o.payRequired || (o.invoice&&o.invoice.items&&o.invoice.items.length))));
       const tamaraOk = tamaraEnabled() && (+o.amountDue||+o.finalPrice||0) >= TAMARA_MIN_LABOR;
-      const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${aid(o.id)}',${n})"`}>★</span>`).join('');
+      const oref=aid(orderRef(o));   // معرّف الطلب في الأزرار: معرّف الخادم (لاتيني) أو الرقم المحلي
+      const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${oref}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
         <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?LX('⏳ جارٍ الإرسال','⏳ Sending'):(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?LX('🔍 جارٍ التعيين','🔍 Assigning'):STATUS_AR[o.status]))}</span></div>
         <div class="ometa">
@@ -5479,7 +5568,7 @@ function renderMyBookings(){
         </div>
         ${showDue?`<div class="pay-due">
           <div class="pd-t"><span>${awaitingPay?LX('ادفع لتأكيد الحجز','Pay to confirm your booking'):LX('المتبقي عليك','Amount due')}</span><b>${money(o.amountDue)}</b></div>
-          <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${aid(o.id)}','applepay')"> Pay</button>`:''}${(cardInappOn()?`<button onclick="openCardModal('${aid(o.id)}')">${LX('💳 ادفع بالبطاقة','💳 Pay by card')}</button>`:`<button onclick="payOrder('${aid(o.id)}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>`)}${tamaraOk?`<button class="tmr" onclick="payOrder('${aid(o.id)}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
+          <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${oref}','applepay')"> Pay</button>`:''}${(cardInappOn()?`<button onclick="openCardModal('${oref}')">${LX('💳 ادفع بالبطاقة','💳 Pay by card')}</button>`:`<button onclick="payOrder('${oref}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>`)}${tamaraOk?`<button class="tmr" onclick="payOrder('${oref}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
         </div>`:''}
         ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
         ${o.status==='cancelled'&&['refund_pending','refund_failed'].includes(o.payStatus)?`<div class="pay-note wait">${LX('⏳ جاري استرجاع المبلغ','⏳ Refund in progress')}</div>`:''}
@@ -5487,7 +5576,7 @@ function renderMyBookings(){
         ${o.status==='done'&&o.warrantyDays>0&&!o.warrantyOf?(laborClaim
           ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${laborClaim.status==='done'?'تم إصلاح المشكلة على الضمان':(laborClaim.status==='cancelled'?'بلاغ الضمان أُغلق':'استلمنا بلاغك على الضمان')}</b><span>${laborClaim.status==='done'?'شكراً لصبرك، ونعتذر عن الإزعاج.':(laborClaim.status==='cancelled'?'تواصل معنا لو لسا المشكلة موجودة.':'بنتواصل معك ونرسل الفني مجاناً.')}</span></div></div>`
           : (inLaborW
-            ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${LX('خدمتك مضمونة '+ar(o.warrantyDays)+' يوم · باقي '+ar(Math.max(1,Math.ceil(o.warrantyDays-ageDays)))+' يوم','Your service is covered for '+o.warrantyDays+' days · '+Math.max(1,Math.ceil(o.warrantyDays-ageDays))+' days left')}</b><span>رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.</span><div><button class="wbtn" style="margin-top:8px" onclick="openLaborClaim('${aid(o.id)}')">🛡️ المشكلة رجعت</button></div></div></div>`
+            ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${LX('خدمتك مضمونة '+ar(o.warrantyDays)+' يوم · باقي '+ar(Math.max(1,Math.ceil(o.warrantyDays-ageDays)))+' يوم','Your service is covered for '+o.warrantyDays+' days · '+Math.max(1,Math.ceil(o.warrantyDays-ageDays))+' days left')}</b><span>رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.</span><div><button class="wbtn" style="margin-top:8px" onclick="openLaborClaim('${oref}')">🛡️ المشكلة رجعت</button></div></div></div>`
             : `<div class="warranty-note" style="background:#f3f1ea;border-color:var(--line)"><span class="wn-ic">🛡️</span><div class="wn-t"><b style="color:var(--muted)">انتهت مدة الضمان (${ar(o.warrantyDays)} يوم)</b></div></div>`)):''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> · نرجو التكرّم باستقباله.</span></div>`:''}
@@ -5495,7 +5584,7 @@ function renderMyBookings(){
         ${earlier?`<div class="advance-note">
           <span class="an-ic">🎉</span>
           <div class="an-t"><b>صار فيه موعد أبكر متاح!</b><span>${dayLabel(earlier.date)} · ${windowLabel(earlier.time)} · بدل موعدك الحالي</span></div>
-          <button class="an-btn" onclick="advanceOrder('${aid(o.id)}')">قدّم موعدي</button>
+          <button class="an-btn" onclick="advanceOrder('${oref}')">قدّم موعدي</button>
         </div>`:''}
         ${['new','confirmed'].includes(o.status)?`<div class="reminder-note" style="margin-top:12px">⏰ <span>سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.</span></div>`:''}
         ${custInvoiceHtml(o)}
@@ -5506,17 +5595,17 @@ function renderMyBookings(){
             ? `<div class="rate-thanks">🙏 شكراً لتقييمك! رأيك يهمّنا ويساعدنا نتحسّن.</div>
                ${o.feedback
                  ? `<div class="fb-saved">📝 ملاحظتك: ${esc(o.feedback)}</div>`
-                 : `<div class="fb-box"><textarea placeholder="حاب تضيف كلمة طيبة عن الخدمة؟ (اختياري)"></textarea><button class="sbtn fb-send" onclick="saveFeedback('${aid(o.id)}', this)">إرسال</button></div>`}`
+                 : `<div class="fb-box"><textarea placeholder="حاب تضيف كلمة طيبة عن الخدمة؟ (اختياري)"></textarea><button class="sbtn fb-send" onclick="saveFeedback('${oref}', this)">إرسال</button></div>`}`
             : `<div class="complaint-note">😔 نعتذر عن عدم رضاك التام، اكتب لنا شكواك وبنتواصل معك ونعالجها.</div>
                ${o.feedback
                  ? `<div class="fb-saved">📩 شكواك وصلتنا وبنعالجها: ${esc(o.feedback)}</div>`
-                 : `<div class="fb-box"><textarea placeholder="اكتب رسالتك / شكواك هنا..."></textarea><button class="sbtn complaint-send" onclick="saveFeedback('${aid(o.id)}', this)">📩 إرسال الشكوى</button></div>`}`
+                 : `<div class="fb-box"><textarea placeholder="اكتب رسالتك / شكواك هنا..."></textarea><button class="sbtn complaint-send" onclick="saveFeedback('${oref}', this)">📩 إرسال الشكوى</button></div>`}`
           ):''}
         </div>`:''}
         ${canCancel?(lateCancel
-          ? `<div class="late-note"><span>⏰</span><div><b>باقي أقل من ${ar(cancelHours())} ساعات على الموعد</b>للإلغاء أو تغيير الموعد الحين تواصل معنا مباشرة.<div class="oact" style="margin-top:8px"><a class="sbtn" href="tel:${PHONE}">📞 اتصال</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 واتساب</a></div></div></div>`
-          : `<div class="oact"><button class="sbtn" onclick="openReschedule('${aid(o.id)}')">📅 تغيير الموعد</button><button class="sbtn danger" onclick="cancelOrder('${aid(o.id)}')">إلغاء الطلب</button></div><div class="policy-note">الإلغاء أو تغيير الموعد مجاني حتى ${ar(cancelHours())} ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.</div>`):''}
-        ${canReorder?`<div class="oact"><button class="sbtn ok" onclick="reorder('${aid(o.id)}')">🔁 اطلب مرة ثانية</button></div>`:''}
+          ? `<div class="late-note"><span>⏰</span><div><b>باقي أقل من ${ar(cancelHours())} ساعات على الموعد</b>للإلغاء أو تغيير الموعد الحين تواصل معنا مباشرة.<div class="oact" style="margin-top:8px"><a class="sbtn" href="tel:${esc(PHONE)}">📞 اتصال</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 واتساب</a></div></div></div>`
+          : `<div class="oact"><button class="sbtn" onclick="openReschedule('${oref}')">📅 تغيير الموعد</button><button class="sbtn danger" onclick="cancelOrder('${oref}')">إلغاء الطلب</button></div><div class="policy-note">الإلغاء أو تغيير الموعد مجاني حتى ${ar(cancelHours())} ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.</div>`):''}
+        ${canReorder?`<div class="oact"><button class="sbtn ok" onclick="reorder('${oref}')">🔁 اطلب مرة ثانية</button></div>`:''}
       </div>`;
     }).join('');
   }
@@ -5534,10 +5623,11 @@ function partsBox(o){
   const ageDays=(Date.now()-new Date(o.date||o.createdAt).getTime())/86400000;
   const inW=ageDays<=PARTS_WARRANTY_DAYS;
   const rows=parts.map((p,i)=>{
-    const claim=state.orders.find(x=>x.warrantyOf&&o.dbId&&x.warrantyOf===o.dbId&&x.warrantyItem===p.name);
+    const pk=partClaimKey(p);
+    const claim=state.orders.find(x=>x.warrantyOf&&o.dbId&&x.warrantyOf===o.dbId&&(x.warrantyItem===pk||x.warrantyItem===p.name));   // البلاغات القديمة كانت بالاسم
     let act;
     if(claim) act=`<span class="pb-done">✅ ${claim.status==='done'?'تم التبديل':'تم البلاغ · بنتواصل معك'}</span>`;
-    else if(inW) act=`<button class="wbtn" onclick="claimWarranty('${aid(o.id)}',${i})">⚠️ تعطّلت؟ بلّغ على الضمان</button>`;
+    else if(inW) act=`<button class="wbtn" onclick="claimWarranty('${aid(orderRef(o))}',${i})">⚠️ تعطّلت؟ بلّغ على الضمان</button>`;
     else act=`<span class="pb-done muted">انتهى الضمان</span>`;
     const pic=p.img?`<img class="pb-img" src="${esc(p.img)}" loading="lazy" data-img="${esc(p.img)}" onclick="pbZoom(this.dataset.img)" />`:`<span class="pb-ph">🔩</span>`;
     return `<div class="pb-row">${pic}<div class="pb-t"><b>${esc(p.name)}</b><small>${(+p.qty>1)?'×'+ar(p.qty)+' · ':''}${inW?'ضمان سنتين من تاريخ الخدمة':'انتهى الضمان'}</small><div class="pb-act">${act}</div></div></div>`;
@@ -5553,8 +5643,10 @@ function nextClaimSlot(){
   for(let i=0;i<14 && isOffDay(dateISO(d));i++){ d.setDate(d.getDate()+1); sm=WORK_START; }
   return { date:dateISO(d), startMin:sm };
 }
+/* معرّف القطعة في بلاغ الضمان: معرّف المستودع (stockId) وهو فريد لكل قطعة، وإلا معرّف البند · الخادم يطابق عليه لا على الاسم */
+function partClaimKey(p){ return String((p&&(p.stockId||p.id))||(p&&p.name)||''); }
 async function claimWarranty(orderId, idx){
-  const o=state.orders.find(x=>x.id===orderId); if(!o) return;
+  const o=findOrder(orderId); if(!o) return;
   const p=orderParts(o)[idx]; if(!p) return;
   if(!confirm('تبلّغ إن «'+p.name+'» تعطّلت وهي على الضمان؟\nبنرسل فنياً يفحصها ويبدّلها مجاناً إذا كانت مشمولة.')) return;
   if(!cloudReady||!o.dbId){ toast('يحتاج اتصال بالإنترنت'); return; }
@@ -5564,30 +5656,30 @@ async function claimWarranty(orderId, idx){
     price:0, finalPrice:0, free:false, status:'new', rating:0, reminded:false, quick:true,
     note:'🛡️ بلاغ ضمان قطع: '+p.name+' · من الطلب '+o.id+' بتاريخ '+(o.date||''), videoUrl:'', wantsEarlier:true,
     providerPhone:o.providerPhone||'', promoCode:'', discountPct:0, referredBy:'', creditUsed:0, loyaltyDisc:0, advanceDisc:0,
-    warrantyOf:o.dbId, warrantyItem:p.name };
+    warrantyOf:o.dbId, warrantyItem:partClaimKey(p) };
   const keepSub=state.subReq; state.subReq=null;   // البلاغ ما يُحسب على عقد الصيانة
   try{
     const order=await cloudInsert(base);
     state.orders.unshift(order); state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id); save();
     toast('🛡️ استلمنا بلاغك، بنتواصل معك لتبديلها'); render();
-  }catch(e){ console.error('warranty claim:', e); toast('⚠️ ما وصل البلاغ، أعد المحاولة'); }
+  }catch(e){ console.error('warranty claim:', e); toast(serverMsg(e)||'⚠️ ما وصل البلاغ، أعد المحاولة'); }
   finally{ state.subReq=keepSub; }
 }
 /* كم ساعة باقية على موعد الطلب (سالب = فات الموعد) */
 function hoursUntil(o){ if(!o||!o.date) return 999; const d=parseISO(o.date); d.setHours(0,0,0,0); return (d.getTime()+(+o.startMin||0)*60000-Date.now())/3600000; }
 /* سياسة الإلغاء: مجاني حتى 4 ساعات قبل الموعد، وبعدها عبر التواصل فقط */
-async function cancelOrder(id){ const o=state.orders.find(x=>x.id===id); if(!o) return; if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا للإلغاء'); return; } if(!confirm(LX('متأكد من إلغاء الطلب ','Cancel order ')+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return;
+async function cancelOrder(id){ const o=findOrder(id); if(!o) return; if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا للإلغاء'); return; } if(!confirm(LX('متأكد من إلغاء الطلب ','Cancel order ')+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return;
   const prev=o.status; o.status='cancelled'; save(); render();
   const ok=await cloudPatch(o.dbId,{status:'cancelled'});
-  if(ok){ toast('تم إلغاء الطلب'); } else { const x=state.orders.find(y=>y.id===id); if(x&&x.status==='cancelled'&&!x.dbId){ x.status=prev; } save(); render(); } }
+  if(ok){ toast('تم إلغاء الطلب'); } else { const x=findOrder(id); if(x&&x.status==='cancelled'&&!x.dbId){ x.status=prev; } save(); render(); } }
 
 /* ══════════ إعادة الطلب بضغطة: نفس الخدمات والعنوان، يختار الموعد بس ══════════ */
 function reorder(id){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const o=findOrder(id); if(!o) return;
   const cart={};
   (o.items||[]).forEach(i=>{ if(i.part||i.custom||isFeeId(i.id)||i.id==='quick') return; const s=SERVICES.find(x=>x.id===i.id); if(s&&!s.hidden) cart[i.id]=Math.max(1,+i.qty||1); });
   if(!Object.keys(cart).length){ toast('خدمات هذا الطلب ما عادت متاحة، اختر من القائمة'); go('home'); return; }
-  quickMode=false; state.subReq=null; state.cart=cart; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''};
+  quickMode=false; state.subReq=null; state.cart=cart; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.quickNote='';
   if(o.address&&(o.address.lat||o.address.house)) state.address=Object.assign({}, state.address||{}, o.address);
   save(); toast('🔁 حطّينا نفس الخدمات والعنوان، اختر الموعد'); go('time');
 }
@@ -5597,7 +5689,7 @@ let _rs=null;
 function kmodalEl(){ let m=document.getElementById('kmodal'); if(!m){ m=document.createElement('div'); m.id='kmodal'; m.className='kmodal'; m.onclick=e=>{ if(e.target===m) closeKModal(); }; document.body.appendChild(m); } return m; }
 function closeKModal(){ const m=document.getElementById('kmodal'); if(m) m.remove(); _rs=null; }
 function openReschedule(id){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const o=findOrder(id); if(!o) return;
   if(hoursUntil(o)<cancelHours()){ toast('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا لتغييره'); return; }
   _rs={id:o.id, date:o.date, time:null};
   rsRender();
@@ -5646,18 +5738,18 @@ function rsConfirm(){
 
 /* ══════════ بلاغ ضمان على الشغل: «المشكلة رجعت» = طلب جديد مجاني مرتبط بالأصلي ══════════ */
 function openLaborClaim(id){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const o=findOrder(id); if(!o) return;
   if(!cloudReady||!o.dbId){ toast('يحتاج اتصال بالإنترنت'); return; }
   const svcs=(o.items||[]).filter(i=>!i.part&&!isFeeId(i.id)).map(i=>i.ico+' '+i.name).join('، ');
   kmodalEl().innerHTML=`<div class="kbox">
     <div class="kh"><b>🛡️ المشكلة رجعت؟</b><button type="button" class="kx" onclick="closeKModal()">✕</button></div>
     <p style="font-size:.9rem;line-height:1.7;margin-bottom:8px">الطلب ${esc(o.id)} · ${esc(svcs)}<br><span style="color:var(--muted);font-weight:700">مضمون ${ar(o.warrantyDays)} يوم. نرسل الفني يفحص ويصلح مجاناً إذا كانت نفس المشكلة.</span></p>
     <textarea id="lc_desc" placeholder="اشرح وش رجع بالضبط (مثال: التسريب رجع من نفس المكان)"></textarea>
-    <div class="kacts"><button type="button" class="cta gold" onclick="sendLaborClaim('${aid(o.id)}')">🛡️ أرسل البلاغ</button></div>
+    <div class="kacts"><button type="button" class="cta gold" onclick="sendLaborClaim('${aid(orderRef(o))}')">🛡️ أرسل البلاغ</button></div>
   </div>`;
 }
 async function sendLaborClaim(id){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const o=findOrder(id); if(!o) return;
   const desc=((document.getElementById('lc_desc')||{}).value||'').trim();
   if(desc.length<3){ toast('اكتب وش المشكلة اللي رجعت'); return; }
   const btn=document.querySelector('#kmodal .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
@@ -5679,7 +5771,7 @@ async function sendLaborClaim(id){
   }catch(e){ console.error('labor claim:', e); toast(serverMsg(e)||'⚠️ ما وصل البلاغ، أعد المحاولة'); if(btn){ btn.disabled=false; btn.textContent='🛡️ أرسل البلاغ'; } }
   finally{ state.subReq=keepSub; }
 }
-function printCustInvoice(id){ const o=state.orders.find(x=>x.id===id); if(o&&o.invoice) printInvoiceDoc(o); }
+function printCustInvoice(id){ const o=findOrder(id); if(o&&o.invoice) printInvoiceDoc(o); }
 /* تصنيف بند الفاتورة: شغل (خدمة) أو قطعة من المستودع أو رسوم */
 function invKind(it){ if(!it) return 'svc'; if(isFeeId(it.id)) return 'fee'; if(it.id==='stock'||it.stockId||it.part||it.id==='part'||String(it.id||'').startsWith('part:')) return 'part'; return 'svc'; }
 function invGroups(inv){ const g={svc:[],part:[],fee:[]}; (inv&&inv.items||[]).forEach(it=>g[invKind(it)].push(it)); return g; }
@@ -5694,7 +5786,7 @@ function custInvoiceHtml(o){
     return `<div class="ci-row">${media}<div class="ci-n"><b>${esc(it.name)}</b><small>${q>1?ar(q)+' × '+money(p):money(p)}</small></div><div class="ci-p">${money(p*q)}</div></div>`; };
   const sec=(t,rows,kind)=>rows.length?`<div class="ci-sec">${t}</div>${rows.map(r=>line(r,kind)).join('')}`:'';
   return `<div class="cust-invoice">
-    <div class="ci-head"><div><b>🧾 الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="sbtn" onclick="printCustInvoice('${aid(o.id)}')">🖨️ طباعة</button></div>
+    <div class="ci-head"><div><b>🧾 الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="sbtn" onclick="printCustInvoice('${aid(orderRef(o))}')">🖨️ طباعة</button></div>
     ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
     ${(inv.dropped&&inv.dropped.length)?`<div class="ci-sec">أغراض عندك ما احتجناها</div>${inv.dropped.map(d=>`<div class="ci-row"><div class="ci-n"><b style="text-decoration:line-through;color:var(--muted)">${esc(d.name)}${(+d.qty>1)?' ×'+ar(d.qty):''}</b><small>يرجع لك ${money(d.amount)}</small></div></div>`).join('')}`:''}
     <div class="ci-sum">
@@ -5746,16 +5838,16 @@ ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part
 <div class="sum">${s.disc>0?`<div><span>المجموع</span><span>${money(s.sub)}</span></div><div class="g"><span>🎟️ خصم ${ar(inv.discountPct)}٪</span><span>− ${money(s.disc)}</span></div>`:''}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}٪</span><span>${money(vatOf(s.total))}</span></div>`:''}${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${(inv.dropped&&inv.dropped.length)?`<div class="g"><span>↩️ أغراض عندك: ${esc(inv.dropped.map(d=>d.name).join('، '))}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(+inv.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(inv.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
 <div class="wr"><span>🛡️ ضمان الشغل ${ar(o.warrantyDays>0?o.warrantyDays:APP_WARRANTY)+' يوم'}</span>${g.part.length?'<span>🔩 ضمان القطع سنتان</span>':''}</div>
 ${zatcaQr(s.total, vatOf(s.total), o.date)?`<div id="qr" style="margin:14px auto 0;width:140px"></div>`:''}
-<div class="ft">${legalLine()}<br>${vatLine()}<br>شكراً لتعاملك مع ${BRAND} · ${PHONE}</div>
+<div class="ft">${legalLine()}<br>${vatLine()}<br>شكراً لتعاملك مع ${BRAND} · ${esc(PHONE)}</div>
 ${zatcaQr(s.total, vatOf(s.total), o.date)?`<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"><\/script><script>try{ new QRCode(document.getElementById('qr'),{text:'${zatcaQr(s.total, vatOf(s.total), o.date)}',width:140,height:140}); }catch(e){}<\/script>`:''}
 <div class="noprint"><button onclick="print()">🖨️ طباعة</button></div>
 </div>
 </body></html>`;
   const w=window.open('','_blank'); if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة'); return; } w.document.write(html); w.document.close();
 }
-function rate(id,n){ const o=state.orders.find(x=>x.id===id); if(!o||o.rating) return; o.rating=n; save(); cloudPatch(o.dbId,{rating:n}); toast('شكراً لتقييمك '+'⭐'.repeat(n)); render(); }
+function rate(id,n){ const o=findOrder(id); if(!o||o.rating) return; o.rating=n; save(); cloudPatch(o.dbId,{rating:n}); toast('شكراً لتقييمك '+'⭐'.repeat(n)); render(); }
 function saveFeedback(id, btn){
-  const o=state.orders.find(x=>x.id===id); if(!o) return;
+  const o=findOrder(id); if(!o) return;
   const ta = btn && btn.parentElement ? btn.parentElement.querySelector('textarea') : null;
   const val = ta ? ta.value.trim() : '';
   if(!val){ toast('اكتب رسالتك أولاً'); return; }
@@ -5765,7 +5857,13 @@ function saveFeedback(id, btn){
 
 /* ---- مكوّنات مشتركة ---- */
 function pageHead(title,backTo){ return `<div class="pagehead"><button class="back" onclick="go('${aid(backTo)}')" title="رجوع">→</button><h2>${title}</h2></div>`; }
-function aid(v){ return String(v==null?'':v).replace(/[^A-Za-z0-9:_.\-]/g,''); }   // معرّف آمن داخل onclick
+/* معرّف آمن داخل onclick: حروف وأرقام لاتينية وعربية و# ومسافة فقط · كل ما يكسر النص أو الوسم (علامات الاقتناص والشرطة المائلة و<>&) يُحذف.
+   الأرقام العربية مسموحة لأن رقم الطلب المعروض (#١٢٣) كان يتحوّل لنص فاضٍ فتتعطل كل أزرار «طلباتي» */
+function aid(v){ return String(v==null?'':v).replace(/[^A-Za-z0-9؀-ۿ#:_. \-]/g,''); }
+/* معرّف الطلب الذي يُمرَّر في الأزرار: معرّف الخادم (UUID لاتيني) للطلبات المحفوظة، وإلا الرقم المحلي */
+function orderRef(o){ return (o&&o.dbId) ? o.dbId : ((o&&o.id)||''); }
+/* البحث عن الطلب بأي معرّف: معرّف الخادم أو الرقم المعروض (#١٢٣) أو الرقم اللاتيني */
+function findOrder(id){ const s=String(id==null?'':id).trim(); if(!s) return null; return state.orders.find(x=>x&&(x.dbId===s||x.id===s||(x.num!=null&&String(x.num)===s)))||null; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* رابط آمن: https فقط، وإلا نبني رابط بحث من العنوان */
@@ -6053,6 +6151,8 @@ function _west(s){ return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'
 const _TOK=[["/ سنة","/ year"],["/سنة","/year"],["توفّر","Save "],["ريال","SAR"],["ر.س","SAR"],["٪","%"]];
 /* إضافات التدقيق 2026-09-19 */
 Object.assign(T_DICT, {"كل ٦ طلبات لك خصم ولاء، وكود الإحالة يعطيك وصديقك خصمًا.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount."});
+/* إضافات إصلاحات 2026-09-24 */
+Object.assign(T_DICT, {"💡 المتوسط يُحسب من إجمالي طلباتك السابقة، والخصم يُطبّق على إجمالي طلبك (الخدمة والأغراض) بحد أقصى قيمة الطلب.":"💡 The average is taken from your previous order totals, and the discount applies to your order total (service and parts), up to the order value.","⏳ نتحقق من الكود...":"⏳ Checking the code...","الكود غير صحيح":"Invalid code","تعذّر التحقق من الكود الآن، لو كان صحيحًا ينطبق الخصم عند الدفع":"Could not verify the code now. If it is valid, the discount applies at payment."});
 Object.assign(T_DICT, {"الدفع":"Payment","بياناتك":"Your details","تصفّح الخدمات واطلب":"Browse services and order","طلبك السابع عليه خصم كبير 🎁":"Your 7th order gets a big discount 🎁","طلبك السابع عليه خصم كبير":"Your 7th order gets a big discount","English / عربي":"English / Arabic","السلة":"Cart","رجوع":"Back","أقل":"Less","أكثر":"More","إغلاق":"Close","آخر خطوة":"Last step","🛠️ وصف المشكلة (اختياري)":"🛠️ Describe the issue (optional)","وصف المشكلة (اختياري)":"Describe the issue (optional)","اسم العنوان (اختياري)":"Address name (optional)","صورة المنزل":"House photo","أبيض":"White","أصفر":"Warm yellow","أوف وايت 12 وات":"Off white 12W","بالضغط على الدفع أنت توافق على":"By tapping Pay you agree to the","بتأكيد الطلب أنت توافق على":"By confirming you agree to the","الشروط":"Terms","و":"and ","،":", ","سياسة الإلغاء":"Cancellation policy","الخصوصية":"Privacy","مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...":"e.g. a leak under the kitchen sink, or the lights keep tripping...","مثال: أبو محمد":"e.g. Abu Mohammed","مثال: ٢٤٥١ · الدور الأول":"e.g. 2451 · first floor","مثال: بيتي · بيت أهلي · الاستراحة":"e.g. My home · Family home","اقتراح أو شكر":"Suggestion or thanks","الشكاوى":"Complaints","برقم متابعة":"With a tracking number","، ولك":", and you get","رصيد":"credit","عن كل طلب يُنجزه.":"for every order they complete.","📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط، ينحفظ ويظهر تلقائياً عند كل حجز":"📍 Your home location: tap the map or drag the pin to your exact spot. It is saved and used for every booking.","🔒 الخصوصية":"🔒 Privacy","📜 الشروط":"📜 Terms","اسمك":"Your name","رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.":"Same issue back? Tell us and we return for free.","🛡️ المشكلة رجعت":"🛡️ The issue is back","🔁 اطلب مرة ثانية":"🔁 Order again","📅 تغيير الموعد":"📅 Reschedule","الإلغاء أو تغيير الموعد مجاني حتى 4 ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.":"Cancelling or rescheduling is free up to 4 hours before the visit. After that, contact us.","اختر الخدمة من القائمة، حدّد اليوم ووقت الوصول، ثم أدخل موقعك وأكّد. تجيك رسالة تأكيد.":"Pick the service, choose the day and arrival time, then enter your location and confirm. You get a confirmation message.","تختار وقت الوصول اللي يناسبك والفني يوصلك فيه. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».":"You choose the arrival time that suits you and the technician arrives at it. You get notifications: On the way, then Arrived.","بطريقتين:":"In two ways:","ادفع أونلاين":"Pay online","بمدى أو البطاقة أو Apple Pay من التطبيق، أو":"with mada, card or Apple Pay in the app, or","بجهاز الدفع مع الفني":"on the technician’s card machine","عند إتمام العمل. ما نستقبل نقداً.":"when the work is done. We do not take cash.","تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.":"Track your order under My orders. If there is a delay we tell you the expected time. Or message us on WhatsApp.","نعم، ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Yes. Labor and parts are covered. If the same issue returns, we come back at no extra cost.","احجز قبل 5 أيام أو أكثر = خصم 5% تلقائي. وكل 6 طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount.","من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى":"Under My orders you can cancel or reschedule for free up to","4 ساعات قبل الموعد":"4 hours before the visit","، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.":", and if you paid you get a full refund. Less than 4 hours before the visit, contact us directly.","🎁 برنامج الولاء":"🎁 Loyalty program","اطلب صيانتك عادي":"Order as usual","كل طلب تُنجزه يُحتسب في رصيد ولائك.":"Every completed order counts toward your loyalty.","بعد ٦ طلبات":"After 6 orders","تستحق مكافأة على طلبك السابع.":"you earn a reward on your 7th order.","خصم = متوسط طلباتك":"Discount = your average order","يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.":"Your 7th order gets a discount equal to the average of your previous six orders.","مثال:":"Example:","لو متوسط طلباتك":"if your average order is","، فطلبك السابع عليه":", your 7th order gets","خصم ١٥٠ ر.س":"150 SAR off","١٥٠ ر.س":"150 SAR","💡 الخصم على أجرة اليد (الخدمة) فقط · قطع الغيار والأغراض تبقى على العميل بسعرها.":"💡 The discount applies to labor only. Parts stay at their price.","تمام":"OK","اكتب لنا وبنقرأ كل كلمة، رأيك يطوّر خدمتنا فعلاً.":"Write to us, we read every word. Your opinion really improves our service.","عندك شكوى؟":"Have a complaint?","قدّمها برقم متابعة":"File it with a tracking number","مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس":"e.g. please add water tank cleaning, or: the technician was late yesterday","هدية أول طلب":"First order gift","رسوم الزيارة":"Visit fee","قيمة التوصيل":"Delivery","رسوم توصيل الأغراض":"Parts delivery","ضيفها":"Add it","الكمية":"Quantity","الخدمات":"Services","الأغراض":"Parts","توصيل الأغراض":"Parts delivery","المجموع":"Subtotal","رجّعها":"Add back","تدفع الآن":"You pay now","أي قطعة إضافية يضيفها الفني بفاتورته.":"Any extra part is added to the technician’s invoice.","اكتب التفاصيل:":"Write the details:","أضف خدمة ثانية":"Add another service","توصلني إشعارات العروض":"Send me offer notifications","الشطاف":"Bidet sprayer","اللمبة":"Bulb","الخلاط":"Mixer tap","المحبس":"Angle valve","عدة السيفون":"Flush kit","المفتاح أو البريزة":"Switch or socket","بريزة الباور":"Power socket","السيليكون":"Silicone","الحنفية":"Tap","وصلة الكرسي":"Toilet connector","بزبوز نحاس نص إنش":"Brass spout 1/2 inch","خلاط مطبخ رقبة عالية":"Kitchen mixer, high neck","خلاط مغسلة":"Basin mixer","سيليكون ألماني GP":"German silicone GP","ستارك كروم مع لي":"Stark chrome with hose","إيطالي جروهي":"Italian, Grohe","بريزة 13 أمبير":"13A socket","بريزة دبل":"Double socket","مفتاح ثلاثي":"3 gang switch","مفتاح دبل":"2 gang switch","مفتاح رباعي":"4 gang switch","مفتاح مفرد":"1 gang switch","بريزة دبل 7×14":"Double socket 7×14","مفتاح مكيف 45 أمبير":"AC isolator 45A","إسباني جانبي":"Spanish, side entry","وصلة كرسي 12 سم":"Toilet connector 12 cm","اختر اللي تحتاجه · تقدر تختار أكثر من خدمة":"Pick what you need. You can choose more than one service."});
 const T_DICT_N={}; for(const _k in T_DICT){ T_DICT_N[_west(_k).trim()]=T_DICT[_k]; }
 applyCachedCatalog();   // آخر كتالوج محفوظ بالجهاز (قبل ما يوصل الجديد من الخادم)
