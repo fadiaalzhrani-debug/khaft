@@ -33,7 +33,12 @@ jobs:
           node-version: 20
 
       - name: أدوات Codemagic CLI
-        run: pip3 install --quiet codemagic-cli-tools && which app-store-connect && gem list xcodeproj | grep -q xcodeproj || sudo gem install xcodeproj
+        run: |
+          pip3 install --quiet codemagic-cli-tools
+          for d in "$(python3 -c "import sysconfig;print(sysconfig.get_path('scripts'))")" "$(python3 -m site --user-base)/bin"; do [ -d "$d" ] && echo "$d" >> "$GITHUB_PATH"; done
+          gem list xcodeproj | grep -q xcodeproj || sudo gem install xcodeproj
+      - name: تحقق من الأدوات
+        run: which app-store-connect keychain xcode-project && app-store-connect --version
 
       - name: تثبيت الحزم
         run: npm install
