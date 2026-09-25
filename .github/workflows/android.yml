@@ -1,0 +1,119 @@
+# بناء حزمة أندرويد موقّعة (AAB) على GitHub Actions · بديل Codemagic
+# التشغيل: يدويًا من تبويب Actions، أو تلقائيًا عند أي تعديل في www/
+# الأسرار المطلوبة في المستودع: KEYSTORE_B64، KEYSTORE_PASSWORD، KEY_ALIAS، KEY_PASSWORD
+name: Android AAB
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'www/**'
+
+concurrency:
+  group: android-aab
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: خافِت Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PACKAGE_NAME: com.khafet.app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: تثبيت الحزم
+        run: npm install
+
+      - name: تجهيز منصة أندرويد + Firebase
+        run: |
+          npx cap add android || true
+          npx cap sync android
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          echo 'ewogICJwcm9qZWN0X2luZm8iOiB7CiAgICAicHJvamVjdF9udW1iZXIiOiAiODI1NjEzMzE3NzYiLAogICAgInByb2plY3RfaWQiOiAia2hhZnQxIiwKICAgICJzdG9yYWdlX2J1Y2tldCI6ICJraGFmdDEuZmlyZWJhc2VzdG9yYWdlLmFwcCIKICB9LAogICJjbGllbnQiOiBbCiAgICB7CiAgICAgICJjbGllbnRfaW5mbyI6IHsKICAgICAgICAibW9iaWxlc2RrX2FwcF9pZCI6ICIxOjgyNTYxMzMxNzc2OmFuZHJvaWQ6MjdhY2M5MmU3MDNlMmUyMmI3YTVhNSIsCiAgICAgICAgImFuZHJvaWRfY2xpZW50X2luZm8iOiB7CiAgICAgICAgICAicGFja2FnZV9uYW1lIjogImNvbS5raGFmZXQuYXBwIgogICAgICAgIH0KICAgICAgfSwKICAgICAgIm9hdXRoX2NsaWVudCI6IFtdLAogICAgICAiYXBpX2tleSI6IFsKICAgICAgICB7CiAgICAgICAgICAiY3VycmVudF9rZXkiOiAiQUl6YVN5QTRmSWxNMy0tU2FZLXY3QzNldG5jenRmWkdGb0hfS0VBIgogICAgICAgIH0KICAgICAgXSwKICAgICAgInNlcnZpY2VzIjogewogICAgICAgICJhcHBpbnZpdGVfc2VydmljZSI6IHsKICAgICAgICAgICJvdGhlcl9wbGF0Zm9ybV9vYXV0aF9jbGllbnQiOiBbXQogICAgICAgIH0KICAgICAgfQogICAgfQogIF0sCiAgImNvbmZpZ3VyYXRpb25fdmVyc2lvbiI6ICIxIgp9' | base64 --decode > android/app/google-services.json
+          python3 - <<'PY'
+          import re
+          p = 'android/variables.gradle'
+          s = open(p, encoding='utf-8').read()
+          s = re.sub(r'compileSdkVersion\s*=\s*\d+', 'compileSdkVersion = 36', s)
+          s = re.sub(r'targetSdkVersion\s*=\s*\d+', 'targetSdkVersion = 36', s)
+          open(p, 'w', encoding='utf-8').write(s)
+          gp = 'android/gradle.properties'
+          g = open(gp, encoding='utf-8').read()
+          if 'suppressUnsupportedCompileSdk' not in g:
+              open(gp, 'a', encoding='utf-8').write('\nandroid.suppressUnsupportedCompileSdk=36\n')
+          bp = 'android/build.gradle'
+          b = open(bp, encoding='utf-8').read()
+          if 'com.google.gms:google-services' not in b:
+              b = re.sub(r'(dependencies\s*\{)', r"\1\n        classpath 'com.google.gms:google-services:4.4.2'", b, count=1)
+              open(bp, 'w', encoding='utf-8').write(b)
+          ap = 'android/app/build.gradle'
+          a = open(ap, encoding='utf-8').read()
+          if 'com.google.gms.google-services' not in a:
+              a += "\napply plugin: 'com.google.gms.google-services'\n"
+          if 'firebase-messaging' not in a:
+              a = re.sub(r'(dependencies\s*\{)', r"\1\n    implementation platform('com.google.firebase:firebase-bom:33.7.0')\n    implementation 'com.google.firebase:firebase-messaging'", a, count=1)
+          open(ap, 'w', encoding='utf-8').write(a)
+          print('compileSdk/targetSdk=36 + Firebase messaging')
+          PY
+          (yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" >/dev/null 2>&1) || true
+
+      - name: أيقونة التطبيق
+        run: npx capacitor-assets generate --android --iconBackgroundColor '#F5C518' --iconBackgroundColorDark '#F5C518' || true || true
+
+      - name: رقم الإصدار + إعداد التوقيع
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          echo "${{ secrets.KEYSTORE_B64 }}" | base64 --decode > "$RUNNER_TEMP/upload.keystore"
+          python3 - <<'PY'
+          import re, os
+          p = 'android/app/build.gradle'
+          s = open(p, encoding='utf-8').read()
+          vc = str(2000 + int(os.environ.get('RUN_NUMBER') or '1'))   # أعلى من كل أرقام Codemagic السابقة (12xx)
+          s = re.sub(r'versionCode\s+\d+', 'versionCode ' + vc, s, count=1)
+          s = re.sub(r'versionName\s+"[^"]*"', 'versionName "1.0.0"', s, count=1)
+          s = re.sub(r'(buildTypes\s*\{\s*release\s*\{)', r'\1 signingConfig signingConfigs.release', s, count=1)
+          lines = [
+              '    signingConfigs {',
+              '        release {',
+              '            storeFile file(System.getenv("CM_KEYSTORE_PATH"))',
+              '            storePassword System.getenv("CM_KEYSTORE_PASSWORD")',
+              '            keyAlias System.getenv("CM_KEY_ALIAS")',
+              '            keyPassword System.getenv("CM_KEY_PASSWORD")',
+              '        }',
+              '    }',
+          ]
+          s = s.replace('android {', 'android {\n' + '\n'.join(lines), 1)
+          open(p, 'w', encoding='utf-8').write(s)
+          print('versionCode=' + vc)
+          PY
+
+      - name: بناء حزمة AAB موقّعة
+        env:
+          CM_KEYSTORE_PATH: ${{ runner.temp }}/upload.keystore
+          CM_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          CM_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          CM_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew bundleRelease --no-daemon
+          find . -name "*.aab" -exec ls -lh {} \;
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
