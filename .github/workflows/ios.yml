@@ -1,0 +1,126 @@
+# بناء آيفون ورفعه إلى App Store Connect على GitHub Actions (ماك) · بديل Codemagic
+# التشغيل يدويًا فقط من تبويب Actions (دقائق الماك محدودة)
+# الأسرار: ASC_KEY_B64، ASC_KEY_ID، ASC_ISSUER_ID، CERT_KEY_B64
+name: iOS to App Store Connect
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'رقم الإصدار (CFBundleShortVersionString)'
+        required: false
+        default: '1.2.4'
+
+concurrency:
+  group: ios-asc
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: خافِت iOS
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      BUNDLE_ID: com.khafet.app
+      APPLE_PAY_MERCHANT: "merchant.com.khafet.app"
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      APP_STORE_CONNECT_KEY_IDENTIFIER: ${{ secrets.ASC_KEY_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: أدوات Codemagic CLI
+        run: pip3 install --quiet codemagic-cli-tools && which app-store-connect && gem list xcodeproj | grep -q xcodeproj || sudo gem install xcodeproj
+
+      - name: تثبيت الحزم
+        run: npm install
+
+      - name: تجهيز منصة iOS
+        run: |
+          npx cap add ios || true
+          npx cap sync ios
+
+      - name: أيقونة التطبيق وشاشة البداية
+        run: npx capacitor-assets generate --ios --iconBackgroundColor '#F5C518' --iconBackgroundColorDark '#F5C518' --splashBackgroundColor '#F5C518' --splashBackgroundColorDark '#1a1408'
+
+      - name: أذونات الجهاز ورقم الإصدار
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+          VERSION_IN: ${{ github.event.inputs.version }}
+        run: |
+          PLIST="ios/App/App/Info.plist"
+          setkey() { plutil -insert "$1" -string "$2" "$PLIST" 2>/dev/null || plutil -replace "$1" -string "$2" "$PLIST"; }
+          setkey NSCameraUsageDescription "لتصوير مشكلة الصيانة في منزلك وإرفاقها مع طلبك"
+          setkey NSPhotoLibraryUsageDescription "لاختيار صورة من معرض صورك توضّح مشكلة الصيانة"
+          setkey NSPhotoLibraryAddUsageDescription "لحفظ صور الصيانة في معرض صورك"
+          setkey NSLocationWhenInUseUsageDescription "نستخدم موقعك لتحديد مكان الخدمة بدقة وربطك بأقرب فنّي"
+          setkey NSMicrophoneUsageDescription "لتسجيل مقطع فيديو يوضّح مشكلة الصيانة"
+          setkey CFBundleVersion "$((200 + RUN_NUMBER))"
+          setkey CFBundleShortVersionString "${VERSION_IN:-1.2.4}"
+          setkey CFBundleDisplayName "صيانة خافت"
+          ruby -e "require 'xcodeproj'; p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); t = p.targets.find { |x| x.name == 'App' }; t.build_configurations.each { |c| c.build_settings['TARGETED_DEVICE_FAMILY'] = '1'; c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' }; p.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' }; p.save; puts 'iPhone only + iOS 15'"
+          find ios -name Podfile -maxdepth 3 -exec sed -i '' "s/platform :ios, '1[0-4][^']*'/platform :ios, '15.0'/" {} \; 2>/dev/null || true
+          plutil -insert ITSAppUsesNonExemptEncryption -bool false "$PLIST" 2>/dev/null || plutil -replace ITSAppUsesNonExemptEncryption -bool false "$PLIST"
+          plutil -p "$PLIST" | grep -i -e CFBundleVersion -e CFBundleShortVersionString -e CFBundleDisplayName
+
+      - name: صلاحية الإشعارات الفورية (وApple Pay إن وُجد)
+        run: |
+          ENT="ios/App/App/App.entitlements"
+          printf '%s\n' '<?xml version="1.0" encoding="UTF-8"?>' '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' '<plist version="1.0"><dict/></plist>' > "$ENT"
+          /usr/libexec/PlistBuddy -c "Add :aps-environment string production" "$ENT"
+          if [ -n "$APPLE_PAY_MERCHANT" ]; then
+            /usr/libexec/PlistBuddy -c "Add :com.apple.developer.in-app-payments array" "$ENT"
+            /usr/libexec/PlistBuddy -c "Add :com.apple.developer.in-app-payments:0 string $APPLE_PAY_MERCHANT" "$ENT"
+          fi
+          ruby -e "require 'xcodeproj'; p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); t = p.targets.find { |x| x.name == 'App' }; t.build_configurations.each { |c| c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements' }; p.save"
+          cat "$ENT"
+
+      - name: ربط استقبال توكن الإشعارات
+        run: |
+          AD="ios/App/App/AppDelegate.swift"
+          if ! grep -q "didRegisterForRemoteNotificationsWithDeviceToken" "$AD"; then
+            LAST=$(grep -n '^}' "$AD" | tail -1 | cut -d: -f1)
+            head -n $((LAST-1)) "$AD" > /tmp/ad.swift
+            printf '%s\n' '' '    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {' '        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)' '    }' '' '    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {' '        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)' '    }' '}' >> /tmp/ad.swift
+            cp /tmp/ad.swift "$AD"
+          fi
+          grep -n "RemoteNotifications" "$AD"
+
+      - name: مفاتيح آبل وشهادات التوقيع
+        run: |
+          echo "${{ secrets.ASC_KEY_B64 }}" | base64 --decode > /tmp/AuthKey.p8
+          echo "${{ secrets.CERT_KEY_B64 }}" | base64 --decode > /tmp/cert_key.pem
+          keychain initialize
+          export APP_STORE_CONNECT_PRIVATE_KEY="$(cat /tmp/AuthKey.p8)"
+          export CERTIFICATE_PRIVATE_KEY="$(cat /tmp/cert_key.pem)"
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" --create
+          keychain add-certificates
+          xcode-project use-profiles
+          ruby -e "require 'xcodeproj'; p = Xcodeproj::Project.open('ios/App/App.xcodeproj'); t = p.targets.find { |x| x.name == 'App' }; t.build_configurations.each { |c| c.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements' }; p.save"
+
+      - name: بناء ملف IPA
+        run: |
+          cd ios/App
+          xcode-project build-ipa --workspace "App.xcworkspace" --scheme "App"
+
+      - name: رفع إلى App Store Connect
+        run: |
+          IPA=$(find . -name '*.ipa' | head -1)
+          echo "IPA: $IPA"
+          export APP_STORE_CONNECT_PRIVATE_KEY="$(cat /tmp/AuthKey.p8)"
+          app-store-connect publish --path "$IPA" --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" --key-id "$APP_STORE_CONNECT_KEY_IDENTIFIER" 2>&1 | tee /tmp/publish.log
+          CODE=${PIPESTATUS[0]}
+          if [ "$CODE" -ne 0 ]; then grep -oE '"(message|NSLocalizedDescription|NSLocalizedFailureReason)" : "[^"]*"' /tmp/publish.log | sort -u; fi
+          exit $CODE
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-ipa
+          path: |
+            **/*.ipa
+            /tmp/publish.log
+          if-no-files-found: ignore
