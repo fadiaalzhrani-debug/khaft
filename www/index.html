@@ -46,8 +46,10 @@
   .logo{display:flex;align-items:center;gap:11px;font-weight:900;font-size:1.4rem;color:var(--ink);letter-spacing:-.01em}
   .logo .mk{width:40px;height:40px;border-radius:13px;overflow:hidden;flex-shrink:0;box-shadow:var(--shadow-gold)}
   .logo .brand-txt{display:flex;flex-direction:column;line-height:1.08}
-  .logo .brand-txt small{font-size:.6rem;font-weight:700;color:var(--muted);letter-spacing:.02em;margin-top:1px}
+  .logo .brand-txt small{font-size:.6rem;font-weight:700;color:var(--muted);letter-spacing:.02em;margin-top:1px;white-space:nowrap}
+  .logo .brand-txt b{white-space:nowrap}
   .logo .mk img{width:100%;height:100%;object-fit:cover;display:block}
+  .logo .hs{width:46px;height:46px;flex-shrink:0;display:block}
   .spacer{flex:1}
   .hbtn{display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:12px;font-weight:700;font-size:.92rem;transition:.18s}
   .hbtn.solid{background:var(--gold);color:var(--ink)}
@@ -157,7 +159,9 @@
   /* ===== Sub screens ===== */
   .screen{min-height:60vh;padding-bottom:30px}
   .pagehead{display:flex;align-items:center;gap:13px;margin:22px 0 4px}
-  .back{width:44px;height:44px;border-radius:13px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-size:1.2rem;box-shadow:var(--shadow-sm);transition:.15s}
+  .back{width:44px;height:44px;border-radius:13px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;font-size:1.2rem;box-shadow:var(--shadow-sm);transition:.15s;color:var(--ink)}
+  .back svg{stroke-width:2.4}
+  .back:active{transform:scale(.94)}
   .back:hover{background:#f4f2ea}
   .pagehead h2{font-size:1.5rem;font-weight:900;letter-spacing:-.02em}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:22px;margin-top:16px}
@@ -237,6 +241,13 @@
   .slot-note{color:var(--muted);font-size:.83rem;margin-top:10px;display:flex;gap:6px;align-items:flex-start}
   .notify-toggle{display:flex;align-items:center;gap:12px;margin-top:14px;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;cursor:pointer;transition:.15s}
   .notify-toggle.on{border-color:#25D366;background:rgba(37,211,102,.1)}
+  .panel h3.ph-ic{display:flex;align-items:center;gap:7px}
+  .notify-toggle .nt-t b{display:inline-flex;align-items:center;gap:6px}
+  .fullday{display:flex;align-items:center;gap:10px;margin:0 0 12px;padding:12px 14px;border-radius:14px;background:var(--gold-tint,#FFF7DA);border:1.5px solid var(--gold-soft,#F0D68A)}
+  .fullday.on{border-color:var(--c-1,#2AA198);background:var(--card)}
+  .fullday .fd-t{flex:1;min-width:0}.fullday .fd-t b{display:block;font-size:.95rem}.fullday .fd-t small{color:var(--muted);font-size:.8rem;line-height:1.5;display:block}
+  .fullday .fd-btn{flex:none;padding:10px 14px;border-radius:999px;font-weight:800;font-size:.86rem;background:var(--ink);color:#fff;border:0}
+  .fullday.on .fd-btn{background:var(--c-1,#2AA198)}
   .notify-toggle .nt-check{width:26px;height:26px;flex-shrink:0;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;font-weight:900;color:#fff;font-size:1rem}
   .notify-toggle.on .nt-check{background:#25D366;border-color:#25D366}
   .notify-toggle .nt-t b{display:block;font-weight:800;font-size:.98rem;color:var(--ink)}
@@ -429,7 +440,7 @@
   .payresult p{color:var(--muted);font-weight:600;margin-top:8px;line-height:1.7}
   /* ── شاشة العقود: نفس تصميم موقع العقود ── */
   .ct-wrap{background:#F2E7CF;border-radius:18px;padding:12px;margin-top:14px}
-  /* رؤوس الباقات: ٣ أعمدة فوق مكانها، وتثبت وهي تنزل معك مثل الموقع */
+  /* رؤوس الباقات: 3 أعمدة فوق مكانها، وتثبت وهي تنزل معك مثل الموقع */
   .ct-tiers{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;padding:10px 2px 12px;border-bottom:2px solid #F5C518;position:sticky;top:0;z-index:20;background:#F2E7CF}
   .ct-tier{background:#FAF3E3;border-radius:13px;padding:11px 5px 10px;text-align:center;border:1px solid #E2D3B0}
   .ct-tier.hl{background:#FBF0DA;outline:1.5px solid #F5C518;border-color:#F5C518}
@@ -515,6 +526,25 @@
   .warranty-note .wn-t b{display:block;font-weight:800;color:#166534;font-size:.95rem}
   .warranty-note .wn-t span{color:#3d7a54;font-size:.82rem;line-height:1.5}
   .obook .oitems{color:var(--muted);font-size:.88rem}
+  .ob2-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .ob2-no{display:flex;align-items:baseline;gap:6px}
+  .ob2-no small{color:var(--muted);font-size:.78rem;font-weight:700}
+  .ob2-no b{font-size:1.2rem;font-weight:900;letter-spacing:.2px;font-variant-numeric:tabular-nums}
+  .ob2-svc{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+  .ob2-svc li{display:flex;align-items:center;gap:10px;font-weight:700;font-size:.93rem;line-height:1.4}
+  .ob2-ico{width:32px;height:32px;border-radius:10px;background:var(--group,#f3f1e9);display:grid;place-items:center;font-size:1.05rem;flex:none}
+  .ob2-nm{flex:1;min-width:0}
+  .ob2-qty{color:var(--muted);font-weight:800;font-size:.84rem;font-variant-numeric:tabular-nums}
+  .ob2-rows{margin-top:14px;border-top:1px solid var(--line)}
+  .ob2-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:.88rem}
+  .ob2-row span{color:var(--muted);font-weight:700;flex:none;display:inline-flex;align-items:center;gap:6px}
+  .ob2-row b{font-weight:800;text-align:left;font-variant-numeric:tabular-nums;min-width:0}
+  .ob2-total{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .ob2-total span{color:var(--muted);font-weight:700;font-size:.88rem;flex:1}
+  .ob2-total b{font-size:1.2rem;font-weight:900;font-variant-numeric:tabular-nums}
+  .ob2-paid{font-style:normal;font-size:.78rem;font-weight:800;color:#0b7a3b;background:#e8f7ee;padding:4px 10px;border-radius:999px}
+  .obook .oact .sbtn{flex:1;text-align:center}
+  .obook .reminder-note.ob2-rem{margin-top:12px;font-size:.8rem;padding:8px 12px;opacity:.9}
   .obook .ometa{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
   .obook .oact{display:flex;gap:8px;margin-top:13px;flex-wrap:wrap}
   .sbtn{padding:10px 15px;border-radius:11px;font-weight:700;font-size:.86rem;border:1.5px solid var(--line);background:#fff;transition:.15s}
@@ -587,6 +617,8 @@
   /* فاتورة العميل: أقسام (الشغل، القطع، الرسوم) ثم الملخص والمدفوع والمتبقي */
   .cust-invoice{margin-top:13px;background:#fff;border:1.5px solid var(--gold);border-radius:15px;overflow:hidden}
   .cust-invoice .ci-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:11px 14px;background:var(--gold-tint);border-bottom:1px solid var(--gold-soft)}
+  .cust-invoice .ci-ttl{display:inline-flex;align-items:center;gap:6px}
+  .cust-invoice .ci-print{padding:7px 12px;font-size:.8rem;display:inline-flex;align-items:center;gap:5px;border-radius:999px}
   .cust-invoice .ci-head b{font-size:1rem;font-weight:900;display:block}
   .cust-invoice .ci-head small{color:var(--muted);font-size:.76rem;font-weight:700}
   .ci-sec{display:flex;align-items:center;gap:8px;padding:10px 14px 4px;font-size:.78rem;font-weight:800;color:var(--muted)}
@@ -1282,7 +1314,9 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 /* ═ ملاحظات 2026-09-19: الكمية، السلة، ملخص السعر والمدة، تمارا، الرصيد ═ */
 .srow{border:0;border-radius:var(--r-sm);cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .25s var(--spring),box-shadow .2s}
 .srow:active{transform:scale(.98)}
-.srow.sel{background:var(--card);box-shadow:inset 0 0 0 2.5px var(--c-1),var(--shadow-sm)}
+.srow{position:relative}
+.srow.sel{background:var(--card);box-shadow:var(--shadow-sm)}
+.srow.sel::after{content:'';position:absolute;inset:0;border:2.5px solid var(--c-1);border-radius:inherit;pointer-events:none;z-index:2}
 .srow .srow-ic{border-radius:16px;background:var(--gold-soft)}
 .srow .srow-img{width:124px;height:124px;border-radius:22px;background-color:var(--group);background-size:125%;background-position:center;background-repeat:no-repeat;box-shadow:inset 0 0 0 1px rgba(58,48,41,.06)}
 .srow .srow-t b{font-family:var(--f-head)}
@@ -1292,7 +1326,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .srow.has-img .sv-meta em{padding:3px 9px;font-size:.8rem}
 .srow.has-img .sv-meta .sv-price{font-size:.92rem}
 .srow.has-img .srow-t b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.srow.has-img .srow-ck{position:absolute;top:9px;inset-inline-start:9px;background:rgba(255,255,255,.92);border-color:rgba(255,255,255,.92);box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:1}
+.srow.has-img .srow-ck{position:absolute;top:9px;inset-inline-start:9px;background:rgba(255,255,255,.96);border:2px solid rgba(43,36,30,.35);box-shadow:0 2px 8px rgba(0,0,0,.22);z-index:1}
 .srow.has-img.sel .srow-ck{background:var(--c-1);border-color:var(--c-1);color:#fff}
 .srow.has-img .srow-img::before{content:"";position:absolute;inset:0;background-image:inherit;background-size:cover;background-position:center;transform:scale(1.25)}
 .srow.has-img .srow-t{padding:14px 0;align-self:center}
@@ -1377,8 +1411,9 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .iv-head small{color:var(--muted);font-weight:700;font-size:.82rem}
 .iv-sec{margin:8px 18px 2px;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-weight:800;font-size:.78rem;letter-spacing:.02em}
 .iv-head + .iv-sec{border-top:0;padding-top:0;margin-top:0}
-.iv-row{display:grid;grid-template-columns:34px 1fr auto auto;align-items:center;gap:4px 10px;padding:9px 18px}
-.iv-ic{width:34px;height:34px;border-radius:11px;background:var(--bg);display:grid;place-items:center;font-size:1.05rem}
+.iv-row{display:grid;grid-template-columns:52px 1fr auto auto;align-items:center;gap:4px 12px;padding:9px 18px}
+.iv-ic{width:52px;height:52px;border-radius:14px;background:var(--bg);display:grid;place-items:center;font-size:1.25rem}
+.iv-ic.img{background-color:#fff;background-size:cover;background-position:center;border:1px solid var(--line)}
 .iv-n{font-weight:700;font-size:.97rem;line-height:1.45;min-width:0}
 .iv-q{font-style:normal;background:var(--group);border-radius:999px;padding:1px 9px;font-size:.78rem;font-weight:800;color:var(--ink-soft);white-space:nowrap}
 .iv-p{font-family:var(--f-head);font-size:1.02rem;white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -1535,7 +1570,7 @@ function out(){if(el.classList.contains('out'))return;el.classList.add('out');se
 <header class="top">
   <div class="wrap">
     <a class="logo" href="#" onclick="go('home');return false">
-      <span class="mk"><img src="logo.png" alt="خافِت" /></span>
+      <svg class="hs" viewBox="222 140 614 630" aria-hidden="true"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762" fill="#E9B90F"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="#E9B90F"/></svg>
       <span class="brand-txt"><b>خافِت</b><small>للصيانة المنزلية</small></span>
     </a>
     <span class="spacer"></span>
@@ -1589,13 +1624,13 @@ let WORK_END   = 22 * 60;
 const SLOT_STEP  = 30;
 const BUFFER     = 30;   // احتياط تنقّل بين الطلبات · الفني ما يتأخر على اللي بعده
 let LEAD_MIN   = 60;
-let ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «٤–٦م» بدل وقت دقيق)
+let ARRIVAL_WINDOW   = 120;  // نافذة الوصول بالدقائق (يُعرض للعميل «4–6م» بدل وقت دقيق)
 let MAX_JOBS_PER_DAY = 8;    // أقصى عدد حجوزات في اليوم (يمنع زحمة الجدول)
 const QUICK_DURATION   = 90;   // مدة افتراضية أكبر للطلب السريع/المعاينة (حجمه مجهول)
-let LOYALTY_TARGET = 6;   // كل ٦ طلبات، السابع يُخصم منه متوسط طلباته (يتغيّر من الإعدادات)
+let LOYALTY_TARGET = 6;   // كل 6 طلبات، السابع يُخصم منه متوسط طلباته (يتغيّر من الإعدادات)
 const COMMISSION = 3;       // عمولة المنصة لكل طلب مكتمل عبر مزوّد (مخفية عن العميل)
 /* أكواد الخصم الثابتة أُلغيت · صار النظام أكواد إحالة شخصية عشوائية
-   يولّدها الخادم ويتحقّق منها (خصم ١٠٪ لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
+   يولّدها الخادم ويتحقّق منها (خصم ١٠% لأول طلب + ٥ ر.س للمُحيل بعد الإنجاز). */
 // باقات الاشتراك السنوي · «ريّح بالك»: باقتان (شقة / بيت) · الشكل المعتمد 2026-08-22
 /* عد تنازلي: الباقة تقفل بعد 30 يوماً من 2026-08-22 */
 let PLANS_CLOSE = new Date('2026-09-21T12:00:00+03:00');
@@ -1725,7 +1760,7 @@ function appPerksHtml(){
 function launchPromoHtml(){
   if(!(LAUNCH_PCT>0) || !LAUNCH_UNTIL || dateISO(new Date())>LAUNCH_UNTIL) return appPerksHtml();
   return `<button type="button" class="promo-card" onclick="go('services')" aria-label="${LX('عرض الإطلاق','Launch offer')}">
-    <span class="pc-pct"><b>${ar(LAUNCH_PCT)}٪</b><small>${LX('خصم','OFF')}</small></span>
+    <span class="pc-pct"><b>${ar(LAUNCH_PCT)}%</b><small>${LX('خصم','OFF')}</small></span>
     <span class="pc-tx"><b>${LX('على أجرة اليد لكل طلب من التطبيق','Off labor on every order in the app')}</b><small>${LX('العرض ينتهي ','Offer ends ')+dayLabel(LAUNCH_UNTIL)}</small></span>
     <span class="pc-arr">${_uiEN()?'›':'‹'}</span>
   </button>`;
@@ -1738,7 +1773,7 @@ function legalInfo(){
            email:s('legal_email')||'fadiaalzhrani@gmail.com', maroof:s('maroof_url') };
 }
 function legalLine(){ const L=legalInfo(); return `${esc(L.name)} · س.ت ${esc(ar(L.cr))} · الرقم الموحد ${esc(ar(L.uni))} · ${esc(L.city)}`; }
-function vatLine(){ const L=legalInfo(); return L.vat&&L.vatNo ? `الرقم الضريبي ${esc(ar(L.vatNo))} · الأسعار شاملة ضريبة القيمة المضافة ${esc(ar(L.vatPct))}٪` : 'المنشأة غير مسجّلة في ضريبة القيمة المضافة، والأسعار لا تشمل ضريبة'; }
+function vatLine(){ const L=legalInfo(); return L.vat&&L.vatNo ? `الرقم الضريبي ${esc(ar(L.vatNo))} · الأسعار شاملة ضريبة القيمة المضافة ${esc(ar(L.vatPct))}%` : 'المنشأة غير مسجّلة في ضريبة القيمة المضافة، والأسعار لا تشمل ضريبة'; }
 /* ضريبة مضمّنة في الإجمالي: قيمتها = الإجمالي − الإجمالي ÷ (1 + النسبة) */
 function vatOf(total){ const L=legalInfo(); if(!(L.vat&&L.vatNo)) return 0; return Math.round((total - total/(1+L.vatPct/100))*100)/100; }
 /* رمز QR للفاتورة الضريبية المبسطة (هيئة الزكاة والضريبة: TLV ثم Base64) */
@@ -1879,7 +1914,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=138;
+const APP_BUILD=139;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2065,7 +2100,7 @@ let pushState='—';
 function setPushState(s){ pushState=s; try{ const el=document.getElementById('push-status'); if(el) el.textContent=s; }catch(e){} }
 
 /* الطريقة الصحيحة للوصول لإضافة أصلية بدون حزم JS:
-   Capacitor.registerPlugin · أما Capacitor.Plugins فطريقة قديمة قد لا تعمل بالإصدار ٦. */
+   Capacitor.registerPlugin · أما Capacitor.Plugins فطريقة قديمة قد لا تعمل بالإصدار 6. */
 function getPushPlugin(){
   const C=window.Capacitor;
   if(!C) return null;
@@ -2111,7 +2146,7 @@ async function registerNow(PN){
     if(perm.receive !== 'granted'){ setPushState('⚠️ الإذن مرفوض ('+perm.receive+') · فعّله من إعدادات الآيفون'); return; }
     setPushState('⏳ نسجّل الجهاز…');
     await PN.register();
-    // لو آبل ما ردّت خلال ١٥ ثانية، قل ذلك بدل ما تعلّق للأبد
+    // لو آبل ما ردّت خلال 15 ثانية، قل ذلك بدل ما تعلّق للأبد
     setTimeout(()=>{ if(pushState.indexOf('⏳')===0) setPushState('⚠️ آبل ما ردّت · تأكد من الإنترنت واضغط «أعد المحاولة»'); }, 15000);
   }catch(e){ setPushState('❌ خطأ بالتسجيل: '+(e.message||e)); }
 }
@@ -2137,7 +2172,7 @@ function catSoon(k){ return !!(CATS[k]&&CATS[k].soon); }
 function catShown(k){ return !!CATS[k] && (catSoon(k) || catCount(k)>0); }   // «قريبًا» يظهر حتى بلا خدمات
 function otherCats(){ return Object.keys(CATS).filter(k=>!CAT_FEATURED.includes(k) && catShown(k)); }
 /* أقسام الرئيسية: المميزة أولًا ثم الباقي · القسم المخفي من اللوحة يختفي تلقائيًا
-   والسقف من الإعدادات home_cats_max (٨ = صفّان) */
+   والسقف من الإعدادات home_cats_max (8 = صفّان) */
 function homeCats(){ const max=Math.max(1, stNum('home_cats_max', 8)||8);
   return CAT_FEATURED.filter(catShown).concat(otherCats()).slice(0, max); }
 function applyCachedCatalog(){ try{ const c=JSON.parse(localStorage.getItem(CATALOG_KEY)||'null'); if(c){ applyCatalog(c.c, c.s); if(c.p) applyParts(c.p); } }catch(e){} }
@@ -2600,7 +2635,7 @@ function t(key){ return I18N[techLang][key]; }
 
 /* ---- أدوات ---- */
 const AR_DIG='٠١٢٣٤٥٦٧٨٩';
-function ar(n){ return String(n).replace(/[0-9]/g,d=>AR_DIG[d]); }
+function ar(n){ return String(n); }   // الأرقام إنجليزية في كل الشاشات (قرار 2026-09-25)
 function money(n){ return ar(n)+' ر.س'; }
 function en(n){ return Number(n).toLocaleString('en-US'); }
 function svc(id){ return SERVICES.find(s=>s.id===id); }
@@ -2638,7 +2673,7 @@ const AR_DAYS=['الأحد','الإثنين','الثلاثاء','الأربعا�
 const AR_MONTHS=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 function dateISO(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
-/* ---- خصم ذكي ٥٪: يظهر فقط إذا امتلأ أول يومَي عمل، ويُطبَّق لمن يحجز يوماً بعدهما ----
+/* ---- خصم ذكي 5%: يظهر فقط إذا امتلأ أول يومَي عمل، ويُطبَّق لمن يحجز يوماً بعدهما ----
    (مو خصم ثابت يطلع من لا شي · بل حافز لتوزيع الضغط لما الأيام القريبة تنحجز) */
 function daysUntil(iso){
   if(!iso) return -1;
@@ -2709,8 +2744,8 @@ function phoneLoyalty(phone){
    القفل يضمن إن state.orders فيها طلبات هذا العميل فقط، فالعدّ عليها مباشرة
    أدقّ من المطابقة بالجوال · اللي كانت تنكسر بعد القفل (كل جهاز يشوف هويته فقط).
    ولما يسجّل بالرمز تنربط أجهزته بهوية وحدة وتتجمّع نقاطه تلقائياً. */
-/* الولاء: كل ٦ طلبات عادية منجزة → الطلب التالي يُخصم منه متوسط أسعار طلباته.
-   المكافأة (طلب فيه خصم ولاء، أو طلب مجاني قديم) لا تُحسب ضمن الـ٦. */
+/* الولاء: كل 6 طلبات عادية منجزة → الطلب التالي يُخصم منه متوسط أسعار طلباته.
+   المكافأة (طلب فيه خصم ولاء، أو طلب مجاني قديم) لا تُحسب ضمن الـ6. */
 function myLoyalty(){
   const notSub=o=>!((o.note||'').includes('مشمول بعقد'));
   const isReward=o=> o.free || (+o.loyaltyDisc>0);
@@ -2750,7 +2785,7 @@ function promoName(kind){ return kind==='launch' ? LX('🎉 خصم الإطلا�
 function promoLabel(kind,pct){
   const k=String(kind||''), dl=LX('🚗 توصيل مجاني لأول طلب','🚗 Free delivery on your first order');
   if(k==='delivery') return dl;
-  const base=promoName(k.replace('+delivery',''))+' '+(_uiEN()?en(pct)+'% off labor':ar(pct)+'٪ على أجرة اليد');
+  const base=promoName(k.replace('+delivery',''))+' '+(_uiEN()?en(pct)+'% off labor':ar(pct)+'% على أجرة اليد');
   return k.indexOf('+delivery')>0 ? base+' + '+LX('توصيل مجاني','free delivery') : base;
 }
 function loyaltyDiscFor(){
@@ -2871,6 +2906,11 @@ function slotAvailable(iso,startMin,needMin,excludeId,groups){
   return overlap < cap;                                  // يقفل الوقت فقط إذا انشغل كل فنيي التخصص
 }
 function scheduleDuration(){ if(quickMode) return QUICK_DURATION; const d=cartDuration(); return d>0?d:60; }
+/* طلب كبير: 5 ساعات فأكثر، أو مدة ما تنفع في أي نافذة وصول · يقدر يحجز اليوم كامل من أول الدوام */
+const FULL_DAY_MIN=300;
+function fullDayNeeded(need){ need=need||scheduleDuration(); return !quickMode && !state.subReq && (need>=FULL_DAY_MIN || WORK_START+need>WORK_END); }
+function fullDayCap(d){ return Math.max(60, Math.min(+d||0, WORK_END-WORK_START)); }
+function pickFullDay(){ const b=state.booking; b.time=WORK_START; b.fullDay=true; renderTime(); }
 // نافذة الوصول المعروضة للعميل
 function windowSpan(need){ if(!stOn('long_window_enabled',true)) return ARRIVAL_WINDOW; const from=stNum('long_window_from_min',ARRIVAL_WINDOW)||ARRIVAL_WINDOW; return (need>from) ? Math.ceil(need/ARRIVAL_WINDOW)*ARRIVAL_WINDOW : ARRIVAL_WINDOW; }
 /* نافذة الوصول: من كذا إلى كذا · أوضح للعميل من وقت واحد */
@@ -3043,9 +3083,9 @@ function renderSolutionDetail(keep){
         ${s.image_url?`<div class="sd-img" style="background-image:url('${esc(safeUrl(s.image_url))}')"></div>`:`<div class="sd-ic">${esc(s.icon||'🔧')}</div>`}
         <h1>${esc(s.title)}</h1>
       </div>
-      ${s.problem?`<section class="sd-card"><h2><span class="sd-dot">١</span>${LX('وش المشكلة؟','The problem')}</h2><p>${esc(s.problem)}</p></section>`:''}
-      ${s.cause?`<section class="sd-card"><h2><span class="sd-dot">٢</span>${LX('ليش تصير؟','Why it happens')}</h2><p>${esc(s.cause)}</p></section>`:''}
-      ${steps.length?`<section class="sd-card ok"><h2><span class="sd-dot">٣</span>${LX('وش نسوي بالضبط؟','What we do')}</h2><ol class="sd-steps">${steps.map((x,i)=>'<li><i>'+ar(i+1)+'</i><span>'+esc(x)+'</span></li>').join('')}</ol></section>`:''}
+      ${s.problem?`<section class="sd-card"><h2><span class="sd-dot">1</span>${LX('وش المشكلة؟','The problem')}</h2><p>${esc(s.problem)}</p></section>`:''}
+      ${s.cause?`<section class="sd-card"><h2><span class="sd-dot">2</span>${LX('ليش تصير؟','Why it happens')}</h2><p>${esc(s.cause)}</p></section>`:''}
+      ${steps.length?`<section class="sd-card ok"><h2><span class="sd-dot">3</span>${LX('وش نسوي بالضبط؟','What we do')}</h2><ol class="sd-steps">${steps.map((x,i)=>'<li><i>'+ar(i+1)+'</i><span>'+esc(x)+'</span></li>').join('')}</ol></section>`:''}
       ${chips.length?`<section class="sd-card"><h2><span class="sd-dot ck">✓</span>${LX('السعر يشمل','The price includes')}</h2><ul class="sd-inc">${chips.map(x=>'<li>'+esc(x)+'</li>').join('')}</ul></section>`:''}
       ${multi?`<section class="sd-card sd-qty"><div><h2 style="margin:0">${LX('كم '+unit+' تبي نبدّل؟','How many?')}</h2><small>${LX('كلها في زيارة وحدة','All in one visit')}</small></div>
         <div class="srow-qty"><button type="button" onclick="solSetQty(-1)" aria-label="${LX('أقل','Less')}">−</button><b>${ar(T.q)}</b><button type="button" onclick="solSetQty(1)" aria-label="${LX('أكثر','More')}">+</button></div></section>`:''}
@@ -3090,7 +3130,7 @@ function renderTips(){
         <b>${esc(a.title)}</b>
         <small>${esc(a.excerpt||'')}</small>
       </div>
-      <span class="qb-ar">←</span>
+      
     </button>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
@@ -3124,8 +3164,7 @@ const FAQS=[
   ['متى يجي الفني؟','تختار وقت الوصول اللي يناسبك والفني يوصلك فيه. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».'],
   ['كيف أدفع؟','بطريقتين: <b>ادفع أونلاين</b> بمدى أو البطاقة أو Apple Pay من التطبيق، أو <b>بجهاز الدفع مع الفني</b> عند إتمام العمل. ما نستقبل نقداً.'],
   ['وش أسوي لو تأخّر الفني؟','تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.'],
-  ['فيه ضمان على الشغل؟','نعم، ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.'],
-  ['كيف أستفيد من الخصومات؟','كل ٦ طلبات لك خصم ولاء، وكود الإحالة يعطيك وصديقك خصمًا.'],
+  ['كيف أستفيد من الخصومات؟','كل 6 طلبات لك خصم ولاء، وكود الإحالة يعطيك وصديقك خصمًا.'],
   ['كيف ألغي طلبي؟','من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى <b>4 ساعات قبل الموعد</b>، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.'],
 ];
 function renderFaq(){
@@ -3467,7 +3506,7 @@ function renderAccount(){
         <div class="field"><label>الاسم</label><input id="acc_name" value="${esc(c.name||'')}" placeholder="اسمك" /></div>
         <div class="field"><label>رقم الجوال</label><input id="acc_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
         <div class="field"><label>🏠 رقم المنزل / الشقة</label>
-          <input id="acc_house" value="${esc((state.address||{}).house||'')}" placeholder="مثال: ٢٤٥١ · الدور الأول" /></div>
+          <input id="acc_house" value="${esc((state.address||{}).house||'')}" placeholder="مثال: 2451 · الدور الأول" /></div>
         <p class="loc-hint" style="margin-top:14px">📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط، ينحفظ ويظهر تلقائياً عند كل حجز</p>
         <div id="pickmap" class="pickmap"></div>
         <div id="acc-loc-status">${(state.address&&state.address.lat&&state.address.lng)?accLocOkHtml():''}</div>
@@ -3769,7 +3808,7 @@ async function renderMySub(){
     ${pageHead('🛡️ صيانتي السنوية','home')}
     <div class="mysub-head">
       <b>${esc(sub.plan||('باقة '+planId))}</b>
-      ${active? `<small>${ends? 'سارٍ حتى '+ends.toLocaleDateString('ar-SA') : 'عقدك مفعّل ✅'}</small>` : ''}
+      ${active? `<small>${ends? 'سارٍ حتى '+ends.toLocaleDateString('ar-SA-u-nu-latn') : 'عقدك مفعّل ✅'}</small>` : ''}
       ${sub.home_no?`<small>🏠 ${esc(sub.home_no)}</small>`:''}
     </div>
     <div style="margin-top:14px">${rows}</div>
@@ -3899,14 +3938,14 @@ function orderPayBox(amount, labor){
   const tamara = tmOk ? `
       <label data-m="tamara" class="tm-ad ${orderPayMethod==='tamara'?'on':''}" onclick="setOrderPay('tamara')">
         <input type="radio" name="opaym" value="tamara" ${orderPayMethod==='tamara'?'checked':''}>
-        <div><div class="t">${LX('قسّطها على ٤ دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
-        <div class="tm-amt"><b>${money(Math.round(amount/4))}</b> ${LX('فقط اليوم، والباقي على ٣ أشهر','only today, the rest over 3 months')}</div>
+        <div><div class="t">${LX('قسّطها على 4 دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
+        <div class="tm-amt"><b>${money(Math.round(amount/4))}</b> ${LX('فقط اليوم، والباقي على 3 أشهر','only today, the rest over 3 months')}</div>
         <div class="badges"><span class="tamara-badge">tamara</span></div></div>
       </label>`
     : tamaraEnabled() ? `
       <label data-m="tamara" class="tm-ad off" aria-disabled="true">
         <input type="radio" name="opaym" value="tamara" disabled>
-        <div><div class="t">${LX('قسّطها على ٤ دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
+        <div><div class="t">${LX('قسّطها على 4 دفعات','Split it into 4 payments')} <span class="tm-free">${LX('بدون فوائد','0% interest')}</span></div>
         <div class="tm-amt">🔒 ${LX('للطلبات من '+money(TAMARA_MIN_LABOR),'For orders from '+money(TAMARA_MIN_LABOR))}</div>
         <div class="badges"><span class="tamara-badge">tamara</span></div></div>
       </label>` : '';
@@ -4634,6 +4673,13 @@ const IC={
   book:'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
   wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
   badge:'<path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76"/><path d="m9 12 2 2 4-4"/>',
+  chev:'<path d="M9 6l6 6-6 6"/>',
+  calendar:'<rect x="3" y="4.5" width="18" height="16" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  timer:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4M10 2.5h4M12 2.5V5"/>',
+  bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15Z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  receipt:'<path d="M5 3h14v18l-2.3-1.5L14.4 21l-2.4-1.5L9.6 21l-2.3-1.5L5 21Z"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/>',
+  printer:'<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="9" rx="2"/><path d="M6 14h12v7H6Z"/>',
   gift:'<rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/>'
 };
 function icon(n,s){ return `<svg style="width:${s||22}px;height:${s||22}px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`; }
@@ -4660,7 +4706,7 @@ function renderHome(){
   const tkTitle=(L.rewardAvailable && L.rewardAmount>0) ? `جاهزة! خصم ${money(L.rewardAmount)} على طلبك القادم 🎉` : 'طلبك السابع عليه خصم كبير 🎁';
   const tkSub = LX(`أنجزت ${ar(L.progress)} من ${ar(LOYALTY_TARGET)} طلبات`, `Completed ${L.progress} of ${LOYALTY_TARGET} orders`);
 
-  // آراء العملاء الإيجابية (٤ نجوم فأكثر + كتبوا ملاحظة)
+  // آراء العملاء الإيجابية (4 نجوم فأكثر + كتبوا ملاحظة)
   const firstName=s=>String(s||'').trim().split(/\s+/)[0]||'عميل';
   const reviews=(state.orders||[])
     .filter(o=>o.rating===5 && o.feedback && o.feedback.trim() && o.customer && !o.reviewHidden)
@@ -4682,7 +4728,7 @@ function renderHome(){
     <div class="hero hero-slim">
       <div class="hero-in">
         <h1>${esc(solText('hero_title','اطلب صيانة'))}</h1>
-        <p class="hero-sub"><b>${esc(solText('hero_sub','صيانة احترافية تستاهلها'))}</b><span>${esc(solText('hero_sub2','منزلك في أيادٍ أمينة'))}</span></p>
+        <p class="hero-sub"><b>${esc(solText('hero_sub','صيانة احترافية تستاهلها'))}</b></p>
       </div>
       <svg class="hero-wave" viewBox="0 0 1440 40" preserveAspectRatio="none"><path fill="currentColor" d="M0 40 L0 20 Q 360 40 720 20 T 1440 20 L1440 40 Z"/></svg>
     </div>
@@ -4701,42 +4747,36 @@ function renderHome(){
       ${quickEnabled()?`<button class="quick-btn" onclick="startQuick()">
         <span class="qb-ic">${icon('zap',26)}</span>
         <span class="qb-t"><b>طلب سريع</b><small>لست متأكداً من العطل؟ احجز موعداً ويصلك الفني للمعاينة</small></span>
-        <span class="qb-ar">←</span>
+        
       </button>`:''}
 
       ${mySubLocal()?`
       <button class="services-btn mysub-btn" onclick="go('mysub')">
         <span class="sb-ic">🛡️</span>
         <span class="sb-t"><b>صيانتي السنوية</b><small>خدمات عقدك · اطلب منها بضغطة، بدون رسوم</small></span>
-        <span class="qb-ar">←</span>
+        
       </button>`:(plansEnabled()?`
       <button class="services-btn" onclick="go('plans')">
         <span class="sb-ic">${icon('shield',24)}</span>
         <span class="sb-t"><b style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">الصيانات السنوية<span style="background:var(--gold);color:#1a1408;font-size:.66rem;font-weight:800;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;line-height:1.4">وفّر أكثر</span></b><small>${LX('⏳ باقي '+en(planDaysLeft())+' يوم وتقفل الباقة','⏳ '+en(planDaysLeft())+' days left before plans close')}</small></span>
-        <span class="qb-ar">←</span>
+        
       </button>`:'')}
 
 
       ${stOn('shades_enabled',true)?`<button class="services-btn" onclick="go('shades')">
         <span class="sb-ic" style="color:var(--gold-deep)">⛱️</span>
         <span class="sb-t"><b>${shdScreens()?LX('مظلات وسواتر','Shades & screens'):LX('مظلات','Shades')}</b><small>${LX('حدّد الأمتار والنوع ويطلع السعر فورًا','Set the size and type, price shows instantly')}</small></span>
-        <span class="qb-ar">←</span>
+        
       </button>`:''}
       ${stOn('majlis_enabled',true)?`<button class="services-btn" onclick="go('majlis')">
         <span class="sb-ic" style="color:var(--gold-deep)">${catIcon('majlis',26)}</span>
         <span class="sb-t"><b>ابنِ مجلسك <span style="background:var(--gold);color:#1a1408;font-size:.68rem;font-weight:800;padding:2px 9px;border-radius:20px;margin-inline-start:6px;vertical-align:middle">قريباً</span></b><small>مجلس ساندوتش بانل · حدّد المقاس واعرف التكلفة فوراً</small></span>
-        <span class="qb-ar">←</span>
+        
       </button>`:''}
 
       <div class="acc-grid" style="margin-top:12px">
         ${stOn('prices_tile_enabled',true)?`<button class="acc-tile" onclick="go('prices')"><span class="ti">${icon('tag',26)}</span><b>قائمة الأسعار</b><small>تصفّح الخدمات واطلب</small></button>`:''}
         ${stOn('tips_enabled',true)?`<button class="acc-tile" onclick="go('tips')"><span class="ti">${icon('book',26)}</span><b>${esc(solText('tips_title','نصائح السلامة'))}</b><small>${esc(solText('tips_sub','مقالات تحمي بيتك'))}</small></button>`:''}
-      </div>
-
-      <div class="trust">
-        <div class="trust-item"><span class="ti-ic">${icon('wrench',14)}</span><b>فنيون معتمدون</b></div>
-        <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+' day warranty')}</b></div>
-        <div class="trust-item"><span class="ti-ic">${icon('tag',14)}</span><b>أسعار مناسبة</b></div>
       </div>
 
       <div class="lticket" role="button" tabindex="0" onclick="showLoyaltyInfo()">
@@ -4746,6 +4786,13 @@ function renderHome(){
           <div class="tk-mini">${dots}</div>
           <span>${tkSub}</span>
         </div>
+      </div>
+
+      <div class="trust">
+        <div class="trust-item"><span class="ti-ic">${icon('wrench',14)}</span><b>فنيون معتمدون</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+' day warranty')}</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('badge',15)}</span><b>${LX('ضمان '+ar(APP_WARRANTY)+' يوم', APP_WARRANTY+' day warranty')}</b></div>
+        <div class="trust-item"><span class="ti-ic">${icon('tag',14)}</span><b>أسعار مناسبة</b></div>
       </div>
 
       ${reviewsHtml}
@@ -4773,8 +4820,8 @@ function showLoyaltyInfo(){
     <div class="loy-prog">${prog}</div>
     ${statusLine}
     <div class="loy-steps">
-      <div class="loy-step"><div class="ls-n">١</div><div class="ls-t"><b>اطلب صيانتك عادي</b><span>كل طلب تُنجزه يُحتسب في رصيد ولائك.</span></div></div>
-      <div class="loy-step"><div class="ls-n">٦</div><div class="ls-t"><b>بعد ٦ طلبات</b><span>تستحق مكافأة على طلبك السابع.</span></div></div>
+      <div class="loy-step"><div class="ls-n">1</div><div class="ls-t"><b>اطلب صيانتك عادي</b><span>كل طلب تُنجزه يُحتسب في رصيد ولائك.</span></div></div>
+      <div class="loy-step"><div class="ls-n">6</div><div class="ls-t"><b>بعد 6 طلبات</b><span>تستحق مكافأة على طلبك السابع.</span></div></div>
       <div class="loy-step"><div class="ls-n">🎁</div><div class="ls-t"><b>خصم = متوسط طلباتك</b><span>يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.</span></div></div>
     </div>
     <div class="loy-eg"><b>مثال:</b> لو متوسط طلباتك <b>١٥٠ ر.س</b>، فطلبك السابع عليه <b>خصم ١٥٠ ر.س</b>.</div>
@@ -4818,7 +4865,6 @@ function renderPrices(){
           <div class="vc-item"><span class="vc-ic">👔</span><span>فنيّون نظيفون بمظهر لائق وتعامل محترم</span></div>
           <div class="vc-item"><span class="vc-ic">🏅</span><span>جودة عمل عالية ومتقنة</span></div>
           <div class="vc-item"><span class="vc-ic">🧹</span><span>ننظّف المكان بعد انتهاء العمل</span></div>
-          <div class="vc-item"><span class="vc-ic">🛡️</span><span>ضمان على شغل اليد والقطع · لو رجعت المشكلة نرجع بلا تكلفة</span></div>
           <div class="vc-item"><span class="vc-ic">✅</span><span>أسعار واضحة، بلا مفاجآت بعد الشغل</span></div>
         </div>
       </div>
@@ -4837,7 +4883,7 @@ function renderJoin(){
       <div class="panel" style="margin-top:14px"><h3>👤 بياناتك</h3>
         <div class="field"><label>الاسم / اسم المؤسسة <span class="req">*</span></label><input id="pv_name" value="${esc(p.name||'')}" placeholder="مثال: مؤسسة النور للصيانة" /></div>
         <div class="field"><label>رقم الجوال <span class="req">*</span></label><input id="pv_phone" value="${esc(p.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
-        <div class="field"><label>كلمة مرور للدخول <span class="req">*</span></label><input id="pv_pass" type="password" placeholder="٦ أحرف أو أكثر · تدخل بها بوابة المزوّدين" /></div>
+        <div class="field"><label>كلمة مرور للدخول <span class="req">*</span></label><input id="pv_pass" type="password" placeholder="6 أحرف أو أكثر · تدخل بها بوابة المزوّدين" /></div>
       </div>
       <div class="panel"><h3>📍 مدن الخدمة <span class="req">*</span></h3>
         <div class="field"><label>اكتب المدن مفصولة بفاصلة · أي طلب من هذه المدن يوصلك وأنت تقبله أو تتركه</label>
@@ -4873,7 +4919,7 @@ async function submitProvider(){
   const services=Array.from(document.querySelectorAll('.chips-pick input:checked')).map(c=>c.value);
   if(!name){ toast('اكتب الاسم'); return; }
   if(!phone){ toast('اكتب رقم الجوال'); return; }
-  if(pass.length<6){ toast('كلمة المرور ٦ أحرف على الأقل'); return; }
+  if(pass.length<6){ toast('كلمة المرور 6 أحرف على الأقل'); return; }
   if(!cities.length){ toast('اكتب مدن الخدمة'); return; }
   if(!services.length){ toast('اختر نوع الخدمات'); return; }
   if(!cloudReady){ toast('لا يوجد اتصال، حاول بعد قليل'); return; }
@@ -4965,6 +5011,8 @@ const CAT_IC={
 function catTileIc(k){ const c=CATS[k]||{}; const u=c.img?safeUrl(c.img,''):''; return u ? `<span class="mt-ic mt-img${String(u).indexOf('cat-tile')>=0?' mt-flat':''}" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(c.name||'')}"></span>` : `<span class="mt-ic">${catIcon(k,30)}</span>`; }
 /* صورة الخدمة الحقيقية إن وُجدت، وإلا الإيموجي */
 function svcImgOn(s){ return !!((s&&s.img)?safeUrl(s.img,''):''); }
+/* أيقونة صف الفاتورة: صورة الخدمة أو القطعة إن وُجدت، وإلا الإيموجي */
+function ivIco(ico,img){ const u=img?safeUrl(img,''):''; return u?`<span class="iv-ic img" style="background-image:url('${esc(u)}')"></span>`:`<span class="iv-ic">${ico}</span>`; }
 function svcIc(s){ const u=(s&&s.img)?safeUrl(s.img,''):''; return u ? `<span class="srow-ic srow-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(s.name||'')}"></span>` : `<span class="srow-ic">${esc((s&&s.ico)||'🔧')}</span>`; }
 function catIcon(k,s){
   const p=CAT_IC[k];
@@ -5016,7 +5064,7 @@ function clearAutoNote(){
   state.quickNote='';
 }
 
-/* ---------- خطوة ١: اختر الخدمة ---------- */
+/* ---------- خطوة 1: اختر الخدمة ---------- */
 function openCat(k){ homeQ=''; if(catSoon(k)){ toast(LX('قريبًا إن شاء الله ✨','Coming soon ✨')); return; }
   if(orgPinned()&&orgCats().length&&!orgCats().includes(k)){ toast(LX('هذا القسم غير متاح لدى '+state.org.name+'، ألغِ التثبيت للحجز مع خافت','This category is not offered by '+state.org.name+', unpin to book with Khafet')); return; }
   quickMode=false; clearAutoNote(); currentCat=k; go('pick'); }
@@ -5082,7 +5130,7 @@ function renderCart(){
     </div></div>`;
 }
 
-/* ---------- خطوة ٢: اختر اليوم والوقت ---------- */
+/* ---------- خطوة 2: اختر اليوم والوقت ---------- */
 function captureBookingInputs(){
   const g=id=>{const el=document.getElementById(id);return el?el.value.trim():undefined;};
   const n=g('f_name'),p=g('f_phone');
@@ -5146,7 +5194,7 @@ function pickDate(iso){
   if(orgPinned()?!orgOpenDay(iso):isOffDay(iso)){ toast(LX('يوم '+AR_DAYS[parseISO(iso).getDay()]+' إجازة، اختر يوماً آخر','That day is off, pick another')); return; }
   state.booking.date=iso; state.booking.time=null; renderTime();
 }
-function pickTime(min){ state.booking.time=min; renderTime(); }
+function pickTime(min){ state.booking.time=min; state.booking.fullDay=false; renderTime(); }
 function toggleWantsEarlier(){ state.booking.wantsEarlier = state.booking.wantsEarlier===false; renderTime(); }
 // يبحث عن أبكر موعد متاح قبل موعد الطلب الحالي (يظهر إذا ألغى عميل ثاني وفرّغ وقت)
 function earlierSlotFor(o){
@@ -5222,10 +5270,17 @@ function renderTime(){
   const oh=orgPinned()?orgHours(b.date):null;   // مؤسسة مثبّتة: نوافذ الوصول داخل دوامها، والمتاح منها من الخادم
   const tFrom=(oh&&!oh.closed)?(+oh.open_min||WORK_START):WORK_START, tTo=(oh&&!oh.closed)?(+oh.close_min||WORK_END):WORK_END;
   for(let t=tFrom;t+need<=tTo;t+=ARRIVAL_WINDOW){
-    const ok=orgPinned()?orgSlotOk(b.date,t):slotAvailable(b.date,t,need), active=b.time===t;
+    const ok=orgPinned()?orgSlotOk(b.date,t):slotAvailable(b.date,t,need), active=b.time===t&&!b.fullDay;
     slots.push(`<button class="slot win ${active?'active':''}" ${ok?'':'disabled'} onclick="pickTime(${t})">${windowLabel(t,need)}</button>`);
   }
   const anyFree=slots.some(s=>!s.includes('disabled'));
+  const fullDay=fullDayNeeded(need);
+  if(b.fullDay && !fullDay) b.fullDay=false;
+  if(b.fullDay) b.time=tFrom;
+  const fullDayCard=fullDay?`<div class="fullday ${b.fullDay?'on':''}">
+        <div class="fd-t"><b>${LX('طلبك كبير؟ احجز اليوم كامل','Big job? Book the whole day')}</b><small>${LX('نبدأ من '+fmtTime(tFrom)+' ونكمل حتى ننتهي','We start at '+fmtTime(tFrom)+' and work until done')}</small></div>
+        <button type="button" class="fd-btn" onclick="pickFullDay()">${b.fullDay?'✓ '+LX('يوم كامل','Full day'):LX('احجز اليوم كامل','Book the day')}</button>
+      </div>`:'';
   const ready=b.time!=null;
   const we=state.booking.wantsEarlier!==false;
 
@@ -5234,18 +5289,18 @@ function renderTime(){
       ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
       ${stepBar(2)}
       ${orgBadgeHtml()}
-      <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
+      <div class="panel" style="margin-top:14px"><h3 class="ph-ic">${icon('calendar',19)} اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
+      <div class="panel" id="slotsPanel"><h3 class="ph-ic">${icon('clock',19)} ${LX('اختر وقت الوصول','Choose arrival time')}</h3>
+        ${fullDayCard}${anyFree?`<div class="slots">${slots.join('')}</div>`:(fullDay?'':`<p style="color:var(--muted)">${(orgPinned()&&orgSlotsLoading(b.date))?LX('جارٍ تحميل الأوقات المتاحة...','Loading available times...'):'لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.'}</p>`)}
+      </div>
       <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
         <span class="nt-check">${we?'✓':''}</span>
-        <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
-      </div>
-      <div class="panel" id="slotsPanel"><h3>🕐 ${LX('اختر وقت الوصول','Choose arrival time')}</h3>
-        ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">${(orgPinned()&&orgSlotsLoading(b.date))?LX('جارٍ تحميل الأوقات المتاحة...','Loading available times...'):'لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.'}</p>`}
+        <span class="nt-t"><b>${icon('bell',16)} بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
       </div>
       ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>${LX(`مدة الزيارة التقريبية: <b>${fmtDuration(need)}</b> · نحجزها لك كاملة.`,`Estimated visit time: <b>${fmtDuration(need)}</b> · we reserve it all for you.`)}</span></div>`}
     </div>
     ${ready?`<div class="nextbar"><div class="wrap">
-      <div class="nb-info"><b>${windowLabel(b.time,need)}</b><small>${dayLabel(b.date)}</small></div>
+      <div class="nb-info"><b>${b.fullDay?LX('يوم كامل · من '+fmtTime(b.time),'Full day · from '+fmtTime(b.time)):windowLabel(b.time,need)}</b><small>${dayLabel(b.date)}</small></div>
       <button class="nb-go" onclick="nextFromTime()">التالي <span>←</span></button>
     </div></div>`:''}`;
 }
@@ -5260,7 +5315,7 @@ function nextFromTime(){
   go('info');
 }
 
-/* ---------- خطوة ٣: بياناتك وموقعك ---------- */
+/* ---------- خطوة 3: بياناتك وموقعك ---------- */
 /* ملخص الطلب بشكل فاتورة: أجرة اليد، القطع (بخياراتها وإمكانية شيلها)، رسوم الوصول، ثم الإجمالي */
 /* فقاعة الشرح: تفتح تحت السطر نفسه، وتقفل أي فقاعة ثانية مفتوحة */
 function ivTip(btn){
@@ -5291,7 +5346,7 @@ function feeTipText(kind){
   return '';
 }
 function receiptHtml(priceTxt, d){
-  const line=(ico,name,qty,price,cls,extra)=>`<div class="iv-row ${cls||''}"><span class="iv-ic">${ico}</span><span class="iv-n">${name}${qty>1?` <em class="iv-q">× ${ar(qty)}</em>`:''}</span><b class="iv-p">${price}</b>${extra||''}</div>`;
+  const line=(ico,name,qty,price,cls,extra,img)=>`<div class="iv-row ${cls||''}">${ivIco(ico,img)}<span class="iv-n">${name}${qty>1?` <em class="iv-q">× ${ar(qty)}</em>`:''}</span><b class="iv-p">${price}</b>${extra||''}</div>`;
   if(quickMode){
     return `<div class="invoice"><div class="iv-head"><b>${LX('ملخص طلبك','Order summary')}</b><small>${LX('طلب سريع','Quick request')}</small></div>
       ${line('⚡',LX('معاينة وتحديد المشكلة','Inspection'),1,'')}
@@ -5306,17 +5361,17 @@ function receiptHtml(priceTxt, d){
       <b>${ar(i.qty)}</b>
       <button type="button" data-id="${esc(i.id)}" onclick="ivSvcQty(this.dataset.id,1)" aria-label="${LX('زد','Increase')}">＋</button>
     </span></div>`;
-    return line(esc(i.ico), esc(svcName(i, _uiEN()?'en':'ar')), i.qty, money(lineLabor(i)), '', del+qty);
+    return line(esc(i.ico), esc(svcName(i, _uiEN()?'en':'ar')), i.qty, money(lineLabor(i)), '', del+qty, i.img);
   }).join('');
   const partRows=parts.map(l=> l.off
-    ? line('🔩', esc(l.groupName), 1, money(0), 'off', `<button type="button" class="iv-add" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,false)">＋ ${LX('ضيفها','Add it')}</button>`)
+    ? line('🔩', esc(l.groupName), 1, money(0), 'off', `<button type="button" class="iv-add" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,false)">＋ ${LX('ضيفها','Add it')}</button>`, (l.chosen||l.opts[0]||{}).img)
     : line('🔩', esc(partName(l.chosen)), 1, money(l.price*l.qty), '', `<button type="button" class="iv-x" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,true)" aria-label="${LX('شيل القطعة','Remove part')}">×</button>`
         +`<div class="iv-qtyrow"><span class="iv-qlbl">${LX('الكمية','Quantity')}</span><span class="srow-qty sm"><button type="button" data-key="${esc(l.key)}" onclick="setPartQty(this.dataset.key,-1)" aria-label="${LX('أقل','Less')}">−</button><b>${ar(l.qty)}</b><button type="button" data-key="${esc(l.key)}" onclick="setPartQty(this.dataset.key,1)" aria-label="${LX('أكثر','More')}">+</button></span></div>`
-        +(l.opts.length>1?`<div class="iv-opts">${l.opts.map(o=>`<button type="button" class="${o.itemId===l.chosen.itemId?'on':''}" data-key="${esc(l.key)}" data-item="${esc(o.itemId)}" onclick="choosePart(this.dataset.key,this.dataset.item)">${esc(o.label||partName(o))}</button>`).join('')}</div>`:''))).join('');
+        +(l.opts.length>1?`<div class="iv-opts">${l.opts.map(o=>`<button type="button" class="${o.itemId===l.chosen.itemId?'on':''}" data-key="${esc(l.key)}" data-item="${esc(o.itemId)}" onclick="choosePart(this.dataset.key,this.dataset.item)">${esc(o.label||partName(o))}</button>`).join('')}</div>`:''), l.chosen.img)).join('');
   const disc=(ico,name,amt)=>`<div class="iv-row disc"><span class="iv-ic">${ico}</span><span class="iv-n">${name}</span><b class="iv-p">− ${money(amt)}</b></div>`;
   const discRows=[
     d.loyDisc>0 ? disc('🎁', LX('مكافأة ولاء','Loyalty reward'), d.loyDisc) : '',
-    d.pPct>0 ? disc('🎟️', LX('خصم كود صديق','Friend code discount')+' '+ar(d.pPct)+'٪', Math.round(laborPrice()*d.pPct/100)) : '',
+    d.pPct>0 ? disc('🎟️', LX('خصم كود صديق','Friend code discount')+' '+ar(d.pPct)+'%', Math.round(laborPrice()*d.pPct/100)) : '',
     (d.promo&&d.promo.amt>0) ? disc('🚗', promoLabel(d.promo.kind,d.promo.pct).replace(/^\S+\s/,''), d.promo.amt) : '',
     d.credit>0 ? disc('💰', LX('رصيدك','Your credit'), d.credit) : ''
   ].join('');
@@ -5348,7 +5403,7 @@ function renderInfo(){
   const strike = `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(base)}</span>`;
   const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
     : (loyDisc>0 ? `${strike} ${money(afterAll)} ${badge('🎁 خصم ولاء '+money(loyDisc))}`
-    : (pPct>0 ? `${strike} ${money(afterAll)} ${badge('خصم '+ar(pPct)+'٪ 🎟️')}`
+    : (pPct>0 ? `${strike} ${money(afterAll)} ${badge('خصم '+ar(pPct)+'% 🎟️')}`
     : (promo.amt>0 ? `${strike} ${money(afterAll)} ${badge(promoLabel(promo.kind,promo.pct))}`
     : money(base))));
   document.getElementById('app').innerHTML=`
@@ -5379,7 +5434,7 @@ function renderInfo(){
         </button>
         <div id="loc-status">${a.lat&&a.lng?locOkHtml():''}</div>
         ${a.city&&!inCoverage(a.city)?`<div class="late-note" id="cov-note"><span>📍</span><div><b>${esc(a.city)} خارج مناطق التغطية حاليًا</b>${esc(SETTINGS.coverage_msg||'نخدم الخبر والدمام والظهران حاليًا ونتوسع قريبًا.')}<div class="oact" style="margin-top:8px"><a class="sbtn ok" href="https://wa.me/${WHATSAPP}?text=${encodeURIComponent('أبي أعرف متى توصلون '+(a.city||'')+'، رقمي: '+(c.phone||''))}" target="_blank" rel="noopener">💬 بلّغوني لما توصلون</a></div></div></div>`:''}
-        <div class="field" style="margin-top:14px"><label>رقم المنزل / الشقة</label><input id="f_house" value="${esc(a.house)}" placeholder="مثال: ٢٤٥١ · الدور الأول" /></div>
+        <div class="field" style="margin-top:14px"><label>رقم المنزل / الشقة</label><input id="f_house" value="${esc(a.house)}" placeholder="مثال: 2451 · الدور الأول" /></div>
         <div class="field"><label>اسم العنوان (اختياري)</label><input id="f_label" value="${esc(a.label||'')}" placeholder="مثال: بيتي · بيت أهلي · الاستراحة" /></div>
         <label class="video-up ${(a.photoUrl||_housePhotoFile)?'has':''}" id="housePhotoUp" style="margin-top:12px">
           <input type="file" id="f_housePhoto" accept="image/*" onchange="onHousePhotoPick(this)" hidden />
@@ -5417,9 +5472,9 @@ function rewardsHtml(x){
   const list=[];
   if(x.loyDisc>0) list.push(tk('🏅', LX('مكافأة الولاء','Loyalty reward'), LX('خصم '+money(x.loyDisc)+' على هذا الطلب','Save '+money(x.loyDisc)+' on this order'), ON));
   const pk=String((x.promo&&x.promo.kind)||'');
-  if(x.promo&&x.promo.pct>0) list.push(tk(pk.indexOf('launch')===0?'🎉':'🎁', promoName(pk.replace('+delivery','')).replace(/^\S+\s/,''), LX(ar(x.promo.pct)+'٪ على أجرة اليد', x.promo.pct+'% off labor'), ON));
+  if(x.promo&&x.promo.pct>0) list.push(tk(pk.indexOf('launch')===0?'🎉':'🎁', promoName(pk.replace('+delivery','')).replace(/^\S+\s/,''), LX(ar(x.promo.pct)+'% على أجرة اليد', x.promo.pct+'% off labor'), ON));
   if(pk.indexOf('delivery')>=0) list.push(tk('🚚', LX('توصيل مجاني','Free delivery'), LX('هدية أول طلب لك','A gift on your first order'), ON));
-  if(refCheck.ok && !(x.loyDisc>0)) list.push(tk('🎟️', LX('كود صديق','Friend code'), FRIEND_PCT>0?LX('خصم '+ar(FRIEND_PCT)+'٪ على أجرة اليد', FRIEND_PCT+'% off labor'):esc(codeShow(state.promo||'')), LX('✓ الكود مقبول','✓ Code accepted')));
+  if(refCheck.ok && !(x.loyDisc>0)) list.push(tk('🎟️', LX('كود صديق','Friend code'), FRIEND_PCT>0?LX('خصم '+ar(FRIEND_PCT)+'% على أجرة اليد', FRIEND_PCT+'% off labor'):esc(codeShow(state.promo||'')), LX('✓ الكود مقبول','✓ Code accepted')));
   if((myRef.balance||0)>0) list.push(tk('💰', LX('رصيدك '+money(myRef.balance),'Your credit '+money(myRef.balance)), LX('ينخصم من هذا الطلب','Applied to this order'), ON));
   if(!isVerified && WELCOME_CREDIT>0 && !(myOrders()||[]).length) list.push(tk('🎁', LX('هدية أول طلب '+ar(WELCOME_CREDIT)+' ريال','First order gift: '+WELCOME_CREDIT+' SAR'), LX('تنضاف لرصيدك','Added to your credit'), LX('بعد تأكيد رقم جوالك','After you verify your phone'), true));
   const canCode=!(x.free||!referralEnabled());
@@ -5436,7 +5491,7 @@ function rewardsHtml(x){
       <label>🎟️ ${LX('كود صديق أو قسيمة','Friend code or voucher')}</label>
       <input id="f_promo" value="${esc(codeShow(state.promo||''))}" onchange="setPromo(this.value)" placeholder="${LX('مثال: خافت-K7F2M9','e.g. KHAFET-K7F2M9')}" />
       ${refCheck.busy?`<div style="color:var(--muted);font-weight:700;font-size:.84rem;margin-top:6px">⏳ ${LX('نتحقق…','Checking…')}</div>`
-        : refCheck.ok?`<div style="color:#0b7a3b;font-weight:800;font-size:.86rem;margin-top:6px">${FRIEND_PCT>0?'✅ خصم '+ar(FRIEND_PCT)+'٪ مطبّق':LX('✅ تم قبول الكود','✅ Code accepted')} 🎉</div>`
+        : refCheck.ok?`<div style="color:#0b7a3b;font-weight:800;font-size:.86rem;margin-top:6px">${FRIEND_PCT>0?'✅ خصم '+ar(FRIEND_PCT)+'% مطبّق':LX('✅ تم قبول الكود','✅ Code accepted')} 🎉</div>`
         : (state.promo?`<div style="color:#c0392b;font-weight:700;font-size:.84rem;margin-top:6px">${REF_MSG[refCheck.reason]||'❌ الكود غير صحيح'}</div>`:'')}
     </div></div>`:''}
   </div>`;
@@ -5461,7 +5516,7 @@ function loyaltyEarnHtml(x){
     </div>
   </div>`;
 }
-/* ---------- خطوة ٤: الفاتورة والدفع ---------- */
+/* ---------- خطوة 4: الفاتورة والدفع ---------- */
 function renderPay(){
   if(!state.booking.date||state.booking.time==null){ go('time'); return; }
   if(!(state.customer&&state.customer.name&&state.customer.phone)){ go('info'); return; }
@@ -5480,7 +5535,7 @@ function renderPay(){
   const strike = `<span style="text-decoration:line-through;color:var(--muted);font-size:.7em">${money(base)}</span>`;
   const priceTxt = quickMode ? 'يُحدد بعد المعاينة'
     : (loyDisc>0 ? `${strike} ${money(afterAll)} ${badge('🎁 خصم ولاء '+money(loyDisc))}`
-    : (pPct>0 ? `${strike} ${money(afterAll)} ${badge('خصم '+ar(pPct)+'٪ 🎟️')}`
+    : (pPct>0 ? `${strike} ${money(afterAll)} ${badge('خصم '+ar(pPct)+'% 🎟️')}`
     : (promo.amt>0 ? `${strike} ${money(afterAll)} ${badge(promoLabel(promo.kind,promo.pct))}`
     : money(base))));
   document.getElementById('app').innerHTML=`
@@ -5670,7 +5725,7 @@ async function confirmOrder(){
 
   const base={
     createdAt:Date.now(), items, customer:{...c}, address:{...a},
-    date:b.date, startMin:b.time, duration, endMin:b.time+duration,
+    date:b.date, startMin:b.time, duration:(b.fullDay?fullDayCap(duration):duration), endMin:b.time+(b.fullDay?fullDayCap(duration):duration),
     price: quickMode?0:cartPrice(),
     finalPrice: quickMode?0:Math.max(0, afterDisc - creditUse),
     referredBy: (refOk ? codeNorm(promoCodeIn) : ''), creditUsed: creditUse,
@@ -5681,6 +5736,7 @@ async function confirmOrder(){
     orgSlug: orgPinned()?state.org.slug:'', orgName: orgPinned()?state.org.name:'',   // حجز عبر صفحة مؤسسة داخل التطبيق
     kind: (quickMode && state.quickKind==='shade') ? 'shade' : '',
   };
+  if(b.fullDay){ base.note=('🗓️ '+LX('حجز يوم كامل · المدة التقديرية ','Full-day booking · estimated ')+fmtDuration(duration)+(base.note?' · '+base.note:'')); }
   let order=null;
   if(payNow>0){
     // الحجز المدفوع ما يُحفظ بالجهاز: لازم يوصل الخادم ثم يفتح الدفع
@@ -5734,10 +5790,10 @@ function renderConfirm(){
   if(!o){ go('home'); return; }
   const isPart=i=>!!(i.part||i.id==='stock'||i.stockId||String(i.id||'').startsWith('part:'));
   const paidNow=(_paidJust===o.id)||o.payStatus==='paid';
-  const row=(ic,name,qty,amt,cls)=>`<div class="iv-row${cls?' '+cls:''}"><span class="iv-ic">${esc(ic)}</span><span class="iv-n">${esc(name)}</span>${qty>1?`<span class="iv-q">×${ar(qty)}</span>`:'<span></span>'}<b class="iv-p">${amt}</b></div>`;
+  const row=(ic,name,qty,amt,cls,img)=>`<div class="iv-row${cls?' '+cls:''}">${ivIco(esc(ic),img)}<span class="iv-n">${esc(name)}</span>${qty>1?`<span class="iv-q">×${ar(qty)}</span>`:'<span></span>'}<b class="iv-p">${amt}</b></div>`;
   const amtOf=i=>'';
-  const svcRows=o.items.filter(i=>!isPart(i)&&!isFeeId(i.id)).map(i=>row(i.ico||'🛠️', itemLabel(i), +i.qty||1, amtOf(i))).join('');
-  const partRows=o.items.filter(isPart).map(i=>row('🔩', itemLabel(i), +i.qty||1, amtOf(i))).join('');
+  const svcRows=o.items.filter(i=>!isPart(i)&&!isFeeId(i.id)).map(i=>row(i.ico||'🛠️', itemLabel(i), +i.qty||1, amtOf(i), '', i.img||(svc(i.id)||{}).img)).join('');
+  const partRows=o.items.filter(isPart).map(i=>row('🔩', itemLabel(i), +i.qty||1, amtOf(i), '', i.img)).join('');
   const feeRows=o.items.filter(i=>isFeeId(i.id)).map(i=>row(i.id==='smallfee'?'🧾':'🚚', itemLabel(i), 1, amtOf(i))).join('');
   const disc=(ic,name,v)=>(+v>0)?row(ic,name,1,'− '+money(+v),'disc'):'';
   const discRows=[disc('🎁',LX('خصم','Discount'),o.promoDisc), disc('🏅',LX('خصم الولاء','Loyalty discount'),o.loyaltyDisc), disc('💰',LX('رصيدك','Your credit'),o.creditUsed)].join('');
@@ -5793,7 +5849,6 @@ function renderMyBookings(){
   } else {
     const todayISO=dateISO(new Date());
     body=os.map(o=>{
-      const itemsList=o.items.map(i=>`${esc(i.ico)} ${esc(itemLabel(i))}${i.qty>1?' ×'+ar(i.qty):''}`).join('، ');
       const canCancel=['new','confirmed'].includes(o.status);
       const lateCancel=canCancel && hoursUntil(o)<cancelHours();   // أقل من X ساعات: الإلغاء والتغيير عبر التواصل فقط
       const canReorder=['done','cancelled'].includes(o.status) && !o.quick && !o.warrantyOf && (o.items||[]).some(i=>SERVICES.some(s=>s.id===i.id&&!s.hidden));
@@ -5811,14 +5866,21 @@ function renderMyBookings(){
       const oref=aid(orderRef(o));   // معرّف الطلب في الأزرار: معرّف الخادم (لاتيني) أو الرقم المحلي
       const stars=[1,2,3,4,5].map(n=>`<span class="${n<=o.rating?'on':''}" ${rated?'':`onclick="rate('${oref}',${n})"`}>★</span>`).join('');
       return `<div class="obook">
-        <div class="oh"><div><b>${o.id}</b>${o.warrantyOf?'<span class="wclaim">🛡️ بلاغ ضمان · مجاني</span>':''}<div class="oitems">${itemsList}</div></div><span class="status ${STATUS_CLS[o.status]}">${!o.dbId?LX('⏳ جارٍ الإرسال','⏳ Sending'):(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?LX('🔍 جارٍ التعيين','🔍 Assigning'):STATUS_AR[o.status]))}</span></div>
-        <div class="ometa">
-          <span class="pill time">📅 ${dayLabel(o.date)}</span>
-          <span class="pill time">🕐 ${windowLabel(o.startMin)}</span>
-          <span class="pill time">⏱️ ${fmtDuration(o.duration)}</span>
-          <span class="pill price">${money(o.finalPrice)}${+o.loyaltyDisc>0?' 🎁':''}</span>
-          ${o.paidAmount>0&&o.amountDue<=0&&o.status!=='cancelled'?`<span class="pill paid">${LX('✓ مدفوع','✓ Paid')}</span>`:''}
-          ${o.discountPct>0?`<span class="pill" style="color:#0b7a3b;font-weight:800">🎟️ خصم ${ar(o.discountPct)}٪</span>`:''}
+        <div class="ob2-head">
+          <div class="ob2-no"><small>${LX('طلب','Order')}</small><b>${o.id}</b></div>
+          <span class="status ${STATUS_CLS[o.status]}">${!o.dbId?LX('⏳ جارٍ الإرسال','⏳ Sending'):(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(o.status==='new'&&!o.providerPhone?LX('🔍 جارٍ التعيين','🔍 Assigning'):STATUS_AR[o.status]))}</span>
+        </div>
+        ${o.warrantyOf?'<div class="wclaim" style="margin-top:8px">🛡️ بلاغ ضمان · مجاني</div>':''}
+        <ul class="ob2-svc">${o.items.map(i=>`<li><span class="ob2-ico">${esc(i.ico)}</span><span class="ob2-nm">${esc(itemLabel(i))}</span>${i.qty>1?`<span class="ob2-qty">×${ar(i.qty)}</span>`:''}</li>`).join('')}</ul>
+        <div class="ob2-rows">
+          <div class="ob2-row"><span>${icon('calendar',16)} ${LX('التاريخ','Date')}</span><b>${dayLabel(o.date)}</b></div>
+          <div class="ob2-row"><span>${icon('clock',16)} ${LX('الوقت','Time')}</span><b>${windowLabel(o.startMin)}</b></div>
+          <div class="ob2-row"><span>${icon('timer',16)} ${LX('المدة','Duration')}</span><b>${fmtDuration(o.duration)}</b></div>
+        </div>
+        <div class="ob2-total">
+          <span>${LX('الإجمالي','Total')}${+o.loyaltyDisc>0?' 🎁':''}${o.discountPct>0?` · ${LX('خصم','discount')} ${ar(o.discountPct)}%`:''}</span>
+          ${o.paidAmount>0&&o.amountDue<=0&&o.status!=='cancelled'?`<em class="ob2-paid">✓ ${LX('مدفوع','Paid')}</em>`:''}
+          <b>${money(o.finalPrice)}</b>
         </div>
         ${showDue?`<div class="pay-due">
           <div class="pd-t"><span>${awaitingPay?LX('ادفع لتأكيد الحجز','Pay to confirm your booking'):LX('المتبقي عليك','Amount due')}</span><b>${money(o.amountDue)}</b></div>
@@ -5830,8 +5892,8 @@ function renderMyBookings(){
         ${o.status==='done'&&o.warrantyDays>0&&!o.warrantyOf?(laborClaim
           ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${laborClaim.status==='done'?'تم إصلاح المشكلة على الضمان':(laborClaim.status==='cancelled'?'بلاغ الضمان أُغلق':'استلمنا بلاغك على الضمان')}</b><span>${laborClaim.status==='done'?'شكراً لصبرك، ونعتذر عن الإزعاج.':(laborClaim.status==='cancelled'?'تواصل معنا لو لسا المشكلة موجودة.':'بنتواصل معك ونرسل الفني مجاناً.')}</span></div></div>`
           : (inLaborW
-            ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${LX('خدمتك مضمونة '+ar(o.warrantyDays)+' يوم · باقي '+ar(Math.max(1,Math.ceil(o.warrantyDays-ageDays)))+' يوم','Your service is covered for '+o.warrantyDays+' days · '+Math.max(1,Math.ceil(o.warrantyDays-ageDays))+' days left')}</b><span>رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.</span><div><button class="wbtn" style="margin-top:8px" onclick="openLaborClaim('${oref}')">🛡️ المشكلة رجعت</button></div></div></div>`
-            : `<div class="warranty-note" style="background:#f3f1ea;border-color:var(--line)"><span class="wn-ic">🛡️</span><div class="wn-t"><b style="color:var(--muted)">انتهت مدة الضمان (${ar(o.warrantyDays)} يوم)</b></div></div>`)):''}
+            ? `<div class="warranty-note"><span class="wn-ic">🛡️</span><div class="wn-t"><b>${LX('رجعت نفس المشكلة؟','Same problem again?')}</b><span>${LX('بلّغ وبنجيك.','Report it and we will come.')}</span><div><button class="wbtn" style="margin-top:8px" onclick="openLaborClaim('${oref}')">🛡️ المشكلة رجعت</button></div></div></div>`
+            : '')):''}
         ${o.status==='cancelled'&&o.rejectReason?`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>اعتذر الفني عن تنفيذ الطلب</b><span>السبب: ${esc(o.rejectReason)}</span></div></div>`:''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> · نرجو التكرّم باستقباله.</span></div>`:''}
         ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>الفني متأخّر قليلاً</b><span>موعدك المتوقّع صار حوالي ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
@@ -5840,7 +5902,7 @@ function renderMyBookings(){
           <div class="an-t"><b>صار فيه موعد أبكر متاح!</b><span>${dayLabel(earlier.date)} · ${windowLabel(earlier.time)} · بدل موعدك الحالي</span></div>
           <button class="an-btn" onclick="advanceOrder('${oref}')">قدّم موعدي</button>
         </div>`:''}
-        ${['new','confirmed'].includes(o.status)?`<div class="reminder-note" style="margin-top:12px">⏰ <span>سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.</span></div>`:''}
+        ${['new','confirmed'].includes(o.status)?`<div class="reminder-note ob2-rem">⏰ <span>سنذكّرك قبل الموعد بساعة برسالة على جوالك.</span></div>`:''}
         ${custInvoiceHtml(o)}
         ${partsBox(o)}
         ${canRate?`<div class="rate-box">
@@ -5858,7 +5920,7 @@ function renderMyBookings(){
         </div>`:''}
         ${canCancel?(lateCancel
           ? `<div class="late-note"><span>⏰</span><div><b>باقي أقل من ${ar(cancelHours())} ساعات على الموعد</b>للإلغاء أو تغيير الموعد الحين تواصل معنا مباشرة.<div class="oact" style="margin-top:8px"><a class="sbtn" href="tel:${esc(PHONE)}">📞 اتصال</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 واتساب</a></div></div></div>`
-          : `<div class="oact"><button class="sbtn" onclick="openReschedule('${oref}')">📅 تغيير الموعد</button><button class="sbtn danger" onclick="cancelOrder('${oref}')">إلغاء الطلب</button></div><div class="policy-note">الإلغاء أو تغيير الموعد مجاني حتى ${ar(cancelHours())} ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.</div>`):''}
+          : `<div class="oact"><button class="sbtn" onclick="openReschedule('${oref}')">📅 تغيير الموعد</button><button class="sbtn danger" onclick="cancelOrder('${oref}')">إلغاء الطلب</button></div>`):''}
         ${canReorder?`<div class="oact"><button class="sbtn ok" onclick="reorder('${oref}')">🔁 اطلب مرة ثانية</button></div>`:''}
       </div>`;
     }).join('');
@@ -5868,7 +5930,7 @@ function renderMyBookings(){
 /* ══════════ الأغراض المستخدمة + بلاغ الضمان ══════════
    القطع المستخدمة = بنود فاتورة الفني القادمة من المخزون (stockId).
    ضمان القطع سنتان من تاريخ الخدمة (حسب البنود). البلاغ = طلب جديد مجاني مرتبط بالطلب الأصلي. */
-const PARTS_WARRANTY_DAYS=730;
+const PARTS_WARRANTY_DAYS=30;   // الضمان كله 30 يوم (قرار فادية 2026-09-25)
 function orderParts(o){ const inv=o.invoice; if(!inv||!Array.isArray(inv.items)) return []; return inv.items.filter(it=>it&&(it.stockId||it.id==='stock')); }
 function pbZoom(u){ if(!u) return; u=String(u).trim(); if(/^[a-z][a-z0-9+.-]*:/i.test(u) && !/^https?:/i.test(u)) return; document.body.insertAdjacentHTML('beforeend',`<div class="pb-zoom" onclick="this.remove()"><img src="${esc(u)}" /></div>`); }
 function partsBox(o){
@@ -5881,12 +5943,12 @@ function partsBox(o){
     const claim=state.orders.find(x=>x.warrantyOf&&o.dbId&&x.warrantyOf===o.dbId&&(x.warrantyItem===pk||x.warrantyItem===p.name));   // البلاغات القديمة كانت بالاسم
     let act;
     if(claim) act=`<span class="pb-done">✅ ${claim.status==='done'?'تم التبديل':'تم البلاغ · بنتواصل معك'}</span>`;
-    else if(inW) act=`<button class="wbtn" onclick="claimWarranty('${aid(orderRef(o))}',${i})">⚠️ تعطّلت؟ بلّغ على الضمان</button>`;
-    else act=`<span class="pb-done muted">انتهى الضمان</span>`;
+    else if(inW) act=`<button class="wbtn" onclick="claimWarranty('${aid(orderRef(o))}',${i})">${LX('تعطّلت؟ بلّغ','Faulty? Report it')}</button>`;
+    else act='';
     const pic=p.img?`<img class="pb-img" src="${esc(p.img)}" loading="lazy" data-img="${esc(p.img)}" onclick="pbZoom(this.dataset.img)" />`:`<span class="pb-ph">🔩</span>`;
-    return `<div class="pb-row">${pic}<div class="pb-t"><b>${esc(p.name)}</b><small>${(+p.qty>1)?'×'+ar(p.qty)+' · ':''}${inW?'ضمان سنتين من تاريخ الخدمة':'انتهى الضمان'}</small><div class="pb-act">${act}</div></div></div>`;
+    return `<div class="pb-row">${pic}<div class="pb-t"><b>${esc(p.name)}</b><small>${(+p.qty>1)?'×'+ar(p.qty):''}</small><div class="pb-act">${act}</div></div></div>`;
   }).join('');
-  return `<div class="parts-box"><div class="pb-head"><b>🧰 الأغراض المستخدمة</b><small>${inW?'مضمونة سنتين':'انتهت مدة الضمان'}</small></div>${rows}</div>`;
+  return `<div class="parts-box"><div class="pb-head"><b>🧰 ${LX('الأغراض المستخدمة','Parts used')}</b></div>${rows}</div>`;
 }
 /* أقرب موعد صالح لبلاغ الضمان · الخادم يرفض أي وقت فات أو يوم إجازة */
 function nextClaimSlot(){
@@ -5899,11 +5961,20 @@ function nextClaimSlot(){
 }
 /* معرّف القطعة في بلاغ الضمان: معرّف المستودع (stockId) وهو فريد لكل قطعة، وإلا معرّف البند · الخادم يطابق عليه لا على الاسم */
 function partClaimKey(p){ return String((p&&(p.stockId||p.id))||(p&&p.name)||''); }
-async function claimWarranty(orderId, idx){
+function claimWarranty(orderId, idx){
   const o=findOrder(orderId); if(!o) return;
   const p=orderParts(o)[idx]; if(!p) return;
-  if(!confirm('تبلّغ إن «'+p.name+'» تعطّلت وهي على الضمان؟\nبنرسل فنياً يفحصها ويبدّلها مجاناً إذا كانت مشمولة.')) return;
   if(!cloudReady||!o.dbId){ toast('يحتاج اتصال بالإنترنت'); return; }
+  kmodalEl().innerHTML=`<div class="kbox">
+    <div class="kh"><b>🛡️ تعطّلت القطعة؟</b><button type="button" class="kx" onclick="closeKModal()">✕</button></div>
+    <p style="font-size:.9rem;line-height:1.7;margin-bottom:8px">«${esc(p.name)}» من الطلب ${esc(o.id)}</p>
+    <div class="kacts"><button type="button" class="cta gold" onclick="sendPartClaim('${aid(orderRef(o))}',${idx})">🛡️ أرسل البلاغ</button><button type="button" class="cta" onclick="closeKModal()">إلغاء</button></div>
+  </div>`;
+}
+async function sendPartClaim(orderId, idx){
+  const o=findOrder(orderId); if(!o) return;
+  const p=orderParts(o)[idx]; if(!p) return;
+  const btn=document.querySelector('#kmodal .cta'); if(btn){ btn.disabled=true; btn.textContent='⏳ جارٍ الإرسال...'; }
   const cs=nextClaimSlot();
   const base={ createdAt:Date.now(), items:[{ico:'🛡️', name:'ضمان: تبديل '+p.name, qty:+p.qty||1, price:0}],
     customer:Object.assign({},o.customer), address:Object.assign({},o.address), date:cs.date, startMin:cs.startMin, duration:60, endMin:cs.startMin+60,
@@ -5915,8 +5986,8 @@ async function claimWarranty(orderId, idx){
   try{
     const order=await cloudInsert(base);
     state.orders.unshift(order); state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id); save();
-    toast('🛡️ استلمنا بلاغك، بنتواصل معك لتبديلها'); render();
-  }catch(e){ console.error('warranty claim:', e); toast(serverMsg(e)||'⚠️ ما وصل البلاغ، أعد المحاولة'); }
+    closeKModal(); toast('🛡️ استلمنا بلاغك، بنتواصل معك لتبديلها'); render();
+  }catch(e){ console.error('warranty claim:', e); toast(serverMsg(e)||'⚠️ ما وصل البلاغ، أعد المحاولة'); if(btn){ btn.disabled=false; btn.textContent='🛡️ أرسل البلاغ'; } }
   finally{ state.subReq=keepSub; }
 }
 /* كم ساعة باقية على موعد الطلب (سالب = فات الموعد) */
@@ -5997,7 +6068,7 @@ function openLaborClaim(id){
   const svcs=(o.items||[]).filter(i=>!i.part&&!isFeeId(i.id)).map(i=>i.ico+' '+i.name).join('، ');
   kmodalEl().innerHTML=`<div class="kbox">
     <div class="kh"><b>🛡️ المشكلة رجعت؟</b><button type="button" class="kx" onclick="closeKModal()">✕</button></div>
-    <p style="font-size:.9rem;line-height:1.7;margin-bottom:8px">الطلب ${esc(o.id)} · ${esc(svcs)}<br><span style="color:var(--muted);font-weight:700">مضمون ${ar(o.warrantyDays)} يوم. نرسل الفني يفحص ويصلح مجاناً إذا كانت نفس المشكلة.</span></p>
+    <p style="font-size:.9rem;line-height:1.7;margin-bottom:8px">الطلب ${esc(o.id)} · ${esc(svcs)}</p>
     <textarea id="lc_desc" placeholder="اشرح وش رجع بالضبط (مثال: التسريب رجع من نفس المكان)"></textarea>
     <div class="kacts"><button type="button" class="cta gold" onclick="sendLaborClaim('${aid(orderRef(o))}')">🛡️ أرسل البلاغ</button></div>
   </div>`;
@@ -6055,7 +6126,7 @@ function invSumRows(s, cls){ if(!s.lines) return ''; const g=cls||'g';
   const hasAdj=Math.abs(s.adj)>=0.01;
   if(!(s.disc>0||s.orgDisc>0||hasAdj)) return '';
   return `<div><span>المجموع</span><span>${money(s.sub)}</span></div>`
-    +(s.disc>0?`<div class="${g}"><span>🎟️ خصم ${ar(s.pct)}٪</span><span>− ${money(s.disc)}</span></div>`:'')
+    +(s.disc>0?`<div class="${g}"><span>🎟️ خصم ${ar(s.pct)}%</span><span>− ${money(s.disc)}</span></div>`:'')
     +(s.orgDisc>0?`<div class="${g}"><span>🎁 خصم المؤسسة</span><span>− ${money(s.orgDisc)}</span></div>`:'')
     +(s.adj<=-0.01?`<div class="${g}"><span>🎟️ خصومات وتسويات</span><span>− ${money(-s.adj)}</span></div>`:'')
     +(s.adj>=0.01?`<div><span>فرق القطع والتسويات</span><span>+ ${money(s.adj)}</span></div>`:''); }
@@ -6074,13 +6145,13 @@ function custInvoiceHtml(o){
     return `<div class="ci-row">${media}<div class="ci-n"><b>${esc(it.name)}</b>${s.lines?`<small>${q>1?ar(q)+' × '+money(p):money(p)}</small>`:(q>1?`<small>× ${ar(q)}</small>`:'')}</div>${s.lines?`<div class="ci-p">${money(p*q)}</div>`:''}</div>`; };
   const sec=(t,rows,kind)=>rows.length?`<div class="ci-sec">${t}</div>${rows.map(r=>line(r,kind)).join('')}`:'';
   return `<div class="cust-invoice">
-    <div class="ci-head"><div><b>🧾 الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="sbtn" onclick="printCustInvoice('${aid(orderRef(o))}')">🖨️ طباعة</button></div>
+    <div class="ci-head"><div><b class="ci-ttl">${icon('receipt',17)} الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="sbtn ci-print" onclick="printCustInvoice('${aid(orderRef(o))}')">${icon('printer',15)} طباعة</button></div>
     ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
     ${drops.length?`<div class="ci-sec">أغراض عندك ما احتجناها</div>${drops.map(d=>`<div class="ci-row"><div class="ci-n"><b style="text-decoration:line-through;color:var(--muted)">${esc(d.name)}${(d.qty>1)?' ×'+ar(d.qty):''}</b></div></div>`).join('')}`:''}
     <div class="ci-sum">
       ${invSumRows(s)}
       <div class="ci-total"><span>الإجمالي</span><span>${money(s.total)}</span></div>
-      ${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}٪</span><span>${money(vatOf(s.total))}</span></div>`:''}
+      ${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}%</span><span>${money(vatOf(s.total))}</span></div>`:''}
       ${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}
       ${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(s.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(s.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}
     </div>
@@ -6124,7 +6195,7 @@ function printInvoiceDoc(o){
 <div class="meta"><div><span>العميل</span>${esc((o.customer||{}).name||'')}</div><div><span>الجوال</span>${esc((o.customer||{}).phone||'')}</div>${addr?`<div><span>العنوان</span>${esc(addr)}</div>`:''}${o.date?`<div><span>تاريخ الخدمة</span>${dayLabel(o.date)}</div>`:''}</div>
 ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
 ${drops.length?`<div class="sec">أغراض عندك ما احتجناها</div>${drops.map(d=>`<div class="r"><span class="nm"><b style="text-decoration:line-through;color:#6E685B">${esc(d.name)}${d.qty>1?' ×'+ar(d.qty):''}</b></span></div>`).join('')}`:''}
-<div class="sum">${invSumRows(s)}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}٪</span><span>${money(vatOf(s.total))}</span></div>`:''}${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(s.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(s.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
+<div class="sum">${invSumRows(s)}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}%</span><span>${money(vatOf(s.total))}</span></div>`:''}${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(s.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(s.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
 <div class="wr"><span>🛡️ ضمان الشغل ${ar(o.warrantyDays>0?o.warrantyDays:APP_WARRANTY)+' يوم'}</span>${g.part.length?'<span>🔩 ضمان القطع سنتان</span>':''}</div>
 ${zatcaQr(s.total, vatOf(s.total), o.date)?`<div id="qr" style="margin:14px auto 0;width:140px"></div>`:''}
 <div class="ft">${legalLine()}<br>${vatLine()}<br>شكراً لتعاملك مع ${BRAND} · ${esc(PHONE)}</div>
@@ -6145,13 +6216,13 @@ function saveFeedback(id, btn){
 }
 
 /* ---- مكوّنات مشتركة ---- */
-function pageHead(title,backTo){ return `<div class="pagehead"><button class="back" onclick="go('${aid(backTo)}')" title="رجوع">→</button><h2>${title}</h2></div>`; }
+function pageHead(title,backTo){ return `<div class="pagehead"><button class="back" onclick="go('${aid(backTo)}')" title="رجوع" aria-label="رجوع">${icon('chev',22)}</button><h2>${title}</h2></div>`; }
 /* معرّف آمن داخل onclick: حروف وأرقام لاتينية وعربية و# ومسافة فقط · كل ما يكسر النص أو الوسم (علامات الاقتناص والشرطة المائلة و<>&) يُحذف.
-   الأرقام العربية مسموحة لأن رقم الطلب المعروض (#١٢٣) كان يتحوّل لنص فاضٍ فتتعطل كل أزرار «طلباتي» */
+   الأرقام العربية مسموحة لأن رقم الطلب المعروض (#123) كان يتحوّل لنص فاضٍ فتتعطل كل أزرار «طلباتي» */
 function aid(v){ return String(v==null?'':v).replace(/[^A-Za-z0-9؀-ۿ#:_. \-]/g,''); }
 /* معرّف الطلب الذي يُمرَّر في الأزرار: معرّف الخادم (UUID لاتيني) للطلبات المحفوظة، وإلا الرقم المحلي */
 function orderRef(o){ return (o&&o.dbId) ? o.dbId : ((o&&o.id)||''); }
-/* البحث عن الطلب بأي معرّف: معرّف الخادم أو الرقم المعروض (#١٢٣) أو الرقم اللاتيني */
+/* البحث عن الطلب بأي معرّف: معرّف الخادم أو الرقم المعروض (#123) أو الرقم اللاتيني */
 function findOrder(id){ const s=String(id==null?'':id).trim(); if(!s) return null; return state.orders.find(x=>x&&(x.dbId===s||x.id===s||(x.num!=null&&String(x.num)===s)))||null; }
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
@@ -6226,7 +6297,7 @@ const T_DICT = {
   "كشف وإصلاح أعطال الثلاجة والتبريد.":"Diagnose and fix fridge and cooling faults.","كشف وإصلاح أعطال الغسالة.":"Diagnose and fix washing machine faults.",
   "إصلاح غسالة الأطباق.":"Fix the dishwasher.","صيانة الأفران والبوتاجازات.":"Service ovens and stoves.","مشكلة غير مذكورة؟ نعاينها ونحدد السعر.":"Not listed? We inspect and set the price.",
   // الحجز والوقت
-  "اختر اليوم والوقت":"Choose day and time","📅 اختر اليوم":"📅 Choose a day","🕐 اختر نافذة الوصول":"🕐 Choose arrival window","🕐 اختر نافذة الوصول أولاً":"🕐 Choose an arrival window first",
+  "اختر اليوم والوقت":"Choose day and time","اختر اليوم":"Choose a day","🕐 اختر نافذة الوصول":"🕐 Choose arrival window","🕐 اختر نافذة الوصول أولاً":"🕐 Choose an arrival window first",
   "نافذة وصول":"Arrival window","تاريخ أبعد":"Later date","إجازة، اختر يوماً آخر":"Day off · choose another day","لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.":"No slots available this day, try another.",
   "المدة المتوقعة لطلبك:":"Estimated time for your order:","المدة التقريبية للتنفيذ":"Approx. duration","المدة التقريبية":"Approx. duration","💡 متوسط الزيارة":"💡 Average visit",
   "ممتلئ":"Full","حسب المعاينة":"After inspection","يُحدد بعد المعاينة":"Set after inspection","بعد المعاينة":"After inspection",
@@ -6247,7 +6318,7 @@ const T_DICT = {
   "اكتب الاسم":"Enter the name","اكتب الاسم من فضلك":"Please enter the name","رقم الجوال":"Mobile number","اكتب رقم الجوال":"Enter mobile number","اكتب رقم جوال سعودي صحيح (05xxxxxxxx)":"Enter a valid Saudi mobile (05xxxxxxxx)",
   "جوالك (اختياري، لو تحب نرد عليك)":"Your mobile (optional · if you'd like a reply)","أدخل رقم جوالك ويوصلك رمز عبر":"Enter your mobile and a code will be sent via","نرسل رمز تحقق لجوالك مرة واحدة لتأكيد الرقم.":"We send a one-time code to verify your number.",
   "أدخل رمز التحقق":"Enter the verification code","اكتب الرمز المرسل":"Enter the sent code","اكتب الرمز كاملاً":"Enter the full code","أرسلنا رمزاً إلى":"We sent a code to","الرمز":"Code","الرمز غير صحيح أو انتهت صلاحيته":"Code is wrong or expired",
-  "كلمة مرور للدخول":"Password to sign in","كلمة المرور ٦ أحرف على الأقل":"Password at least 6 characters","تأكيد ودخول":"Confirm and sign in","← تغيير الرقم":"← Change number",
+  "كلمة مرور للدخول":"Password to sign in","كلمة المرور 6 أحرف على الأقل":"Password at least 6 characters","تأكيد ودخول":"Confirm and sign in","← تغيير الرقم":"← Change number",
   "رسالة نصية":"SMS","واتساب":"WhatsApp","سجّل وفعّل حسابك":"Register and activate your account","✅ سجّل وفعّل حسابك":"✅ Register and activate your account",
   // الأزرار العامة
   "التالي":"Next","تأكيد":"Confirm","إلغاء":"Cancel","إرسال":"Send","📤 أرسل":"📤 Send","تأكيد وتفعيل ✅":"Confirm and activate ✅","✅ أكّد الطلب":"✅ Confirm order","➕ طلب جديد":"➕ New order","فهمت 👍":"Got it 👍",
@@ -6263,7 +6334,7 @@ const T_DICT = {
   "الفني وصل الموقع":"Technician arrived","الفني متأخّر قليلاً":"Technician is slightly late","اعتذر الفني عن تنفيذ الطلب":"Technician declined the order","تم إلغاء الطلب":"Order cancelled",
   // طلباتي
   "ما عندك طلبات بعد":"You have no orders yet","إلغاء الطلب":"Cancel order","متأكد من إلغاء الطلب":"Cancel this order?","من «طلباتي» تقدر تلغي الطلب قبل بدء العمل. لو دفعت رصيداً يرجع لك.":"From \"My orders\" you can cancel before work starts. Any paid credit is refunded.",
-  "🔔 بلّغوني لو صار موعد أبكر":"🔔 Notify me if an earlier slot opens","صار فيه موعد أبكر متاح!":"An earlier slot is now available!","قدّم موعدي":"Move my appointment earlier","تقديم موعدك إلى":"Move your appointment to","قدّم موعدي":"Bring my appointment forward",
+  "بلّغوني لو صار موعد أبكر":"Notify me if an earlier slot opens","صار فيه موعد أبكر متاح!":"An earlier slot is now available!","قدّم موعدي":"Move my appointment earlier","تقديم موعدك إلى":"Move your appointment to","قدّم موعدي":"Bring my appointment forward",
   "ما عاد فيه موعد أبكر متاح":"No earlier slot available anymore","تم تقديم موعدك ✅":"Your appointment was moved earlier ✅","لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك":"If someone cancels and an earlier time opens, we'll contact you to move it up",
   // حسابي
   "أهلاً بك 👋":"Welcome 👋","⚙️ معلوماتي":"⚙️ My info","🎟️ كودك · شاركه واكسب":"🎟️ Your code · share and earn","📤 شارك كودك":"📤 Share your code","رصيدك":"Your balance","🚪 تسجيل الخروج":"🚪 Sign out","تسجيل الخروج من حسابك؟":"Sign out of your account?","تم تسجيل الخروج":"Signed out",
@@ -6286,8 +6357,8 @@ const T_DICT = {
   "كيف أحجز طلب صيانة؟":"How do I book a service?","متى يجي الفني؟":"When does the technician come?","كيف أدفع؟":"How do I pay?","فيه ضمان على الشغل؟":"Is there a warranty on the work?","كيف ألغي طلبي؟":"How do I cancel my order?","كيف أستفيد من الخصومات؟":"How do I benefit from discounts?","وش أسوي لو تأخّر الفني؟":"What if the technician is late?",
   // الباقات
   "باقات الصيانة":"Maintenance plans","باقة الشقة":"Apartment plan","باقة المنزل":"House plan","باقة راحة البال":"Peace-of-mind plan","اشترك الآن":"Subscribe now","✅ أرسل طلب الاشتراك":"✅ Send subscription request","الباقة المختارة:":"Selected plan:","التفعيل فوري":"Instant activation",
-  "الاشتراك يشمل أجرة اليد (شغل الفني) فقط":"The subscription covers labor (technician work) only","أولوية في الحجز":"Booking priority","أولوية قصوى + دعم واتساب مباشر":"Top priority + direct WhatsApp support","ضمان ممتد على الأعمال":"Extended warranty on work","صيانة بالسنة":"Yearly maintenance","زيارة فحص وقائي":"Preventive inspection visit","زيارتان فحص وقائي دورية":"Two periodic preventive visits","٤ زيارات فحص وقائي دورية":"Four periodic preventive visits",
-  "خصم ١٠٪ على الأعمال الكبيرة":"10% off major work","خصم ١٥٪ على الأعمال الكبيرة":"15% off major work","خصم ٢٥٪ على الأعمال الكبيرة":"25% off major work","بنتواصل معك على جوالك لتأكيد الباقة وتفعيلها.":"We'll contact you on your mobile to confirm and activate the plan.","* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.":"* Major work is discounted per plan · we'll contact you to activate.",
+  "الاشتراك يشمل أجرة اليد (شغل الفني) فقط":"The subscription covers labor (technician work) only","أولوية في الحجز":"Booking priority","أولوية قصوى + دعم واتساب مباشر":"Top priority + direct WhatsApp support","ضمان ممتد على الأعمال":"Extended warranty on work","صيانة بالسنة":"Yearly maintenance","زيارة فحص وقائي":"Preventive inspection visit","زيارتان فحص وقائي دورية":"Two periodic preventive visits","4 زيارات فحص وقائي دورية":"Four periodic preventive visits",
+  "خصم ١٠% على الأعمال الكبيرة":"10% off major work","خصم ١٥% على الأعمال الكبيرة":"15% off major work","خصم ٢٥% على الأعمال الكبيرة":"25% off major work","بنتواصل معك على جوالك لتأكيد الباقة وتفعيلها.":"We'll contact you on your mobile to confirm and activate the plan.","* الأعمال الكبيرة بخصم حسب الباقة · نتواصل معك لتفعيل الاشتراك.":"* Major work is discounted per plan · we'll contact you to activate.",
   "وفّر أكثر":"Save more","خدمات مجانية":"Free services","أسعار مناسبة":"Fair prices","سلتك":"Your cart","اختياري":"optional","الأكثر طلباً":"Most popular","الأكثر طلباً":"Most requested",
   // النصائح
   "نصائح السلامة":"Safety tips","مقالات تحمي بيتك":"Articles that protect your home","نصائح مفيدة تحمي بيتك وتوفّر عليك · من خبرة فنيّي خافِت.":"Useful tips that protect your home and save you money · from Khafet technicians' experience.","قريباً نصائح مفيدة":"Useful tips coming soon","جارٍ التحميل…":"Loading…",
@@ -6299,7 +6370,7 @@ const T_DICT = {
   // المزوّد / الانضمام
   "سجّل الآن ·":"Register now ·",": أكمل بياناتك وابدأ استقبال طلبات مدنك مباشرة.":": Complete your details and start receiving orders in your cities.","الاسم / اسم المؤسسة":"Name / business name","مثال: خافت-K7F2M9":"e.g. Khafet-K7F2M9","مثال:":"e.g.",
   // برامج/عناصر متفرقة
-  "ضمان ٧ أيام":"7-day warranty","رصيد ترحيبي":"Welcome credit","ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Warranty on labor and parts. If the same issue returns, we come back at no extra cost.","لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.":"If the same issue recurs within the period, contact us and we'll fix it.",
+  "ضمان 7 أيام":"7-day warranty","رصيد ترحيبي":"Welcome credit","ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Warranty on labor and parts. If the same issue returns, we come back at no extra cost.","لو تكرّرت نفس المشكلة خلال المدة، تواصل معنا ونعالجها.":"If the same issue recurs within the period, contact us and we'll fix it.",
   "قائمة الأسعار":"Price list","قائمة المهام":"Job list","العمل المطلوب":"Work needed","العميل":"Customer","عميل":"Customer","علامة":"Landmark","المدة التقريبية":"Est. time","مهامك · الوقت والموقع والعمل المطلوب":"Your jobs · time, location and work needed","لا توجد مهام حالياً":"No jobs right now",
   // الوحدات والوقت
   "دقيقة":"min","ساعة":"hour","ساعتان":"2 hours","ساعتين":"2 hours","ساعات":"hours","يوم":"day","ر.س":"SAR",
@@ -6310,7 +6381,7 @@ const T_DICT = {
   // إشعارات
   "✅ الجهاز مسجّل · الإشعارات شغّالة":"✅ Device registered · notifications on","إشعارات أندرويد قريباً":"Android notifications coming soon","متصفح · الإشعارات للتطبيق فقط":"Browser · notifications are for the app only","سنذكّرك قبل الموعد بساعة عبر رسالة على جوالك.":"We'll remind you an hour before by SMS.",
   // متفرقات
-  "خصم ١٠٪":"10% off","✅ خصم ١٠٪ مطبّق · أهلاً بك في خافِت 🎉":"✅ 10% off applied · welcome to Khafet 🎉","ℹ️ الخصم لأول طلب فقط · وأنت عميل عندنا من قبل 🙏":"ℹ️ The discount is for first orders only · you're already our client 🙏","يومياً ٨ ص – ١٠ م":"Daily 8 AM – 10 PM",
+  "خصم ١٠%":"10% off","✅ خصم ١٠% مطبّق · أهلاً بك في خافِت 🎉":"✅ 10% off applied · welcome to Khafet 🎉","ℹ️ الخصم لأول طلب فقط · وأنت عميل عندنا من قبل 🙏":"ℹ️ The discount is for first orders only · you're already our client 🙏","يومياً ٨ ص – ١٠ م":"Daily 8 AM – 10 PM",
   // إضافات المسح
   "باقي الخدمات":"All services","أرسل الرمز عبر رسالة نصية":"Send code via SMS","أرسل الرمز عبر واتساب":"Send code via WhatsApp","انضم كمزوّد صيانة":"Join as a provider",
   "لو دفعت لكل زيارة:":"If you paid per visit:","صيانة منزلية موثوقة · الخبر":"Trusted home maintenance · Khobar","تكييف":"AC","سلامة":"Safety","تركيب مكيف سبليت":"Install split AC",
@@ -6437,9 +6508,9 @@ const T_DICT = {
 };
 /* ---- محرّك الترجمة ---- */
 function _west(s){ return String(s).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)); }
-const _TOK=[["/ سنة","/ year"],["/سنة","/year"],["توفّر","Save "],["ريال","SAR"],["ر.س","SAR"],["٪","%"]];
+const _TOK=[["/ سنة","/ year"],["/سنة","/year"],["توفّر","Save "],["ريال","SAR"],["ر.س","SAR"],["%","%"]];
 /* إضافات التدقيق 2026-09-19 */
-Object.assign(T_DICT, {"كل ٦ طلبات لك خصم ولاء، وكود الإحالة يعطيك وصديقك خصمًا.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount."});
+Object.assign(T_DICT, {"كل 6 طلبات لك خصم ولاء، وكود الإحالة يعطيك وصديقك خصمًا.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount."});
 /* إضافات إصلاحات 2026-09-24 */
 Object.assign(T_DICT, {"💡 المتوسط يُحسب من إجمالي طلباتك السابقة، والخصم يُطبّق على إجمالي طلبك (الخدمة والأغراض) بحد أقصى قيمة الطلب.":"💡 The average is taken from your previous order totals, and the discount applies to your order total (service and parts), up to the order value.","⏳ نتحقق من الكود...":"⏳ Checking the code...","الكود غير صحيح":"Invalid code","تعذّر التحقق من الكود الآن، لو كان صحيحًا ينطبق الخصم عند الدفع":"Could not verify the code now. If it is valid, the discount applies at payment."});
 Object.assign(T_DICT, {"الدفع":"Payment","بياناتك":"Your details","تصفّح الخدمات واطلب":"Browse services and order","طلبك السابع عليه خصم كبير 🎁":"Your 7th order gets a big discount 🎁","طلبك السابع عليه خصم كبير":"Your 7th order gets a big discount","English / عربي":"English / Arabic","السلة":"Cart","رجوع":"Back","أقل":"Less","أكثر":"More","إغلاق":"Close","آخر خطوة":"Last step","🛠️ وصف المشكلة (اختياري)":"🛠️ Describe the issue (optional)","وصف المشكلة (اختياري)":"Describe the issue (optional)","اسم العنوان (اختياري)":"Address name (optional)","صورة المنزل":"House photo","أبيض":"White","أصفر":"Warm yellow","أوف وايت 12 وات":"Off white 12W","بالضغط على الدفع أنت توافق على":"By tapping Pay you agree to the","بتأكيد الطلب أنت توافق على":"By confirming you agree to the","الشروط":"Terms","و":"and ","،":", ","سياسة الإلغاء":"Cancellation policy","الخصوصية":"Privacy","مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...":"e.g. a leak under the kitchen sink, or the lights keep tripping...","مثال: أبو محمد":"e.g. Abu Mohammed","مثال: ٢٤٥١ · الدور الأول":"e.g. 2451 · first floor","مثال: بيتي · بيت أهلي · الاستراحة":"e.g. My home · Family home","اقتراح أو شكر":"Suggestion or thanks","الشكاوى":"Complaints","برقم متابعة":"With a tracking number","، ولك":", and you get","رصيد":"credit","عن كل طلب يُنجزه.":"for every order they complete.","📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط، ينحفظ ويظهر تلقائياً عند كل حجز":"📍 Your home location: tap the map or drag the pin to your exact spot. It is saved and used for every booking.","🔒 الخصوصية":"🔒 Privacy","📜 الشروط":"📜 Terms","اسمك":"Your name","رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.":"Same issue back? Tell us and we return for free.","🛡️ المشكلة رجعت":"🛡️ The issue is back","🔁 اطلب مرة ثانية":"🔁 Order again","📅 تغيير الموعد":"📅 Reschedule","الإلغاء أو تغيير الموعد مجاني حتى 4 ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.":"Cancelling or rescheduling is free up to 4 hours before the visit. After that, contact us.","اختر الخدمة من القائمة، حدّد اليوم ووقت الوصول، ثم أدخل موقعك وأكّد. تجيك رسالة تأكيد.":"Pick the service, choose the day and arrival time, then enter your location and confirm. You get a confirmation message.","تختار وقت الوصول اللي يناسبك والفني يوصلك فيه. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».":"You choose the arrival time that suits you and the technician arrives at it. You get notifications: On the way, then Arrived.","بطريقتين:":"In two ways:","ادفع أونلاين":"Pay online","بمدى أو البطاقة أو Apple Pay من التطبيق، أو":"with mada, card or Apple Pay in the app, or","بجهاز الدفع مع الفني":"on the technician’s card machine","عند إتمام العمل. ما نستقبل نقداً.":"when the work is done. We do not take cash.","تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.":"Track your order under My orders. If there is a delay we tell you the expected time. Or message us on WhatsApp.","نعم، ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Yes. Labor and parts are covered. If the same issue returns, we come back at no extra cost.","احجز قبل 5 أيام أو أكثر = خصم 5% تلقائي. وكل 6 طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount.","من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى":"Under My orders you can cancel or reschedule for free up to","4 ساعات قبل الموعد":"4 hours before the visit","، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.":", and if you paid you get a full refund. Less than 4 hours before the visit, contact us directly.","🎁 برنامج الولاء":"🎁 Loyalty program","اطلب صيانتك عادي":"Order as usual","كل طلب تُنجزه يُحتسب في رصيد ولائك.":"Every completed order counts toward your loyalty.","بعد ٦ طلبات":"After 6 orders","تستحق مكافأة على طلبك السابع.":"you earn a reward on your 7th order.","خصم = متوسط طلباتك":"Discount = your average order","يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.":"Your 7th order gets a discount equal to the average of your previous six orders.","مثال:":"Example:","لو متوسط طلباتك":"if your average order is","، فطلبك السابع عليه":", your 7th order gets","خصم ١٥٠ ر.س":"150 SAR off","١٥٠ ر.س":"150 SAR","💡 الخصم على أجرة اليد (الخدمة) فقط · قطع الغيار والأغراض تبقى على العميل بسعرها.":"💡 The discount applies to labor only. Parts stay at their price.","تمام":"OK","اكتب لنا وبنقرأ كل كلمة، رأيك يطوّر خدمتنا فعلاً.":"Write to us, we read every word. Your opinion really improves our service.","عندك شكوى؟":"Have a complaint?","قدّمها برقم متابعة":"File it with a tracking number","مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس":"e.g. please add water tank cleaning, or: the technician was late yesterday","هدية أول طلب":"First order gift","رسوم الزيارة":"Visit fee","قيمة التوصيل":"Delivery","رسوم توصيل الأغراض":"Parts delivery","ضيفها":"Add it","الكمية":"Quantity","الخدمات":"Services","الأغراض":"Parts","توصيل الأغراض":"Parts delivery","المجموع":"Subtotal","رجّعها":"Add back","تدفع الآن":"You pay now","أي قطعة إضافية يضيفها الفني بفاتورته.":"Any extra part is added to the technician’s invoice.","اكتب التفاصيل:":"Write the details:","أضف خدمة ثانية":"Add another service","توصلني إشعارات العروض":"Send me offer notifications","الشطاف":"Bidet sprayer","اللمبة":"Bulb","الخلاط":"Mixer tap","المحبس":"Angle valve","عدة السيفون":"Flush kit","المفتاح أو البريزة":"Switch or socket","بريزة الباور":"Power socket","السيليكون":"Silicone","الحنفية":"Tap","وصلة الكرسي":"Toilet connector","بزبوز نحاس نص إنش":"Brass spout 1/2 inch","خلاط مطبخ رقبة عالية":"Kitchen mixer, high neck","خلاط مغسلة":"Basin mixer","سيليكون ألماني GP":"German silicone GP","ستارك كروم مع لي":"Stark chrome with hose","إيطالي جروهي":"Italian, Grohe","بريزة 13 أمبير":"13A socket","بريزة دبل":"Double socket","مفتاح ثلاثي":"3 gang switch","مفتاح دبل":"2 gang switch","مفتاح رباعي":"4 gang switch","مفتاح مفرد":"1 gang switch","بريزة دبل 7×14":"Double socket 7×14","مفتاح مكيف 45 أمبير":"AC isolator 45A","إسباني جانبي":"Spanish, side entry","وصلة كرسي 12 سم":"Toilet connector 12 cm","اختر اللي تحتاجه · تقدر تختار أكثر من خدمة":"Pick what you need. You can choose more than one service."});
