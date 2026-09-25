@@ -9,7 +9,7 @@
 <link rel="icon" href="logo.png" />
 <meta name="theme-color" content="#F5C518" />
 <!-- سياسة أمان المحتوى: أي سكربت أو اتصال خارج هذي القائمة يُمنع من المتصفح نفسه -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/ https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com/leaflet@1.9.4/; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' data: blob: https://zulogtqxbuqxmdmjpzqj.supabase.co; connect-src 'self' https://zulogtqxbuqxmdmjpzqj.supabase.co wss://zulogtqxbuqxmdmjpzqj.supabase.co https://api.moyasar.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; frame-src 'self' https://api.moyasar.com https://*.moyasar.com https://*.tamara.co; form-action 'self' https://api.moyasar.com" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://unpkg.com/leaflet@1.9.4/ https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com/leaflet@1.9.4/; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https://zulogtqxbuqxmdmjpzqj.supabase.co https://unpkg.com/leaflet@1.9.4/ https://*.tile.openstreetmap.org; media-src 'self' data: blob: https://zulogtqxbuqxmdmjpzqj.supabase.co; connect-src 'self' https://zulogtqxbuqxmdmjpzqj.supabase.co wss://zulogtqxbuqxmdmjpzqj.supabase.co https://api.moyasar.com https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; frame-src 'self' https://api.moyasar.com https://*.moyasar.com https://*.tamara.co; form-action 'self' https://api.moyasar.com" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
@@ -1123,7 +1123,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 /* بلاطات الأقسام الملوّنة */
 .maint .mt-head{font-size:1.05rem;color:var(--muted);font-weight:700;margin:6px 4px 14px}
 .maint .mt-grid{grid-template-columns:repeat(4,1fr);gap:10px}
-.hsearch{position:relative;margin:14px 0 6px}
+.hsearch{position:relative;margin:12px 0 4px}
 .hsearch input{width:100%;padding:13px 46px 13px 14px;border-radius:16px;border:1.5px solid var(--line);background:var(--card);font:inherit;font-size:1rem;font-weight:700;color:var(--ink);box-shadow:var(--shadow-sm)}
 .hsearch input::placeholder{color:var(--muted);font-weight:600}
 .hsearch svg{position:absolute;inset-inline-start:15px;top:50%;transform:translateY(-50%);width:20px;height:20px;color:var(--muted);pointer-events:none}
@@ -1141,6 +1141,7 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .maint .mt-tile .mt-ic{width:68px;height:68px;border-radius:21px}
 .maint .mt-tile .mt-ic svg{filter:drop-shadow(0 2px 0 rgba(0,0,0,.12))}
 .maint .mt-tile .mt-ic.mt-img{background-size:cover;background-position:center;background-repeat:no-repeat;box-shadow:0 0 0 3px var(--c),0 12px 20px -10px color-mix(in srgb,var(--c) 85%,transparent)}
+.maint .mt-tile .mt-ic.mt-img.mt-flat{background-color:transparent;background-size:cover;box-shadow:0 12px 20px -10px color-mix(in srgb,var(--c) 85%,transparent)}
 .maint .mt-tile:nth-child(2) .mt-ic{--c:var(--c-2)} .maint .mt-tile:nth-child(3) .mt-ic{--c:var(--c-3)} .maint .mt-tile:nth-child(4) .mt-ic{--c:var(--c-4)}
 .maint .mt-tile:nth-child(5) .mt-ic{--c:var(--c-5)} .maint .mt-tile:nth-child(6) .mt-ic{--c:var(--c-6)} .maint .mt-tile:nth-child(7) .mt-ic{--c:var(--c-7)} .maint .mt-tile:nth-child(8) .mt-ic{--c:var(--c-8)}
 .maint .mt-tile.more .mt-ic{--c:var(--c-8)}
@@ -1494,6 +1495,34 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .cf-acts{display:flex;gap:10px;margin-top:16px}
 .cf-acts .cta{flex:1;margin:0}
 @media (prefers-reduced-motion:reduce){.cf-check{animation:none}}
+
+/* صفحة المؤسسة داخل التطبيق (?org=) + شارة الحجز المثبّت مع مؤسسة + شاشة التقييم بالرابط (?rate=) */
+.org-hero{--org:var(--gold);--org-ink:var(--ink);background:var(--card,#fff);border:1px solid var(--line);border-radius:var(--r);padding:22px 18px 18px;text-align:center;margin-top:14px;position:relative;overflow:hidden;box-shadow:var(--shadow-sm)}
+.org-hero::before{content:'';position:absolute;inset:0 0 auto 0;height:66px;background:var(--org);opacity:.92}
+.org-logo{position:relative;width:88px;height:88px;border-radius:26px;margin:0 auto 10px;background:#fff;border:3px solid #fff;box-shadow:0 8px 20px rgba(0,0,0,.14);display:grid;place-items:center;overflow:hidden;font-family:var(--f-head);font-size:2rem;font-weight:800;color:var(--ink)}
+.org-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.org-hero h2{font-family:var(--f-head);font-size:1.45rem;margin:4px 0 2px;position:relative;line-height:1.3}
+.org-cities{color:var(--muted);font-weight:700;font-size:.9rem}
+.org-rate{display:inline-block;margin-top:8px;background:var(--gold-soft);color:#6B5200;font-weight:800;font-size:.85rem;padding:4px 12px;border-radius:999px}
+.org-about{color:var(--muted);font-weight:600;font-size:.92rem;margin:12px 0 0;white-space:pre-line}
+.org-cats{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px}
+.org-cats span{display:inline-flex;align-items:center;gap:5px;background:var(--group,#F3EEE2);border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:.8rem;font-weight:800}
+.org-note{color:var(--muted);font-weight:600;font-size:.85rem;text-align:center;margin:14px 6px 0}
+.org-badge{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;background:var(--gold-soft);border:1px solid rgba(184,134,11,.35);color:#6B5200;border-radius:12px;padding:9px 12px;font-weight:700;font-size:.88rem}
+.org-badge b{color:var(--ink)}
+.org-badge button{background:none;border:0;color:#6B5200;font-family:inherit;font-weight:800;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:.85rem;white-space:nowrap}
+.org-line{margin-top:10px;color:var(--muted);font-weight:700;font-size:.92rem}
+.org-line b{color:var(--ink)}
+.org-hours div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line);font-weight:700;font-size:.9rem}
+.org-hours div:last-child{border-bottom:0}
+.org-hours .cl{color:#B42318}
+.rate-card{background:var(--card,#fff);border:1px solid var(--line);border-radius:var(--r);padding:18px;text-align:center;margin-top:14px;box-shadow:var(--shadow-sm)}
+.rate-card h3{font-family:var(--f-head);font-size:1.2rem;line-height:1.4}
+.rate-stars{display:flex;justify-content:center;gap:8px;direction:ltr;margin:14px 0 4px}
+.rate-stars button{background:none;border:0;font-size:2.4rem;line-height:1;color:#D9D2C5;cursor:pointer;padding:2px;font-family:inherit;transition:transform .15s}
+.rate-stars button.on{color:var(--gold)}
+.rate-stars button:active{transform:scale(1.15)}
+.rate-card textarea{width:100%;min-height:90px;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--line);font-family:inherit;font-size:1rem;resize:vertical;background:#fff;color:var(--ink)}
 
 </style><!--/kh-skin-->
 </head>
@@ -1850,7 +1879,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=137;
+const APP_BUILD=138;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -2012,6 +2041,7 @@ async function initCloud(){
       sb=window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, KH_AUTH_OPTS);
       registerInstall('khafet', APP_BUILD);
       cloudReady=true;
+      applyOrgLinks();     // ?org= و?rate= يحتاجان الخادم (دوال عامة بلا تسجيل)
       await ensureAnonSession();
       try{ syncHeader(); }catch(e){}   // زر «حسابي» يعتمد على الجلسة الموثّقة
       loadPrices();
@@ -2179,7 +2209,7 @@ function rowToOrder(r){
     status:r.status||'new', rating:r.rating||0, reminded:!!r.reminded,
     quick:!!r.quick, note:r.note||'', videoUrl:r.video_url||'', invoice:r.invoice||null, providerPhone:r.provider_phone||'', arrived:!!r.arrived, delayMin:+r.delay_min||0, feedback:r.feedback||'', rejectReason:r.reject_reason||'', wantsEarlier:!!r.wants_earlier, reviewAnon:!!r.review_anon, reviewHidden:!!r.review_hidden, warrantyDays:+r.warranty_days||0, promoCode:r.promo_code||'', discountPct:+r.discount_pct||0,
     referredBy:r.referred_by||'', creditUsed:+r.credit_used||0, loyaltyDisc:+r.loyalty_disc||0, advanceDisc:+r.advance_disc||0, promoDisc:+r.promo_disc||0, promoKind:r.promo_kind||'',
-    warrantyOf:r.warranty_of||null, warrantyItem:r.warranty_item||'',
+    warrantyOf:r.warranty_of||null, warrantyItem:r.warranty_item||'', orgSlug:r.org_slug||'',   // حجز عبر صفحة مؤسسة داخل التطبيق
     payRequired:!!r.pay_required, released:r.released!==false, paidAmount:+r.paid_amount||0, amountDue:+r.amount_due||0, payStatus:r.pay_status||'unpaid', payMethod:r.pay_method||'',
   };
 }
@@ -2196,6 +2226,7 @@ function orderToPayload(o){
     // الخادم يعيد التحقق من هذه ويتجاهل أي تلاعب
     referred_by:o.referredBy||null, credit_used:+o.creditUsed||0, loyalty_disc:+o.loyaltyDisc||0, advance_disc:+o.advanceDisc||0, promo_disc:+o.promoDisc||0, promo_kind:o.promoKind||null,
     warranty_of:o.warrantyOf||null, warranty_item:o.warrantyItem||null,
+    org_slug:o.orgSlug||null,   // حجز عبر صفحة مؤسسة: الخادم يحوّله إلى جوال المؤسسة ويتحقق من تخصصاتها وأوقاتها
     pay_required:!!o.payRequired,   // الخادم يقرر إذا الطلب يحتاج دفع مسبق
   };
 }
@@ -2289,11 +2320,24 @@ try{
 }catch(e){}
 async function cloudInsert(order){
   if(!myUid) await ensureAnonSession();   // ضمان وجود هوية قبل الحفظ
-  const { data, error } = await sb.from('khafet_orders').insert(orderToPayload(order)).select().single();
+  const payload=orderToPayload(order); if(order && order.kind==='shade') payload.kind='shade';
+  let { data, error } = await sb.from('khafet_orders').insert(payload).select().single();
+  // خادم قبل ترقيته (بلا عمود النوع): يُرسل الطلب بدونه بدل ما يتعطل
+  if(error && payload.kind && /PGRST204|42703/.test(String(error.code||'')) && /kind/.test(String(error.message||''))){ delete payload.kind; ({ data, error } = await sb.from('khafet_orders').insert(payload).select().single()); }
   if(!error) state.subReq=null;   // استُهلك ربط العقد بهذا الطلب
   if(error) throw error;
   loadMyRef();   // الخادم خصم الرصيد · حدّثه عندنا
-  return rowToOrder(data);
+  const _row=rowToOrder(data); if(order.orgName) _row.orgName=order.orgName;   // اسم المؤسسة المثبّتة لشاشة التأكيد
+  return _row;
+}
+/* الخادم يطلب توثيق الجوال لإكمال الحجز (KHAFET_NEED_PHONE: وصل سقف الطلبات على هذا الرقم من جلسات غير موثّقة، وصاحب الرقم الموثّق
+   مستثنى منه): نحفظ الحجز كما هو ونفتح التوثيق بالرمز، وبعد التوثيق يرجع لصفحة الدفع ويكمل بنفس السلة والموعد */
+function needPhoneGo(e){
+  const m=String((e&&(e.message||e.details||e.hint))||e||'');
+  if(m.indexOf('KHAFET_NEED_PHONE')<0 || isVerified) return false;
+  state.pendingBook={ at:Date.now() }; save();
+  toast(LX('أكّد رقم جوالك برمز التحقق عشان نكمّل حجزك','Verify your phone number with the code to complete your booking'));
+  go('login'); return true;
 }
 /* رسالة مفهومة لأخطاء الخادم (حرّاس القاعدة ترفع أكواد KHAFET_*) */
 function serverMsg(e){
@@ -2327,6 +2371,16 @@ function serverMsg(e){
     KHAFET_BLOCKED:      LX('تعذّر إكمال الطلب من التطبيق، تواصل معنا على '+PHONE,'We could not complete this order in the app, please call '+PHONE),
     KHAFET_CANCEL_NEEDS_APPROVAL: LX('الإلغاء يحتاج موافقة الإدارة، أرسل طلب إلغاء بالسبب','Cancellation needs management approval, send a cancellation request with the reason'),
     KHAFET_CANCEL_PENDING: LX('فيه طلب إلغاء لهذا الطلب قيد المراجعة','A cancellation request for this order is under review'),
+    /* الحجز مع مؤسسة من صفحتها داخل التطبيق */
+    KHAFET_ORG_UNAVAILABLE: LX('هذه الخدمة غير متاحة لدى هذه المؤسسة حاليًا','This service is not available from this business right now'),
+    KHAFET_ORG_OFF:      LX('هذه المؤسسة لا تستقبل حجوزات حاليًا، تقدر تحجز مع خافت مباشرة','This business is not taking bookings right now, you can book with Khafet directly'),
+    KHAFET_SLOT_TAKEN:   LX('هذا الوقت حُجز قبل قليل، اختر وقتًا آخر','That time was just taken, pick another'),
+    KHAFET_DAY_OFF:      LX('هذا اليوم إجازة عند المؤسسة، اختر يومًا آخر','The business is off that day, pick another'),
+    KHAFET_OUTSIDE_HOURS: LX('هذا الوقت خارج دوام المؤسسة','That time is outside the business working hours'),
+    /* تقييم الخدمة بالرابط */
+    KHAFET_RATE_LINK:    LX('رابط التقييم غير صالح أو انتهت صلاحيته','The rating link is invalid or has expired'),
+    KHAFET_RATED:        LX('هذا الطلب مقيَّم من قبل','This order was already rated'),
+    KHAFET_RATE_VALUE:   LX('اختر تقييمًا من 1 إلى 5','Choose a rating from 1 to 5'),
   };
   for(const k in MAP){ if(m.indexOf(k)>=0) return MAP[k]; }
   if(/fetch|network|Failed to fetch/i.test(m)) return LX('تأكد من الإنترنت وحاول مرة ثانية','Check your connection and try again');
@@ -2363,6 +2417,13 @@ try{ const q=new URLSearchParams(location.search);
   _deepSvc=(q.get('s')||'').split(',').map(x=>{ const m=/^([\w-]{1,24})(?::(\d{1,2}))?$/.exec(x.trim()); return m?{id:m[1], n:Math.min(Math.max(+m[2]||1,1),20)}:null; }).filter(Boolean).slice(0,6);
   if(['mybookings','complaints'].includes(q.get('v'))) _deepView=q.get('v');
 }catch(e){}
+/* رابط صفحة مؤسسة داخل التطبيق ?org=<slug>، ورابط تقييم الخدمة ?rate=<token> (بلا تسجيل) · يُستكملان بعد جاهزية الخادم في applyOrgLinks */
+let _deepOrg='', _deepRate='';
+try{ const q=new URLSearchParams(location.search);
+  const og=String(q.get('org')||'').trim().toLowerCase(); if(/^[a-z0-9][a-z0-9_-]{2,39}$/.test(og)) _deepOrg=og;
+  const rt=String(q.get('rate')||'').trim().toLowerCase(); if(/^[0-9a-f]{20,80}$/.test(rt)) _deepRate=rt;
+  if(_deepRate) view='rate'; else if(_deepOrg) view='org';
+}catch(e){}
 /* final=true: آخر محاولة (الكتالوج وصل أو انتهت المهلة)، نفتح الموجود وننسى الباقي */
 function applyDeepLink(final){
   if(!_deepSvc.length && !_deepView) return;
@@ -2375,6 +2436,160 @@ function applyDeepLink(final){
   ok.forEach(d=>{ const s=SERVICES.find(x=>x.id===d.id); state.cart[d.id]=s.custom?1:d.n; });
   currentCat=SERVICES.find(x=>x.id===ok[0].id).cat;
   save(); go('cart');
+}
+/* ═══ صفحة المؤسسة داخل التطبيق (?org=<slug>) والحجز المثبّت مع مؤسسة، وتقييم الخدمة بالرابط (?rate=<token>) ═══
+   المعلومات من الدوال العامة provider_public_info/provider_public_slots (بلا جوال المؤسسة)، والأسعار أسعار خافت نفسها،
+   والطلب يمر بمسار الحجز الطبيعي مع org_slug فيحوّله الخادم إلى المؤسسة مباشرة (لا سوق ولا توزيع آلي). */
+let ORG_INFO=null, _orgLoad='', _orgLast='';   // معلومات المؤسسة المعروضة · حالة التحميل: ''|'loading'|'off'|'net'
+let ORG_SLOTS={};                              // الأوقات المتاحة للمؤسسة المثبّتة: مفتاح يوم|مدة → {pending, at, set}
+const ORG_SLUG_RE=/^[a-z0-9][a-z0-9_-]{2,39}$/;
+const ORG_LOGO_RE=/^https:\/\/zulogtqxbuqxmdmjpzqj\.supabase\.co\/storage\/v1\/object\/public\/khafet-parts\/plogo\//;
+try{ if(state.org && (!state.org.slug || Date.now()-(+state.org.at||0) > 3*86400000)){ state.org=null; save(); } }catch(e){}   // تثبيت قديم منسي
+function orgPinned(){ return !!(state.org&&state.org.slug); }
+function orgCats(){ const c=(state.org&&Array.isArray(state.org.cats))?state.org.cats:[]; return c.filter(k=>typeof k==='string' && CATS[k]); }
+function orgHours(iso){ const hs=(state.org&&Array.isArray(state.org.hours))?state.org.hours:[]; const wd=parseISO(iso).getDay(); return hs.find(x=>x&&+x.weekday===wd)||null; }
+function orgOpenDay(iso){ if(!orgPinned()) return !isOffDay(iso); const h=orgHours(iso); if(!h||h.closed) return false; return !(state.org.off||[]).includes(iso); }
+function orgFromInfo(i){ return { slug:i.slug, name:i.name||'', color:i.color||'', logo:ORG_LOGO_RE.test(i.logo_url||'')?i.logo_url:'', cats:Array.isArray(i.cats)?i.cats.filter(k=>typeof k==='string'&&CATS[k]):[], hours:Array.isArray(i.hours)?i.hours:[], off:Array.isArray(i.off_days)?i.off_days.map(String):[], cities:Array.isArray(i.cities)?i.cities:[], at:Date.now() }; }
+async function openOrg(slug){
+  slug=String(slug||'').trim().toLowerCase(); _orgLast=slug;
+  if(!ORG_SLUG_RE.test(slug)){ ORG_INFO=null; _orgLoad='off'; if(view==='org') render(); return; }
+  _orgLoad='loading'; ORG_INFO=null; if(view!=='org') go('org'); else render();
+  try{
+    if(!cloudReady||!sb) throw new Error('offline');
+    const r=await sb.rpc('provider_public_info',{ p_slug:slug });
+    if(r.error) throw r.error;
+    if(!r.data||!r.data.ok) throw new Error('KHAFET_PAGE_OFF');
+    ORG_INFO=r.data; _orgLoad='';
+  }catch(e){ ORG_INFO=null; _orgLoad=/KHAFET_PAGE_OFF/.test(String((e&&e.message)||e||''))?'off':'net'; }
+  if(view==='org') render();
+}
+/* بعد جاهزية الخادم: رابط التقييم أولًا، ثم صفحة المؤسسة. الرابط يُنظَّف من العنوان بعد قراءته */
+function applyOrgLinks(){
+  if(_deepRate){ const tk=_deepRate; _deepRate=''; _deepSvc=[]; _deepView=''; try{ history.replaceState({}, '', location.pathname); }catch(e){} openRate(tk); return; }
+  if(_deepOrg){ const sl=_deepOrg; _deepOrg=''; _deepSvc=[]; _deepView=''; try{ history.replaceState({}, '', location.pathname); }catch(e){} openOrg(sl); }
+}
+function startOrgBooking(){
+  if(!ORG_INFO||!ORG_INFO.slug) return;
+  state.org=orgFromInfo(ORG_INFO); ORG_SLOTS={};
+  quickMode=false; state.quickKind=null; clearAutoNote(); state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.subReq=null;
+  save(); syncHeader();
+  const cats=orgCats();
+  if(cats.length===1){ currentCat=cats[0]; go('pick'); } else go('services');
+}
+function clearOrg(){ state.org=null; ORG_SLOTS={}; save(); toast(LX('أُلغي التثبيت، الحجز الآن مع خافت','Unpinned, you are booking with Khafet now')); if(view==='org') go('home'); else render(); }
+function orgBadgeHtml(){ if(!orgPinned()) return ''; return `<div class="org-badge"><span>${LX('الحجز مع','Booking with')} <b>${esc(state.org.name)}</b></span><button type="button" onclick="clearOrg()">${LX('إلغاء التثبيت','Unpin')}</button></div>`; }
+function orgCartOk(){ if(!orgPinned()||quickMode) return true; const cats=orgCats(); if(!cats.length) return true; return cartItems().every(i=>!i||!i.cat||cats.includes(i.cat)); }
+function orgCartMsg(){ const n=(state.org&&state.org.name)||''; return LX('بعض الخدمات غير متاحة لدى '+(n||'المؤسسة')+'، عدّل السلة أو ألغِ التثبيت','Some services are not offered by '+(n||'this business')+', edit the cart or unpin'); }
+/* الأوقات المتاحة للمؤسسة المثبّتة (provider_public_slots) · كاش دقيقة لكل يوم ومدة */
+async function loadOrgSlots(iso){
+  if(!orgPinned()||!cloudReady||!sb||!iso) return false;
+  const key=iso+'|'+scheduleDuration(); const c=ORG_SLOTS[key];
+  if(c && (c.pending || Date.now()-c.at<60000)) return false;
+  ORG_SLOTS[key]={ pending:true, at:Date.now(), set:new Set() };
+  try{
+    const r=await sb.rpc('provider_public_slots',{ p_slug:state.org.slug, p_day:iso, p_duration:scheduleDuration() });
+    const set=new Set(); if(!r.error&&Array.isArray(r.data)) r.data.forEach(x=>{ if(x&&isFinite(+x.start_min)) set.add(+x.start_min); });
+    ORG_SLOTS[key]={ pending:false, at:Date.now(), set, err:!!r.error };
+  }catch(e){ ORG_SLOTS[key]={ pending:false, at:Date.now(), set:new Set(), err:true }; }
+  return true;
+}
+function orgSlotOk(iso,t){ const c=ORG_SLOTS[iso+'|'+scheduleDuration()]; return !!(c&&!c.pending&&c.set.has(t)); }
+function orgSlotsLoading(iso){ const c=ORG_SLOTS[iso+'|'+scheduleDuration()]; return !c||c.pending; }
+function orgTextColor(hex){ const m=/^#([0-9a-f]{6})$/i.exec(String(hex||'')); if(!m) return '#1A1712'; const r=parseInt(m[1].slice(0,2),16), g=parseInt(m[1].slice(2,4),16), bl=parseInt(m[1].slice(4,6),16); return ((0.2126*r+0.7152*g+0.0722*bl)/255)>0.6?'#1A1712':'#FFFFFF'; }
+function orgHoursHtml(hours){
+  const order=_uiEN()?[0,1,2,3,4,5,6]:[6,0,1,2,3,4,5];
+  return `<div class="org-hours">${order.map(wd=>{ const h=(Array.isArray(hours)?hours:[]).find(x=>x&&+x.weekday===wd)||{closed:true}; const nm=_uiEN()?WEEK.en[wd]:AR_DAYS[wd]; return `<div><span>${esc(nm)}</span>${h.closed?`<b class="cl">${LX('مغلق','Closed')}</b>`:`<b dir="ltr">${esc(fmtTime(+h.open_min||0))} - ${esc(fmtTime(+h.close_min||0))}</b>`}</div>`; }).join('')}</div>`;
+}
+function renderOrg(){
+  const i=ORG_INFO;
+  if(!i && !_orgLoad && orgPinned()){ openOrg(state.org.slug); return; }   // بعد إعادة الفتح: نحمّل المؤسسة المثبّتة
+  let body='';
+  if(!i){
+    const loading=_orgLoad==='loading'||(!_orgLoad&&_deepOrg);
+    body = loading ? `<div class="empty"><div class="ico">⏳</div><h3>${LX('جارٍ تحميل صفحة المؤسسة','Loading the business page')}</h3></div>`
+      : _orgLoad==='net' ? `<div class="empty"><div class="ico">${icon('wrench',34)}</div><h3>${LX('تعذّر الاتصال','Connection problem')}</h3><p>${LX('تأكد من الإنترنت ثم أعد المحاولة','Check your internet and try again')}</p><button class="cta" style="max-width:260px;margin:18px auto 0" onclick="openOrg('${aid(_orgLast)}')">${LX('إعادة المحاولة','Retry')}</button></div>`
+      : `<div class="empty"><div class="ico">${icon('tag',34)}</div><h3>${LX('صفحة المؤسسة غير متاحة','Business page unavailable')}</h3><p>${LX('هذه المؤسسة لم تفعّل صفحتها في خافت حاليًا، وتقدر تحجز مع خافت مباشرة.','This business has not enabled its page yet. You can book with Khafet directly.')}</p><button class="cta" style="max-width:260px;margin:18px auto 0" onclick="go('home')">${LX('الرئيسية','Home')}</button></div>`;
+  } else {
+    const cats=(Array.isArray(i.cats)?i.cats:[]).filter(k=>typeof k==='string'&&CATS[k]);
+    const logo=ORG_LOGO_RE.test(i.logo_url||'')?i.logo_url:'';
+    const color=/^#[0-9a-f]{6}$/i.test(i.color||'')?i.color:'';
+    const r=i.rating||{}; const rateTxt=(r.shown&&r.avg!=null)?LX(ar(r.avg)+' من 5 · '+ar(r.count)+' تقييم', r.avg+' of 5 · '+r.count+' reviews'):'';
+    const cities=(Array.isArray(i.cities)?i.cities:[]).map(c=>esc(c)).join(_uiEN()?', ':'، ');
+    body=`
+      <div class="org-hero" style="${color?`--org:${esc(color)};--org-ink:${orgTextColor(color)}`:''}">
+        <div class="org-logo">${logo?`<img src="${esc(logo)}" alt="">`:`<b>${esc(String(i.name||'').trim().charAt(0)||'خ')}</b>`}</div>
+        <h2>${esc(i.name||'')}</h2>
+        ${cities?`<div class="org-cities">${cities}</div>`:''}
+        ${rateTxt?`<div class="org-rate">★ ${rateTxt}</div>`:''}
+        ${i.about?`<p class="org-about">${esc(i.about)}</p>`:''}
+        ${cats.length?`<div class="org-cats">${cats.map(k=>`<span>${catIcon(k,16)} ${esc(CATS[k].name)}</span>`).join('')}</div>`:''}
+      </div>
+      <button class="cta gold" style="margin-top:16px" onclick="startOrgBooking()">${LX('احجز مع ','Book with ')}${esc(i.name||'')}</button>
+      <div class="panel" style="margin-top:14px"><h3>${LX('أوقات العمل','Working hours')}</h3>${orgHoursHtml(i.hours)}</div>
+      <p class="org-note">${LX('الأسعار أسعار خافت نفسها، وطلبك يوصل لهذه المؤسسة مباشرة وتتابعه من تطبيق خافت.','Same Khafet prices. Your order goes directly to this business and you track it in the Khafet app.')}</p>
+      <div style="text-align:center;margin-top:10px"><a class="join-link" onclick="go('home')">${LX('أو احجز مع خافت مباشرة','Or book with Khafet directly')}</a></div>`;
+  }
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead(LX('صفحة المؤسسة','Business page'),'home')}
+      ${body}
+      <div style="height:24px"></div>
+    </div>`;
+}
+/* ── تقييم الخدمة بالرابط (?rate=<token>): بلا تسجيل، نجوم وتعليق اختياري، مرة واحدة (khafet_rate_info / khafet_rate_by_token) ── */
+let RATE={ token:'', info:null, load:'', stars:0, fb:'', done:null, busy:false };
+function openRate(token){ RATE={ token:String(token||''), info:null, load:'loading', stars:0, fb:'', done:null, busy:false }; if(view!=='rate') go('rate'); else render(); loadRate(); }
+async function loadRate(){
+  try{
+    if(!cloudReady||!sb) throw new Error('offline');
+    const r=await sb.rpc('khafet_rate_info',{ p_token:RATE.token });
+    if(r.error) throw r.error;
+    RATE.info=(r.data&&r.data.ok)?r.data:null; RATE.load=RATE.info?'':'bad';
+  }catch(e){ RATE.info=null; RATE.load=/fetch|network|offline|Failed/i.test(String((e&&e.message)||e||''))?'net':'bad'; }
+  if(view==='rate') render();
+}
+function setRateStars(n){ RATE.fb=((document.getElementById('rate_fb')||{}).value)||RATE.fb; RATE.stars=n; render(); }
+async function submitRate(){
+  if(RATE.busy) return;
+  if(!(RATE.stars>=1&&RATE.stars<=5)){ toast(serverMsg('KHAFET_RATE_VALUE')); return; }
+  const fb=(((document.getElementById('rate_fb')||{}).value)||'').trim().slice(0,1000); RATE.fb=fb;
+  RATE.busy=true; render();
+  try{
+    if(!cloudReady||!sb) throw new Error('offline');
+    const r=await sb.rpc('khafet_rate_by_token',{ p_token:RATE.token, p_rating:RATE.stars, p_feedback:fb||null });
+    if(r.error) throw r.error;
+    RATE.done=(r.data&&r.data.ok)?r.data:{ ok:true };
+  }catch(e){
+    if(/KHAFET_RATED/.test(String((e&&e.message)||''))) RATE.done={ ok:true, already:true };
+    else toast(serverMsg(e)||LX('تعذّر إرسال التقييم، حاول مرة أخرى','Could not send the rating, try again'));
+  }
+  RATE.busy=false; render();
+}
+function renderRate(){
+  const i=RATE.info; let body='';
+  const stars=n=>`<div class="rate-stars">${[1,2,3,4,5].map(k=>`<button type="button" class="${k<=n?'on':''}" aria-label="${k}" ${RATE.done?'disabled':''} onclick="setRateStars(${k})">★</button>`).join('')}</div>`;
+  const loading=RATE.load==='loading'||(!RATE.token&&_deepRate);
+  if(loading) body=`<div class="empty"><div class="ico">⏳</div><h3>${LX('جارٍ فتح رابط التقييم','Opening the rating link')}</h3></div>`;
+  else if(RATE.load==='net') body=`<div class="empty"><div class="ico">${icon('wrench',34)}</div><h3>${LX('تعذّر الاتصال','Connection problem')}</h3><p>${LX('تأكد من الإنترنت ثم أعد المحاولة','Check your internet and try again')}</p><button class="cta" style="max-width:260px;margin:18px auto 0" onclick="openRate('${aid(RATE.token)}')">${LX('إعادة المحاولة','Retry')}</button></div>`;
+  else if(!i || i.expired) body=`<div class="empty"><div class="ico">${icon('tag',34)}</div><h3>${serverMsg('KHAFET_RATE_LINK')}</h3><button class="cta" style="max-width:260px;margin:18px auto 0" onclick="go('home')">${LX('الرئيسية','Home')}</button></div>`;
+  else if(RATE.done || i.rated) body=`<div class="rate-card">
+      <div class="cf-check" style="width:74px;height:74px;font-size:2rem;margin-bottom:10px">✓</div>
+      <h3>${(RATE.done&&!RATE.done.already)?LX('شكرًا لك، وصل تقييمك','Thank you, your rating was received'):serverMsg('KHAFET_RATED')}</h3>
+      ${stars(+(RATE.done&&RATE.done.rating)||+i.rating||RATE.stars||0)}
+      <p style="color:var(--muted);font-weight:700">${esc(i.provider_name||'')}${i.order_no?' · '+LX('طلب رقم ','Order #')+esc(i.order_no):''}</p>
+      <button class="cta gold" style="margin-top:14px" onclick="go('home')">${LX('الرئيسية','Home')}</button></div>`;
+  else body=`<div class="rate-card">
+      <h3>${LX('كيف كانت خدمة','How was the service from')} <b>${esc(i.provider_name||'')}</b>${LX('؟','?')}</h3>
+      <p style="color:var(--muted);font-weight:700;margin-top:4px">${i.order_no?LX('طلب رقم ','Order #')+esc(i.order_no):''}${i.service_date?' · '+esc(dayLabel(String(i.service_date).slice(0,10))):''}</p>
+      ${stars(RATE.stars)}
+      <textarea id="rate_fb" maxlength="1000" placeholder="${LX('تعليق اختياري','Optional comment')}">${esc(RATE.fb||'')}</textarea>
+      <button class="cta gold" style="margin-top:14px" ${RATE.busy?'disabled':''} onclick="submitRate()">${RATE.busy?LX('جارٍ الإرسال...','Sending...'):LX('إرسال التقييم','Send rating')}</button></div>`;
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen">
+      ${pageHead(LX('قيّم الخدمة','Rate the service'),'home')}
+      ${body}
+      <div style="height:24px"></div>
+    </div>`;
 }
 let currentCat='plumb';
 let quickMode=false;        // طلب سريع (بدون اختيار خدمة)
@@ -2673,6 +2888,8 @@ function render(){
   if(!_payChecked && /[?&]pay=/.test(location.search)){ _payChecked=true; checkPaymentReturn(); return; }
   if(view==='home') return renderHome();
   if(view==='join') return renderJoin();
+  if(view==='org') return renderOrg();      // صفحة مؤسسة داخل التطبيق (?org=)
+  if(view==='rate') return renderRate();    // تقييم الخدمة بالرابط (?rate=)
   if(view==='prices') return renderPrices();
   if(view==='majlis') return renderMajlis();
   if(view==='shades') return renderShades();
@@ -3066,8 +3283,11 @@ async function verifyOtpCode(){
     try{ initPush(); }catch(e){}   // أعد تسجيل الجهاز للإشعارات بالهوية الجديدة
     toast('أهلاً بك 👋');
     // جاء من زر معاينة (مظلة/مجلس/حل) وطُلب منه التوثيق: نكمّل له نفس المعاينة بدل ما يرجع يبدأ من أول
-    const pq=state.pendingQuick; state.pendingQuick=null; save();
-    if(pq && pq.note && (Date.now()-(+pq.at||0))<15*60000){ startQuick({ force:!!pq.force, note:pq.note }); }
+    const pq=state.pendingQuick; state.pendingQuick=null;
+    const pb=state.pendingBook; state.pendingBook=null; save();
+    if(pq && pq.note && (Date.now()-(+pq.at||0))<15*60000){ startQuick({ force:!!pq.force, note:pq.note, kind:pq.kind }); }
+    // جاء من الحجز وطلب الخادم توثيق الجوال: يرجع لصفحة الدفع بنفس السلة والموعد ويكمل الطلب
+    else if(pb && (Date.now()-(+pb.at||0))<15*60000 && state.booking && state.booking.date){ go('pay'); }
     else go('account');
     loadMyRef().then(()=>{ if(['account','info','pay','home','checkout'].includes(view)) render(); });   // الرصيد الترحيبي بعد التوثيق
   }catch(e){
@@ -4209,7 +4429,7 @@ function shdBook(){
     +(SHD.light?' · إنارة LED':'')+(SHD.gutter?' · مزراب':'')
     +' · التقدير '+c.total+' ريال · ضمان '+stNum('shade_warranty_years',5)+' سنوات';
   // معاينة المظلة تدخل مسار المعاينة حتى لو «الطلب السريع» مطفي، والمواصفات تظهر في وصف الطلب وتصل للفني
-  startQuick({ force:true, note });
+  startQuick({ force:true, note, kind:'shade' });
 }
 
 const MJ_RATE = {
@@ -4421,6 +4641,8 @@ function icon(n,s){ return `<svg style="width:${s||22}px;height:${s||22}px" view
 /* أيقونة الهدية في كوبون الولاء · تُستعمل في الرئيسية وفي خطوة الدفع */
 const GIFT_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="9" width="17" height="12" rx="1"/><path d="M3.5 13h17M12 9v12"/><path d="M12 9C10 9 7.5 8.4 7.5 6.4 7.5 5 9 4.5 10 5.2c1.4 1 2 3.8 2 3.8Zm0 0c2 0 4.5-.6 4.5-2.6 0-1.4-1.5-1.9-2.5-1.2-1.4 1-2 3.8-2 3.8Z"/></svg>';
 /* ---------- الرئيسية: زرّان · طلب سريع / باقي الخدمات ---------- */
+/* أيقونة بلاطة حلول أجيال في شبكة الصيانة */
+const SOL_TILE_IMG='https://zulogtqxbuqxmdmjpzqj.supabase.co/storage/v1/object/public/khafet-parts/cat-tile/ajyal.jpg?v=1';
 /* بحث الخدمات في الرئيسية: من كل الأقسام المفتوحة */
 let homeQ='';
 function _nrm(t){ return String(t||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').trim(); }
@@ -4430,7 +4652,7 @@ function homeSearchHtml(q){
   if(!L.length) return `<div class="hs-empty">${LX('ما لقينا خدمة بهذا الاسم','No service matches')}${quickEnabled()?`<br><button class="cta gold" onclick="startQuick()">${LX('اطلب معاينة سريعة','Book a quick visit')}</button>`:''}</div>`;
   return L.map(x=>`<div role="button" tabindex="0" class="srow ${svcImgOn(x)?'has-img':''}" onclick="homePick('${aid(x.id)}')">${svcIc(x)}<span class="srow-t"><b>${esc(x.name)}</b><span class="sv-meta"><em class="sv-price">${x.custom?LX('بعد المعاينة','After inspection'):money(x.price)}</em><em class="hs-cat">${esc(CATS[x.cat].name)}</em></span></span></div>`).join('');
 }
-function homeSearch(v){ homeQ=String(v||''); const r=document.getElementById('hsRes'), b=document.getElementById('homeBand'); const on=homeQ.trim().length>=2; if(r) r.innerHTML=on?homeSearchHtml(homeQ):''; if(b) b.hidden=on; }
+function homeSearch(v){ homeQ=String(v||''); const r=document.getElementById('hsRes'), b=document.getElementById('pickRows')||document.getElementById('homeGrid'); const on=homeQ.trim().length>=2; if(r) r.innerHTML=on?homeSearchHtml(homeQ):''; if(b) b.hidden=on; }
 function homePick(id){ const x=svc(id); if(!x) return; homeQ=''; openCat(x.cat); if(!state.cart[id]) toggleService(id); }
 function renderHome(){
   const L=myLoyalty();
@@ -4466,14 +4688,12 @@ function renderHome(){
     </div>
 
     <div class="wrap screen">
-      <div class="hsearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="hSearch" type="search" autocomplete="off" enterkeyhint="search" placeholder="${LX('ابحث عن خدمة: تسريب، مكيف، لمبة…','Search a service: leak, AC, bulb…')}" value="${esc(homeQ)}" oninput="homeSearch(this.value)"></div>
-      <div id="hsRes" class="hs-res">${homeQ.trim().length>=2?homeSearchHtml(homeQ):''}</div>
-      <div class="band" id="homeBand" ${homeQ.trim().length>=2?'hidden':''}>
+      <div class="band" id="homeBand">
       ${launchPromoHtml()}
       <div class="maint">
         <div class="mt-head">${LX('صيانة','Maintenance')}</div>
-        <div class="mt-grid">
-          ${homeCats().map(k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')">${catTileIc(k)}<b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`).join('')}
+        <div class="mt-grid" id="homeGrid">
+          ${(()=>{ const L=homeCats().filter(k=>k!=='appl'||!solutionsEnabled()); const T=k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')">${catTileIc(k)}<b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`; return L.filter(k=>!catSoon(k)).map(T).join(''); })()}${solutionsEnabled()?`<button class="mt-tile" onclick="go('solutions')"><span class="mt-ic" style="--c:#3EAD5E">${catIcon('ajyal',30)}</span><b>${esc(solText('solutions_title','حلول منازل أجيال'))}</b></button>`:''}${(()=>{ const L=homeCats().filter(k=>k!=='appl'||!solutionsEnabled()); const T=k=>`<button class="mt-tile ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')">${catTileIc(k)}<b>${esc(CATS[k].name)}</b>${catSoon(k)?`<span class="soon-tag">${LX('قريبًا','Soon')}</span>`:''}</button>`; return L.filter(k=>catSoon(k)).map(T).join(''); })()}
         </div>
       </div>
       </div>
@@ -4496,12 +4716,6 @@ function renderHome(){
         <span class="qb-ar">←</span>
       </button>`:'')}
 
-      ${solutionsEnabled()?`
-      <button class="services-btn sol-btn" onclick="go('solutions')">
-        <span class="sb-ic">🏘️</span>
-        <span class="sb-t"><b>${esc(solText('solutions_title','حلول منازل أجيال'))}</b><small>${esc(solText('solutions_sub','مشاكل نعرفها في بيوت أجيال، وحلّها بسعر ثابت'))}</small></span>
-        <span class="qb-ar">←</span>
-      </button>`:''}
 
       ${stOn('shades_enabled',true)?`<button class="services-btn" onclick="go('shades')">
         <span class="sb-ic" style="color:var(--gold-deep)">⛱️</span>
@@ -4736,6 +4950,7 @@ async function verifyJoinOtp(){
 
 /* ═ أيقونات الأقسام المرسومة · نفس أسلوب خطوط الشعار (بدل الإيموجي) ═ */
 const CAT_IC={
+  ajyal:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5.5h4V20"/>',
   plumb:'<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
   elec:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
   ac:'<line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/><path d="m20 16-4-4 4-4"/><path d="m4 8 4 4-4 4"/><path d="m16 4-4 4-4-4"/><path d="m8 20 4-4 4 4"/>',
@@ -4747,7 +4962,7 @@ const CAT_IC={
   majlis:'<path d="M3 11 12 4l9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/><path d="M5 14h14"/><path d="M5 17h14"/>',
 };
 /* صورة القسم في مربع الرئيسية إن وُجدت، وإلا الأيقونة */
-function catTileIc(k){ const c=CATS[k]||{}; const u=c.img?safeUrl(c.img,''):''; return u ? `<span class="mt-ic mt-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(c.name||'')}"></span>` : `<span class="mt-ic">${catIcon(k,30)}</span>`; }
+function catTileIc(k){ const c=CATS[k]||{}; const u=c.img?safeUrl(c.img,''):''; return u ? `<span class="mt-ic mt-img${String(u).indexOf('cat-tile')>=0?' mt-flat':''}" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(c.name||'')}"></span>` : `<span class="mt-ic">${catIcon(k,30)}</span>`; }
 /* صورة الخدمة الحقيقية إن وُجدت، وإلا الإيموجي */
 function svcImgOn(s){ return !!((s&&s.img)?safeUrl(s.img,''):''); }
 function svcIc(s){ const u=(s&&s.img)?safeUrl(s.img,''):''; return u ? `<span class="srow-ic srow-img" style="background-image:url('${esc(u)}')" role="img" aria-label="${esc(s.name||'')}"></span>` : `<span class="srow-ic">${esc((s&&s.ico)||'🔧')}</span>`; }
@@ -4759,7 +4974,7 @@ function catIcon(k,s){
 
 /* ---------- باقي الخدمات: الأقسام ---------- */
 function renderServices(){
-  const keys=otherCats().length?otherCats():Object.keys(CATS).filter(catShown);
+  const keys=((orgPinned()&&orgCats().length)?orgCats():(otherCats().length?otherCats():Object.keys(CATS).filter(catShown))).slice().sort((a,b)=>(catSoon(a)?1:0)-(catSoon(b)?1:0));   // الجاهزة أول و«قريبًا» بعدها   // مؤسسة مثبّتة: تخصصاتها فقط
   const cats=keys.map(k=>{
     const c=CATS[k];
     return `<button class="catbtn ${catSoon(k)?'soon':''}" onclick="openCat('${aid(k)}')">
@@ -4770,7 +4985,8 @@ function renderServices(){
   }).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
-      ${pageHead(LX('باقي خدمات المنزل','Other home services'),'home')}
+      ${pageHead(orgPinned()?LX('خدمات ','Services of ')+esc(state.org.name):LX('باقي خدمات المنزل','Other home services'),orgPinned()?'org':'home')}
+      ${orgBadgeHtml()}
       <p style="color:var(--muted);text-align:center;margin-top:4px">اختر النوع، وبعدها الخدمة اللي تحتاجها.</p>
       <div class="cats-big" style="margin-top:18px">${cats}</div>
       <div style="height:30px"></div>
@@ -4784,9 +5000,9 @@ function startQuick(opts){
   opts=opts||{};
   if(!opts.force && !quickEnabled()){ toast('الطلب السريع غير متاح حاليًا، اختر الخدمة من القائمة'); return; }
   // الطلب السريع مجاني ويصل الفني مباشرة، فالرقم لازم يكون مؤكدًا
-  if(!isVerified){ if(opts.note){ state.pendingQuick={ force:!!opts.force, note:opts.note, at:Date.now() }; save(); } toast(LX('أكّد رقم جوالك أولاً عشان نرسل لك الفني','Verify your phone first')); go('login'); return; }
+  if(!isVerified){ if(opts.note){ state.pendingQuick={ force:!!opts.force, note:opts.note, kind:(opts.kind==='shade'?'shade':null), at:Date.now() }; save(); } toast(LX('أكّد رقم جوالك أولاً عشان نرسل لك الفني','Verify your phone first')); go('login'); return; }
   state.pendingQuick=null;
-  quickMode=true; state.cart={}; state.parts={}; state.booking={date:null,time:null};
+  quickMode=true; state.quickKind=(opts.kind==='shade'?'shade':null); state.cart={}; state.parts={}; state.booking={date:null,time:null};
   if(opts.note){ state.subReq=null; state.quickNote=opts.note; state.problem={desc:opts.note}; }
   else if(!state.subReq) clearAutoNote();   // طلب سريع عادي: ما نورّث مواصفات مظلة أو مجلس من محاولة سابقة
   save();
@@ -4801,7 +5017,9 @@ function clearAutoNote(){
 }
 
 /* ---------- خطوة ١: اختر الخدمة ---------- */
-function openCat(k){ if(catSoon(k)){ toast(LX('قريبًا إن شاء الله ✨','Coming soon ✨')); return; } quickMode=false; clearAutoNote(); currentCat=k; go('pick'); }
+function openCat(k){ homeQ=''; if(catSoon(k)){ toast(LX('قريبًا إن شاء الله ✨','Coming soon ✨')); return; }
+  if(orgPinned()&&orgCats().length&&!orgCats().includes(k)){ toast(LX('هذا القسم غير متاح لدى '+state.org.name+'، ألغِ التثبيت للحجز مع خافت','This category is not offered by '+state.org.name+', unpin to book with Khafet')); return; }
+  quickMode=false; clearAutoNote(); currentCat=k; go('pick'); }
 function toggleService(id){
   if(state.cart[id]) delete state.cart[id]; else state.cart[id]=1;
   save(); if(view==='prices') renderPrices(); else renderPick();
@@ -4826,9 +5044,12 @@ function renderPick(){
 
   document.getElementById('app').innerHTML=`
     <div class="wrap screen" style="padding-bottom:150px">
-      ${pageHead(catIcon(currentCat,22)+' '+esc((CATS[currentCat]||{}).name||''),'home')}
+      ${pageHead(catIcon(currentCat,22)+' '+esc((CATS[currentCat]||{}).name||''),orgPinned()?'services':'home')}
       ${stepBar(1)}
-      <div class="srows">${rows}</div>
+      ${orgBadgeHtml()}
+      <div class="hsearch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="hSearch" type="search" autocomplete="off" enterkeyhint="search" placeholder="${LX('ابحث عن خدمة: تسريب، مكيف، لمبة…','Search a service: leak, AC, bulb…')}" value="${esc(homeQ)}" oninput="homeSearch(this.value)"></div>
+      <div id="hsRes" class="hs-res">${homeQ.trim().length>=2?homeSearchHtml(homeQ):''}</div>
+      <div class="srows" id="pickRows" ${homeQ.trim().length>=2?'hidden':''}>${rows}</div>
       <a class="addmore" onclick="go('home')">＋ أضف من قسم آخر</a>
     </div>
     ${nextbar}`;
@@ -4836,7 +5057,7 @@ function renderPick(){
 
 /* لمسة على خدمة مختارة ما تشيلها (الشيل من زر −)، عشان ما تضيع الكمية بلمسة غلط */
 function minOrderLeft(){ const m=stNum('min_order',0)||0; if(!(m>0)||quickMode||state.subReq) return 0; return Math.max(0, Math.ceil(m-laborPrice())); }
-function goTimeChecked(){ const left=minOrderLeft(); if(left>0){ toast(LX('الحد الأدنى للطلب '+money(stNum('min_order',0))+'. باقي '+money(left)+'، أضف خدمة ثانية.','Minimum order is '+stNum('min_order',0)+' SAR. Add '+left+' SAR more.')); return; } go('time'); }
+function goTimeChecked(){ if(!orgCartOk()){ toast(orgCartMsg()); return; } const left=minOrderLeft(); if(left>0){ toast(LX('الحد الأدنى للطلب '+money(stNum('min_order',0))+'. باقي '+money(left)+'، أضف خدمة ثانية.','Minimum order is '+stNum('min_order',0)+' SAR. Add '+left+' SAR more.')); return; } go('time'); }
 function pickRowTap(id){ if(!state.cart[id]) toggleService(id); }
 /* ---------- 🛒 السلة: تبقى محفوظة لين يكتمل الطلب ---------- */
 function renderCart(){
@@ -4922,7 +5143,7 @@ async function reverseGeocodeCity(lat,lng){
 }
 function pickDate(iso){
   // يحمي «التاريخ الأبعد» كمان · لأن تقويم الجهاز يسمح باختيار أي يوم
-  if(isOffDay(iso)){ toast('يوم '+AR_DAYS[parseISO(iso).getDay()]+' إجازة، اختر يوماً آخر'); return; }
+  if(orgPinned()?!orgOpenDay(iso):isOffDay(iso)){ toast(LX('يوم '+AR_DAYS[parseISO(iso).getDay()]+' إجازة، اختر يوماً آخر','That day is off, pick another')); return; }
   state.booking.date=iso; state.booking.time=null; renderTime();
 }
 function pickTime(min){ state.booking.time=min; renderTime(); }
@@ -4972,13 +5193,15 @@ function renderTime(){
   // افتراضياً: أقرب يوم فيه وقت متاح فعلاً
   if(!b.date){
     for(let i=0;i<14;i++){ const d=new Date(today); d.setDate(today.getDate()+i); const iso=dateISO(d);
+      if(orgPinned()){ if(orgOpenDay(iso)){ b.date=iso; break; } continue; }   // مؤسسة مثبّتة: أول يوم مفتوح عندها، وأوقاته من الخادم
       let has=false; for(let tt=WORK_START;tt+need0<=WORK_END;tt+=ARRIVAL_WINDOW){ if(slotAvailable(iso,tt,need0)){has=true;break;} }
       if(has){ b.date=iso; break; } }
     if(!b.date) b.date=dateISO(today);
   }
-  // نتخطّى أيام الإجازة تماماً · ما تظهر بالشريط
+  if(orgPinned()) loadOrgSlots(b.date).then(ch=>{ if(ch && view==='time') render(); });   // الأوقات المتاحة للمؤسسة (provider_public_slots)
+  // نتخطّى أيام الإجازة تماماً · ما تظهر بالشريط (ومع مؤسسة مثبّتة: أيام دوامها وإجازاتها)
   const days=[]; for(let i=0;i<16;i++){ const d=new Date(today); d.setDate(today.getDate()+i);
-    if(!OFF_DAYS.includes(d.getDay())) days.push(d); }
+    if(orgPinned()?orgOpenDay(dateISO(d)):!OFF_DAYS.includes(d.getDay())) days.push(d); }
   const dchips=days.map(d=>{
     const iso=dateISO(d), isToday=i0(d,today), active=b.date===iso;
     return `<button class="dchip ${active?'active':''}" onclick="pickDate('${aid(iso)}')">
@@ -4996,8 +5219,10 @@ function renderTime(){
 
   const need=scheduleDuration();
   const slots=[];
-  for(let t=WORK_START;t+need<=WORK_END;t+=ARRIVAL_WINDOW){
-    const ok=slotAvailable(b.date,t,need), active=b.time===t;
+  const oh=orgPinned()?orgHours(b.date):null;   // مؤسسة مثبّتة: نوافذ الوصول داخل دوامها، والمتاح منها من الخادم
+  const tFrom=(oh&&!oh.closed)?(+oh.open_min||WORK_START):WORK_START, tTo=(oh&&!oh.closed)?(+oh.close_min||WORK_END):WORK_END;
+  for(let t=tFrom;t+need<=tTo;t+=ARRIVAL_WINDOW){
+    const ok=orgPinned()?orgSlotOk(b.date,t):slotAvailable(b.date,t,need), active=b.time===t;
     slots.push(`<button class="slot win ${active?'active':''}" ${ok?'':'disabled'} onclick="pickTime(${t})">${windowLabel(t,need)}</button>`);
   }
   const anyFree=slots.some(s=>!s.includes('disabled'));
@@ -5008,13 +5233,14 @@ function renderTime(){
     <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead('متى يناسبك؟', quickMode?'home':'pick')}
       ${stepBar(2)}
+      ${orgBadgeHtml()}
       <div class="panel" style="margin-top:14px"><h3>📅 اختر اليوم</h3><div class="dates">${dchips}${farChip}</div></div>
       <div class="notify-toggle ${we?'on':''}" style="margin-top:14px" onclick="toggleWantsEarlier()">
         <span class="nt-check">${we?'✓':''}</span>
         <span class="nt-t"><b>🔔 بلّغوني لو صار موعد أبكر</b><small>لو أحد ألغى وصار وقت أقرب، نتواصل معك ونقدّم موعدك</small></span>
       </div>
       <div class="panel" id="slotsPanel"><h3>🕐 ${LX('اختر وقت الوصول','Choose arrival time')}</h3>
-        ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.</p>`}
+        ${anyFree?`<div class="slots">${slots.join('')}</div>`:`<p style="color:var(--muted)">${(orgPinned()&&orgSlotsLoading(b.date))?LX('جارٍ تحميل الأوقات المتاحة...','Loading available times...'):'لا توجد أوقات متاحة في هذا اليوم، جرّب يوماً ثاني.'}</p>`}
       </div>
       ${quickMode?'':`<div class="flow-sum" style="margin-top:14px">⏱️ <span>${LX(`مدة الزيارة التقريبية: <b>${fmtDuration(need)}</b> · نحجزها لك كاملة.`,`Estimated visit time: <b>${fmtDuration(need)}</b> · we reserve it all for you.`)}</span></div>`}
     </div>
@@ -5129,6 +5355,7 @@ function renderInfo(){
     <div class="wrap screen" style="padding-bottom:150px">
       ${pageHead('بياناتك','time')}
       ${stepBar(3)}
+      ${orgBadgeHtml()}
 
       ${(quickMode&&!state.subReq)?`
       <div class="panel" style="margin-top:14px"><h3>🛠️ اشرح المشكلة</h3>
@@ -5390,6 +5617,7 @@ async function confirmOrder(){
   if(!(a.lat&&a.lng) && !a.house){ toast('حدّد موقعك على الخريطة أو اكتب رقم المنزل'); return; }
   if(!b.date||b.time==null){ toast('اختر اليوم والوقت'); return; }
   if(!bookingEnabled()){ toast('⏸️ '+(SETTINGS.booking_msg||'الحجز متوقف مؤقتًا')); return; }
+  if(!orgCartOk()){ toast(orgCartMsg()); return; }   // مؤسسة مثبّتة: كل الخدمات من تخصصاتها
   if(a.city && !inCoverage(a.city)){ toast('⚠️ '+(SETTINGS.coverage_msg||'خارج مناطق التغطية حاليًا')); const el=document.getElementById('cov-note'); if(el) el.scrollIntoView({block:'center'}); return; }
   rememberAddress();   // يحفظ العنوان في قائمة عناوينه ليختاره بضغطة المرة الجاية
 
@@ -5450,15 +5678,17 @@ async function confirmOrder(){
     free:false, status:'new', rating:0, reminded:false, quick:quickMode, note, videoUrl, wantsEarlier: state.booking.wantsEarlier!==false,
     promoCode: refOk?codeNorm(promoCodeIn):'', discountPct: discPct,
     payRequired: payNow>0,
+    orgSlug: orgPinned()?state.org.slug:'', orgName: orgPinned()?state.org.name:'',   // حجز عبر صفحة مؤسسة داخل التطبيق
+    kind: (quickMode && state.quickKind==='shade') ? 'shade' : '',
   };
   let order=null;
   if(payNow>0){
     // الحجز المدفوع ما يُحفظ بالجهاز: لازم يوصل الخادم ثم يفتح الدفع
     try{ order=await cloudInsert(base); }
-    catch(e){ console.error('❌ فشل حفظ الطلب:', e); toast(serverMsg(e)||LX('ما وصل الطلب، تأكد من الإنترنت وحاول مرة ثانية','Order not sent, check your connection and try again')); if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; }
+    catch(e){ console.error('❌ فشل حفظ الطلب:', e); if(needPhoneGo(e)){ if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; } toast(serverMsg(e)||LX('ما وصل الطلب، تأكد من الإنترنت وحاول مرة ثانية','Order not sent, check your connection and try again')); if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; }
     state.orders.unshift(order);
     state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id);
-    state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false; _housePhotoFile=null;
+    state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; quickMode=false; state.quickKind=null; _housePhotoFile=null; state.org=null; ORG_SLOTS={};
     save(); lastOrderId=order.id;
     if(order.payRequired && order.amountDue>0){
       // الدفع في مكانه: العميل يبقى على صفحة الفاتورة. بعد الدفع تطلع تفاصيل طلبه، ولو لغى أو تعذّر يلقى طلبه في «طلباتي»
@@ -5476,6 +5706,7 @@ async function confirmOrder(){
         message: e && e.message, code: e && e.code,
         details: e && e.details, hint: e && e.hint, raw: e
       });
+      if(needPhoneGo(e)){ if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; }   // الخادم يطلب توثيق الجوال: نفتح التوثيق ونحفظ الحجز
       const m=serverMsg(e);
       if(m){ toast(m); if(btn){ btn.disabled=false; btn.textContent=btnTxt; } return; }   // سبب من الخادم: نوقف ولا نسجّل طلبًا ما وصل
       toast(LX('⏳ ما فيه إنترنت، يُرسل طلبك تلقائيًا أول ما يرجع الاتصال','⏳ No connection, your order will be sent automatically when you are back online'));
@@ -5485,7 +5716,7 @@ async function confirmOrder(){
   if(!order){ state.seq++; order=Object.assign({id:'#'+ar(state.seq), num:state.seq, dbId:null}, base); }
   state.orders.unshift(order);
   state.myOrderIds=(state.myOrderIds||[]); state.myOrderIds.push(order.id);
-  state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; state.quickNote=''; quickMode=false; _housePhotoFile=null;
+  state.cart={}; state.parts={}; state.booking={date:null,time:null}; state.problem={desc:''}; state.promo=''; state.quickNote=''; quickMode=false; state.quickKind=null; _housePhotoFile=null; state.org=null; ORG_SLOTS={};
   save(); lastOrderId=order.id;
   // الخادم يعيد حساب الرصيد والولاء بنفسه: لو طلع مبلغ مستحق نفتح الدفع حسب رده لا حسب الحساب المحلي
   if(order.dbId && order.payRequired && !order.released && order.amountDue>0 && order.status!=='cancelled'){
@@ -5529,6 +5760,7 @@ function renderConfirm(){
         <div class="cf-check${(o.dbId&&!awaitingPay)?'':' wait'}">${o.dbId?(awaitingPay?'💳':'✓'):'⏳'}</div>
         <h2>${title}</h2>
         <div class="cf-no">${esc(o.id)}</div>
+        ${(o.orgName||o.orgSlug)?`<div class="org-line">${LX('الحجز مع','Booking with')} <b>${esc(o.orgName||o.orgSlug)}</b></div>`:''}
         ${o.dbId?'':`<p style="color:var(--muted);margin-top:12px">${LX('ما فيه إنترنت الآن. يُرسل طلبك تلقائيًا أول ما يرجع الاتصال.','No internet right now. Your order is sent automatically once you are back online.')}</p>`}
         ${awaitingPay?`<p style="color:var(--muted);margin-top:12px">${LX('ادفع لتأكيد الحجز ويوصل طلبك للفني.','Pay to confirm the booking and send it to the technician.')}</p>`:''}
       </div>
@@ -5797,26 +6029,60 @@ function printCustInvoice(id){ const o=findOrder(id); if(o&&o.invoice) printInvo
 /* تصنيف بند الفاتورة: شغل (خدمة) أو قطعة من المستودع أو رسوم */
 function invKind(it){ if(!it) return 'svc'; if(isFeeId(it.id)) return 'fee'; if(it.id==='stock'||it.stockId||it.part||it.id==='part'||String(it.id||'').startsWith('part:')) return 'part'; return 'svc'; }
 function invGroups(inv){ const g={svc:[],part:[],fee:[]}; (inv&&inv.items||[]).forEach(it=>g[invKind(it)].push(it)); return g; }
-function invItemIco(it){ const s=SERVICES.find(x=>x.id===it.id); return (s&&s.ico)||'🔧'; }
-function invSums(o){ const inv=o.invoice||{items:[]}; const sub=(inv.items||[]).reduce((a,it)=>a+(+it.price||0)*(+it.qty||1),0); const total=(+inv.total>0)?+inv.total:sub; const disc=inv.discountPct>0?Math.max(0,sub-total):0; return {sub,total,disc,paid:+o.paidAmount||0,due:Math.max(0,+o.amountDue||0)}; }
+function invItemIco(it){ const s=SERVICES.find(x=>x.id===it.id); return esc((s&&s.ico)||'🔧'); }
+/* أرقام الفاتورة للعميل (جولة الإصلاح 3، بند 28): الإجمالي والمدفوع والمتبقي من حساب الخادم (final_price/paid_amount/amount_due)
+   لا من نص الفاتورة. أسعار الأسطر تُعرض فقط لو كتبها الخادم (srv=1، فاتورة الفني والمزوّد يعيد الخادم كتابتها) ومعادلته صحيحة:
+   مجموع الأسطر = subtotal، وsubtotal − خصم المؤسسة (orgDisc) + التسوية (adj) = الإجمالي. فاتورة بلا علامة الخادم (أدخلتها الإدارة)
+   تُعرض أسعارها فقط لو طابق مجموعها الإجمالي. وإلا تظهر البنود بلا أسعار ولا «مجموع»، فلا تناقض الفاتورة المبلغ المطلوب فعلًا */
+function invSums(o){ const inv=o.invoice||{items:[]}; const r2=v=>Math.round((+v||0)*100)/100;
+  const sub=r2((inv.items||[]).reduce((a,it)=>a+(+it.price||0)*(+it.qty||1),0));
+  const srv=!!o.dbId; const total=srv?Math.max(0,+o.finalPrice||0):((+inv.total>0)?+inv.total:sub);
+  const paid=+o.paidAmount||0; const refund=(o.status!=='cancelled'&&paid>total+0.01)?r2(paid-total):0;
+  let pct=0, disc=0, orgDisc=0, adj=0, lines;
+  if(!srv){ pct=+inv.discountPct||0; disc=pct>0?Math.max(0,r2(sub-total)):0; lines=true; }
+  else if(+inv.srv===1){
+    orgDisc=Math.max(0,r2(inv.orgDisc)); adj=r2(inv.adj);
+    lines=Math.abs(sub-(+inv.subtotal||0))<=0.5 && Math.abs(r2(sub-orgDisc+adj)-total)<=0.5;
+    if(!lines){ orgDisc=0; adj=0; }
+  } else {
+    pct=+o.discountPct||0;
+    lines=Math.abs(sub-total)<=0.5 || (pct>0 && Math.abs(Math.round(sub*(100-pct))/100-total)<=1);
+    disc=(lines&&pct>0)?Math.max(0,r2(sub-total)):0;
+  }
+  return {sub,total,disc,pct,orgDisc,adj,paid,due:Math.max(0,+o.amountDue||0),refund,lines}; }
+/* أسطر ما قبل الإجمالي: المجموع ثم الخصومات والتسوية (من الخادم)، فقط لو الأسطر معروضة بأسعارها وفيه فرق عن الإجمالي */
+function invSumRows(s, cls){ if(!s.lines) return ''; const g=cls||'g';
+  const hasAdj=Math.abs(s.adj)>=0.01;
+  if(!(s.disc>0||s.orgDisc>0||hasAdj)) return '';
+  return `<div><span>المجموع</span><span>${money(s.sub)}</span></div>`
+    +(s.disc>0?`<div class="${g}"><span>🎟️ خصم ${ar(s.pct)}٪</span><span>− ${money(s.disc)}</span></div>`:'')
+    +(s.orgDisc>0?`<div class="${g}"><span>🎁 خصم المؤسسة</span><span>− ${money(s.orgDisc)}</span></div>`:'')
+    +(s.adj<=-0.01?`<div class="${g}"><span>🎟️ خصومات وتسويات</span><span>− ${money(-s.adj)}</span></div>`:'')
+    +(s.adj>=0.01?`<div><span>فرق القطع والتسويات</span><span>+ ${money(s.adj)}</span></div>`:''); }
+/* الأغراض اللي شالها الفني: تُعرض بأسماء بنود الحجز الأصلية فقط (لا نص حر يكتبه الطاقم) */
+function invDropped(o){ const inv=(o&&o.invoice)||{}; if(!Array.isArray(inv.dropped)||!inv.dropped.length) return [];
+  const booked=(o.items||[]).filter(it=>it&&typeof it==='object'); const names=new Map(booked.map(it=>[String(it.name||'').trim(),it]));
+  const out=[]; inv.dropped.forEach(d=>{ if(!d||typeof d!=='object') return; const it=names.get(String(d.name||'').trim())||(d.stockId?booked.find(x=>String(x.stockId||'')===String(d.stockId)):null);
+    if(it&&String(it.name||'').trim()) out.push({name:String(it.name).trim(), qty:Math.max(1,Math.min(+d.qty||1,+it.qty||1))}); });
+  return out; }
 /* صندوق الفاتورة داخل «طلباتي» */
 function custInvoiceHtml(o){
   const inv=o.invoice; if(!inv||!Array.isArray(inv.items)||!inv.items.length) return '';
-  const g=invGroups(inv), s=invSums(o);
+  const g=invGroups(inv), s=invSums(o), drops=invDropped(o);
   const line=(it,kind)=>{ const q=+it.qty||1, p=+it.price||0;
     const media = kind==='part' ? (it.img?`<img class="ci-img" src="${esc(it.img)}" loading="lazy" data-img="${esc(it.img)}" onclick="pbZoom(this.dataset.img)" />`:`<span class="ci-img ph">🔩</span>`) : `<span class="ci-img ph">${kind==='fee'?'🚚':invItemIco(it)}</span>`;
-    return `<div class="ci-row">${media}<div class="ci-n"><b>${esc(it.name)}</b><small>${q>1?ar(q)+' × '+money(p):money(p)}</small></div><div class="ci-p">${money(p*q)}</div></div>`; };
+    return `<div class="ci-row">${media}<div class="ci-n"><b>${esc(it.name)}</b>${s.lines?`<small>${q>1?ar(q)+' × '+money(p):money(p)}</small>`:(q>1?`<small>× ${ar(q)}</small>`:'')}</div>${s.lines?`<div class="ci-p">${money(p*q)}</div>`:''}</div>`; };
   const sec=(t,rows,kind)=>rows.length?`<div class="ci-sec">${t}</div>${rows.map(r=>line(r,kind)).join('')}`:'';
   return `<div class="cust-invoice">
     <div class="ci-head"><div><b>🧾 الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="sbtn" onclick="printCustInvoice('${aid(orderRef(o))}')">🖨️ طباعة</button></div>
     ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
-    ${(inv.dropped&&inv.dropped.length)?`<div class="ci-sec">أغراض عندك ما احتجناها</div>${inv.dropped.map(d=>`<div class="ci-row"><div class="ci-n"><b style="text-decoration:line-through;color:var(--muted)">${esc(d.name)}${(+d.qty>1)?' ×'+ar(d.qty):''}</b><small>يرجع لك ${money(d.amount)}</small></div></div>`).join('')}`:''}
+    ${drops.length?`<div class="ci-sec">أغراض عندك ما احتجناها</div>${drops.map(d=>`<div class="ci-row"><div class="ci-n"><b style="text-decoration:line-through;color:var(--muted)">${esc(d.name)}${(d.qty>1)?' ×'+ar(d.qty):''}</b></div></div>`).join('')}`:''}
     <div class="ci-sum">
-      ${s.disc>0?`<div><span>المجموع</span><span>${money(s.sub)}</span></div><div class="g"><span>🎟️ خصم ${ar(inv.discountPct)}٪</span><span>− ${money(s.disc)}</span></div>`:''}
+      ${invSumRows(s)}
       <div class="ci-total"><span>الإجمالي</span><span>${money(s.total)}</span></div>
       ${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}٪</span><span>${money(vatOf(s.total))}</span></div>`:''}
       ${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}
-      ${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(+inv.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(inv.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}
+      ${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(s.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(s.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}
     </div>
     <div class="ci-legal">${legalLine()}<br>${vatLine()}</div>
   </div>`;
@@ -5824,9 +6090,9 @@ function custInvoiceHtml(o){
 /* الفاتورة المطبوعة: نفس الأقسام مع صور القطع والضمان */
 function printInvoiceDoc(o){
   const inv=o.invoice||{items:[],total:0};
-  const g=invGroups(inv), s=invSums(o);
+  const g=invGroups(inv), s=invSums(o), drops=invDropped(o);
   const row=(it,kind)=>{ const q=+it.qty||1,p=+it.price||0; const media=kind==='part'?(it.img?`<img src="${esc(it.img)}" alt="">`:'🔩'):(kind==='fee'?(it.id==='smallfee'?'🧾':'🚚'):invItemIco(it));
-    return `<div class="r"><span class="im">${media}</span><span class="nm"><b>${esc(it.name)}</b><small>${q>1?ar(q)+' × '+money(p):money(p)}</small></span><span class="tt">${money(p*q)}</span></div>`; };
+    return `<div class="r"><span class="im">${media}</span><span class="nm"><b>${esc(it.name)}</b>${s.lines?`<small>${q>1?ar(q)+' × '+money(p):money(p)}</small>`:(q>1?`<small>× ${ar(q)}</small>`:'')}</span>${s.lines?`<span class="tt">${money(p*q)}</span>`:''}</div>`; };
   const sec=(t,rows,kind)=>rows.length?`<div class="sec">${t}</div>${rows.map(r=>row(r,kind)).join('')}`:'';
   const d=new Date(); const ds=ar(d.getDate())+'/'+ar(d.getMonth()+1)+'/'+ar(d.getFullYear());
   const a=o.address||{}; const addr=[a.city, a.house?'منزل '+a.house:''].filter(Boolean).join(' · ');
@@ -5857,7 +6123,8 @@ function printInvoiceDoc(o){
 <div class="wrap">
 <div class="meta"><div><span>العميل</span>${esc((o.customer||{}).name||'')}</div><div><span>الجوال</span>${esc((o.customer||{}).phone||'')}</div>${addr?`<div><span>العنوان</span>${esc(addr)}</div>`:''}${o.date?`<div><span>تاريخ الخدمة</span>${dayLabel(o.date)}</div>`:''}</div>
 ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
-<div class="sum">${s.disc>0?`<div><span>المجموع</span><span>${money(s.sub)}</span></div><div class="g"><span>🎟️ خصم ${ar(inv.discountPct)}٪</span><span>− ${money(s.disc)}</span></div>`:''}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}٪</span><span>${money(vatOf(s.total))}</span></div>`:''}${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${(inv.dropped&&inv.dropped.length)?`<div class="g"><span>↩️ أغراض عندك: ${esc(inv.dropped.map(d=>d.name).join('، '))}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(+inv.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(inv.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
+${drops.length?`<div class="sec">أغراض عندك ما احتجناها</div>${drops.map(d=>`<div class="r"><span class="nm"><b style="text-decoration:line-through;color:#6E685B">${esc(d.name)}${d.qty>1?' ×'+ar(d.qty):''}</b></span></div>`).join('')}`:''}
+<div class="sum">${invSumRows(s)}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}٪</span><span>${money(vatOf(s.total))}</span></div>`:''}${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(s.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(s.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
 <div class="wr"><span>🛡️ ضمان الشغل ${ar(o.warrantyDays>0?o.warrantyDays:APP_WARRANTY)+' يوم'}</span>${g.part.length?'<span>🔩 ضمان القطع سنتان</span>':''}</div>
 ${zatcaQr(s.total, vatOf(s.total), o.date)?`<div id="qr" style="margin:14px auto 0;width:140px"></div>`:''}
 <div class="ft">${legalLine()}<br>${vatLine()}<br>شكراً لتعاملك مع ${BRAND} · ${esc(PHONE)}</div>
