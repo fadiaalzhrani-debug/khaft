@@ -176,7 +176,7 @@
   .cline .cn b{font-size:.98rem}
   .cline .cn small{color:var(--muted);display:block;font-size:.8rem}
   .qty{display:flex;align-items:center;background:#f4f2ea;border-radius:11px;overflow:hidden}
-  .qty button{width:34px;height:36px;font-weight:900;font-size:1.15rem}
+  .qty button{width:40px;height:40px;font-weight:900;font-size:1.15rem}
   .qty span{min-width:28px;text-align:center;font-weight:800}
   .del{color:var(--danger);font-size:1.15rem;padding:6px}
   .totals{display:flex;flex-direction:column;gap:9px}
@@ -1136,6 +1136,12 @@
 html,body{touch-action:manipulation}
   html[dir="ltr"] .nb-go span{display:inline-block;transform:scaleX(-1)}
   .stars span{display:inline-block;min-width:40px;min-height:40px;line-height:40px;text-align:center}
+  .ps-links a{display:inline-block;padding:10px 6px}
+  .pay-terms a,.pay-terms label{display:inline-block;padding:8px 2px}
+  .pw:not(.all) .pw-r.more{display:none}
+  .pw-q{padding:8px 12px;border-top:1px solid var(--line)}
+  .pw-q input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;background:#fff}
+  .pw-more{display:block;width:calc(100% - 24px);margin:10px 12px 2px;border:1.5px solid var(--line);background:var(--gold-tint);border-radius:12px;padding:10px;font:inherit;font-weight:800;cursor:pointer}
 </style>
 <style id="kh-skin">
 /* ═══ خافت · التصميم الجديد 2026-09-19 (طبقة شكل فقط: ألوان وخط وأشكال وحركة، بدون لمس الوظائف) ═══ */
@@ -1586,6 +1592,43 @@ header.top{background:rgba(241,233,223,.9);border-bottom:0}
 .rate-card textarea{width:100%;min-height:90px;margin-top:10px;padding:12px;border-radius:12px;border:1px solid var(--line);font-family:inherit;font-size:1rem;resize:vertical;background:#fff;color:var(--ink)}
 
 </style><!--/kh-skin-->
+<style id="kh-inv">
+/* ═ فاتورة العميل داخل «طلباتي» بتصميم الفاتورة الجديدة (2026-09-29) · khafet-site/index.html ═
+   يجي بعد نهاية ستايل kh-skin وقبل نهاية الـ head عشان يغلب .cust-invoice/.ci-* القديمة (لا تكتب وسم إغلاق ستايل داخل هذا التعليق).
+   البادئة ki- (ما تتعارض مع .pic و .pcard الموجودة). */
+.cust-invoice.ki{margin-top:13px;background:#fff;border:0;border-radius:22px;overflow:hidden;box-shadow:0 0 0 1px var(--line),var(--shadow-sm)}
+.ki-top{display:flex;align-items:center;gap:10px;background:#1d1a16;color:#fff;padding:12px 14px}
+.ki-lg{width:36px;height:36px;border-radius:10px;flex:none;background:#F5C518}
+.ki-t{flex:1;min-width:0}
+.ki-t b{display:flex;align-items:center;gap:6px;color:#F5C518;font-weight:900;font-size:1.02rem;line-height:1.3;font-family:var(--f-head,inherit)}
+.ki-t small{display:block;color:rgba(255,255,255,.75);font-weight:700;font-size:.76rem}
+.ki-print{display:inline-flex;align-items:center;gap:5px;flex:none;background:#F5C518;color:#1d1a16;border:0;border-radius:999px;padding:7px 13px;font-weight:900;font-size:.8rem;font-family:inherit;cursor:pointer}
+.ki-sec{display:flex;align-items:center;gap:7px;padding:12px 14px 2px;font-size:.76rem;font-weight:800;color:var(--muted)}
+.ki-sec:before{content:"";width:7px;height:7px;border-radius:50%;background:#F5C518}
+.ki-row{display:flex;align-items:center;gap:11px;padding:9px 14px;border-bottom:1px solid #EFE9DF}
+.ki-pic{position:relative;width:54px;height:54px;border-radius:14px;background:#FBF3D1;border:1px solid #EFE9DF;display:grid;place-items:center;font-size:1.45rem;line-height:1;overflow:hidden;flex:none}
+.ki-pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ki-pic.part{background:#fff}
+.ki-pic.part img{object-fit:contain;padding:2px;cursor:zoom-in}
+.ki-n{flex:1;min-width:0}
+.ki-n b{display:block;font-size:.93rem;font-weight:800;line-height:1.4}
+.ki-n small{display:block;color:var(--muted);font-size:.76rem;font-weight:700;font-variant-numeric:tabular-nums}
+.ki-p{font-weight:900;white-space:nowrap;font-size:.95rem;font-variant-numeric:tabular-nums}
+.ki-row.drop .ki-n b{text-decoration:line-through;color:var(--muted);font-weight:700}
+.ki-row.drop .ki-pic{background:#F4F1EC}
+.ki-sum{padding:10px 18px 0}
+.ki-after{padding:8px 18px 0}
+.ki-sum>div,.ki-after>div{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:.86rem;font-weight:800;color:#5e554b}
+.ki-sum .g,.ki-after .g{color:#2F8F57}
+.ki-tot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:10px 12px 0;background:#1d1a16;color:#fff;border-radius:14px;padding:11px 15px}
+.ki-tot span{font-weight:800}
+.ki-tot b{color:#F5C518;font-size:1.3rem;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap;font-family:var(--f-head,inherit)}
+.ki-due{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:8px 12px 0;border:1.5px dashed #E4C75A;background:#FFFBEA;border-radius:12px;padding:9px 13px;font-weight:900}
+.ki-due b{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* ki-back و ki-ok بدل back و ok: الكلاس .back عام لزر الرجوع (عرضه 44px) وكان يضغط صندوق «يرجع لك» */
+.ki-due.ki-back,.ki-due.ki-ok{border-color:#A9D9B9;background:#EEF8F1;color:#2F8F57}
+.cust-invoice.ki .ci-legal{margin-top:12px;padding:9px 16px 13px;border-top:1px dashed #EFE9DF;font-size:.72rem;color:var(--muted);line-height:1.7;font-weight:700}
+</style><!--/kh-inv-->
 </head>
 <body>
 <!--kh-splash--><div id="khSplash"><h2 class="sp-name" aria-hidden="true">خافِت</h2><div class="logo3" role="img" aria-label="خافت"><svg class="flat dr3" viewBox="129 55 800 800" aria-hidden="true"><defs><clipPath id="spcH"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/></clipPath><clipPath id="spcW"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcL"><polygon points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579"/></clipPath><clipPath id="spcT"><rect x="129" y="55" width="800" height="800" rx="179"/></clipPath><linearGradient id="spfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".035" stop-color="#fff" stop-opacity=".9"/><stop offset=".07" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><linearGradient id="spshade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#E9D3A0" stop-opacity=".45"/></linearGradient><linearGradient id="spwf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#FFF6E2"/></linearGradient><radialGradient id="spnut" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#FFF8E4"/><stop offset=".6" stop-color="#F3DC9C"/><stop offset="1" stop-color="#D9AE3E"/></radialGradient><filter id="spb30" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="34"/></filter><filter id="spb10" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter><filter id="spb4" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter></defs><g class="wg"><polygon points="389,413 484,355 484,498 528,528 573,498 573,355 668,413 668,579 582,630 582,762 476,762 476,630 389,579" fill="url(#spwf)"/></g><polygon class="ln lh" pathLength="1" points="230,762 230,322 528,150 667,229 667,148 741,148 743,270 828,322 828,762 648,762 648,671 737,671 737,382 528,263 321,382 321,671 411,671 411,762"/><g clip-path="url(#spcH)"><rect class="fl fh" x="129" y="770" width="800" height="720" fill="url(#spfill)"/></g><g clip-path="url(#spcL)" class="shd"><rect x="129" y="400" width="800" height="400" fill="url(#spshade)"/></g><g clip-path="url(#spcT)"><g class="sw"><g transform="skewX(-22)"><rect x="340" y="-100" width="260" height="1100" fill="#fff" opacity=".22" filter="url(#spb30)"/><rect x="455" y="-100" width="34" height="1100" fill="#fff" opacity=".55" filter="url(#spb10)"/></g></g></g><g clip-path="url(#spcL)"><g class="sw"><g transform="skewX(-22)"><rect x="360" y="-100" width="70" height="1100" fill="#C9962A" opacity=".28" filter="url(#spb10)"/><rect x="452" y="-100" width="18" height="1100" fill="#fff" filter="url(#spb4)"/><rect x="478" y="-100" width="7" height="1100" fill="#FFFDF5" opacity=".9"/></g></g></g></svg></div><p>صيانة منزلك في أيادٍ أمينة</p></div>
@@ -1802,7 +1845,7 @@ function legalInfo(){
            city:s('company_city')||'الخبر، المنطقة الشرقية', vat:stOn('vat_registered',false), vatNo:s('vat_number'), vatPct:stNum('vat_pct',15)||15,
            email:s('legal_email'), maroof:s('maroof_url') };   // البريد الرسمي من الإعدادات فقط، وفاضي لين يتعيّن (أي سطر بريد يختفي وهو فاضي)
 }
-function legalLine(){ const L=legalInfo(); return `${esc(L.name)} · س.ت ${esc(ar(L.cr))} · الرقم الموحد ${esc(ar(L.uni))} · ${esc(L.city)}`; }
+function legalLine(){ const L=legalInfo(); return _uiEN() ? `${esc(L.name)} · CR ${esc(L.cr)} · Unified no. ${esc(L.uni)} · ${esc(L.city)}` : `${esc(L.name)} · س.ت ${esc(ar(L.cr))} · الرقم الموحد ${esc(ar(L.uni))} · ${esc(L.city)}`; }
 function vatLine(){ const L=legalInfo(); return L.vat&&L.vatNo ? `الرقم الضريبي ${esc(ar(L.vatNo))} · الأسعار شاملة ضريبة القيمة المضافة ${esc(ar(L.vatPct))}%` : 'المنشأة غير مسجّلة في ضريبة القيمة المضافة، والأسعار لا تشمل ضريبة'; }
 /* ضريبة مضمّنة في الإجمالي: قيمتها = الإجمالي − الإجمالي ÷ (1 + النسبة) */
 function vatOf(total){ const L=legalInfo(); if(!(L.vat&&L.vatNo)) return 0; return Math.round((total - total/(1+L.vatPct/100))*100)/100; }
@@ -2214,6 +2257,20 @@ function applyParts(rows){
     label:r.label||'', qty:+r.qty||1, def:!!r.is_default, sort:+r.sort||0, name:r.item_name||'', name_en:r.item_name_en||'', price:+r.price||0, img:r.image_url||'', inStock:r.in_stock!==false }));
   try{ PARTS.forEach(p=>{ if(p.name_en) T_DICT_N[_west(p.name).trim()]=p.name_en; }); }catch(e){}
 }
+/* المشترك (khafet_my_member): القطع بسعر الجملة من khafet_plan_parts؛ الخادم يحسبها كذلك بنفسه في الحجز والفاتورة */
+let MEMBER_PARTS=null, _mpAt=0;
+async function loadMemberParts(){
+  if(!cloudReady||!sb) return;
+  if(Date.now()-_mpAt<60000) return; _mpAt=Date.now();
+  try{
+    const { data:m }=await sb.rpc('khafet_my_member');
+    if(m!==true){ MEMBER_PARTS=null; return; }
+    const { data }=await sb.rpc('khafet_plan_parts');
+    if(Array.isArray(data)){ const mp={}; data.forEach(x=>{ if(+x.wholesale>0) mp[x.id]=+x.wholesale; }); MEMBER_PARTS=mp; try{ if(typeof render==='function') render(); }catch(e){} }
+  }catch(e){}
+}
+function memberPrice(p){ const w=MEMBER_PARTS&&p&&MEMBER_PARTS[p.itemId]; return (w>0&&w<(+p.price||0))?w:(+p.price||0); }
+function isMemberPart(p){ return !!(MEMBER_PARTS&&p&&MEMBER_PARTS[p.itemId]>0&&MEMBER_PARTS[p.itemId]<(+p.price||0)); }
 function partKey(svcId,group){ return svcId+'|'+group; }
 function partLines(){
   if(quickMode||state.subReq) return [];
@@ -2224,7 +2281,7 @@ function partLines(){
     Object.keys(groups).forEach(g=>{
       const opts=groups[g], key=partKey(ci.id,g), st=(state.parts||{})[key]||{};
       const chosen=opts.find(o=>o.itemId===st.itemId)||opts.find(o=>o.def)||opts[0];
-      out.push({ key, svcId:ci.id, group:g, groupName:opts[0].groupName, opts, chosen, qty:Math.max(1, Math.min(99, (chosen.qty||1)*(ci.qty||1) + (+st.adj||0))), price:chosen.price, off:!!st.off });
+      out.push({ key, svcId:ci.id, group:g, groupName:opts[0].groupName, opts, chosen, qty:Math.max(1, Math.min(99, (chosen.qty||1)*(ci.qty||1) + (+st.adj||0))), price:memberPrice(chosen), off:!!st.off });
     });
   });
   return out;
@@ -2254,6 +2311,7 @@ async function loadPrices(){
     const [c, s, p] = await Promise.all([ sb.from('khafet_categories').select('*'), sb.from('khafet_services').select('*'), sb.from('khafet_parts_public').select('*') ]);
     if(!c.error && !s.error && applyCatalog(c.data, s.data)){
       if(!p.error) applyParts(p.data||[]);
+      loadMemberParts();
       applyDeepLink(true);
       try{ localStorage.setItem(CATALOG_KEY, JSON.stringify({c:c.data, s:s.data, p:(!p.error&&p.data)||[], t:Date.now()})); }catch(e){}
       if(['home','prices','pick','services','cart'].includes(view)) render();
@@ -2487,7 +2545,7 @@ function subscribeCloud(){
 }
 
 let view='home';
-try{ if(new URLSearchParams(location.search).has('join')){ { const lg=new URLSearchParams(location.search).get('lang'); location.replace('https://fadiaalzhrani-debug.github.io/khaft-partners/www/join.html'+(lg&&/^[a-z]{2}$/.test(lg)?'?lang='+lg:'')); } } }catch(e){}   /* رابط التسجيل القديم يحوّل لنموذج الانضمام (2026-09-25) */
+try{ if(new URLSearchParams(location.search).has('join')){ { const lg=new URLSearchParams(location.search).get('lang'); location.replace('https://partners.khafet.com/www/join.html'+(lg&&/^[a-z]{2}$/.test(lg)?'?lang='+lg:'')); } } }catch(e){}   /* رابط التسجيل القديم يحوّل لنموذج الانضمام (2026-09-25) */
 /* رابط مباشر من بوت الواتساب: ?s=p1,e1:3 (خدمات بكمياتها) أو ?v=mybookings|complaints */
 let _deepSvc=[], _deepView='';
 try{ const q=new URLSearchParams(location.search);
@@ -3632,20 +3690,47 @@ const PLAN_PARTS=[
   { n:'لمبة ليد 9 وات',       ne:'9W LED bulb',             img:SUPABASE_URL+'/storage/v1/object/public/khafet-parts/plans/bulb.jpg',   reg:8,   sub:3.45 },
   { n:'فيش كهرباء 13 أمبير',  ne:'13A power socket',        img:SUPABASE_URL+'/storage/v1/object/public/khafet-parts/plans/sock.jpg',   reg:19,  sub:7.76 },
 ];
+let PLAN_PARTS_DB=[], _ppLoading=false;
+/* القائمة كاملة من المستودع: سعر الجملة = سعر شرائنا، والعادي = سعر البيع لغير المشتركين */
+async function loadPlanParts(){
+  if(PLAN_PARTS_DB.length||_ppLoading||!sb) return;
+  _ppLoading=true;
+  try{
+    const {data}=await sb.rpc('khafet_plan_parts');
+    if(Array.isArray(data)&&data.length){
+      PLAN_PARTS_DB=data.map(x=>({n:x.name, ne:x.name_en||x.name, img:x.image_url, reg:+x.regular, sub:+x.wholesale, unit:x.unit||'', cat:x.category||''}));
+      const box=document.querySelector('.pw'); if(box){ const E=_uiEN(); box.innerHTML=planPartsBox((a,b)=>E?b:a); }
+    }
+  }catch(e){}
+  _ppLoading=false;
+}
+function planPartsBox(T){
+  const db=PLAN_PARTS_DB.length>0, list=db?PLAN_PARTS_DB:PLAN_PARTS, LIM=6, fx=v=>Number(v).toFixed(2);
+  const row=(x,i)=>{ const pct=x.reg>0?Math.round((x.reg-x.sub)/x.reg*100):0; return `<div class="pw-r${i>=LIM?' more':''}" data-n="${esc((x.n+' '+(x.ne||'')).toLowerCase())}">
+        <span class="pw-img"><img src="${esc(x.img)}" alt="" loading="lazy"></span>
+        <span class="pw-n"><b dir="auto">${esc(T(x.n,x.ne))}</b><small>${T('وفّر','Save')} ${en(pct)}%</small></span>
+        <span class="pw-reg"><s class="num">${fx(x.reg)}</s><small>${T('ر.س','SAR')}</small></span>
+        <span class="pw-sub"><b class="num">${fx(x.sub)}</b><small>${T('ر.س','SAR')}</small></span>
+      </div>`; };
+  return `<div class="pw-head"><b>🏷️ ${T('الأغراض بسعر الجملة','Parts at wholesale price')}</b><small>${T('المشترك يشتري أي قطعة يحتاجها بنفس سعر الجملة اللي نشتري فيه، بدون ربح.','Members buy any part at the same wholesale price we pay, no markup.')}${db?'':' '+T('أمثلة:','Examples:')}</small></div>
+      ${db?`<div class="pw-q"><input type="search" placeholder="${T('ابحث عن قطعة: خلاط، بريكر، محبس','Search parts: mixer, breaker, valve')}" aria-label="${T('بحث','Search')}" oninput="planPartsFilter(this)"></div>`:''}
+      <div class="pw-r pw-th"><span></span><span>${T('المنتج','Product')}</span><span>${T('السعر العادي','Regular')}</span><span>${T('سعر المشترك','Member')}</span></div>
+      ${list.map(row).join('')}
+      ${list.length>LIM?`<button type="button" class="pw-more" onclick="this.closest('.pw').classList.add('all');this.remove()">${T('عرض كل الأغراض ('+en(list.length)+')','Show all parts ('+en(list.length)+')')}</button>`:''}
+      <div class="pw-note">${T('السعر العادي هو سعر البيع لغير المشتركين · التوصيل مجاني للمشتركين.','Regular price is what non-members pay · delivery is free for members.')}</div>`;
+}
+function planPartsFilter(inp){
+  const box=inp.closest('.pw'), q=(inp.value||'').trim().toLowerCase();
+  if(q) box.classList.add('all');
+  box.querySelectorAll('.pw-r:not(.pw-th)').forEach(r=>{ r.style.display=(!q||(r.getAttribute('data-n')||'').indexOf(q)>=0)?'':'none'; });
+}
 function renderPlanSheet(planId){
   const E=_uiEN();
   const T=(ar,en)=>E?en:ar;
   const p=PLANS.find(x=>x.id===planId)||PLANS[0];
   const R=s=>E?(PLAN_EN[s]||s):s;
-  /* جدول مقارنة مرتب: صورة · المنتج · السعر العادي · سعر المشترك */
-  const parts=`<div class="pw-r pw-th"><span></span><span>${T('المنتج','Product')}</span><span>${T('السعر العادي','Regular')}</span><span>${T('سعر المشترك','Member')}</span></div>`
-    +PLAN_PARTS.map(x=>{ const pct=Math.round((x.reg-x.sub)/x.reg*100), fx=v=>Number(v).toFixed(2); return `<div class="pw-r">
-        <span class="pw-img"><img src="${x.img}" alt=""></span>
-        <span class="pw-n"><b dir="auto">${esc(T(x.n,x.ne))}</b><small>${T('وفّر','Save')} ${en(pct)}%</small></span>
-        <span class="pw-reg"><s class="num">${fx(x.reg)}</s><small>${T('ر.س','SAR')}</small></span>
-        <span class="pw-sub"><b class="num">${fx(x.sub)}</b><small>${T('ر.س','SAR')}</small></span>
-      </div>`; }).join('');
-  const rows=p.rows.map(r=>`<div class="ps-row"><div class="ps-f"><b dir="auto">${esc(R(r[0]))}</b>${r[1]?`<small dir="auto">${esc(R(r[1]))}</small>`:''}</div><div class="ps-v" dir="auto">${r[2]==='✓'?'<span class="ps-ok">✓</span>':esc(R(r[2]))}</div></div>`).join('');
+  /* قائمة الأغراض: من المستودع (khafet_plan_parts) ولو ما وصلت بعد تظهر الأمثلة الثلاثة */
+  const rows=p.rows.map(r=>`<div class="ps-row"${r[0]==='الأغراض بسعر الجملة'?' onclick="document.querySelector(\'.pw\').scrollIntoView({behavior:\'smooth\',block:\'start\'})" style="cursor:pointer"':''}><div class="ps-f"><b dir="auto">${esc(R(r[0]))}</b>${r[1]?`<small dir="auto">${esc(R(r[1]))}</small>`:''}</div><div class="ps-v" dir="auto">${r[2]==='✓'?'<span class="ps-ok">✓</span>':esc(R(r[2]))}</div></div>`).join('');
   const calc=p.calc.map(c=>`<div class="ps-cl"><span dir="auto">${esc(R(c[0]))}</span><b class="num">${c[1]}</b></div>`).join('');
   const svc=CT_SVC.map(g=>`<h4>${esc(T(g.t,g.te))}</h4><ul>${g.i.map(x=>`<li><span>${esc(T(x[0],x[2]||x[0]))}</span></li>`).join('')}</ul>`).join('');
   document.getElementById('app').innerHTML=`
@@ -3660,11 +3745,7 @@ function renderPlanSheet(planId){
         <div class="ps-head">${T('وش تحصل في الباقة','What you get in the plan')}</div>
         ${rows}
       </div>
-      <div class="pw">
-        <div class="pw-head"><b>🏷️ ${T('الأغراض بسعر الجملة','Parts at wholesale price')}</b><small>${T('المشترك يشتري أي قطعة يحتاجها بنفس سعر الجملة اللي نشتري فيه، بدون ربح. أمثلة:','Members buy any part at the same wholesale price we pay, no markup. Examples:')}</small></div>
-        ${parts}
-        <div class="pw-note">${T('السعر العادي هو سعر البيع لغير المشتركين · التوصيل مجاني للمشتركين.','Regular price is what non-members pay · delivery is free for members.')}</div>
-      </div>
+      <div class="pw">${planPartsBox(T)}</div>
       <div class="ps-calc">
         <div class="ps-ct">${T('الحسبة ببساطة','The math, simply')}</div>
         <div class="ps-cg">${calc}</div>
@@ -3690,6 +3771,7 @@ function renderPlanSheet(planId){
       <div style="height:24px"></div>
     </div>`;
   window.scrollTo(0,0);
+  loadPlanParts();
 }
 function openSubscribe(planId){
   subPlan=PLANS.find(p=>p.id===planId)||PLANS[0];
@@ -3821,6 +3903,7 @@ async function fetchMySub(){
     if(data && data.found){ _subSrv=data;
       /* لو الخادم يعرف اشتراكاً مدفوعًا وما عندنا محلي · نبنيه (عليه تظهر بطاقة «صيانتي السنوية» في الرئيسية) */
       const paid = data.pay_status==='paid' || data.status==='active';
+      if(paid){ _mpAt=0; loadMemberParts(); }
       if(paid && !mySubLocal()) try{ localStorage.setItem('khafet_mysub', JSON.stringify({id:data.id, plan_id:data.plan_id, plan:data.plan, home_no:data.home_no, ts:Date.now()})); }catch(e){}
       return data; }
   }catch(e){}
@@ -4276,8 +4359,8 @@ async function checkPaymentReturn(){
 
 
 /* ══════════ الشروط والأحكام ══════════ */
-const TERMS_VERSION = '2.0';
-const TERMS_SEC = [{"n":"1","t":"التعريفات","i":["<b>«المزوّد»</b>: مؤسسة خافت للسباكة والكهرباء، سجل تجاري رقم <b>2052105014</b>، الرقم الموحد 7042751284.","<b>«المشترك»</b>: الشخص أو الجهة المسجّلة باسمها العقد والمذكور رقم جوالها عند الاشتراك.","<b>«العقار المشمول»</b>: وحدة سكنية <b>واحدة</b> فقط، بالعنوان المسجّل وقت الاشتراك.","<b>«الباقة»</b>: إحدى باقتي «ريّح بالك» المعلنتين في التطبيق: <b>باقة الشقة</b> (6 زيارات صيانة إضافية بالسنة) أو <b>باقة البيت</b> (8 زيارات صيانة إضافية بالسنة)، وما تتضمنه كل منهما من خدمات دورية بالحدود الواردة في البند الثالث.","<b>«الخدمات المشمولة»</b>: قائمة الـ64 خدمة المنشورة في التطبيق وقت الاشتراك، وهي جزء لا يتجزأ من هذا العقد.","<b>«الزيارة»</b>: حضور الفني إلى العقار المشمول بناءً على طلب واحد لتنفيذ عمل أو أكثر من الخدمات المشمولة، وتُخصم من رصيد الباقة.","<b>«الخدمات الدورية»</b>: الخدمات التي تُنفَّذ مرة واحدة في سنة العقد بحسب الباقة (تنظيف المكيفات، تنظيف مراوح الشفط، فحص أمان المنزل، صيانة السخان، ترويبة الصفاية)، ولا تُخصم من رصيد الزيارات.","<b>«أجرة اليد»</b>: قيمة عمل الفني فقط، دون قطع الغيار أو المواد."]},{"n":"2","t":"مدة العقد وقيمته وسريانه","i":["يبدأ سريان العقد من <b>تاريخ سداد قيمته كاملة</b>، ولمدة <b>سنة ميلادية واحدة</b>.","لا يبدأ السريان بمجرد تقديم الطلب أو الحجز، بل بالسداد فقط.","قيمة الاشتراك هي السعر المعلن في التطبيق للباقة المختارة وقت السداد، <b>شاملاً ضريبة القيمة المضافة</b>؛ وأي خصم ترويجي («خصم الآن») يسري على الاشتراكات المسدَّدة خلال فترة سريان العرض فقط، ولا يمتد تلقائياً إلى التجديد أو إلى اشتراكات لاحقة.","لا يُجدَّد العقد تلقائياً؛ يُرسل للمشترك إشعار قبل انتهائه بـ30 يوماً لتجديده باختياره وبالسعر المعلن وقت التجديد.","الزيارات والخدمات الدورية غير المستخدمة خلال سنة العقد <b>لا تُرحَّل</b> إلى سنة لاحقة، <b>ولا تُسترد</b> قيمتها ولا تُستبدل بمبالغ نقدية أو خدمات أخرى، باستثناء خصم تجديد السخان الوارد في البند الثامن."]},{"n":"3","t":"نطاق التغطية","i":["يغطي العقد <b>أجرة اليد فقط</b> لزيارات الصيانة الإضافية (سباكة · كهرباء · تركيبات) للأعمال البسيطة الواردة في قائمة الخدمات المشمولة، إضافةً إلى الخدمات الدورية المحددة في الباقة.","الأعمال المشمولة هي أعمال إصلاح وتركيب بسيطة لا تتطلب تكسيراً أو تمديدات جديدة أو معدات ثقيلة.","رصيد زيارات الصيانة الإضافية: <b>باقة الشقة 6 زيارات</b> بالسنة، و<b>باقة البيت 8 زيارات</b> بالسنة؛ تُطلب عند الحاجة عبر التطبيق، وتُخصم كل زيارة من الرصيد، ولا تُحتسب الخدمات الدورية منه.","الخدمات الدورية تُنفَّذ <b>مرة واحدة</b> في سنة العقد بمواعيد يُتفق عليها مسبقاً، وهي: تنظيف المكيفات (الوحدة الداخلية والخارجية)، تنظيف مراوح الشفط لدورات المياه، فحص أمان المنزل (اللوحة والتأريض والحماية والأفياش)، الصيانة الوقائية للسخان، وترويبة الصفاية (<b>باقة الشقة فقط</b>).","<b>الحدود القصوى للخدمات الدورية</b> في المرة الواحدة: تنظيف المكيفات حتى <b>8 مكيفات</b> في باقة الشقة و<b>12 مكيفاً</b> في باقة البيت؛ مراوح الشفط حتى <b>5 مراوح</b> في باقة الشقة و<b>6 مراوح</b> في باقة البيت؛ ترويبة صفاية <b>واحدة</b> في باقة الشقة <b>بالمواد القياسية من المزوّد</b>؛ صيانة السخان <b>لسخان واحد</b>. وما زاد على هذه الحدود أو طُلب بمواد خاصة يُحتسب بأجرة منفصلة وفق قائمة الأسعار المعتمدة.","يقتصر تنظيف المكيفات على <b>مكيفات السبليت فقط</b> سهلة الوصول؛ ولا يشمل المكيفات الشباك أو المركزية أو الوحدات التي يتطلب الوصول إليها رافعات أو سقالات أو فك تمديدات.","بعد استنفاد رصيد الزيارات أو الخدمات الدورية، تُقدَّم أي خدمة إضافية للمشترك بأجرة مستقلة وفق قائمة الأسعار المعتمدة وقت الطلب."]},{"n":"4","t":"الاستثناءات · ما لا يشمله العقد","i":["<b>قطع الغيار والمواد بجميع أنواعها</b> · تُحتسب على المشترك وفق البند الثامن، عدا ما نُصّ صراحةً على شموله (مواد ترويبة الصفاية القياسية في باقة الشقة).","أي عمل يتطلب <b>تكسيراً أو ترميماً أو تمديدات جديدة</b> أو تغيير مسارات المواسير والأسلاك.","الأعمال الإنشائية، العزل، الأسطح، الخزانات الأرضية، وشبكات الصرف الرئيسية خارج حدود العقار.","صيانة أو إصلاح <b>المكيفات</b> (العقد يشمل التنظيف فقط)، والسخان فيما يتجاوز الصيانة الوقائية السنوية لسخان واحد.","<b>كل ما لم يرد صراحةً</b> في قائمة الخدمات المشمولة من أجهزة أو أنظمة أو أعمال.","الأعطال الناتجة عن: سوء الاستخدام، الإهمال، العبث، أعمال طرف آخر غير المزوّد، ارتفاع الجهد، انقطاع أو رداءة الخدمات العامة.","الأضرار الناتجة عن <b>القوة القاهرة</b>: الأمطار والسيول والحرائق والزلازل والحوادث والقرارات الحكومية.","الأعطال <b>القائمة قبل بدء العقد</b> أو الناتجة عن عيوب إنشائية بالعقار.","الاستخدام <b>التجاري</b> للعقار أو تأجيره المفروش قصير المدى، ما لم يُتفق على ذلك كتابةً."]},{"n":"5","t":"الاستخدام العادل للزيارات (مهم)","i":["رصيد الزيارات في كل باقة <b>محدد العدد</b> (6 للشقة · 8 للفيلا) ومخصص للأعطال <b>الطبيعية</b> للعقار المشمول، ولا يجوز استخدامه لأعمال غير مشمولة أو لعقار آخر.","الزيارة الواحدة تقابل <b>طلباً واحداً</b>؛ وتُجمع الطلبات المتعددة في العقار الواحد بزيارة واحدة كلما أمكن فنياً، وتُخصم زيارة واحدة فقط.","إذا تعذّر إتمام العمل في الزيارة لسبب يعود إلى المزوّد (كعدم توفر قطعة لديه)، فلا تُحتسب زيارة العودة لإكمال العمل من الرصيد.","يحق للمزوّد الاعتراض كتابةً على الاستخدام المخالف لطبيعة العقد أو المتكرر بشكل غير طبيعي، ومنح المشترك مهلة 15 يوماً لتصحيح الاستخدام قبل إيقاف الخدمة.","العقد <b>شخصي</b> ويقتصر على العقار المسجّل؛ ولا يجوز استخدامه لعقار آخر أو لطرف ثالث."]},{"n":"6","t":"المواعيد والاستجابة","i":["الحجز يتم عبر تطبيق خافِت. تُبذل العناية لتقديم الخدمة خلال المدة المعلنة في الباقة.","المواعيد المعلنة <b>أهداف خدمة</b> يلتزم المزوّد ببذل عناية معقولة لتحقيقها، وليست ضماناً مطلقاً، ولا يترتب على تجاوزها تعويض.","يُعذر التأخير الناتج عن الظروف الجوية، ازدحام الطلبات، تعذّر الوصول، أو أي سبب خارج إرادة المزوّد.","إلغاء الموعد أو تعذّر الدخول بعد وصول الفني دون إشعار قبل 3 ساعات يُحتسب <b>زيارة مستهلكة</b> من رصيد الباقة."]},{"n":"7","t":"التزامات المشترك","i":["تمكين الفني من الوصول الآمن للموقع، ووجود شخص بالغ طوال مدة العمل.","توفير الكهرباء والماء وإخلاء محيط العمل من الأثاث والمقتنيات الثمينة.","الإفصاح عن أي عطل سابق أو إصلاح سابق يخص موضوع الطلب.","سداد قيمة قطع الغيار عند التركيب.","معاملة الفنيين باحترام؛ وأي إساءة لفظية أو جسدية تُنهي العقد فوراً دون استرداد."]},{"n":"8","t":"توريد قطع الغيار · حصري للمزوّد","i":["يلتزم المزوّد بتوفير جميع قطع الغيار والمواد اللازمة لتنفيذ الأعمال المشمولة، وهو <b>الجهة الوحيدة المخوّلة</b> بتوريدها وتركيبها ضمن هذا العقد.","توريد القطع من المزوّد <b>شرط أساسي</b> لسريان العقد وضماناته، وقد رُوعي ذلك عند تحديد قيمة الاشتراك.","تُحتسب قيمة القطع على المشترك وفق <b>قائمة أسعار المزوّد المعتمدة</b> السارية وقت التنفيذ، وتُدرج في فاتورة مستقلة.","<b>لا يجوز</b> للمشترك توريد قطع من خارج المزوّد، ولا مطالبة الفني بتركيب قطع لم يوردها المزوّد.","إذا أصرّ المشترك على تركيب قطعة من خارج المزوّد: يُنفَّذ العمل على <b>مسؤوليته الكاملة</b>، ويسقط الضمان عن العمل والقطعة معاً، وتُحتسب أجرة يد كاملة خارج نطاق العقد.","تشمل باقتا «ريّح بالك» <b>الصيانة الوقائية لسخان واحد مرة بالسنة</b> (أجرة اليد فقط، دون قطع الغيار التي تُحتسب وفق قائمة الأسعار)؛ وإذا لم يستخدم المشترك خدمة صيانة السخان خلال سنة العقد كاملة، يحصل عند التجديد على خصم قدره <b>250 ريالاً</b> من قيمة اشتراك السنة التالية.","ضمان القطع الموردة من المزوّد: <b>سنتان</b> ضد عيوب الصناعة فقط، ولا يشمل الكسر أو سوء الاستخدام أو التآكل الطبيعي.","جميع الأسعار المعلنة · قيمة الباقات وقطع الغيار وأجور الزيارات الفردية · <b>شاملة ضريبة القيمة المضافة</b>.","<b>توصيل</b> قطع الغيار والأغراض التي يوردها المزوّد إلى العقار المشمول <b>مجاني</b> للمشترك ضمن نطاق التغطية الجغرافي."]},{"n":"9","t":"ضمان الإصلاح · 30 يوماً","i":["يضمن المزوّد أعمال اليد (الإصلاح) لمدة <b>30 يوماً</b> من تاريخ التنفيذ، وضمن مدة سريان العقد؛ ويُعاد تنفيذ العمل المشمول بالضمان دون مقابل ودون خصم زيارة من الرصيد.","ضمان قطع الغيار الموردة من المزوّد <b>سنتان</b> وفق البند الثامن، وهو مستقل عن ضمان الإصلاح.","يسقط الضمان إذا: عبث بالإصلاح طرف آخر · تغيّرت ظروف التشغيل · نتج العطل عن سبب مختلف · استُخدمت قطعة من خارج المزوّد.","الضمان يقتصر على <b>إعادة التنفيذ</b> دون مقابل، ولا يشمل تعويضاً نقدياً."]},{"n":"10","t":"حدود المسؤولية","i":["مسؤولية المزوّد تقتصر على الأضرار <b>المباشرة</b> الناتجة عن خطأ جسيم مثبت من فنييه.","<b>الحد الأقصى للتعويض في جميع الأحوال = قيمة العقد المدفوعة</b>، مهما تعددت الحوادث خلال السنة.","لا يتحمّل المزوّد أي مسؤولية عن: الأضرار غير المباشرة أو التبعية، فوات المنفعة، فقد الأرباح، تلف المقتنيات غير المعلن عنها، أو الأعطال المترتبة على عيوب سابقة بالعقار.","لا يتحمّل المزوّد مسؤولية أي عمل نفّذه طرف آخر بناءً على توصيته أو ترشيحه."]},{"n":"11","t":"الإلغاء والاسترداد","i":["يحق للمشترك الإلغاء خلال <b>7 أيام</b> من السداد وقبل تنفيذ أي زيارة، ويُسترد المبلغ كاملاً بعد خصم رسوم التحويل البنكي.","بعد تنفيذ أول زيارة: يُحتسب المستحق على أساس <b>قيمة الخدمات المنفّذة بأسعار الأفراد المعلنة</b> ويُسترد الفارق إن وُجد، ولا يُسترد شيء إذا تجاوزت قيمتها قيمة العقد.","لا استرداد بعد مضي 30 يوماً من بدء العقد.","يحق للمزوّد إنهاء العقد فوراً ودون استرداد في حال: التلاعب أو تقديم بيانات غير صحيحة، استخدام العقد لعقار غير مسجّل، الإساءة للفنيين، أو مخالفة بند الاستخدام العادل بعد الإنذار."]},{"n":"12","t":"نقل العقد","i":["يجوز نقل العقد للمستأجر الجديد <b>لنفس العقار</b> دون رسوم، بإشعار المزوّد وتحديث بيانات التواصل؛ ويستمر العقد للمدة المتبقية وبالرصيد المتبقي من الزيارات والخدمات الدورية.","لا يجوز نقل العقد <b>لعقار آخر</b> إلا بموافقة المزوّد الكتابية وضمن نطاق التغطية الجغرافي.","نطاق التغطية: <b>الخبر · الظهران · الدمام</b> · وأي موقع خارجه قد يستوجب رسوم انتقال إضافية أو رفض الطلب."]},{"n":"13","t":"البيانات والخصوصية","i":["يوافق المشترك على معالجة بياناته (الاسم، الجوال، العنوان، سجل الطلبات) لأغراض تنفيذ العقد وفق نظام حماية البيانات الشخصية بالمملكة.","قد يُصوَّر موقع العمل قبل وبعد التنفيذ لأغراض التوثيق والضمان فقط."]},{"n":"14","t":"تعديل الشروط","i":["يحق للمزوّد تعديل هذه الشروط للعقود <b>الجديدة</b> في أي وقت.","العقود السارية تبقى خاضعة للشروط المتفق عليها وقت الاشتراك حتى انتهاء مدتها."]},{"n":"15","t":"الأنظمة والاختصاص","i":["يخضع هذا العقد لأنظمة المملكة العربية السعودية.","يُسعى لتسوية أي خلاف ودياً خلال 30 يوماً، وإلا فالاختصاص <b>للمحاكم المختصة بالمنطقة الشرقية</b>.","النسخة العربية من هذه الشروط هي المعتمدة عند أي اختلاف في الترجمة."]}];
+const TERMS_VERSION = '2.1';   // 2.1: القطع للمشترك بسعر الجملة (2026-09-28)
+const TERMS_SEC = [{"n":"1","t":"التعريفات","i":["<b>«المزوّد»</b>: مؤسسة خافت للسباكة والكهرباء، سجل تجاري رقم <b>2052105014</b>، الرقم الموحد 7042751284.","<b>«المشترك»</b>: الشخص أو الجهة المسجّلة باسمها العقد والمذكور رقم جوالها عند الاشتراك.","<b>«العقار المشمول»</b>: وحدة سكنية <b>واحدة</b> فقط، بالعنوان المسجّل وقت الاشتراك.","<b>«الباقة»</b>: إحدى باقتي «ريّح بالك» المعلنتين في التطبيق: <b>باقة الشقة</b> (6 زيارات صيانة إضافية بالسنة) أو <b>باقة البيت</b> (8 زيارات صيانة إضافية بالسنة)، وما تتضمنه كل منهما من خدمات دورية بالحدود الواردة في البند الثالث.","<b>«الخدمات المشمولة»</b>: قائمة الـ64 خدمة المنشورة في التطبيق وقت الاشتراك، وهي جزء لا يتجزأ من هذا العقد.","<b>«الزيارة»</b>: حضور الفني إلى العقار المشمول بناءً على طلب واحد لتنفيذ عمل أو أكثر من الخدمات المشمولة، وتُخصم من رصيد الباقة.","<b>«الخدمات الدورية»</b>: الخدمات التي تُنفَّذ مرة واحدة في سنة العقد بحسب الباقة (تنظيف المكيفات، تنظيف مراوح الشفط، فحص أمان المنزل، صيانة السخان، ترويبة الصفاية)، ولا تُخصم من رصيد الزيارات.","<b>«أجرة اليد»</b>: قيمة عمل الفني فقط، دون قطع الغيار أو المواد."]},{"n":"2","t":"مدة العقد وقيمته وسريانه","i":["يبدأ سريان العقد من <b>تاريخ سداد قيمته كاملة</b>، ولمدة <b>سنة ميلادية واحدة</b>.","لا يبدأ السريان بمجرد تقديم الطلب أو الحجز، بل بالسداد فقط.","قيمة الاشتراك هي السعر المعلن في التطبيق للباقة المختارة وقت السداد، <b>شاملاً ضريبة القيمة المضافة</b>؛ وأي خصم ترويجي («خصم الآن») يسري على الاشتراكات المسدَّدة خلال فترة سريان العرض فقط، ولا يمتد تلقائياً إلى التجديد أو إلى اشتراكات لاحقة.","لا يُجدَّد العقد تلقائياً؛ يُرسل للمشترك إشعار قبل انتهائه بـ30 يوماً لتجديده باختياره وبالسعر المعلن وقت التجديد.","الزيارات والخدمات الدورية غير المستخدمة خلال سنة العقد <b>لا تُرحَّل</b> إلى سنة لاحقة، <b>ولا تُسترد</b> قيمتها ولا تُستبدل بمبالغ نقدية أو خدمات أخرى، باستثناء خصم تجديد السخان الوارد في البند الثامن."]},{"n":"3","t":"نطاق التغطية","i":["يغطي العقد <b>أجرة اليد فقط</b> لزيارات الصيانة الإضافية (سباكة · كهرباء · تركيبات) للأعمال البسيطة الواردة في قائمة الخدمات المشمولة، إضافةً إلى الخدمات الدورية المحددة في الباقة.","الأعمال المشمولة هي أعمال إصلاح وتركيب بسيطة لا تتطلب تكسيراً أو تمديدات جديدة أو معدات ثقيلة.","رصيد زيارات الصيانة الإضافية: <b>باقة الشقة 6 زيارات</b> بالسنة، و<b>باقة البيت 8 زيارات</b> بالسنة؛ تُطلب عند الحاجة عبر التطبيق، وتُخصم كل زيارة من الرصيد، ولا تُحتسب الخدمات الدورية منه.","الخدمات الدورية تُنفَّذ <b>مرة واحدة</b> في سنة العقد بمواعيد يُتفق عليها مسبقاً، وهي: تنظيف المكيفات (الوحدة الداخلية والخارجية)، تنظيف مراوح الشفط لدورات المياه، فحص أمان المنزل (اللوحة والتأريض والحماية والأفياش)، الصيانة الوقائية للسخان، وترويبة الصفاية (<b>باقة الشقة فقط</b>).","<b>الحدود القصوى للخدمات الدورية</b> في المرة الواحدة: تنظيف المكيفات حتى <b>8 مكيفات</b> في باقة الشقة و<b>12 مكيفاً</b> في باقة البيت؛ مراوح الشفط حتى <b>5 مراوح</b> في باقة الشقة و<b>6 مراوح</b> في باقة البيت؛ ترويبة صفاية <b>واحدة</b> في باقة الشقة <b>بالمواد القياسية من المزوّد</b>؛ صيانة السخان <b>لسخان واحد</b>. وما زاد على هذه الحدود أو طُلب بمواد خاصة يُحتسب بأجرة منفصلة وفق قائمة الأسعار المعتمدة.","يقتصر تنظيف المكيفات على <b>مكيفات السبليت فقط</b> سهلة الوصول؛ ولا يشمل المكيفات الشباك أو المركزية أو الوحدات التي يتطلب الوصول إليها رافعات أو سقالات أو فك تمديدات.","بعد استنفاد رصيد الزيارات أو الخدمات الدورية، تُقدَّم أي خدمة إضافية للمشترك بأجرة مستقلة وفق قائمة الأسعار المعتمدة وقت الطلب."]},{"n":"4","t":"الاستثناءات · ما لا يشمله العقد","i":["<b>قطع الغيار والمواد بجميع أنواعها</b> · تُحتسب على المشترك وفق البند الثامن، عدا ما نُصّ صراحةً على شموله (مواد ترويبة الصفاية القياسية في باقة الشقة).","أي عمل يتطلب <b>تكسيراً أو ترميماً أو تمديدات جديدة</b> أو تغيير مسارات المواسير والأسلاك.","الأعمال الإنشائية، العزل، الأسطح، الخزانات الأرضية، وشبكات الصرف الرئيسية خارج حدود العقار.","صيانة أو إصلاح <b>المكيفات</b> (العقد يشمل التنظيف فقط)، والسخان فيما يتجاوز الصيانة الوقائية السنوية لسخان واحد.","<b>كل ما لم يرد صراحةً</b> في قائمة الخدمات المشمولة من أجهزة أو أنظمة أو أعمال.","الأعطال الناتجة عن: سوء الاستخدام، الإهمال، العبث، أعمال طرف آخر غير المزوّد، ارتفاع الجهد، انقطاع أو رداءة الخدمات العامة.","الأضرار الناتجة عن <b>القوة القاهرة</b>: الأمطار والسيول والحرائق والزلازل والحوادث والقرارات الحكومية.","الأعطال <b>القائمة قبل بدء العقد</b> أو الناتجة عن عيوب إنشائية بالعقار.","الاستخدام <b>التجاري</b> للعقار أو تأجيره المفروش قصير المدى، ما لم يُتفق على ذلك كتابةً."]},{"n":"5","t":"الاستخدام العادل للزيارات (مهم)","i":["رصيد الزيارات في كل باقة <b>محدد العدد</b> (6 للشقة · 8 للفيلا) ومخصص للأعطال <b>الطبيعية</b> للعقار المشمول، ولا يجوز استخدامه لأعمال غير مشمولة أو لعقار آخر.","الزيارة الواحدة تقابل <b>طلباً واحداً</b>؛ وتُجمع الطلبات المتعددة في العقار الواحد بزيارة واحدة كلما أمكن فنياً، وتُخصم زيارة واحدة فقط.","إذا تعذّر إتمام العمل في الزيارة لسبب يعود إلى المزوّد (كعدم توفر قطعة لديه)، فلا تُحتسب زيارة العودة لإكمال العمل من الرصيد.","يحق للمزوّد الاعتراض كتابةً على الاستخدام المخالف لطبيعة العقد أو المتكرر بشكل غير طبيعي، ومنح المشترك مهلة 15 يوماً لتصحيح الاستخدام قبل إيقاف الخدمة.","العقد <b>شخصي</b> ويقتصر على العقار المسجّل؛ ولا يجوز استخدامه لعقار آخر أو لطرف ثالث."]},{"n":"6","t":"المواعيد والاستجابة","i":["الحجز يتم عبر تطبيق خافِت. تُبذل العناية لتقديم الخدمة خلال المدة المعلنة في الباقة.","المواعيد المعلنة <b>أهداف خدمة</b> يلتزم المزوّد ببذل عناية معقولة لتحقيقها، وليست ضماناً مطلقاً، ولا يترتب على تجاوزها تعويض.","يُعذر التأخير الناتج عن الظروف الجوية، ازدحام الطلبات، تعذّر الوصول، أو أي سبب خارج إرادة المزوّد.","إلغاء الموعد أو تعذّر الدخول بعد وصول الفني دون إشعار قبل 3 ساعات يُحتسب <b>زيارة مستهلكة</b> من رصيد الباقة."]},{"n":"7","t":"التزامات المشترك","i":["تمكين الفني من الوصول الآمن للموقع، ووجود شخص بالغ طوال مدة العمل.","توفير الكهرباء والماء وإخلاء محيط العمل من الأثاث والمقتنيات الثمينة.","الإفصاح عن أي عطل سابق أو إصلاح سابق يخص موضوع الطلب.","سداد قيمة قطع الغيار عند التركيب.","معاملة الفنيين باحترام؛ وأي إساءة لفظية أو جسدية تُنهي العقد فوراً دون استرداد."]},{"n":"8","t":"توريد قطع الغيار · حصري للمزوّد","i":["يلتزم المزوّد بتوفير جميع قطع الغيار والمواد اللازمة لتنفيذ الأعمال المشمولة، وهو <b>الجهة الوحيدة المخوّلة</b> بتوريدها وتركيبها ضمن هذا العقد.","توريد القطع من المزوّد <b>شرط أساسي</b> لسريان العقد وضماناته، وقد رُوعي ذلك عند تحديد قيمة الاشتراك.","تُحتسب قيمة القطع على المشترك <b>بسعر الجملة</b>، وهو سعر شراء المزوّد المعلن في التطبيق وقت التنفيذ دون هامش ربح، وذلك للقطع التي يورّدها ويركّبها فني المزوّد في العقار المشمول؛ وتُدرج في فاتورة مستقلة.","<b>لا يجوز</b> للمشترك توريد قطع من خارج المزوّد، ولا مطالبة الفني بتركيب قطع لم يوردها المزوّد.","إذا أصرّ المشترك على تركيب قطعة من خارج المزوّد: يُنفَّذ العمل على <b>مسؤوليته الكاملة</b>، ويسقط الضمان عن العمل والقطعة معاً، وتُحتسب أجرة يد كاملة خارج نطاق العقد.","تشمل باقتا «ريّح بالك» <b>الصيانة الوقائية لسخان واحد مرة بالسنة</b> (أجرة اليد فقط، دون قطع الغيار التي تُحتسب وفق قائمة الأسعار)؛ وإذا لم يستخدم المشترك خدمة صيانة السخان خلال سنة العقد كاملة، يحصل عند التجديد على خصم قدره <b>250 ريالاً</b> من قيمة اشتراك السنة التالية.","ضمان القطع الموردة من المزوّد: <b>سنتان</b> ضد عيوب الصناعة فقط، ولا يشمل الكسر أو سوء الاستخدام أو التآكل الطبيعي.","جميع الأسعار المعلنة · قيمة الباقات وقطع الغيار وأجور الزيارات الفردية · <b>شاملة ضريبة القيمة المضافة</b>.","<b>توصيل</b> قطع الغيار والأغراض التي يوردها المزوّد إلى العقار المشمول <b>مجاني</b> للمشترك ضمن نطاق التغطية الجغرافي."]},{"n":"9","t":"ضمان الإصلاح · 30 يوماً","i":["يضمن المزوّد أعمال اليد (الإصلاح) لمدة <b>30 يوماً</b> من تاريخ التنفيذ، وضمن مدة سريان العقد؛ ويُعاد تنفيذ العمل المشمول بالضمان دون مقابل ودون خصم زيارة من الرصيد.","ضمان قطع الغيار الموردة من المزوّد <b>سنتان</b> وفق البند الثامن، وهو مستقل عن ضمان الإصلاح.","يسقط الضمان إذا: عبث بالإصلاح طرف آخر · تغيّرت ظروف التشغيل · نتج العطل عن سبب مختلف · استُخدمت قطعة من خارج المزوّد.","الضمان يقتصر على <b>إعادة التنفيذ</b> دون مقابل، ولا يشمل تعويضاً نقدياً."]},{"n":"10","t":"حدود المسؤولية","i":["مسؤولية المزوّد تقتصر على الأضرار <b>المباشرة</b> الناتجة عن خطأ جسيم مثبت من فنييه.","<b>الحد الأقصى للتعويض في جميع الأحوال = قيمة العقد المدفوعة</b>، مهما تعددت الحوادث خلال السنة.","لا يتحمّل المزوّد أي مسؤولية عن: الأضرار غير المباشرة أو التبعية، فوات المنفعة، فقد الأرباح، تلف المقتنيات غير المعلن عنها، أو الأعطال المترتبة على عيوب سابقة بالعقار.","لا يتحمّل المزوّد مسؤولية أي عمل نفّذه طرف آخر بناءً على توصيته أو ترشيحه."]},{"n":"11","t":"الإلغاء والاسترداد","i":["يحق للمشترك الإلغاء خلال <b>7 أيام</b> من السداد وقبل تنفيذ أي زيارة، ويُسترد المبلغ كاملاً بعد خصم رسوم التحويل البنكي.","بعد تنفيذ أول زيارة: يُحتسب المستحق على أساس <b>قيمة الخدمات المنفّذة بأسعار الأفراد المعلنة</b> ويُسترد الفارق إن وُجد، ولا يُسترد شيء إذا تجاوزت قيمتها قيمة العقد.","لا استرداد بعد مضي 30 يوماً من بدء العقد.","يحق للمزوّد إنهاء العقد فوراً ودون استرداد في حال: التلاعب أو تقديم بيانات غير صحيحة، استخدام العقد لعقار غير مسجّل، الإساءة للفنيين، أو مخالفة بند الاستخدام العادل بعد الإنذار."]},{"n":"12","t":"نقل العقد","i":["يجوز نقل العقد للمستأجر الجديد <b>لنفس العقار</b> دون رسوم، بإشعار المزوّد وتحديث بيانات التواصل؛ ويستمر العقد للمدة المتبقية وبالرصيد المتبقي من الزيارات والخدمات الدورية.","لا يجوز نقل العقد <b>لعقار آخر</b> إلا بموافقة المزوّد الكتابية وضمن نطاق التغطية الجغرافي.","نطاق التغطية: <b>الخبر · الظهران · الدمام</b> · وأي موقع خارجه قد يستوجب رسوم انتقال إضافية أو رفض الطلب."]},{"n":"13","t":"البيانات والخصوصية","i":["يوافق المشترك على معالجة بياناته (الاسم، الجوال، العنوان، سجل الطلبات) لأغراض تنفيذ العقد وفق نظام حماية البيانات الشخصية بالمملكة.","قد يُصوَّر موقع العمل قبل وبعد التنفيذ لأغراض التوثيق والضمان فقط."]},{"n":"14","t":"تعديل الشروط","i":["يحق للمزوّد تعديل هذه الشروط للعقود <b>الجديدة</b> في أي وقت.","العقود السارية تبقى خاضعة للشروط المتفق عليها وقت الاشتراك حتى انتهاء مدتها."]},{"n":"15","t":"الأنظمة والاختصاص","i":["يخضع هذا العقد لأنظمة المملكة العربية السعودية.","يُسعى لتسوية أي خلاف ودياً خلال 30 يوماً، وإلا فالاختصاص <b>للمحاكم المختصة بالمنطقة الشرقية</b>.","النسخة العربية من هذه الشروط هي المعتمدة عند أي اختلاف في الترجمة."]}];
 let termsOK = false;
 
 function termsHtml(){
@@ -5034,7 +5117,7 @@ async function verifyJoinOtp(){
             <h2>${already?'رقمك مسجّل مزوّداً من قبل':'تم تفعيل حسابك فوراً!'}</h2>
             <p style="color:var(--muted);margin-top:10px;line-height:1.9">${already?'ادخل بوابة المزوّدين بجوالك وكلمة مرورك مباشرة.':'حسابك جاهز، افتح بوابة المزوّدين وادخل بجوالك وكلمة المرور وابدأ استقبال طلبات مدنك.'}</p>
           </div>
-          <a class="cta" style="margin-top:16px;display:block;text-align:center;text-decoration:none" onclick="openExternal('https://fadiaalzhrani-debug.github.io/khaft-partners/www/provider.html')">🤝 افتح بوابة المزوّدين</a>
+          <a class="cta" style="margin-top:16px;display:block;text-align:center;text-decoration:none" onclick="openExternal('https://partners.khafet.com/login/')">🤝 افتح بوابة المزوّدين</a>
           <button class="cta gold" style="margin-top:10px" onclick="go('home')">العودة للرئيسية</button>
         </div>
       </div>`;
@@ -5414,7 +5497,7 @@ function receiptHtml(priceTxt, d){
   }).join('');
   const partRows=parts.map(l=> l.off
     ? line('🔩', esc(l.groupName), 1, money(0), 'off', `<button type="button" class="iv-add" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,false)">＋ ${LX('ضيفها','Add it')}</button>`, (l.chosen||l.opts[0]||{}).img)
-    : line('🔩', esc(partName(l.chosen)), 1, money(l.price*l.qty), '', `<button type="button" class="iv-x" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,true)" aria-label="${LX('شيل القطعة','Remove part')}">×</button>`
+    : line('🔩', esc(partName(l.chosen))+(isMemberPart(l.chosen)?' <span class="pill price">'+LX('سعر الجملة','Wholesale')+'</span>':''), 1, money(l.price*l.qty), '', `<button type="button" class="iv-x" data-key="${esc(l.key)}" onclick="togglePart(this.dataset.key,true)" aria-label="${LX('شيل القطعة','Remove part')}">×</button>`
         +`<div class="iv-qtyrow"><span class="iv-qlbl">${LX('الكمية','Quantity')}</span><span class="srow-qty sm"><button type="button" data-key="${esc(l.key)}" onclick="setPartQty(this.dataset.key,-1)" aria-label="${LX('أقل','Less')}">−</button><b>${ar(l.qty)}</b><button type="button" data-key="${esc(l.key)}" onclick="setPartQty(this.dataset.key,1)" aria-label="${LX('أكثر','More')}">+</button></span></div>`
         +(l.opts.length>1?`<div class="iv-opts">${l.opts.map(o=>`<button type="button" class="${o.itemId===l.chosen.itemId?'on':''}" data-key="${esc(l.key)}" data-item="${esc(o.itemId)}" onclick="choosePart(this.dataset.key,this.dataset.item)">${esc(o.label||partName(o))}</button>`).join('')}</div>`:''), l.chosen.img)).join('');
   const disc=(ico,name,amt)=>`<div class="iv-row disc"><span class="iv-ic">${ico}</span><span class="iv-n">${name}</span><b class="iv-p">− ${money(amt)}</b></div>`;
@@ -5949,7 +6032,7 @@ function renderMyBookings(){
             : '')):''}
         ${o.status==='cancelled'&&o.rejectReason?(/الدفع/.test(o.rejectReason)?`<div class="reject-note"><span class="rj-ic">⏳</span><div class="rj-t"><b>${LX('انلغى الطلب لأن الدفع ما اكتمل','The order was cancelled because payment was not completed')}</b></div></div>`:`<div class="reject-note"><span class="rj-ic">❌</span><div class="rj-t"><b>${LX('نعتذر، ما قدرنا ننفذ طلبك','Sorry, we could not complete your order')}</b>${/refund/.test(o.payStatus||'')?`<span>${LX('المبلغ المدفوع يرجع لك كامل','Your payment is being fully refunded')}</span>`:''}</div></div>`):''}
         ${arrivedNow&&o.status!=='done'&&o.status!=='cancelled'?`<div class="arrived-note">🚪 <span><b>الفني وصل الموقع</b> · نرجو التكرّم باستقباله.</span></div>`:''}
-        ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>الفني متأخّر قليلاً</b><span>موعدك المتوقّع صار حوالي ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
+        ${delay>0?`<div class="delay-note"><span class="dn-ic">⏰</span><div class="dn-t"><b>${LX('الفني متأخّر قليلاً','Technician is slightly late')}</b><span>${LX('موعدك المتوقّع صار حوالي','Your visit is now expected around')} ${windowLabel(o.startMin+delay)}</span></div></div>`:''}
         ${earlier?`<div class="advance-note">
           <span class="an-ic">🎉</span>
           <div class="an-t"><b>صار فيه موعد أبكر متاح!</b><span>${dayLabel(earlier.date)} · ${windowLabel(earlier.time)} · بدل موعدك الحالي</span></div>
@@ -5974,7 +6057,8 @@ function renderMyBookings(){
         ${canCancel?(lateCancel
           ? `<div class="late-note"><span>⏰</span><div><b>باقي أقل من ${ar(cancelHours())} ساعات على الموعد</b>للإلغاء أو تغيير الموعد الحين تواصل معنا مباشرة.<div class="oact" style="margin-top:8px"><a class="sbtn" href="tel:${esc(PHONE)}">📞 اتصال</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 واتساب</a></div></div></div>`
           : `<div class="oact"><button class="sbtn" onclick="openReschedule('${oref}')">📅 تغيير الموعد</button><button class="sbtn danger" onclick="cancelOrder('${oref}')">إلغاء الطلب</button></div>`):''}
-        ${canReorder?`<div class="oact"><button class="sbtn ok" onclick="reorder('${oref}')">🔁 اطلب مرة ثانية</button></div>`:''}
+        ${o.status==='progress'?`<div class="oact"><a class="sbtn" href="tel:${esc(PHONE)}">📞 ${LX('اتصال','Call')}</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 ${LX('واتساب','WhatsApp')}</a></div>`:''}
+        ${canReorder?`<div class="oact"><button class="sbtn ok" onclick="reorder('${oref}')">🔁 ${LX('اطلب مرة ثانية','Order again')}</button></div>`:''}
       </div>`;
     }).join('');
   }
@@ -6252,88 +6336,181 @@ function invSums(o){ const inv=o.invoice||{items:[]}; const r2=v=>Math.round((+v
     disc=(lines&&pct>0)?Math.max(0,r2(sub-total)):0;
   }
   return {sub,total,disc,pct,orgDisc,adj,paid,due:Math.max(0,+o.amountDue||0),refund,lines}; }
-/* أسطر ما قبل الإجمالي: المجموع ثم الخصومات والتسوية (من الخادم)، فقط لو الأسطر معروضة بأسعارها وفيه فرق عن الإجمالي */
-function invSumRows(s, cls){ if(!s.lines) return ''; const g=cls||'g';
-  const hasAdj=Math.abs(s.adj)>=0.01;
-  if(!(s.disc>0||s.orgDisc>0||hasAdj)) return '';
-  return `<div><span>المجموع</span><span>${money(s.sub)}</span></div>`
-    +(s.disc>0?`<div class="${g}"><span>🎟️ خصم ${ar(s.pct)}%</span><span>− ${money(s.disc)}</span></div>`:'')
-    +(s.orgDisc>0?`<div class="${g}"><span>🎁 خصم المؤسسة</span><span>− ${money(s.orgDisc)}</span></div>`:'')
-    +(s.adj<=-0.01?`<div class="${g}"><span>🎟️ خصومات وتسويات</span><span>− ${money(-s.adj)}</span></div>`:'')
-    +(s.adj>=0.01?`<div><span>فرق القطع والتسويات</span><span>+ ${money(s.adj)}</span></div>`:''); }
+/* صورة بند الفاتورة: صورة الخدمة من الكتالوج أو صورة القطعة، وإلا الإيموجي (تصميم الفاتورة الجديد 2026-09-29) */
+function invMedia(it, kind){
+  if(kind==='fee') return {img:'', ico:it.id==='smallfee'?'🧾':'🚚'};
+  if(kind==='part'){ const pp=it.stockId?(PARTS||[]).find(p=>String(p.itemId)===String(it.stockId)):null; return {img:safeUrl(it.img||'','')||safeUrl((pp&&pp.img)||'',''), ico:it.id==='part'?'🔧':'🔩', part:true}; }
+  const s=SERVICES.find(x=>x.id===it.id); return {img:safeUrl((s&&s.img)||'',''), ico:(s&&s.ico)||(it.id==='custom'?'📝':'🔧')}; }
+/* أسطر ما قبل الإجمالي: المجموع ثم الخصومات والتسوية (من الخادم)، فقط لو الأسطر معروضة بأسعارها وفيه فرق عن الإجمالي
+   invSumArr قائمة (للفاتورة المطبوعة) · invSumRows يبنيها HTML لبطاقة الطلب بنفس الشروط */
+function invSumArr(s, fmt){ const f=fmt||money; if(!s.lines) return []; const hasAdj=Math.abs(s.adj)>=0.01; if(!(s.disc>0||s.orgDisc>0||hasAdj)) return [];
+  return [{label:'المجموع',value:f(s.sub)}, s.disc>0&&{label:'🎟️ خصم '+ar(s.pct)+'%',value:'− '+f(s.disc),cls:'g'}, s.orgDisc>0&&{label:'🎁 خصم المؤسسة',value:'− '+f(s.orgDisc),cls:'g'},
+          s.adj<=-0.01&&{label:'🎟️ خصومات وتسويات',value:'− '+f(-s.adj),cls:'g'}, s.adj>=0.01&&{label:'فرق القطع والتسويات',value:'+ '+f(s.adj)}].filter(Boolean); }
+function invSumRows(s, cls){ const g=cls||'g'; return invSumArr(s).map(x=>`<div${x.cls?` class="${x.cls==='g'?g:x.cls}"`:''}><span>${x.label}</span><span>${x.value}</span></div>`).join(''); }
 /* الأغراض اللي شالها الفني: تُعرض بأسماء بنود الحجز الأصلية فقط (لا نص حر يكتبه الطاقم) */
 function invDropped(o){ const inv=(o&&o.invoice)||{}; if(!Array.isArray(inv.dropped)||!inv.dropped.length) return [];
   const booked=(o.items||[]).filter(it=>it&&typeof it==='object'); const names=new Map(booked.map(it=>[String(it.name||'').trim(),it]));
   const out=[]; inv.dropped.forEach(d=>{ if(!d||typeof d!=='object') return; const it=names.get(String(d.name||'').trim())||(d.stockId?booked.find(x=>String(x.stockId||'')===String(d.stockId)):null);
     if(it&&String(it.name||'').trim()) out.push({name:String(it.name).trim(), qty:Math.max(1,Math.min(+d.qty||1,+it.qty||1))}); });
   return out; }
-/* صندوق الفاتورة داخل «طلباتي» */
+/* صندوق الفاتورة داخل «طلباتي» · نفس تصميم الفاتورة المطبوعة (شريط أسود، صورة لكل بند، إجمالي أسود بالأصفر) */
 function custInvoiceHtml(o){
   const inv=o.invoice; if(!inv||!Array.isArray(inv.items)||!inv.items.length) return '';
   const g=invGroups(inv), s=invSums(o), drops=invDropped(o);
-  const line=(it,kind)=>{ const q=+it.qty||1, p=+it.price||0;
-    const media = kind==='part' ? (it.img?`<img class="ci-img" src="${esc(it.img)}" loading="lazy" data-img="${esc(it.img)}" onclick="pbZoom(this.dataset.img)" />`:`<span class="ci-img ph">🔩</span>`) : `<span class="ci-img ph">${kind==='fee'?'🚚':invItemIco(it)}</span>`;
-    return `<div class="ci-row">${media}<div class="ci-n"><b>${esc(trName(it.name))}</b>${s.lines?`<small>${q>1?ar(q)+' × '+money(p):money(p)}</small>`:(q>1?`<small>× ${ar(q)}</small>`:'')}</div>${s.lines?`<div class="ci-p">${money(p*q)}</div>`:''}</div>`; };
-  const sec=(t,rows,kind)=>rows.length?`<div class="ci-sec">${t}</div>${rows.map(r=>line(r,kind)).join('')}`:'';
-  return `<div class="cust-invoice">
-    <div class="ci-head"><div><b class="ci-ttl">${icon('receipt',17)} الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="sbtn ci-print" onclick="printCustInvoice('${aid(orderRef(o))}')">${icon('printer',15)} طباعة</button></div>
-    ${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
-    ${drops.length?`<div class="ci-sec">أغراض عندك ما احتجناها</div>${drops.map(d=>`<div class="ci-row"><div class="ci-n"><b style="text-decoration:line-through;color:var(--muted)">${esc(d.name)}${(d.qty>1)?' ×'+ar(d.qty):''}</b></div></div>`).join('')}`:''}
-    <div class="ci-sum">
-      ${invSumRows(s)}
-      <div class="ci-total"><span>الإجمالي</span><span>${money(s.total)}</span></div>
-      ${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}%</span><span>${money(vatOf(s.total))}</span></div>`:''}
-      ${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}
-      ${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(s.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(s.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}
-    </div>
+  const line=(it,kind)=>{ const q=+it.qty||1, p=+it.price||0, md=invMedia(it,kind);
+    const pic=`<span class="ki-pic${md.part?' part':''}"><i style="font-style:normal">${esc(md.ico)}</i>${md.img?`<img src="${esc(md.img)}" alt="" loading="lazy" onerror="this.remove()"${md.part?` data-img="${esc(md.img)}" onclick="pbZoom(this.dataset.img)"`:''}>`:''}</span>`;
+    return `<div class="ki-row">${pic}<div class="ki-n"><b>${esc(trName(it.name))}</b>${s.lines?`<small>${q>1?ar(q)+' × '+money(p):money(p)}</small>`:(q>1?`<small>× ${ar(q)}</small>`:'')}</div>${s.lines?`<div class="ki-p">${money(p*q)}</div>`:''}</div>`; };
+  const sec=(t,rows,kind)=>rows.length?`<div class="ki-sec">${t}</div>${rows.map(r=>line(r,kind)).join('')}`:'';
+  const vat=vatOf(s.total), sums=invSumRows(s);
+  const after=(vat>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}%</span><span>${money(vat)}</span></div>`:'')+(s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:'');
+  const due=s.due>0?`<div class="ki-due"><span>المتبقي</span><b>${money(s.due)}</b></div>`:(s.refund>0?`<div class="ki-due ki-back"><span>يرجع لك لوسيلة الدفع</span><b>${money(s.refund)}</b></div>`:(s.paid>0?`<div class="ki-due ki-ok"><span>الحالة</span><b>✓ مدفوعة بالكامل</b></div>`:''));
+  return `<div class="cust-invoice ki">
+    <div class="ki-top"><img class="ki-lg" src="logo.png" alt="" onerror="this.remove()"><div class="ki-t"><b>${icon('receipt',16)} الفاتورة</b><small>${esc(o.id)}${o.date?' · '+dayLabel(o.date):''}</small></div><button class="ki-print" onclick="printCustInvoice('${aid(orderRef(o))}')">${icon('printer',15)} طباعة</button></div>
+    ${sec('الخدمات',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
+    ${drops.length?`<div class="ki-sec">أغراض عندك ما احتجناها</div>${drops.map(d=>`<div class="ki-row drop"><span class="ki-pic"><i style="font-style:normal">↩️</i></span><div class="ki-n"><b>${esc(d.name)}${(d.qty>1)?' ×'+ar(d.qty):''}</b></div></div>`).join('')}`:''}
+    ${sums?`<div class="ki-sum">${sums}</div>`:''}
+    <div class="ki-tot"><span>الإجمالي</span><b>${money(s.total)}</b></div>
+    ${after?`<div class="ki-after">${after}</div>`:''}
+    ${due}
     <div class="ci-legal">${legalLine()}<br>${vatLine()}</div>
   </div>`;
 }
-/* الفاتورة المطبوعة: نفس الأقسام مع صور القطع والضمان */
+/* خافت · قالب الفاتورة المطبوعة الموحّد (نفس تصميم فاتورة خلود 2026-09-29)
+   مرجع للتطبيق في الملفات الثلاثة: fanyeen.html و provider.html و khafet-site/index.html.
+   khInvDoc(d) دالة نقية: تاخذ بيانات جاهزة وترجع صفحة HTML كاملة تنكتب في النافذة المنبثقة (w.document.write).
+   كل الحقول نص عادي وتُهرَّب هنا، ما عدا الحقول اللي اسمها ينتهي بـ Html (سطر المنشأة وسطر الضريبة جاهزين من khLegalLine/khVatLine). */
+const KHDOC_FONT = 'https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap';
+const KHDOC_CSS = [
+'@page{size:A5;margin:0}',
+'*{box-sizing:border-box}',
+'html,body{margin:0;background:#fff}',
+'body{font-family:"Tajawal","Cairo","Segoe UI",Tahoma,sans-serif;color:#1d1a16;font-size:13px;-webkit-print-color-adjust:exact;print-color-adjust:exact;-webkit-text-size-adjust:100%}',
+'.page{--gx:clamp(14px,4.6vw,10mm);width:100%;max-width:148mm;min-height:100vh;margin:0 auto;padding:0 0 7mm;display:flex;flex-direction:column;background:#fff}',
+'.top{background:#1d1a16;color:#fff;padding:9mm var(--gx) 7mm;display:flex;align-items:center;gap:12px}',
+'.top .lg{width:52px;height:52px;border-radius:12px;flex:none;object-fit:cover;background:#F5C518}',
+'.top .n{flex:1;min-width:0}',
+'.top h1{margin:0;font-size:18px;font-weight:900;color:#F5C518;line-height:1.35}',
+'.top p{margin:2px 0 0;font-size:11px;opacity:.85;font-weight:700;line-height:1.6}',
+'.tag{flex:none;background:#F5C518;color:#1d1a16;font-weight:900;font-size:16px;border-radius:10px;padding:6px 14px;white-space:nowrap}',
+'.tag.vat{font-size:12px;line-height:1.35;white-space:normal;max-width:98px;text-align:center;padding:6px 10px}',
+'.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:7mm var(--gx) 0}',
+'.box{border:1.5px solid #EDE6DA;border-radius:12px;padding:9px 12px;min-width:0}',
+'.box h3{margin:0 0 4px;font-size:11px;color:#8a7f72;font-weight:800}',
+'.box div{font-weight:800;font-size:13px;line-height:1.7;overflow-wrap:anywhere}',
+'.box span{color:#8a7f72;font-weight:700;font-size:11.5px}',
+'table.items{width:calc(100% - 2 * var(--gx));margin:6mm var(--gx) 0;border-collapse:collapse}',
+'.items th{background:#FBF3D1;font-size:11.5px;font-weight:900;padding:8px 6px;text-align:center;white-space:nowrap}',
+'.items th:first-child{border-start-start-radius:10px;border-end-start-radius:10px}',
+'.items th:last-child{border-start-end-radius:10px;border-end-end-radius:10px}',
+'.items th.s{text-align:start}',
+'.items td{padding:8px 6px;border-bottom:1px solid #EFE9DF;font-weight:700;font-size:13px;vertical-align:middle}',
+'.items td.c{text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}',
+'.items td.s{text-align:start;width:100%}',
+'.items td.b{font-weight:900}',
+'.items tr.grp td{border-bottom:0;padding:11px 6px 3px;font-size:11px;font-weight:800;color:#8a7f72}',
+'.items tr.grp td:before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:#F5C518;margin-inline-end:6px;vertical-align:middle}',
+'.it{display:flex;align-items:center;gap:9px;min-width:0}',
+'.pic{position:relative;width:40px;height:40px;border-radius:10px;background:#FBF3D1;border:1px solid #EFE9DF;display:grid;place-items:center;font-size:19px;line-height:1;overflow:hidden;flex:none}',
+'.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}',
+'.pic.part{background:#fff}',
+'.pic.part img{object-fit:contain;padding:2px}',
+'.nm{min-width:0}',
+'.nm b{display:block;font-weight:800;font-size:13px;line-height:1.45}',
+'.nm small{display:block;color:#8a7f72;font-weight:700;font-size:10.5px;line-height:1.4}',
+'tr.drop .nm b{text-decoration:line-through;color:#8a7f72;font-weight:700}',
+'tr.drop .pic{background:#F4F1EC}',
+'.sums{margin:4mm var(--gx) 0;padding:0 6px}',
+'.after{margin:2.5mm var(--gx) 0;padding:0 6px}',
+'.sr{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:3px 0;font-size:12.5px;font-weight:800;color:#5e554b}',
+'.sr b{font-weight:900;white-space:nowrap;font-variant-numeric:tabular-nums}',
+'.sr.g{color:#2F8F57}',
+'.tot{margin:3mm var(--gx) 0;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#1d1a16;color:#fff;border-radius:14px;padding:12px 16px}',
+'.tot span{font-weight:800;font-size:14px}',
+'.tot b{font-size:22px;color:#F5C518;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}',
+'.due{margin:3mm var(--gx) 0;display:flex;justify-content:space-between;align-items:center;gap:10px;border:1.5px dashed #E4C75A;background:#FFFBEA;border-radius:12px;padding:10px 14px;font-weight:900;font-size:14px}',
+'.due b{font-size:17px;font-weight:900;font-variant-numeric:tabular-nums;white-space:nowrap}',
+'.due.back,.due.ok{border-color:#A9D9B9;background:#EEF8F1;color:#2F8F57}',
+'.qr{margin:5mm auto 0;width:128px}',
+'.qr img,.qr canvas{width:128px!important;height:128px!important}',
+'.note{margin:5mm var(--gx) 0;font-size:11px;color:#6d6358;font-weight:700;line-height:1.8}',
+'.foot{margin-top:auto;padding:6mm var(--gx) 0;text-align:center;font-size:10.5px;color:#8a7f72;font-weight:700;line-height:1.8}',
+'.foot b{display:block;font-size:12px;color:#5e554b;font-weight:800;margin-top:2px}',
+'.noprint{text-align:center;margin:5mm 0 0}',
+'.noprint button{font:inherit;font-weight:800;font-size:14px;border:0;background:#1d1a16;color:#F5C518;border-radius:999px;padding:10px 28px;cursor:pointer}',
+'@media print{.page{width:148mm;min-height:210mm}.noprint{display:none}}',
+'@media (max-width:340px){.meta{grid-template-columns:1fr}}',
+'@media (max-width:430px){.top{padding:20px var(--gx) 16px;gap:10px}.top .lg{width:42px;height:42px;border-radius:10px}.top h1{font-size:15px}.top p{font-size:10.5px}.tag{font-size:13px;padding:5px 10px}.meta{gap:6px;padding-top:14px}.box{padding:8px 10px}.box div{font-size:12px}.box span{font-size:10.5px}table.items{margin-top:16px}.items th,.items td{padding-inline:4px}.items td{font-size:12px}.pic{width:34px;height:34px;font-size:16px}.nm b{font-size:12px}.tot b{font-size:19px}}'
+].join('\n');
+
+function khDocEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* d = {
+     dir:'rtl'|'ltr', lang:'ar'|'en', title,
+     logo,                         // رابط مطلق للشعار (new URL('logo.png', location.href).href)
+     org:{name, sub},              // اسم المنشأة وسطر «سجل تجاري · المدينة · الجوال»
+     tag, tagVat,                  // «فاتورة» أو «فاتورة ضريبية مبسطة» (tagVat=true يصغّر الشارة)
+     boxes:[{h, main, subs:[]}],   // صندوقان: العميل، الفاتورة
+     cols:{no,item,qty,price,total}, prices:true|false,   // prices=false: بلا عمودي السعر والمجموع (معادلة الخادم ما تطابق)
+     groups:[{title, rows:[{kind:'svc'|'part'|'fee'|'free'|'swap', img, emoji, name, sub, qty, price, total}]}],
+     drops:{title, rows:[{name, qty}]} | null,           // أغراض عند العميل ما احتجناها (بلا أسعار)
+     sums:[{label, value, cls}],   // قبل الإجمالي: المجموع، الخصومات، التسوية
+     total:{label, value},
+     after:[{label, value, cls}],  // بعد الإجمالي: منها ضريبة، مدفوع مسبقاً، فرق تبديل يرجع
+     due:{cls:''|'back'|'ok', label, value} | null,       // المتبقي / يرجع للعميل / مدفوعة بالكامل
+     qrHtml,                       // '<div id="qr" class="qr"></div><script ...>' أو ''
+     notesHtml:[],                 // سطر الضريبة (khVatLine) وسطر الضمان
+     legalHtml, thanks, printLbl
+   } */
+function khInvDoc(d){
+  const E=khDocEsc, P=d.prices!==false;
+  const pic=r=>{ const cls='pic'+(r.kind==='part'?' part':''); const em=E(r.emoji||'🔧');
+    return `<span class="${cls}"><i style="font-style:normal">${em}</i>${r.img?`<img src="${E(r.img)}" alt="" loading="eager" onerror="this.remove()">`:''}</span>`; };
+  const row=(r,n)=>`<tr${r.kind==='swap'?' class="swap"':''}><td class="c">${n}</td><td class="s"><div class="it">${pic(r)}<span class="nm"><b>${E(r.name)}</b>${r.sub?`<small>${E(r.sub)}</small>`:''}</span></div></td><td class="c">${E(r.qty)}</td>${P?`<td class="c">${E(r.price)}</td><td class="c b">${E(r.total)}</td>`:''}</tr>`;
+  const span=P?5:3; let n=0;
+  const body=(d.groups||[]).filter(g=>g&&g.rows&&g.rows.length).map(g=>`<tr class="grp"><td colspan="${span}">${E(g.title)}</td></tr>`+g.rows.map(r=>row(r,++n)).join('')).join('')
+    +((d.drops&&d.drops.rows&&d.drops.rows.length)?`<tr class="grp"><td colspan="${span}">${E(d.drops.title)}</td></tr>`+d.drops.rows.map(r=>`<tr class="drop"><td class="c"></td><td class="s"><div class="it"><span class="pic"><i style="font-style:normal">↩️</i></span><span class="nm"><b>${E(r.name)}</b></span></div></td><td class="c">${E(r.qty)}</td>${P?'<td class="c"></td><td class="c"></td>':''}</tr>`).join(''):'');
+  const sr=x=>`<div class="sr${x.cls?' '+x.cls:''}"><span>${E(x.label)}</span>${x.value!=null&&x.value!==''?`<b>${E(x.value)}</b>`:''}</div>`;
+  const c=d.cols||{};
+  return `<!doctype html><html dir="${d.dir||'rtl'}" lang="${d.lang||'ar'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${E(d.title)}</title>
+<link rel="stylesheet" href="${KHDOC_FONT}">
+<style>${KHDOC_CSS}</style></head><body><div class="page">
+<header class="top">${d.logo?`<img class="lg" src="${E(d.logo)}" alt="" onerror="this.remove()">`:''}<div class="n"><h1>${E(d.org.name)}</h1>${d.org.sub?`<p>${E(d.org.sub)}</p>`:''}</div><div class="tag${d.tagVat?' vat':''}">${E(d.tag)}</div></header>
+<section class="meta">${(d.boxes||[]).map(b=>`<div class="box"><h3>${E(b.h)}</h3><div>${E(b.main)}${(b.subs||[]).filter(Boolean).map(s=>`<br><span>${E(s)}</span>`).join('')}</div></div>`).join('')}</section>
+<table class="items"><thead><tr><th>${E(c.no||'#')}</th><th class="s">${E(c.item)}</th><th>${E(c.qty)}</th>${P?`<th>${E(c.price)}</th><th>${E(c.total)}</th>`:''}</tr></thead><tbody>${body}</tbody></table>
+${(d.sums&&d.sums.length)?`<div class="sums">${d.sums.map(sr).join('')}</div>`:''}
+<div class="tot"><span>${E(d.total.label)}</span><b>${E(d.total.value)}</b></div>
+${(d.after&&d.after.length)?`<div class="after">${d.after.map(sr).join('')}</div>`:''}
+${d.due?`<div class="due${d.due.cls?' '+d.due.cls:''}"><span>${E(d.due.label)}</span>${d.due.value?`<b>${E(d.due.value)}</b>`:''}</div>`:''}
+${d.qrHtml||''}
+${(d.notesHtml&&d.notesHtml.length)?`<p class="note">${d.notesHtml.filter(Boolean).join('<br>')}</p>`:''}
+<div class="foot">${d.legalHtml||''}<b>${E(d.thanks)}</b></div>
+<div class="noprint"><button onclick="print()">${E(d.printLbl||'طباعة')}</button></div>
+</div></body></html>`;
+}
+/* الفاتورة المطبوعة: نفس تصميم فاتورة خلود المعتمد (2026-09-29) عبر القالب الموحّد khInvDoc (نفسه في تطبيق الفني والمزوّد) */
+function khInvDate(v, en){ try{ const d=(v instanceof Date)?v:new Date(String(v).length<=10?String(v)+'T00:00:00':v); if(isNaN(d)) return String(v||'');
+  return d.toLocaleDateString(en?'en-GB':'ar-SA-u-ca-gregory-nu-latn',{day:'numeric',month:'long',year:'numeric'}).replace(/[\u200E\u200F]/g,''); }catch(e){ return String(v||''); } }
 function printInvoiceDoc(o){
   const inv=o.invoice||{items:[],total:0};
   const g=invGroups(inv), s=invSums(o), drops=invDropped(o);
-  const row=(it,kind)=>{ const q=+it.qty||1,p=+it.price||0; const media=kind==='part'?(it.img?`<img src="${esc(it.img)}" alt="">`:'🔩'):(kind==='fee'?(it.id==='smallfee'?'🧾':'🚚'):invItemIco(it));
-    return `<div class="r"><span class="im">${media}</span><span class="nm"><b>${esc(trName(it.name))}</b>${s.lines?`<small>${q>1?ar(q)+' × '+money(p):money(p)}</small>`:(q>1?`<small>× ${ar(q)}</small>`:'')}</span>${s.lines?`<span class="tt">${money(p*q)}</span>`:''}</div>`; };
-  const sec=(t,rows,kind)=>rows.length?`<div class="sec">${t}</div>${rows.map(r=>row(r,kind)).join('')}`:'';
-  const d=new Date(); const ds=ar(d.getDate())+'/'+ar(d.getMonth()+1)+'/'+ar(d.getFullYear());
   const a=o.address||{}; const addr=[a.city, a.house?'منزل '+a.house:''].filter(Boolean).join(' · ');
-  const html=`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>فاتورة ${esc(o.id)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box}body{font-family:Cairo,system-ui,Arial,sans-serif;margin:0 auto;padding:0 0 22px;color:#1A1712;background:#fff;max-width:560px}
-.top{background:#F5C518;padding:20px 18px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;border-radius:0 0 22px 22px}
-.brand{display:flex;align-items:center;gap:10px}.brand .lg{width:50px;height:50px;border-radius:14px;background:#1A1712;color:#F5C518;display:grid;place-items:center;font-size:1.5rem}
-.brand b{font-size:1.4rem;font-weight:900;display:block;line-height:1.1}.brand small{color:#3d3a30;font-weight:700;font-size:.78rem}
-.no{text-align:left}.no b{display:block;font-size:1.05rem;font-weight:900}.no small{color:#3d3a30;font-weight:700;font-size:.8rem}
-.wrap{padding:0 18px}
-.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin:16px 0 6px;font-size:.88rem;font-weight:700;color:#3d3a30}.meta span{color:#6E685B;font-weight:700;display:block;font-size:.72rem}
-.sec{display:flex;align-items:center;gap:8px;margin:14px 0 2px;font-size:.8rem;font-weight:800;color:#6E685B}.sec::before{content:"";width:9px;height:9px;border-radius:50%;background:#F5C518}
-.r{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px dashed #EFE9D6}
-.r .im{width:62px;height:62px;border-radius:14px;border:1px solid #EFE9D6;background:#FBF7E8;display:grid;place-items:center;font-size:1.7rem;overflow:hidden;flex-shrink:0}
-.r .im img{width:100%;height:100%;object-fit:contain;background:#fff}
-.r .nm{flex:1;min-width:0}.r .nm b{display:block;font-size:.95rem;font-weight:800;line-height:1.3}.r .nm small{color:#6E685B;font-weight:700;font-size:.78rem}
-.r .tt{font-weight:900;white-space:nowrap;font-size:.95rem}
-.sum{margin-top:14px;border-top:2px solid #1A1712;padding-top:8px}.sum div{display:flex;justify-content:space-between;padding:4px 0;font-size:.92rem;font-weight:700;color:#3d3a30}
-.sum .tot{font-size:1.3rem;font-weight:900;color:#1A1712}.sum .g{color:#0b7a3b}.sum .due{color:#0b3d6b;font-weight:900;font-size:1rem;background:#EEF6FF;border-radius:10px;padding:8px 10px;margin-top:6px}.sum .ok{color:#0b7a3b;font-weight:900}
-.wr{margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;font-size:.78rem;font-weight:800}.wr span{background:#E6F4EA;color:#166534;border-radius:999px;padding:4px 11px}
-.ft{margin-top:20px;text-align:center;color:#888;font-size:.82rem;font-weight:700}
-.noprint{text-align:center;margin-top:16px}.noprint button{padding:10px 22px;font-weight:800;border:none;background:#141414;color:#fff;border-radius:10px;cursor:pointer;font-family:inherit}
-@media print{.noprint{display:none}.top{border-radius:0}}
-</style></head><body>
-<div class="top"><div class="brand"><span class="lg">🔧</span><div><b>${BRAND}</b><small>${esc(legalInfo().name)} · س.ت ${ar(legalInfo().cr)}</small></div></div><div class="no"><b>${(legalInfo().vat&&legalInfo().vatNo)?'فاتورة ضريبية مبسطة':'فاتورة'} ${esc(o.id)}</b><small>${ds}</small></div></div>
-<div class="wrap">
-<div class="meta"><div><span>العميل</span>${esc((o.customer||{}).name||'')}</div><div><span>الجوال</span>${esc((o.customer||{}).phone||'')}</div>${addr?`<div><span>العنوان</span>${esc(addr)}</div>`:''}${o.date?`<div><span>تاريخ الخدمة</span>${dayLabel(o.date)}</div>`:''}</div>
-${sec('الشغل',g.svc,'svc')}${sec('القطع والأغراض',g.part,'part')}${sec('الرسوم',g.fee,'fee')}
-${drops.length?`<div class="sec">أغراض عندك ما احتجناها</div>${drops.map(d=>`<div class="r"><span class="nm"><b style="text-decoration:line-through;color:#6E685B">${esc(d.name)}${d.qty>1?' ×'+ar(d.qty):''}</b></span></div>`).join('')}`:''}
-<div class="sum">${invSumRows(s)}<div class="tot"><span>الإجمالي</span><span>${money(s.total)}</span></div>${vatOf(s.total)>0?`<div><span>منها ضريبة القيمة المضافة ${ar(legalInfo().vatPct)}%</span><span>${money(vatOf(s.total))}</span></div>`:''}${s.paid>0?`<div><span>مدفوع مسبقاً</span><span>${money(s.paid)}</span></div>`:''}${s.due>0?`<div class="due"><span>المتبقي</span><span>${money(s.due)}</span></div>`:(s.refund>0?`<div class="g"><span>يرجع لك لوسيلة الدفع</span><span>${money(s.refund)}</span></div>`:(s.paid>0?`<div class="ok"><span>الحالة</span><span>✓ مدفوعة بالكامل</span></div>`:''))}</div>
-
-${zatcaQr(s.total, vatOf(s.total), o.date)?`<div id="qr" style="margin:14px auto 0;width:140px"></div>`:''}
-<div class="ft">${legalLine()}<br>${vatLine()}<br>شكراً لتعاملك مع ${BRAND} · ${esc(PHONE)}</div>
-${zatcaQr(s.total, vatOf(s.total), o.date)?`<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"><\/script><script>try{ new QRCode(document.getElementById('qr'),{text:'${zatcaQr(s.total, vatOf(s.total), o.date)}',width:140,height:140}); }catch(e){}<\/script>`:''}
-<div class="noprint"><button onclick="print()">🖨️ طباعة</button></div>
-</div>
-</body></html>`;
+  const L=legalInfo(), vatOn=!!(L.vat&&L.vatNo), vat=vatOf(s.total), qr=zatcaQr(s.total, vat, o.date);
+  const N=v=>ar(Math.round((+v||0)*100)/100), M=v=>N(v)+' ريال';
+  const toRow=k=>it=>{ const q=+it.qty||1,p=+it.price||0,md=invMedia(it,k); return {kind:k,img:md.img,emoji:md.ico,name:trName(it.name),qty:N(q),price:N(p),total:N(p*q)}; };
+  const after=[vat>0&&{label:'منها ضريبة القيمة المضافة '+ar(L.vatPct)+'٪',value:M(vat)}, s.paid>0&&{label:'مدفوع مسبقاً',value:M(s.paid)}].filter(Boolean);
+  const html=khInvDoc({ dir:'rtl', lang:'ar', title:'فاتورة '+o.id, logo:new URL('logo.png', location.href).href,
+    org:{name:L.name, sub:['سجل تجاري '+ar(L.cr), L.city, PHONE].filter(Boolean).join(' · ')},
+    tag:vatOn?'فاتورة ضريبية مبسطة':'فاتورة', tagVat:vatOn,
+    boxes:[{h:'العميل',main:(o.customer||{}).name||'',subs:[(o.customer||{}).phone,addr]},
+           {h:'الفاتورة',main:String(o.id),subs:[o.date?'تاريخ الخدمة '+khInvDate(o.date):'','تاريخ الإصدار '+khInvDate(new Date())]}],
+    cols:{no:'#',item:'البند',qty:'الكمية',price:'السعر',total:'المجموع'}, prices:s.lines,
+    groups:[{title:'الخدمات',rows:g.svc.map(toRow('svc'))},{title:'القطع والأغراض',rows:g.part.map(toRow('part'))},{title:'الرسوم',rows:g.fee.map(toRow('fee'))}],
+    drops:drops.length?{title:'أغراض عندك ما احتجناها',rows:drops.map(x=>({name:x.name,qty:N(+x.qty||1)}))}:null,
+    sums:invSumArr(s,M), total:{label:'الإجمالي',value:M(s.total)}, after,
+    due: s.due>0?{cls:'',label:'المتبقي',value:M(s.due)}:(s.refund>0?{cls:'back',label:'يرجع لك لوسيلة الدفع',value:M(s.refund)}:(s.paid>0?{cls:'ok',label:'الحالة',value:'✓ مدفوعة بالكامل'}:null)),
+    qrHtml: qr?`<div id="qr" class="qr"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"><\/script><script>try{ new QRCode(document.getElementById('qr'),{text:'${qr}',width:128,height:128}); }catch(e){}<\/script>`:'',
+    notesHtml:[vatLine(), (+o.warrantyDays>0&&!o.warrantyOf&&o.status!=='cancelled')?'ضمان الشغل والقطع '+ar(o.warrantyDays)+' يوم من تاريخ الخدمة':''],
+    legalHtml:legalLine(), thanks:'شكرًا لثقتك في خافت · '+PHONE, printLbl:'🖨️ طباعة' });
   const w=window.open('','_blank'); if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة'); return; } w.document.write(html); w.document.close();
 }
 function rate(id,n){ const o=findOrder(id); if(!o||o.rating) return; o.rating=n; save(); cloudPatch(o.dbId,{rating:n}); toast(LX('شكراً لتقييمك ','Thanks for your rating ')+'⭐'.repeat(n)); render(); }
@@ -6652,6 +6829,7 @@ Object.assign(T_DICT, {"كل 6 طلبات لك خصم ولاء، وكود الإ
 /* إضافات إصلاحات 2026-09-24 */
 Object.assign(T_DICT, {"💡 المتوسط يُحسب من إجمالي طلباتك السابقة، والخصم يُطبّق على إجمالي طلبك (الخدمة والأغراض) بحد أقصى قيمة الطلب.":"💡 The average is taken from your previous order totals, and the discount applies to your order total (service and parts), up to the order value.","⏳ نتحقق من الكود...":"⏳ Checking the code...","الكود غير صحيح":"Invalid code","تعذّر التحقق من الكود الآن، لو كان صحيحًا ينطبق الخصم عند الدفع":"Could not verify the code now. If it is valid, the discount applies at payment."});
 Object.assign(T_DICT, {"الدفع":"Payment","بياناتك":"Your details","تصفّح الخدمات واطلب":"Browse services and order","طلبك السابع عليه خصم كبير 🎁":"Your 7th order gets a big discount 🎁","طلبك السابع عليه خصم كبير":"Your 7th order gets a big discount","English / عربي":"English / Arabic","السلة":"Cart","رجوع":"Back","أقل":"Less","أكثر":"More","إغلاق":"Close","آخر خطوة":"Last step","🛠️ وصف المشكلة (اختياري)":"🛠️ Describe the issue (optional)","وصف المشكلة (اختياري)":"Describe the issue (optional)","اسم العنوان (اختياري)":"Address name (optional)","صورة المنزل":"House photo","أبيض":"White","أصفر":"Warm yellow","أوف وايت 12 وات":"Off white 12W","بالضغط على الدفع أنت توافق على":"By tapping Pay you agree to the","بتأكيد الطلب أنت توافق على":"By confirming you agree to the","الشروط":"Terms","و":"and ","،":", ","سياسة الإلغاء":"Cancellation policy","الخصوصية":"Privacy","مثال: تسريب ماء تحت مغسلة المطبخ، أو الإضاءة تفصل...":"e.g. a leak under the kitchen sink, or the lights keep tripping...","مثال: أبو محمد":"e.g. Abu Mohammed","مثال: ٢٤٥١ · الدور الأول":"e.g. 2451 · first floor","مثال: بيتي · بيت أهلي · الاستراحة":"e.g. My home · Family home","اقتراح أو شكر":"Suggestion or thanks","الشكاوى":"Complaints","برقم متابعة":"With a tracking number","، ولك":", and you get","رصيد":"credit","عن كل طلب يُنجزه.":"for every order they complete.","📍 موقع بيتك: اضغط على الخريطة أو اسحب الدبوس على مكانك بالضبط، ينحفظ ويظهر تلقائياً عند كل حجز":"📍 Your home location: tap the map or drag the pin to your exact spot. It is saved and used for every booking.","🔒 الخصوصية":"🔒 Privacy","📜 الشروط":"📜 Terms","اسمك":"Your name","رجعت نفس المشكلة؟ بلّغ وبنجيك مجاناً.":"Same issue back? Tell us and we return for free.","🛡️ المشكلة رجعت":"🛡️ The issue is back","🔁 اطلب مرة ثانية":"🔁 Order again","📅 تغيير الموعد":"📅 Reschedule","الإلغاء أو تغيير الموعد مجاني حتى 4 ساعات قبل الموعد، وبعدها عن طريق التواصل معنا.":"Cancelling or rescheduling is free up to 4 hours before the visit. After that, contact us.","اختر الخدمة من القائمة، حدّد اليوم ووقت الوصول، ثم أدخل موقعك وأكّد. تجيك رسالة تأكيد.":"Pick the service, choose the day and arrival time, then enter your location and confirm. You get a confirmation message.","تختار وقت الوصول اللي يناسبك والفني يوصلك فيه. تجيك إشعارات: «في الطريق» ثم «وصل الموقع».":"You choose the arrival time that suits you and the technician arrives at it. You get notifications: On the way, then Arrived.","بطريقتين:":"In two ways:","ادفع أونلاين":"Pay online","بمدى أو البطاقة أو Apple Pay من التطبيق، أو":"with mada, card or Apple Pay in the app, or","بجهاز الدفع مع الفني":"on the technician’s card machine","عند إتمام العمل. ما نستقبل نقداً.":"when the work is done. We do not take cash.","تقدر تتابع حالة طلبك من «طلباتي»، ولو صار تأخير نبلّغك بالوقت المتوقّع. أو كلّمنا على واتساب.":"Track your order under My orders. If there is a delay we tell you the expected time. Or message us on WhatsApp.","نعم، ضمان على شغل اليد والقطع. لو رجعت نفس المشكلة نرجع بلا تكلفة إضافية.":"Yes. Labor and parts are covered. If the same issue returns, we come back at no extra cost.","احجز قبل 5 أيام أو أكثر = خصم 5% تلقائي. وكل 6 طلبات لك خصم ولاء. وكود الإحالة يعطيك وصديقك خصماً.":"Every 6 orders earn a loyalty discount, and a referral code gives you and your friend a discount.","من «طلباتي» تقدر تلغي الطلب أو تغيّر موعده مجاناً حتى":"Under My orders you can cancel or reschedule for free up to","4 ساعات قبل الموعد":"4 hours before the visit","، ولو دفعت يرجع لك المبلغ كامل. قبل الموعد بأقل من 4 ساعات تواصل معنا مباشرة.":", and if you paid you get a full refund. Less than 4 hours before the visit, contact us directly.","🎁 برنامج الولاء":"🎁 Loyalty program","اطلب صيانتك عادي":"Order as usual","كل طلب تُنجزه يُحتسب في رصيد ولائك.":"Every completed order counts toward your loyalty.","بعد ٦ طلبات":"After 6 orders","تستحق مكافأة على طلبك السابع.":"you earn a reward on your 7th order.","خصم = متوسط طلباتك":"Discount = your average order","يُخصم من طلبك السابع مبلغ = متوسط أسعار طلباتك الستة السابقة.":"Your 7th order gets a discount equal to the average of your previous six orders.","مثال:":"Example:","لو متوسط طلباتك":"if your average order is","، فطلبك السابع عليه":", your 7th order gets","خصم ١٥٠ ر.س":"150 SAR off","١٥٠ ر.س":"150 SAR","💡 الخصم على أجرة اليد (الخدمة) فقط · قطع الغيار والأغراض تبقى على العميل بسعرها.":"💡 The discount applies to labor only. Parts stay at their price.","تمام":"OK","اكتب لنا وبنقرأ كل كلمة، رأيك يطوّر خدمتنا فعلاً.":"Write to us, we read every word. Your opinion really improves our service.","عندك شكوى؟":"Have a complaint?","قدّمها برقم متابعة":"File it with a tracking number","مثال: أتمنى تضيفون خدمة تنظيف الخزانات، أو: الفني تأخّر علينا أمس":"e.g. please add water tank cleaning, or: the technician was late yesterday","هدية أول طلب":"First order gift","رسوم الزيارة":"Visit fee","قيمة التوصيل":"Delivery","رسوم توصيل الأغراض":"Parts delivery","ضيفها":"Add it","الكمية":"Quantity","الخدمات":"Services","الأغراض":"Parts","توصيل الأغراض":"Parts delivery","المجموع":"Subtotal","رجّعها":"Add back","تدفع الآن":"You pay now","أي قطعة إضافية يضيفها الفني بفاتورته.":"Any extra part is added to the technician’s invoice.","اكتب التفاصيل:":"Write the details:","أضف خدمة ثانية":"Add another service","توصلني إشعارات العروض":"Send me offer notifications","الشطاف":"Bidet sprayer","اللمبة":"Bulb","الخلاط":"Mixer tap","المحبس":"Angle valve","عدة السيفون":"Flush kit","المفتاح أو البريزة":"Switch or socket","بريزة الباور":"Power socket","السيليكون":"Silicone","الحنفية":"Tap","وصلة الكرسي":"Toilet connector","بزبوز نحاس نص إنش":"Brass spout 1/2 inch","خلاط مطبخ رقبة عالية":"Kitchen mixer, high neck","خلاط مغسلة":"Basin mixer","سيليكون ألماني GP":"German silicone GP","ستارك كروم مع لي":"Stark chrome with hose","إيطالي جروهي":"Italian, Grohe","بريزة 13 أمبير":"13A socket","بريزة دبل":"Double socket","مفتاح ثلاثي":"3 gang switch","مفتاح دبل":"2 gang switch","مفتاح رباعي":"4 gang switch","مفتاح مفرد":"1 gang switch","بريزة دبل 7×14":"Double socket 7×14","مفتاح مكيف 45 أمبير":"AC isolator 45A","إسباني جانبي":"Spanish, side entry","وصلة كرسي 12 سم":"Toilet connector 12 cm","اختر اللي تحتاجه · تقدر تختار أكثر من خدمة":"Pick what you need. You can choose more than one service."});
+Object.assign(T_DICT, {"خصم المؤسسة":"Business discount","خصومات وتسويات":"Discounts and adjustments","فرق القطع والتسويات":"Parts difference and adjustments","يرجع لك لوسيلة الدفع":"Refunded to your payment method","أغراض عندك ما احتجناها":"Items you already had"});   // فاتورة العميل بالتصميم الجديد (2026-09-29)
 const T_DICT_N={}; for(const _k in T_DICT){ T_DICT_N[_west(_k).trim()]=T_DICT[_k]; }
 applyCachedCatalog();   // آخر كتالوج محفوظ بالجهاز (قبل ما يوصل الجديد من الخادم)
 const _EMO=/^((?:[←-⯿️‍\u{1F000}-\u{1FAFF}]+\s*)+)([\s\S]+)$/u;
