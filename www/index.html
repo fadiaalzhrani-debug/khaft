@@ -6372,7 +6372,7 @@ function custInvoiceHtml(o){
     <div class="ki-tot"><span>الإجمالي</span><b>${money(s.total)}</b></div>
     ${after?`<div class="ki-after">${after}</div>`:''}
     ${due}
-    <div class="ci-legal">${legalLine()}<br>${vatLine()}</div>
+    ${(legalInfo().vat&&legalInfo().vatNo)?`<div class="ci-legal">${vatLine()}</div>`:''}
   </div>`;
 }
 /* خافت · قالب الفاتورة المطبوعة الموحّد (نفس تصميم فاتورة خلود 2026-09-29)
@@ -6482,8 +6482,8 @@ ${(d.sums&&d.sums.length)?`<div class="sums">${d.sums.map(sr).join('')}</div>`:'
 ${(d.after&&d.after.length)?`<div class="after">${d.after.map(sr).join('')}</div>`:''}
 ${d.due?`<div class="due${d.due.cls?' '+d.due.cls:''}"><span>${E(d.due.label)}</span>${d.due.value?`<b>${E(d.due.value)}</b>`:''}</div>`:''}
 ${d.qrHtml||''}
-${(d.notesHtml&&d.notesHtml.length)?`<p class="note">${d.notesHtml.filter(Boolean).join('<br>')}</p>`:''}
-<div class="foot">${d.legalHtml||''}<b>${E(d.thanks)}</b></div>
+${(d.notesHtml&&d.notesHtml.filter(Boolean).length)?`<p class="note">${d.notesHtml.filter(Boolean).join('<br>')}</p>`:''}
+${(d.legalHtml||d.thanks)?`<div class="foot">${d.legalHtml||''}${d.thanks?`<b>${E(d.thanks)}</b>`:''}</div>`:''}
 <div class="noprint"><button onclick="print()">${E(d.printLbl||'طباعة')}</button></div>
 </div></body></html>`;
 }
@@ -6509,8 +6509,8 @@ function printInvoiceDoc(o){
     sums:invSumArr(s,M), total:{label:'الإجمالي',value:M(s.total)}, after,
     due: s.due>0?{cls:'',label:'المتبقي',value:M(s.due)}:(s.refund>0?{cls:'back',label:'يرجع لك لوسيلة الدفع',value:M(s.refund)}:(s.paid>0?{cls:'ok',label:'الحالة',value:'✓ مدفوعة بالكامل'}:null)),
     qrHtml: qr?`<div id="qr" class="qr"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"><\/script><script>try{ new QRCode(document.getElementById('qr'),{text:'${qr}',width:128,height:128}); }catch(e){}<\/script>`:'',
-    notesHtml:[vatLine(), (+o.warrantyDays>0&&!o.warrantyOf&&o.status!=='cancelled')?'ضمان الشغل والقطع '+ar(o.warrantyDays)+' يوم من تاريخ الخدمة':''],
-    legalHtml:legalLine(), thanks:'شكرًا لثقتك في خافت · '+PHONE, printLbl:'🖨️ طباعة' });
+    notesHtml:[(legalInfo().vat&&legalInfo().vatNo)?vatLine():''],
+    legalHtml:'', thanks:'', printLbl:'🖨️ طباعة' });
   const w=window.open('','_blank'); if(!w){ toast('اسمح بالنوافذ المنبثقة للطباعة'); return; } w.document.write(html); w.document.close();
 }
 function rate(id,n){ const o=findOrder(id); if(!o||o.rating) return; o.rating=n; save(); cloudPatch(o.dbId,{rating:n}); toast(LX('شكراً لتقييمك ','Thanks for your rating ')+'⭐'.repeat(n)); render(); }
