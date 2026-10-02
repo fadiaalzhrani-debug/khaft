@@ -48,7 +48,7 @@ jobs:
           s = open(p, encoding='utf-8').read()
           s = re.sub(r'compileSdkVersion\s*=\s*\d+', 'compileSdkVersion = 36', s)
           s = re.sub(r'targetSdkVersion\s*=\s*\d+', 'targetSdkVersion = 36', s)
-          s = re.sub(r'minSdkVersions*=s*d+', 'minSdkVersion = 24', s)   # Google Play: الحماية التلقائية تشترط 24 كحد أدنى
+          s = re.sub(r'minSdkVersion\s*=\s*\d+', 'minSdkVersion = 24', s)   # Google Play: الحماية التلقائية تشترط 24 كحد أدنى
           open(p, 'w', encoding='utf-8').write(s)
           gp = 'android/gradle.properties'
           g = open(gp, encoding='utf-8').read()
@@ -66,7 +66,7 @@ jobs:
           if 'firebase-messaging' not in a:
               a = re.sub(r'(dependencies\s*\{)', r"\1\n    implementation platform('com.google.firebase:firebase-bom:33.7.0')\n    implementation 'com.google.firebase:firebase-messaging'", a, count=1)
           open(ap, 'w', encoding='utf-8').write(a)
-          print('compileSdk/targetSdk=36 + Firebase messaging')
+          print('compileSdk/targetSdk=36 + Firebase messaging · minSdk=' + (re.search(r'minSdkVersion\s*=\s*(\d+)', s).group(1) if re.search(r'minSdkVersion\s*=\s*(\d+)', s) else '?'))
           PY
           (yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" >/dev/null 2>&1) || true
 
