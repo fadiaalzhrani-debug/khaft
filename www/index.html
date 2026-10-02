@@ -2174,7 +2174,7 @@ async function khFreshInstall(){
 }
 _khFreshP=khFreshInstall();
 /* رقم نسخة المحتوى: يُرسل للخادم في X-Client-Info، ويُقارن بالحد الأدنى في الإعدادات (إجبار التحديث). زِده بواحد مع كل رفع للمتاجر */
-const APP_BUILD=142;
+const APP_BUILD=143;
 const KH_AUTH_OPTS={ auth:{ storage:KH_STORE, persistSession:true, autoRefreshToken:true, detectSessionInUrl:false }, global:{ headers:{ 'X-Client-Info':'khafet-app/'+APP_BUILD } } };
 try{ const _set=Storage.prototype.setItem, _rm=Storage.prototype.removeItem;
   Storage.prototype.setItem=function(k,v){ _set.call(this,k,v); try{ if(this===localStorage&&_khPrefs&&KH_MIRROR.has(k)) _khPrefs.set({key:k,value:String(v)}).catch(()=>{}); if(this===localStorage) _secSet(k,v); }catch(e){} };
@@ -3797,7 +3797,7 @@ function renderAccount(){
 
       <div class="acc-grid">
         <button class="acc-tile" onclick="go('mybookings')"><span class="ti">📋</span><b>طلباتي</b><small>${LX(ar(n)+' '+(n===1?'طلب':'طلبات'), n+' '+(n===1?'order':'orders'))}</small></button>
-        ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>ريّح بالك</b><small>خطط سنوية</small></button>`:''}
+        ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>الباقة السنوية</b><small>لبيتك أو شقتك</small></button>`:''}
         <button class="acc-tile" onclick="go('suggest')"><span class="ti">💡</span><b>رأيك يهمنا</b><small>اقتراح أو شكر</small></button>
         <button class="acc-tile" onclick="openComplaint('')"><span class="ti">📣</span><b>الشكاوى</b><small>برقم متابعة</small></button>
         <button class="acc-tile" onclick="go('faq')"><span class="ti">❓</span><b>الأسئلة الشائعة</b><small>إجابات سريعة</small></button>
@@ -3867,9 +3867,9 @@ function renderPlans(kind){
   const cards=plans.map(p=>planCardHtml(p,k,E)).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen">
-      ${pageHead(T('ريّح بالك','Rayyeh Balak'),'home')}
+      ${pageHead(T('الباقة السنوية','Annual plan'),'home')}
       <div class="rb-hero">
-        <b>ريّح بالك</b>
+        <b>${T('الباقة السنوية','Annual plan')}</b>
         <small>${T('خطة سنوية لسكنك: زيارات وأجرة الفني علينا، وصيانة الموسم من عندنا','An annual plan for your home: visits with labour on us, and seasonal care')}</small>
       </div>
       <div class="rb-tabs" role="group">
@@ -3937,7 +3937,7 @@ function renderPlanSheet(planId){
     <div class="wrap screen">
       ${pageHead(T(p.name,p.nameEn),'plans')}
       <div class="rs-cover"><img src="${planCover(p)}" alt=""><span class="rb-tag">${tag}</span>
-        <div class="rs-txt"><div class="rs-fam">ريّح بالك</div><b class="rs-name" dir="auto">${esc(T(p.name,p.nameEn))}</b></div></div>
+        <div class="rs-txt"><div class="rs-fam">${T('الباقة السنوية','Annual plan')}</div><b class="rs-name" dir="auto">${esc(T(p.name,p.nameEn))}</b></div></div>
       <div class="rs-pricebar"><b class="num">${en(p.price)}<small>${T('ريال / سنة','SAR / year')}</small></b><span>${mo? esc(mo) : T('دفعة واحدة','One payment')}</span></div>
       ${groups}
       <details class="ps-svc"><summary>🛠 ${T('الخدمات المشمولة في الزيارات','Services covered in the visits')}</summary><div class="ct-svc">${svc}</div></details>
@@ -4262,7 +4262,7 @@ function subRequest(k){
     if(hn) state.address.house=hn;
     save();
   }catch(e){}
-  state.quickNote='🛡️ زيارة ضمن عقد ريّح بالك · '+(s?s.n:k)+((srv.home_no||(local&&local.home_no))?(' · المنزل: '+(srv.home_no||local.home_no)):'');
+  state.quickNote='🛡️ زيارة ضمن الباقة السنوية · '+(s?s.n:k)+((srv.home_no||(local&&local.home_no))?(' · المنزل: '+(srv.home_no||local.home_no)):'');
   startQuick({force:true});   /* زيارة العقد تدخل مسار المعاينة حتى لو «الطلب السريع» مطفي من الإعدادات */
   setTimeout(function(){ const t=document.getElementById('q_note')||document.getElementById('note'); if(t && !t.value) t.value=state.quickNote; },350);
 }
@@ -4684,7 +4684,7 @@ function openTerms(){
     m=document.createElement('div');
     m.id='termsModal'; m.className='tmodal';
     m.innerHTML=`<div class="tsheet">
-      <div class="thead"><h3>📜 ${LX('شروط وأحكام ريّح بالك','Rayyeh Balak terms and conditions')}</h3>
+      <div class="thead"><h3>📜 ${LX('شروط وأحكام الباقة السنوية','Annual plan terms and conditions')}</h3>
         <button onclick="closeTerms()" aria-label="إغلاق">×</button></div>
       <div class="tbody">${termsHtml()}</div>
       <div class="tfoot"><button onclick="acceptTerms()">${LX('قرأت ووافقت','I have read and agree')}</button></div>
@@ -4723,7 +4723,7 @@ function syncAgree(){
 function agreeBox(){
   return `<div class="agree" id="agreeBox" onclick="toggleAgree(event)">
     <input type="checkbox" id="agreeChk" onclick="event.stopPropagation();toggleAgree()">
-    <div class="t">${LX('أوافق على','I agree to the')} <a onclick="event.stopPropagation();openTerms()">${LX('شروط وأحكام ريّح بالك','Rayyeh Balak terms and conditions')}</a>
+    <div class="t">${LX('أوافق على','I agree to the')} <a onclick="event.stopPropagation();openTerms()">${LX('شروط وأحكام الباقة السنوية','Annual plan terms and conditions')}</a>
     ${LX('وأقرّ بأني اطّلعت عليها.','and confirm I have read them.')}</div>
   </div>`;
 }
@@ -5200,7 +5200,7 @@ function renderHome(){
       </button>`:(plansEnabled()?`
       <button class="services-btn" onclick="go('plans')">
         <span class="sb-ic">${icon('shield',24)}</span>
-        <span class="sb-t"><b>ريّح بالك</b><small>${LX('خطة سنوية لبيتك أو شقتك','An annual plan for your house or apartment')}</small></span>
+        <span class="sb-t"><b>${LX('الباقة السنوية','Annual plan')}</b><small>${LX('صيانة بيتك أو شقتك طول السنة','Your house or apartment cared for all year')}</small></span>
 
       </button>`:'')}
 
