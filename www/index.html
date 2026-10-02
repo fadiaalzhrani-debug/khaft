@@ -3842,9 +3842,9 @@ function renderAccount(){
 /* ---------- باقات الاشتراك ---------- */
 let subPlan=null, subAcUnits=10, subPayPlan='full';
 /* ══════════ ريّح بالك · اختيار نوع السكن ثم ورقة الخطة ══════════ */
-/* الخطط تظهر للعميل فقط لما تفعّلها الإدارة (plans_enabled)، وللمالك في المعاينة برابط pv=1 (يُحفظ في sessionStorage لهذه الجلسة) */
+/* الخطط تظهر للعميل فقط لما تفعّلها الإدارة (plans4_enabled)، وللمالك في المعاينة برابط pv=1 (يُحفظ في sessionStorage لهذه الجلسة) */
 function plansPreview(){ try{ const q=new URLSearchParams(location.search); if(q.get('pv')==='1'){ sessionStorage.setItem('khafet_pv','1'); if(q.get('ac')==='1') sessionStorage.setItem('khafet_pv_ac','1'); } return sessionStorage.getItem('khafet_pv')==='1'; }catch(e){ return false; } }
-function plansLive(){ const v=SETTINGS.plans_enabled; return v==='1'||v==='true'; }
+function plansLive(){ const v=SETTINGS.plans4_enabled; return v==='1'||v==='true'; }   /* plans4_enabled وليس plans_enabled: المفتاح القديم تقرأه نسخ الجوال القديمة وتعرض به باقات قديمة */
 function plansEnabled(){ return plansLive()||plansPreview(); }
 function acPlansEnabled(){ const v=SETTINGS.plan_ac_enabled; if(v==='1'||v==='true') return true; return plansPreview()&&!plansLive(); }
 /* الاشتراك الشهري: للخطتين الأساسيتين فقط (لا خطط المكيفات)، بالبطاقة داخل التطبيق (تُحفظ للسحب الشهري)، ولما تفعّله الإدارة (plan_monthly_enabled) · وفي معاينة المالك يظهر دائمًا */
