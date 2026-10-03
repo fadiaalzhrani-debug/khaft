@@ -1990,7 +1990,12 @@ function ackPrivacy(){ try{ localStorage.setItem('khafet_privacy_ack','1'); }cat
 try{ const cached=JSON.parse(localStorage.getItem(SETTINGS_KEY)); if(Array.isArray(cached)) setTimeout(()=>applySettings(cached),0); }catch(e){}
 async function loadSettings(){
   if(!cloudReady) return;
-  try{ const r=await sb.from('khafet_settings').select('key,value'); if(!r.error&&Array.isArray(r.data)){ applySettings(r.data); try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(r.data)); }catch(e){} } }catch(e){}
+  try{ const r=await sb.from('khafet_settings').select('key,value'); if(!r.error&&Array.isArray(r.data)){
+      const wasLive=plansLive();
+      applySettings(r.data); try{ localStorage.setItem(SETTINGS_KEY, JSON.stringify(r.data)); }catch(e){}
+      /* لو تغيّر ظهور الباقة السنوية بعد ما انرسمت الرئيسية بالإعدادات المخزّنة: نعيد رسمها حتى تطلع البطاقة من أول فتح */
+      try{ if(wasLive!==plansLive() && typeof view!=='undefined' && view==='home' && typeof render==='function') render(); }catch(e){}
+    } }catch(e){}
 }
 /* التغطية: المدن اللي يخدمها خافت. المدينة تُستنتج من موقع العميل */
 function normCity(s){ return String(s||'').replace(/^ال/,'').replace(/[\sً-ْ]/g,''); }
