@@ -796,6 +796,9 @@
   .rb-hero::after{content:"";position:absolute;inset:-60px auto auto -50px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.16),transparent 65%)}
   .rb-hero b{position:relative;display:block;font-size:2.1rem;font-weight:900;color:var(--gold);line-height:1.1}
   .rb-hero small{position:relative;display:block;font-size:.92rem;font-weight:600;opacity:.92;margin-top:7px;line-height:1.6}
+  .wrap.plans-screen{max-width:620px}
+  .rb-card.soon .rb-tag{background:#E8E2D6;color:#6E685B}
+  .rb-card .cta.soon{background:#E8E2D6;color:#6E685B;box-shadow:none;cursor:default}
   .rb-tabs{display:flex;background:var(--card);border:1.5px solid var(--line-strong);border-radius:999px;padding:4px;margin:16px auto 0;max-width:320px;box-shadow:var(--shadow-sm)}
   .rb-tabs button{flex:1;border:0;background:transparent;color:var(--muted);border-radius:999px;padding:11px 0;font:inherit;font-weight:900;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
   .rb-tabs button.on{background:#1F1810;color:var(--gold)}
@@ -861,6 +864,20 @@
   .ms-settle{background:var(--card);border:1.5px solid var(--gold);border-radius:16px;padding:18px;margin-top:14px;text-align:center}
   .ms-settle b{display:block;font-size:1.8rem;font-weight:900;color:var(--gold-deep)}
   .ms-settle span{display:block;color:var(--muted);font-size:.85rem;font-weight:700;margin:6px 0 12px}
+  /* تعديل الطلب بعد الحجز (2026-10-03) */
+  .chg-note{margin-top:8px;background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:12px;padding:8px 12px;font-size:.84rem;font-weight:800}
+  .chg-note.wait{background:#FFF7E6;border-color:#F3D9A4;color:#8A5A00}
+  .ob2-add{margin-inline-start:6px;background:#E6F4EA;color:#2E7D32;border-radius:999px;padding:1px 8px;font-size:.7rem;font-weight:800}
+  .addmode{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#1F1810;color:#F3EDE0;border-radius:14px;padding:10px 14px;margin:10px 0;font-size:.9rem;font-weight:800}
+  .addmode b{color:var(--gold)}
+  .addmode button{background:var(--gold);color:#1a1408;border:0;border-radius:999px;padding:6px 14px;font:inherit;font-weight:800;cursor:pointer}
+  .rm-list{display:grid;gap:8px;margin-top:4px}
+  .rm-row{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:700;cursor:pointer}
+  .rm-row input{width:20px;height:20px;accent-color:var(--gold-deep)}
+  .rm-row .rm-nm{flex:1}
+  .rm-qty{border:1px solid var(--line-strong);border-radius:8px;padding:4px 8px;font:inherit;background:var(--card)}
+  .rm-note{width:100%;margin-top:10px;border:1.5px solid var(--line-strong);border-radius:12px;padding:10px 12px;font:inherit;font-size:.95rem;resize:vertical;background:var(--card);box-sizing:border-box}
+  .cta.danger{background:#B3261E;color:#fff}
   .pl-card.ac{background:linear-gradient(180deg,#FFF8E1 0%,var(--card) 38%)}
   .pl-hero{margin:10px -16px 0;position:relative}
   .pl-hero img{display:block;width:100%;height:170px;object-fit:cover}
@@ -2538,6 +2555,7 @@ function rowToOrder(r){
     payRequired:!!r.pay_required, released:r.released!==false, paidAmount:+r.paid_amount||0, amountDue:+r.amount_due||0, payStatus:r.pay_status||'unpaid', payMethod:r.pay_method||'',
     // إضافة الفني على الفاتورة بانتظار موافقتك (الخادم يحسب المبلغ والبنود): pending · objected · device · paid
     extraStatus:r.extra_status||'', extraAmount:+r.extra_amount||0, extraLines:Array.isArray(r.extra_lines)?r.extra_lines:[],
+    onTheWay:!!r.on_the_way, cancelReq:r.cancel_req||'', changeReq:r.change_req||'', changeText:r.change_text||'', refundKind:r.refund_kind||'', credited:+r.credited||0, itemsAddedAt:r.items_added_at||null,
   };
 }
 function orderToPayload(o){
@@ -2690,6 +2708,11 @@ function serverMsg(e){
     KHAFET_SUB_SEASON_WAIT: LX('الزيارة الموسمية تتاح بعد سداد ثلاثة أشهر','The seasonal visit opens after three paid months'),
     KHAFET_SUB_SETTLE:   LX('عليك مبلغ من اشتراكك السابق، سدّده من «صيانتي»','You have a balance from your previous plan, settle it from My maintenance'),
     KHAFET_PLAN_MONTHLY_OFF: LX('الاشتراك الشهري غير متاح حاليًا','Monthly payment is not available right now'),
+    KHAFET_NO_ADD:        LX('ما يمكن تعديل هذا الطلب الآن','This order cannot be changed now'),
+    KHAFET_ADD_LATE:      LX('قرب موعد الفني، اطلب الإضافة في طلب جديد','The visit is too close, book the addition as a new order'),
+    KHAFET_CHANGE_PENDING:LX('عندك طلب تعديل قيد المراجعة','You already have a change request under review'),
+    KHAFET_CANCEL_REASON: LX('اكتب سبب الإلغاء','Enter the cancellation reason'),
+    KHAFET_CANCEL_DECIDED:LX('تم البت في هذا الطلب من قبل','This request was already decided'),
     KHAFET_PLANS_FULL:   LX('اكتمل العدد في هذه الخطة حاليًا','This plan is full right now'),
     KHAFET_PLAN_AC_OFF:  LX('خطط المكيفات غير متاحة حاليًا','AC plans are not available right now'),
     KHAFET_BAD_PLAN:     LX('الخطة غير متاحة','This plan is not available'),
@@ -3235,6 +3258,7 @@ let _payingNow=false;   // أثناء الدفع من صفحة الفاتورة:
 function render(){
   if(_payingNow && view==='pay') return;
   syncHeader();
+  setTimeout(injectAddBar,0);   // شريط «تضيف على الطلب» لو العميل يضيف على طلب قائم
   /* رجوع من صفحة الدفع؟ نعرض النتيجة بدل الشاشة العادية */
   if(!_payChecked && /[?&]pay=/.test(location.search)){ _payChecked=true; checkPaymentReturn(); return; }
   if(view==='home') return renderHome();
@@ -3867,11 +3891,11 @@ function renderPlans(kind){
   if(k!=='apt') k='villa';
   try{ sessionStorage.setItem('kh_plan_kind',k); }catch(e){}
   /* باقتان لكل سكن: صيانة فقط، أو صيانة + تكييف (لما تكون خطط المكيفات ظاهرة) */
-  const base=PLANS.find(p=>p.id===k), acp=acPlansEnabled()? PLANS.find(p=>p.id===k+'_ac') : null;
-  const plans=[base, acp].filter(Boolean);
-  const cards=plans.map(p=>planCardHtml(p,k,E)).join('');
+  const acLive=acPlansEnabled(), acSoon=!acLive&&stOn('plan_ac_soon',true);
+  const base=PLANS.find(p=>p.id===k), acp=(acLive||acSoon)? PLANS.find(p=>p.id===k+'_ac') : null;
+  const cards=[base, acp].filter(Boolean).map(p=>planCardHtml(p,k,E,p.ac&&acSoon)).join('');
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen">
+    <div class="wrap screen plans-screen">
       ${pageHead(T('الباقة السنوية','Annual plan'),'home')}
       <div class="rb-hero">
         <b>${T('الباقة السنوية','Annual plan')}</b>
@@ -3884,7 +3908,7 @@ function renderPlans(kind){
       <div class="rb-for">${k==='apt'?T('شقة بسخان مركزي ومكيف بوحدة خارجية','Apartment with a central heater and one outdoor AC unit'):T('بيت بسخان مركزي وحوش ومكيفات سبليت','House with a central heater, yard and split ACs')}</div>
       ${acp? `<div class="rb-two">
         <button type="button" class="on" onclick="rbScroll('rb_${aid(base.id)}')"><i>🔧</i><b>${T('صيانة','Maintenance')}</b><small>${en(base.price)} ${T('ريال / سنة','SAR / year')}</small></button>
-        <button type="button" class="ac" onclick="rbScroll('rb_${aid(acp.id)}')"><i>❄️</i><b>${T('صيانة + تكييف','Maintenance + AC')}</b><small>${en(acp.price)} ${T('ريال / سنة','SAR / year')}</small></button>
+        <button type="button" class="ac" onclick="rbScroll('rb_${aid(acp.id)}')"><i>❄️</i><b>${T('صيانة + تكييف','Maintenance + AC')}</b><small>${acSoon? T('قريبًا','Coming soon') : en(acp.price)+' '+T('ريال / سنة','SAR / year')}</small></button>
       </div>` : ''}
       ${cards}
       <div style="height:24px"></div>
@@ -3898,21 +3922,21 @@ function planCover(p){ return PLAN_IMG+(PLAN_COVER[p&&p.id]||'svc6/p14.jpg')+'?v
 function rbScroll(id){ const el=document.getElementById(id); if(!el) return; document.querySelectorAll('.rb-two button').forEach(b=>b.classList.toggle('on', b.getAttribute('onclick').indexOf("'"+id+"'")>=0)); try{ el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){ el.scrollIntoView(); } }
 /* أيقونة البند حسب نصه */
 function planFeatIcon(x){ return /مكيف|AC/i.test(x)?'❄️' : /شتاء|winter|سخان|heater/i.test(x)?'🔥' : /صيف|summer|شفاط|exhaust|طبلون|panel/i.test(x)?'☀️' : /زيار|visit/i.test(x)?'🔧' : /قطع|part/i.test(x)?'🏷️' : /ضمان|warranty/i.test(x)?'🛡️' : /موعد|أولوية|priority|appointment/i.test(x)?'⚡' : '✓'; }
-function planCardHtml(p,k,E){
+function planCardHtml(p,k,E,soon){
   const T=(ar,en)=>E?en:ar;
   const list=(E&&Array.isArray(p.bulletsEn)&&p.bulletsEn.length===p.bullets.length)? p.bulletsEn : p.bullets;
   const ord=p.ac? [...list.filter(x=>/مكيف|AC/i.test(x)), ...list.filter(x=>!/مكيف|AC/i.test(x))] : list;
   const feats=ord.slice(0,4).map(x=>`<li><i>${planFeatIcon(x)}</i><span dir="auto">${esc(x)}</span></li>`).join('');
-  const tag=p.ac? T('❄️ صيانة + تكييف','❄️ Maintenance + AC') : T('🔧 صيانة','🔧 Maintenance');
+  const tag=p.ac? (soon? T('❄️ صيانة + تكييف · قريبًا','❄️ Maintenance + AC · soon') : T('❄️ صيانة + تكييف','❄️ Maintenance + AC')) : T('🔧 صيانة','🔧 Maintenance');
   const units=p.ac? (p.id==='apt_ac'? T('الوحدة الخارجية و8 وحدات داخلية','outdoor unit and 8 indoor units') : T(en(p.acUnits||10)+' مكيفات', (p.acUnits||10)+' ACs')) : '';
   const mo=monthlyOn(p)? `<em>${T('أو '+en(planMonthly(p))+' ريال / شهر','or '+en(planMonthly(p))+' SAR / month')}</em>` : '';
-  return `<div class="rb-card ${p.ac?'ac':''}" id="rb_${aid(p.id)}">
+  return `<div class="rb-card ${p.ac?'ac':''}${soon?' soon':''}" id="rb_${aid(p.id)}">
       <div class="rb-cover"><img src="${planCover(p)}" alt="" loading="lazy"><span class="rb-tag">${tag}</span><b class="rb-name" dir="auto">${esc(T(p.name,p.nameEn))}</b></div>
       <div class="rb-body">
         <div class="rb-price"><b class="num">${en(p.price)}</b><i>${T('ريال / سنة','SAR / year')}</i>${mo}</div>
         ${p.ac? `<div class="rb-plus"><i>❄️</i><span>${T('كل مزايا الصيانة + غسيل '+units+' مرة بالسنة','All maintenance benefits + washing of '+units+' once a year')}</span></div>` : ''}
         <ul class="rb-feats">${feats}</ul>
-        <button class="cta gold" onclick="renderPlanSheet('${aid(p.id)}')">${T('التفاصيل والاشتراك','Details and subscribe')}</button>
+        ${soon? `<button class="cta soon" type="button" onclick="renderPlanSheet('${aid(p.id)}')">${T('قريبًا · شوف التفاصيل','Coming soon · see details')}</button>` : `<button class="cta gold" onclick="renderPlanSheet('${aid(p.id)}')">${T('التفاصيل والاشتراك','Details and subscribe')}</button>`}
       </div>
     </div>`;
 }
@@ -3921,32 +3945,34 @@ function renderPlanSheet(planId){
   const E=_uiEN();
   const T=(ar,en)=>E?en:ar;
   const p=PLANS.find(x=>x.id===planId)||PLANS[0];
-  if(p.ac&&!acPlansEnabled()){ renderPlans(); return; }
+  const soon=!!(p.ac&&!acPlansEnabled());
+  if(soon&&!stOn('plan_ac_soon',true)){ renderPlans(); return; }
   const list=(E&&Array.isArray(p.bulletsEn)&&p.bulletsEn.length===p.bullets.length)? p.bulletsEn : p.bullets;
   /* البنود مجمّعة: المكيفات، الزيارات، الشتاء، الصيف، المزايا */
   const G=[ {k:'ac', t:T('غسيل المكيفات','AC washing'), ic:'❄️', re:/مكيف|AC/i},
-            {k:'visit', t:T('زيارات الصيانة','Maintenance visits'), ic:'🔧', re:/زيار|visit/i},
+            {k:'visit', t:T('زيارات الصيانة','Maintenance visits'), ic:'🔧', re:/زيارات بالسنة|visits a year/i},
             {k:'winter', t:T('زيارة الشتاء','Winter visit'), ic:'🔥', re:/شتاء|winter/i},
             {k:'summer', t:T('زيارة الصيف','Summer visit'), ic:'☀️', re:/صيف|summer/i},
             {k:'more', t:T('مزايا المشترك','Member benefits'), ic:'🎁', re:/./} ];
   const used=new Set();
   const groups=G.map(g=>{ const items=list.filter((x,i)=>!used.has(i)&&g.re.test(x)).map(x=>{ used.add(list.indexOf(x)); return x; });
     if(!items.length) return '';
-    return `<div class="rs-g ${g.k==='ac'?'ac':''}"><h4><span>${g.ic}</span>${esc(g.t)}</h4><ul>${items.map(x=>`<li dir="auto">${esc(x)}</li>`).join('')}</ul></div>`; }).join('');
+    const clean=x=>String(x).replace(/\s*\((شتاء|صيف|winter|summer)\)\s*$/i,'');
+    return `<div class="rs-g ${g.k==='ac'?'ac':''}"><h4><span>${g.ic}</span>${esc(g.t)}</h4><ul>${items.map(x=>`<li dir="auto">${esc(clean(x))}</li>`).join('')}</ul></div>`; }).join('');
   const svc=CT_SVC.map(g=>`<h4>${esc(T(g.t,g.te))}</h4><ul>${g.i.map(x=>`<li><span>${esc(T(x[0],x[2]||x[0]))}</span></li>`).join('')}</ul>`).join('');
   const preview=plansPreview()&&!plansLive();
   const sub=preview? `toast(LX('المعاينة فقط · الاشتراك يفتح بعد التفعيل','Preview only · subscribing opens after activation'))` : `openSubscribe('${aid(p.id)}')`;
-  const tag=p.ac? T('❄️ صيانة + تكييف','❄️ Maintenance + AC') : T('🔧 صيانة','🔧 Maintenance');
+  const tag=p.ac? (soon? T('❄️ صيانة + تكييف · قريبًا','❄️ Maintenance + AC · soon') : T('❄️ صيانة + تكييف','❄️ Maintenance + AC')) : T('🔧 صيانة','🔧 Maintenance');
   const mo=monthlyOn(p)? T('أو '+en(planMonthly(p))+' ريال شهريًا','or '+en(planMonthly(p))+' SAR a month') : '';
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen">
+    <div class="wrap screen plans-screen">
       ${pageHead(T(p.name,p.nameEn),'plans')}
       <div class="rs-cover"><img src="${planCover(p)}" alt=""><span class="rb-tag">${tag}</span>
         <div class="rs-txt"><div class="rs-fam">${T('الباقة السنوية','Annual plan')}</div><b class="rs-name" dir="auto">${esc(T(p.name,p.nameEn))}</b></div></div>
       <div class="rs-pricebar"><b class="num">${en(p.price)}<small>${T('ريال / سنة','SAR / year')}</small></b><span>${mo? esc(mo) : T('دفعة واحدة','One payment')}</span></div>
       ${groups}
       <details class="ps-svc"><summary>🛠 ${T('الخدمات المشمولة في الزيارات','Services covered in the visits')}</summary><div class="ct-svc">${svc}</div></details>
-      <button class="cta gold" style="margin-top:14px" onclick="${sub}">${T('اشترك · '+en(p.price)+' ريال للسنة','Subscribe · '+en(p.price)+' SAR a year')}</button>
+      ${soon? `<button class="cta soon" type="button" style="margin-top:14px" disabled>❄️ ${T('قريبًا · بعد اعتماد فريق التكييف','Coming soon')}</button>` : `<button class="cta gold" style="margin-top:14px" onclick="${sub}">${T('اشترك · '+en(p.price)+' ريال للسنة','Subscribe · '+en(p.price)+' SAR a year')}</button>`}
       <div class="ps-links">
         <a onclick="openTerms()">📜 ${T('الشروط والأحكام','Terms and conditions')}</a>
         <a onclick="renderPlans()">↩︎ ${T("كل الخطط","All plans")}</a>
@@ -3992,7 +4018,7 @@ function openSubscribe(planId){
   const halves=(mOn||hOn)? `<div class="field"><label>${LX('السداد','Payment')}</label>
           <div class="sub-halves"><button type="button" class="on" data-h="full" onclick="subSetPayPlan('full')">${LX('سنوي','Yearly')}<small>${LX(en(subPrice())+' ريال · دفعة واحدة', en(subPrice())+' SAR · one payment')}</small></button>${hOn?`<button type="button" data-h="halves" onclick="subSetPayPlan('halves')">${LX('نصين','Two halves')}<small>${LX(en(planHalves({price:subPrice()})[0])+' ريال الآن', en(planHalves({price:subPrice()})[0])+' SAR now')}</small></button>`:''}${mOn?`<button type="button" data-h="monthly" onclick="subSetPayPlan('monthly')">${LX('شهري','Monthly')}<small>${LX('أول دفعة '+en(planMonthly(subPlan)*monthlyUpfront())+' ريال', 'first payment '+en(planMonthly(subPlan)*monthlyUpfront())+' SAR')}</small></button>`:''}</div></div>` : '';
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen">
+    <div class="wrap screen plans-screen">
       ${pageHead(LX('طلب اشتراك','Subscription request'),'plans')}
       <div class="panel" style="margin-top:14px">
         <div class="sub-sum"><img src="${planCover(subPlan)}" alt=""><div class="ss-t"><b dir="auto">${esc(LX(subPlan.name,subPlan.nameEn))}</b><span id="sub_price_txt">${esc(subPriceTxt())}</span></div></div>
@@ -4187,7 +4213,7 @@ async function fetchMySub(){
 async function renderMySub(){
   const local=mySubLocal();
   const H=pageHead('🛡️ '+LX('صيانتي السنوية','My annual maintenance'),'home');
-  document.getElementById('app').innerHTML=`<div class="wrap screen">${H}
+  document.getElementById('app').innerHTML=`<div class="wrap screen plans-screen">${H}
     <div class="panel" style="margin-top:16px;text-align:center;color:var(--muted)">⏳ ${LX('جارٍ تحميل عقدك...','Loading your contract...')}</div></div>`;
   const srv=await fetchMySub();
   const sub=srv||local;
@@ -5566,13 +5592,13 @@ function renderCart(){
     </div>`).join('');
   document.getElementById('app').innerHTML=`
     <div class="wrap screen" style="padding-bottom:170px">
-      ${pageHead('🛒 '+LX('سلتك','Your cart'),'home')}
+      ${pageHead(addMode? '➕ '+LX('إضافة على الطلب ','Add to order ')+addMode.id : '🛒 '+LX('سلتك','Your cart'),'home')}
       <div class="srows">${rows}</div>
       <a class="addmore" onclick="go('home')">＋ ${LX('أضف خدمة ثانية','Add another service')}</a>
     </div>
     <div class="nextbar"><div class="wrap">
       <div class="nb-info nb-sum"><div><span>${nbSvcLabel(ns)}</span><b>${money(laborPrice())}</b></div><div><span>${LX('المدة','Time')}</span><b>${fmtDurShort(cartDuration())}</b></div></div>
-      <button class="nb-go" onclick="goTimeChecked()">${LX('التالي','Next')} <span>←</span></button>
+      ${addMode?`<button class="nb-go" onclick="confirmAddItems()">${LX('أكّد الإضافة','Confirm addition')}</button>`:`<button class="nb-go" onclick="goTimeChecked()">${LX('التالي','Next')} <span>←</span></button>`}
     </div></div>`;
 }
 
@@ -6301,7 +6327,8 @@ function renderMyBookings(){
     const todayISO=dateISO(new Date());
     body=os.map(o=>{
       const canCancel=['new','confirmed'].includes(o.status);
-      const lateCancel=canCancel && hoursUntil(o)<cancelHours();   // أقل من X ساعات: الإلغاء والتغيير عبر التواصل فقط
+      const lateCancel=canCancel && hoursUntil(o)<cancelHours();   // أقل من X ساعات: تغيير الموعد عبر التواصل فقط
+      const canEdit=canCancel && !!o.dbId && !o.arrived && !o.onTheWay && hoursUntil(o)>=0.5 && o.changeReq!=='pending' && o.cancelReq!=='pending' && !o.warrantyOf && !o.subId;   // إضافة أو شيل قبل الموعد
       const canReorder=['done','cancelled'].includes(o.status) && !o.quick && !o.warrantyOf && (o.items||[]).some(i=>SERVICES.some(s=>s.id===i.id&&!s.hidden));
       const ageDays=o.date?(Date.now()-parseISO(o.date).getTime())/86400000:999;
       const inLaborW=o.status==='done' && o.warrantyDays>0 && ageDays<=o.warrantyDays && !o.warrantyOf;
@@ -6323,7 +6350,10 @@ function renderMyBookings(){
           <span class="status ${STATUS_CLS[o.status]}">${!o.dbId?LX('⏳ جارٍ الإرسال','⏳ Sending'):(awaitingPay?LX('💳 بانتظار الدفع','💳 Awaiting payment'):(xPend&&o.extraStatus==='pending'?LX('🧾 بانتظار موافقتك','🧾 Needs your approval'):(o.status==='new'&&!o.providerPhone?LX('🔍 جارٍ التعيين','🔍 Assigning'):STATUS_AR[o.status])))}</span>
         </div>
         ${o.warrantyOf?'<div class="wclaim" style="margin-top:8px">🛡️ بلاغ ضمان · مجاني</div>':''}
-        <ul class="ob2-svc">${o.items.map(i=>`<li><span class="ob2-ico">${esc(i.ico)}</span><span class="ob2-nm">${esc(itemLabel(i))}</span>${i.qty>1?`<span class="ob2-qty">×${ar(i.qty)}</span>`:''}</li>`).join('')}</ul>
+        ${o.cancelReq==='pending'?`<div class="chg-note wait">⏳ ${LX('طلب الإلغاء قيد المراجعة','Cancellation request under review')}</div>`:''}
+        ${o.changeReq==='pending'?`<div class="chg-note wait">✂️ ${LX('طلب التعديل قيد المراجعة','Change request under review')}${o.changeText?` · ${esc(o.changeText.replace(/^شيل:\s*/,''))}`:''}</div>`:''}
+        ${o.changeReq==='rejected'?`<div class="chg-note">✂️ ${LX('ما تم قبول التعديل، الطلب كما هو','The change was not approved, the order stays as is')}</div>`:''}
+        <ul class="ob2-svc">${o.items.map(i=>`<li><span class="ob2-ico">${esc(i.ico)}</span><span class="ob2-nm">${esc(itemLabel(i))}${i.added?`<span class="ob2-add">${LX('إضافة','added')}</span>`:''}</span>${i.qty>1?`<span class="ob2-qty">×${ar(i.qty)}</span>`:''}</li>`).join('')}</ul>
         <div class="ob2-rows">
           <div class="ob2-row"><span>${icon('calendar',16)} ${LX('التاريخ','Date')}</span><b>${dayLabel(o.date)}</b></div>
           <div class="ob2-row"><span>${icon('clock',16)} ${LX('الوقت','Time')}</span><b>${windowLabel(o.startMin)}</b></div>
@@ -6339,7 +6369,8 @@ function renderMyBookings(){
           <div class="pd-t"><span>${awaitingPay?LX('ادفع لتأكيد الحجز','Pay to confirm your booking'):LX('المتبقي عليك','Amount due')}</span><b>${money(o.amountDue)}</b></div>
           <div class="pd-acts">${APPLEPAY_OK?`<button onclick="payOrder('${oref}','applepay')"> Pay</button>`:''}${(cardInappOn()?`<button onclick="openCardModal('${oref}')">${LX('💳 ادفع بالبطاقة','💳 Pay by card')}</button>`:`<button onclick="payOrder('${oref}','online')">${LX('💳 ادفع الآن','💳 Pay now')}</button>`)}${tamaraOk?`<button class="tmr" onclick="payOrder('${oref}','tamara')">${LX('تقسيط تمارا','Tamara instalments')}</button>`:''}</div>
         </div>`:''}
-        ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
+        ${o.status==='cancelled'&&o.payStatus==='refunded'?`<div class="pay-note">${o.refundKind==='credit'?LX('✓ رجع المبلغ رصيدًا في حسابك','✓ Refunded to your balance in the app'):LX('✓ رجع المبلغ لوسيلة الدفع','✓ Refunded to your payment method')}</div>`:''}
+        ${o.status!=='cancelled'&&+o.credited>0?`<div class="pay-note">✓ ${LX('أُضيف '+money(o.credited)+' لرصيدك','Credited '+money(o.credited)+' to your balance')}</div>`:''}
         ${o.status==='cancelled'&&['refund_pending','refund_failed'].includes(o.payStatus)?`<div class="pay-note wait">${LX('⏳ جاري استرجاع المبلغ','⏳ Refund in progress')}</div>`:''}
         ${!o.dbId?`<div class="finding-note"><span class="fn-ic">⏳</span><div class="fn-t"><b>جاري إرسال طلبك</b><span>ما فيه إنترنت الآن. يُرسل تلقائيًا أول ما يرجع الاتصال.</span></div></div>`:(o.status==='new'&&!o.providerPhone&&!awaitingPay?`<div class="finding-note"><span class="fn-ic">🔍</span><div class="fn-t"><b>جاري تعيين أفضل فني لك</b><span>نرسل طلبك لأقرب فني مقيّم في منطقتك، ويتأكّد خلال دقائق.</span></div></div>`:'')}
         ${o.status==='done'&&o.warrantyDays>0&&!o.warrantyOf?(laborClaim
@@ -6371,9 +6402,7 @@ function renderMyBookings(){
                  : `<div class="fb-box"><textarea placeholder="اكتب رسالتك / شكواك هنا..."></textarea><button class="sbtn complaint-send" onclick="saveFeedback('${oref}', this)">📩 إرسال ملاحظتك</button></div>`}`
           ):''}
         </div>`:''}
-        ${canCancel?(lateCancel
-          ? `<div class="late-note"><span>⏰</span><div><b>باقي أقل من ${ar(cancelHours())} ساعات على الموعد</b>للإلغاء أو تغيير الموعد الحين تواصل معنا مباشرة.<div class="oact" style="margin-top:8px"><a class="sbtn" href="tel:${esc(PHONE)}">📞 اتصال</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 واتساب</a></div></div></div>`
-          : `<div class="oact"><button class="sbtn" onclick="openReschedule('${oref}')">📅 تغيير الموعد</button><button class="sbtn danger" onclick="cancelOrder('${oref}')">إلغاء الطلب</button></div>`):''}
+        ${canCancel&&!o.arrived&&!o.onTheWay?`<div class="oact">${!lateCancel?`<button class="sbtn" onclick="openReschedule('${oref}')">📅 ${LX('تغيير الموعد','Reschedule')}</button>`:''}${canEdit?`<button class="sbtn" onclick="addToOrder('${oref}')">➕ ${LX('أضف خدمة','Add service')}</button><button class="sbtn" onclick="openRemoveModal('${oref}')">✂️ ${LX('شيل خدمة','Remove service')}</button>`:''}${o.cancelReq==='pending'?'':`<button class="sbtn danger" onclick="cancelOrder('${oref}')">${LX('إلغاء الطلب','Cancel order')}</button>`}</div>${lateCancel?`<div class="oact"><a class="sbtn" href="tel:${esc(PHONE)}">📞 ${LX('اتصال','Call')}</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 ${LX('واتساب','WhatsApp')}</a></div>`:''}`:''}
         ${o.status==='progress'?`<div class="oact"><a class="sbtn" href="tel:${esc(PHONE)}">📞 ${LX('اتصال','Call')}</a><a class="sbtn ok" href="https://wa.me/${WHATSAPP}" target="_blank" rel="noopener">💬 ${LX('واتساب','WhatsApp')}</a></div>`:''}
         ${canReorder?`<div class="oact"><button class="sbtn ok" onclick="reorder('${oref}')">🔁 ${LX('اطلب مرة ثانية','Order again')}</button></div>`:''}
       </div>`;
@@ -6525,10 +6554,73 @@ async function sendPartClaim(orderId, idx){
 /* كم ساعة باقية على موعد الطلب (سالب = فات الموعد) */
 function hoursUntil(o){ if(!o||!o.date) return 999; const d=parseISO(o.date); d.setHours(0,0,0,0); return (d.getTime()+(+o.startMin||0)*60000-Date.now())/3600000; }
 /* سياسة الإلغاء: مجاني حتى 4 ساعات قبل الموعد، وبعدها عبر التواصل فقط */
-async function cancelOrder(id){ const o=findOrder(id); if(!o) return; if(hoursUntil(o)<cancelHours()){ toast(LX('باقي أقل من '+ar(cancelHours())+' ساعات على الموعد، تواصل معنا للإلغاء','Less than '+cancelHours()+' hours to the visit, contact us to cancel')); return; } if(!confirm(LX('متأكد من إلغاء الطلب ','Cancel order ')+o.id+'؟'+(o.paidAmount>0?LX(' يرجع لك المبلغ كامل.',' You will get a full refund.'):''))) return;
+async function cancelOrder(id){ const o=findOrder(id); if(!o) return;
+  /* الطلب المؤكد أو المدفوع: طلب إلغاء بالسبب تقرره الإدارة (2026-10-03). الحجز اللي ما اكتمل دفعه يُلغى مباشرة */
+  if(o.dbId && !(o.payRequired && !(+o.paidAmount>0) && !o.released)){ openCancelModal(id); return; }
+  if(!confirm(LX('إلغاء الطلب ','Cancel order ')+o.id+'؟')) return;
   const prev=o.status; o.status='cancelled'; save(); render();
   const ok=await cloudPatch(o.dbId,{status:'cancelled'});
-  if(ok){ toast('تم إلغاء الطلب'); } else { const x=findOrder(id); if(x&&x.status==='cancelled'&&!x.dbId){ x.status=prev; } save(); render(); } }
+  if(ok){ toast(LX('تم إلغاء الطلب','Order cancelled')); } else { const x=findOrder(id); if(x&&x.status==='cancelled'&&!x.dbId){ x.status=prev; } save(); render(); } }
+
+/* ══════════ تعديل الطلب بعد الحجز (2026-10-03): إضافة بدفع الفرق، وطلب شيل، وطلب إلغاء تقرره الإدارة ══════════ */
+let addMode=(()=>{ try{ return JSON.parse(sessionStorage.getItem('kh_addmode')||'null'); }catch(e){ return null; } })();
+function setAddMode(v){ addMode=v; try{ if(v) sessionStorage.setItem('kh_addmode', JSON.stringify(v)); else sessionStorage.removeItem('kh_addmode'); }catch(e){} }
+function addToOrder(id){ const o=findOrder(id); if(!o||!o.dbId) return;
+  setAddMode({ id:o.id, dbId:o.dbId, prevCart:Object.assign({}, state.cart||{}), prevParts:state.parts||{} });
+  state.cart={}; state.parts={}; save(); go('home');
+  toast(LX('اختر اللي تبي تضيفه على الطلب '+o.id,'Pick what to add to order '+o.id)); }
+function exitAddMode(){ if(!addMode) return; state.cart=addMode.prevCart||{}; state.parts=addMode.prevParts||{}; setAddMode(null); save(); }
+function cancelAddMode(){ exitAddMode(); go('mybookings'); }
+function addModeBar(){ if(!addMode) return ''; return `<div class="addmode" id="addModeBar"><span>➕ ${LX('تضيف على الطلب ','Adding to order ')}<b>${esc(addMode.id)}</b></span><button type="button" onclick="cancelAddMode()">${LX('إلغاء','Cancel')}</button></div>`; }
+function injectAddBar(){ const old=document.getElementById('addModeBar'); if(old) old.remove(); if(!addMode||!['home','services','cat','cart','search'].includes(view)) return;
+  const wrap=document.querySelector('#app .wrap'); if(!wrap) return; const t=document.createElement('div'); t.innerHTML=addModeBar(); if(t.firstElementChild) wrap.prepend(t.firstElementChild); }
+async function confirmAddItems(){
+  if(!addMode) return;
+  const items=Object.entries(state.cart||{}).map(([id,q])=>({id, qty:Math.max(1,+q||1)})).filter(x=>SERVICES.some(s=>s.id===x.id));
+  if(!items.length){ toast(LX('اختر خدمة أول','Pick a service first')); return; }
+  if(!cloudReady){ toast(LX('الإضافة تحتاج اتصال بالإنترنت','Adding needs an internet connection')); return; }
+  const btn=document.querySelector('.nb-go'); if(btn){ btn.disabled=true; btn.textContent='⏳'; }
+  const back=()=>{ if(btn){ btn.disabled=false; btn.textContent=LX('أكّد الإضافة','Confirm'); } };
+  try{ const { data, error }=await sb.rpc('khafet_order_add_items',{ p_order:addMode.dbId, p_items:items });
+    if(error||!data||!data.ok){ toast(serverMsg(error)||LX('تعذّرت الإضافة','Could not add')); back(); return; }
+    const oid=addMode.id; exitAddMode(); try{ await loadOrdersFromCloud(); }catch(e){}
+    toast(LX('أُضيفت على طلبك ✅','Added to your order ✅')); go('mybookings');
+    const o=findOrder(oid); if(o&&+o.amountDue>0){ setTimeout(()=>{ const el=document.querySelector('.pay-due'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); },400); }
+  }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال','Connection failed')); back(); }
+}
+function closeChgModal(){ const m=document.getElementById('chgModal'); if(m) m.remove(); }
+function openRemoveModal(id){ const o=findOrder(id); if(!o||!o.dbId) return; closeChgModal();
+  const rows=(o.items||[]).map((i,idx)=>{ if(!i||['fee','smallfee','quick'].includes(i.id)) return ''; const q=Math.max(1,+i.qty||1);
+    return `<label class="rm-row"><input type="checkbox" data-idx="${idx}" onchange="rmToggle(this)"><span class="rm-nm">${esc(i.ico||'')} ${esc(itemLabel(i))}</span>${q>1?`<select class="rm-qty" id="rmq_${idx}" disabled>${Array.from({length:q},(_,k)=>`<option value="${k+1}">${k+1}</option>`).join('')}</select>`:''}</label>`; }).join('');
+  const m=document.createElement('div'); m.className='cc-modal'; m.id='chgModal'; m.onclick=e=>{ if(e.target===m) closeChgModal(); };
+  m.innerHTML=`<div class="sheet"><h3><span>✂️ ${LX('شيل من الطلب','Remove from order')} ${esc(o.id)}</span><button type="button" onclick="closeChgModal()" aria-label="${LX('إغلاق','Close')}">×</button></h3>
+    <div class="rm-list">${rows}</div>
+    <textarea id="rmNote" class="rm-note" rows="2" placeholder="${LX('ملاحظة (اختياري)','Note (optional)')}"></textarea>
+    <button class="cta gold" id="rmSend" style="margin-top:12px" onclick="sendRemove('${aid(id)}')">${LX('أرسل الطلب','Send request')}</button></div>`;
+  document.body.appendChild(m); }
+function rmToggle(cb){ const sel=document.getElementById('rmq_'+cb.dataset.idx); if(sel) sel.disabled=!cb.checked; }
+async function sendRemove(id){ const o=findOrder(id); if(!o||!o.dbId) return;
+  const lines=[...document.querySelectorAll('#chgModal input[type=checkbox]:checked')].map(cb=>{ const sel=document.getElementById('rmq_'+cb.dataset.idx); return {idx:+cb.dataset.idx, qty: sel? +sel.value : 1}; });
+  if(!lines.length){ toast(LX('اختر اللي تبي تشيله','Pick what to remove')); return; }
+  const note=((document.getElementById('rmNote')||{}).value||'').trim();
+  const b=document.getElementById('rmSend'); const back=()=>{ if(b){ b.disabled=false; b.textContent=LX('أرسل الطلب','Send request'); } }; if(b){ b.disabled=true; b.textContent='⏳'; }
+  try{ const { error }=await sb.rpc('khafet_order_remove_request',{ p_order:o.dbId, p_lines:lines, p_note:note||null });
+    if(error){ toast(serverMsg(error)||LX('تعذّر الإرسال','Could not send')); back(); return; }
+    closeChgModal(); toast(LX('وصلنا طلبك وبنراجعه ✅','Request received ✅')); try{ await loadOrdersFromCloud(); }catch(e){} render();
+  }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال','Connection failed')); back(); } }
+function openCancelModal(id){ const o=findOrder(id); if(!o||!o.dbId) return; closeChgModal();
+  const m=document.createElement('div'); m.className='cc-modal'; m.id='chgModal'; m.onclick=e=>{ if(e.target===m) closeChgModal(); };
+  m.innerHTML=`<div class="sheet"><h3><span>${LX('طلب إلغاء','Cancellation request')} · ${esc(o.id)}</span><button type="button" onclick="closeChgModal()" aria-label="${LX('إغلاق','Close')}">×</button></h3>
+    <textarea id="cxReason" class="rm-note" rows="3" placeholder="${LX('سبب الإلغاء','Reason')}"></textarea>
+    <button class="cta danger" id="cxSend" style="margin-top:12px" onclick="sendCancelReq('${aid(id)}')">${LX('أرسل طلب الإلغاء','Send request')}</button></div>`;
+  document.body.appendChild(m); setTimeout(()=>{ const t=document.getElementById('cxReason'); if(t) t.focus(); },50); }
+async function sendCancelReq(id){ const o=findOrder(id); if(!o||!o.dbId) return;
+  const reason=((document.getElementById('cxReason')||{}).value||'').trim(); if(reason.length<3){ toast(LX('اكتب سبب الإلغاء','Enter the reason')); return; }
+  const b=document.getElementById('cxSend'); const back=()=>{ if(b){ b.disabled=false; b.textContent=LX('أرسل طلب الإلغاء','Send request'); } }; if(b){ b.disabled=true; b.textContent='⏳'; }
+  try{ const { error }=await sb.rpc('khafet_request_cancel',{ p_order:o.dbId, p_reason:reason });
+    if(error){ toast(serverMsg(error)||LX('تعذّر الإرسال','Could not send')); back(); return; }
+    closeChgModal(); toast(LX('وصلنا طلب الإلغاء وبنراجعه','Cancellation request received')); try{ await loadOrdersFromCloud(); }catch(e){} render();
+  }catch(e){ console.warn(e); toast(LX('تعذّر الاتصال','Connection failed')); back(); } }
 
 /* ══════════ إعادة الطلب بضغطة: نفس الخدمات والعنوان، يختار الموعد بس ══════════ */
 function reorder(id){
