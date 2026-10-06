@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#F1E9DF">
+<title>حجز خافت</title>
+<!-- صفحة الحجز اللي تفتح من زر الواتساب (الخيار الثاني، 2026-10-06): الرابط فيه رمز موقّع برقم العميل، فما فيه تسجيل دخول.
+     الخدمات ← البيت على الخريطة ← الموعد ← الدفع بميسر، وبعد الدفع يرجع للواتساب وتوصله رسالة التأكيد. الواجهة: wa-bot/w/* -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@600;700;800&family=Cairo:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F1E9DF; --card:#FAF6F1; --soft:#E7DDD1; --ink:#3A3029; --ink-2:#4E3F35; --muted:#8E8175; --line:#E2D7CA;
+  --gold:#F5C518; --gold-soft:#FBF1C9; --gold-deep:#B8860B; --dark:#2B241F;
+  --ok:#15803D; --ok-soft:#E3F4E8; --err:#C2410C; --err-soft:#FBE4E1;
+  --c1:#27B9B5; --c2:#F0B21A; --c3:#3796D3; --c4:#EC8434; --c5:#E45C86; --c6:#9460DC;
+  --r:20px; --sh:0 18px 34px -24px rgba(58,48,41,.55); --sh-sm:0 10px 22px -18px rgba(58,48,41,.5);
+  --f-head:'Baloo Bhaijaan 2','Cairo',system-ui,sans-serif; --f-body:'Cairo',system-ui,sans-serif;
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55}
+body{min-height:100dvh;padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold-deep);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px}
+[hidden]{display:none!important}
+
+/* الرأس */
+.top{position:sticky;top:0;z-index:20;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 0 8px}
+.top .wrap{display:flex;align-items:center;gap:10px}
+.top img{width:40px;height:40px;border-radius:12px;background:var(--gold);object-fit:contain;padding:4px;flex:none}
+.top h1{margin:0;font:800 19px/1.2 var(--f-head)}
+.top p{margin:0;color:var(--muted);font-size:13px}
+.back{margin-inline-start:auto;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;flex:none}
+.back svg{width:20px;height:20px}
+.steps{display:flex;gap:6px;margin-top:10px}
+.steps li{flex:1;list-style:none;display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:var(--muted)}
+.steps li::before{content:"";height:5px;border-radius:9px;background:var(--line);transition:background .3s}
+.steps li.on{color:var(--ink)}
+.steps li.on::before,.steps li.done::before{background:var(--gold)}
+.steps ol{display:flex;gap:6px;margin:0;padding:0;width:100%}
+
+h2{font:800 22px/1.25 var(--f-head);margin:14px 0 4px;text-wrap:balance}
+.sub{color:var(--muted);margin:0 0 14px;font-size:14px}
+
+/* الأقسام */
+.search{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:0 12px;margin-bottom:12px}
+.search svg{width:18px;height:18px;color:var(--muted);flex:none}
+.search input{border:0;background:none;outline:0;flex:1;padding:12px 0;min-width:0}
+.cats{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin:0 -16px;padding-inline:16px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{--c:var(--c1);flex:none;display:flex;align-items:center;gap:8px;padding:8px 14px 8px 10px;border-radius:999px;border:1.5px solid var(--line);background:var(--card);font-weight:700;font-size:15px;white-space:nowrap;transition:transform .2s var(--spring)}
+.cat i{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-style:normal;background:color-mix(in srgb,var(--c) 18%,#fff)}
+.cat[aria-pressed="true"]{background:var(--dark);color:#fff;border-color:var(--dark)}
+.cat[aria-pressed="true"] i{background:var(--c)}
+.cat:active{transform:scale(.96)}
+
+.svcs{display:grid;gap:10px}
+.svc{display:grid;grid-template-columns:78px 1fr;gap:12px;align-items:center;background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:10px;transition:border-color .2s,box-shadow .2s}
+.svc.in{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.svc img,.svc .ph{width:78px;height:78px;border-radius:14px;object-fit:cover;background:#fff}
+.svc .ph{display:grid;place-items:center;font-size:30px;background:var(--soft)}
+.svc b{display:block;font-weight:700;line-height:1.35}
+.svc .meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
+.svc .pr{font-weight:800;font-variant-numeric:tabular-nums}
+.svc .pr small{font-weight:600;color:var(--muted);font-size:12px;margin-inline-start:4px}
+.svc .du{color:var(--muted);font-size:12.5px}
+.add{border:0;background:var(--gold);color:var(--dark);font-weight:800;border-radius:12px;padding:7px 14px;font-size:14px}
+.qty{display:flex;align-items:center;gap:2px;background:var(--dark);color:#fff;border-radius:12px;padding:2px}
+.qty button{width:32px;height:32px;border:0;border-radius:10px;background:none;color:#fff;font-size:20px;font-weight:700;line-height:1}
+.qty span{min-width:22px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums}
+.empty{text-align:center;color:var(--muted);padding:30px 0}
+
+/* الخريطة */
+.mapbox{position:relative;height:min(52vh,420px);border-radius:var(--r);overflow:hidden;border:1.5px solid var(--line);box-shadow:var(--sh-sm);background:var(--soft)}
+#map{position:absolute;inset:0}
+.pin{position:absolute;left:50%;top:50%;width:44px;height:56px;transform:translate(-50%,-100%);pointer-events:none;z-index:500;transition:transform .2s}
+.mapbox.moving .pin{transform:translate(-50%,-112%)}
+.pin svg{width:100%;height:100%;filter:drop-shadow(0 6px 6px rgba(43,36,31,.35))}
+.pin-dot{position:absolute;left:50%;top:50%;width:10px;height:5px;border-radius:50%;background:rgba(43,36,31,.35);transform:translate(-50%,-50%);z-index:499;pointer-events:none}
+.mapbtns{position:absolute;inset-inline:10px;bottom:10px;display:flex;gap:8px;z-index:600;flex-wrap:wrap}
+.chipbtn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:999px;padding:9px 14px;background:#fff;color:var(--ink);font-weight:700;font-size:14px;box-shadow:var(--sh-sm)}
+.chipbtn.dark{background:var(--dark);color:#fff}
+.place{display:flex;align-items:center;gap:10px;margin:12px 0;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px 14px}
+.place i{font-style:normal;font-size:22px}
+.place b{display:block}
+.place span{color:var(--muted);font-size:13.5px}
+.place.bad{border-color:#F3C3B5;background:var(--err-soft)}
+.place.bad span{color:var(--err)}
+.cities{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 12px}
+.field{display:grid;gap:6px;margin-bottom:12px}
+.field label{font-weight:700;font-size:14px}
+.field label small{color:var(--muted);font-weight:600}
+.field input,.field textarea{width:100%;border:1.5px solid var(--line);background:var(--card);border-radius:14px;padding:12px 14px;outline:0}
+.field input:focus,.field textarea:focus{border-color:var(--gold-deep)}
+.field textarea{min-height:74px;resize:vertical}
+
+/* الموعد */
+.days{display:flex;gap:8px;overflow-x:auto;margin:0 -16px 14px;padding:2px 16px 8px;scrollbar-width:none}
+.days::-webkit-scrollbar{display:none}
+.day{flex:none;min-width:86px;padding:10px 12px;border-radius:16px;border:1.5px solid var(--line);background:var(--card);text-align:center;line-height:1.3}
+.day small{display:block;color:var(--muted);font-size:12px;font-weight:700}
+.day b{display:block;font:800 17px/1.25 var(--f-head)}
+.day[aria-pressed="true"]{background:var(--dark);border-color:var(--dark);color:#fff}
+.day[aria-pressed="true"] small{color:var(--gold)}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.time{padding:13px 10px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);font-weight:700;font-variant-numeric:tabular-nums}
+.time[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--dark)}
+.hint{color:var(--muted);font-size:13.5px;margin:12px 0 0}
+
+/* الملخص */
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:var(--r);padding:14px 16px;margin-bottom:12px}
+.card h3{margin:0 0 8px;font:800 16px/1.3 var(--f-head);display:flex;align-items:center;justify-content:space-between}
+.card h3 button{border:0;background:none;color:var(--gold-deep);font:700 14px var(--f-body)}
+.line{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-variant-numeric:tabular-nums}
+.line span:last-child{font-weight:700;white-space:nowrap}
+.line.minus span:last-child{color:var(--ok)}
+.total{display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px dashed var(--line);margin-top:8px;padding-top:10px;font:800 20px var(--f-head)}
+.pays{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px;color:var(--muted);font-size:13px;font-weight:700}
+.pays span{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:3px 10px}
+
+/* الشريط السفلي */
+.bar{position:fixed;inset-inline:0;bottom:0;z-index:30;background:linear-gradient(to top,var(--bg) 70%,rgba(241,233,223,0));padding:16px 0 calc(12px + env(safe-area-inset-bottom))}
+.bar .wrap{display:flex;align-items:center;gap:12px}
+.bar .sum{flex:none;line-height:1.25}
+.bar .sum small{display:block;color:var(--muted);font-size:12.5px;font-weight:700}
+.bar .sum b{font:800 20px var(--f-head);font-variant-numeric:tabular-nums}
+.go{flex:1;border:0;border-radius:16px;padding:15px 18px;background:var(--dark);color:#fff;font:800 17px var(--f-head);display:flex;align-items:center;justify-content:center;gap:8px;transition:transform .15s,opacity .2s}
+.go.pay{background:var(--gold);color:var(--dark)}
+.go:active{transform:scale(.98)}
+.go:disabled{opacity:.45;cursor:default}
+.go .spin{width:18px;height:18px;border-radius:50%;border:2.5px solid currentColor;border-inline-end-color:transparent;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* رسائل */
+.toast{position:fixed;inset-inline:16px;top:calc(12px + env(safe-area-inset-top));z-index:50;max-width:528px;margin:0 auto;background:var(--dark);color:#fff;border-radius:14px;padding:12px 16px;font-weight:700;box-shadow:var(--sh);transform:translateY(-140%);transition:transform .35s var(--spring)}
+.toast.show{transform:none}
+.full{min-height:80dvh;display:grid;place-items:center;text-align:center}
+.full .ic{width:84px;height:84px;border-radius:28px;margin:0 auto 14px;display:grid;place-items:center;font-size:40px;background:var(--gold)}
+.full h2{margin:0 0 6px}
+.full p{color:var(--muted);margin:0 0 20px}
+.full .go{max-width:320px;margin:0 auto}
+.skel{height:96px;border-radius:18px;background:linear-gradient(90deg,var(--soft),var(--card),var(--soft));background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+.leaflet-control-attribution{font-size:10px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="top" id="top" hidden>
+  <div class="wrap">
+    <img src="www/logo.png" alt="خافت">
+    <div><h1>حجز خدمة</h1><p id="hello">خافت للصيانة المنزلية</p></div>
+    <button type="button" class="back" id="back" aria-label="رجوع" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+  <div class="wrap"><ol class="steps" id="steps"><li>الخدمات</li><li>البيت</li><li>الموعد</li><li>الدفع</li></ol></div>
+</header>
+
+<main class="wrap" id="main">
+  <div class="full" id="loading"><div><div class="skel" style="width:280px;margin-bottom:10px"></div><div class="skel" style="width:280px"></div></div></div>
+
+  <!-- 1) الخدمات -->
+  <section id="s0" hidden>
+    <h2>وش تحتاج؟</h2>
+    <p class="sub">اختر خدمة أو أكثر، وحدد العدد</p>
+    <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="q" type="search" placeholder="ابحث، مثل: تسريب، فيش، قفل" aria-label="ابحث عن خدمة"></label>
+    <div class="cats" id="cats" role="group" aria-label="الأقسام"></div>
+    <div class="svcs" id="svcs"></div>
+  </section>
+
+  <!-- 2) البيت -->
+  <section id="s1" hidden>
+    <h2>وين البيت؟</h2>
+    <p class="sub">حرّك الخريطة لين يصير الدبوس على بيتك</p>
+    <div class="mapbox" id="mapbox">
+      <div id="map" aria-label="الخريطة"></div>
+      <div class="pin-dot"></div>
+      <div class="pin"><svg viewBox="0 0 44 56" aria-hidden="true"><path d="M22 54s18-17.4 18-31A18 18 0 0 0 4 23c0 13.6 18 31 18 31z" fill="#2B241F"/><circle cx="22" cy="22" r="8" fill="#F5C518"/></svg></div>
+      <div class="mapbtns"><button type="button" class="chipbtn dark" id="gps">📍 موقعي الحالي</button><button type="button" class="chipbtn" id="lastBtn" hidden>🏠 عنواني السابق</button></div>
+    </div>
+    <div class="place" id="place"><i>📍</i><div><b id="placeT">حدد البيت على الخريطة</b><span id="placeS">الفني يوصلك على الدبوس بالضبط</span></div></div>
+    <div class="cities" id="cities" hidden></div>
+    <div class="field"><label for="district">الحي</label><input id="district" autocomplete="off" maxlength="80"></div>
+    <div class="field"><label for="house">رقم البيت أو وصفه <small>(اختياري)</small></label><input id="house" autocomplete="off" maxlength="80" placeholder="مثل: فيلا 12، البوابة السوداء"></div>
+    <div class="field"><label for="notes">ملاحظة للفني <small>(اختياري)</small></label><textarea id="notes" maxlength="300" placeholder="مثل: التسريب تحت مغسلة المطبخ"></textarea></div>
+  </section>
+
+  <!-- 3) الموعد -->
+  <section id="s2" hidden>
+    <h2>متى يناسبك؟</h2>
+    <p class="sub">الفني يوصلك خلال الفترة اللي تختارها</p>
+    <div class="days" id="days" role="group" aria-label="الأيام"></div>
+    <div class="times" id="times" role="group" aria-label="الأوقات"></div>
+    <p class="hint" id="slotHint" hidden></p>
+  </section>
+
+  <!-- 4) الملخص والدفع -->
+  <section id="s3" hidden>
+    <h2>راجع طلبك</h2>
+    <p class="sub">بعد الدفع يتأكد الموعد ويوصلك التأكيد على الواتساب</p>
+    <div class="card"><h3>الخدمات <button type="button" data-goto="0">تعديل</button></h3><div id="sumItems"></div></div>
+    <div class="card"><h3>الموعد <button type="button" data-goto="2">تعديل</button></h3><div id="sumWhen"></div></div>
+    <div class="card"><h3>البيت <button type="button" data-goto="1">تعديل</button></h3><div id="sumAddr"></div></div>
+    <div class="card" id="sumMoney"></div>
+    <div class="pays" aria-label="طرق الدفع"><span>مدى</span><span>Apple Pay</span><span>فيزا</span><span>ماستركارد</span></div>
+  </section>
+
+  <!-- نهايات -->
+  <section class="full" id="endDone" hidden><div><div class="ic">✅</div><h2 id="doneT">تأكد حجزك</h2><p id="doneP">يوصلك التأكيد على الواتساب</p><a class="go" id="doneWa" href="#">ارجع للواتساب</a></div></section>
+  <section class="full" id="endExpired" hidden><div><div class="ic">⏳</div><h2>الرابط انتهت صلاحيته</h2><p>ارجع للواتساب واضغط «احجز من هنا» ويوصلك رابط جديد</p><a class="go" id="expWa" href="https://wa.me/966590497866">ارجع للواتساب</a></div></section>
+</main>
+
+<div class="bar" id="bar" hidden>
+  <div class="wrap">
+    <div class="sum" id="barSum"><small id="barK">طلبك</small><b id="barV">0 ر.س</b></div>
+    <button type="button" class="go" id="go" disabled>التالي</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var API = "https://zulogtqxbuqxmdmjpzqj.supabase.co/functions/v1/wa-bot/w/";
+  var T = new URLSearchParams(location.search).get("t") || "";
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); };
+  var CAT_C = ["--c1", "--c2", "--c3", "--c4", "--c5", "--c6"];
+  var ERR = {
+    KHAFET_BAD_TIME: "الوقت هذا انحجز قبل شوي، اختر وقت ثاني",
+    KHAFET_OFF_DAY: "اليوم هذا إجازة، اختر يوم ثاني",
+    KHAFET_COVERAGE: "حاليًا نخدم الخبر والدمام والظهران، حدد بيت داخلها",
+    KHAFET_NO_LOCATION: "حدد البيت على الخريطة",
+    KHAFET_BAD_ITEM: "فيه خدمة بطلبك ما عادت متوفرة، راجع الخدمات",
+    KHAFET_NO_ITEMS: "اختر خدمة وحدة على الأقل",
+    KHAFET_BOOKING_OFF: "الحجز موقف مؤقتًا، جرّب بعد شوي",
+    KHAFET_TOO_MANY: "عندك حجوزات كثيرة اليوم، تقدر تكمل بكرة",
+    KHAFET_TOO_MANY_OPEN: "عندك طلبات مفتوحة كثيرة، تابعها من الواتساب بكلمة «طلبي»",
+    KHAFET_BLOCKED: "ما قدرنا نكمل الحجز",
+    PAY_URL: "انحجز موعدك مبدئيًا، بس صفحة الدفع ما فتحت. اضغط «ادفع» مرة ثانية",
+    ERROR: "صار خلل بسيط، جرّب مرة ثانية",
+    NET: "تأكد من الإنترنت وجرّب مرة ثانية"
+  };
+
+  var D = null;                 // بيانات البداية: الأقسام والخدمات والمدن وآخر عنوان
+  var SV = {};                  // الخدمات بالمعرّف
+  var cart = {};                // {id: qty}
+  var step = 0, cat = "", q = "";
+  var loc = { lat: 0, lng: 0, city: "", raw: "", district: "", set: false, pickCity: "" };
+  var slots = null, day = "", start = null, slotKey = "";
+  var quote = null, quoteKey = "";
+  var map = null, geoT = 0, geoSeq = 0;
+
+  function toast(t) { var el = $("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(function () { el.classList.remove("show"); }, 3600); }
+  function api(op, body) {
+    var opt = body ? { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.assign({ t: T }, body)) } : {};
+    return fetch(API + op + (body ? "" : "?t=" + encodeURIComponent(T)), opt).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { if (r.status === 401) { expired(); throw new Error("expired"); } return j; });
+    }, function () { throw new Error("NET"); });
+  }
+  function expired() { ["s0", "s1", "s2", "s3", "loading", "top", "bar"].forEach(function (id) { $(id).hidden = true; }); $("endExpired").hidden = false; }
+  function waLink() { return "https://wa.me/" + ((D && D.wa) || "966590497866"); }
+
+  // ───── السلة ─────
+  var items = function () { return Object.keys(cart).filter(function (id) { return cart[id] > 0 && SV[id]; }).map(function (id) { return { id: id, qty: cart[id] }; }); };
+  var lineTotal = function (s, n) { return s.custom ? 0 : s.price + (n - 1) * (s.xprice == null ? s.price : s.xprice); };
+  var durTx = function (m) { return !m ? "" : m < 60 ? "حوالي " + m + " دقيقة" : "حوالي " + (m === 60 ? "ساعة" : m === 120 ? "ساعتين" : m % 60 ? (m / 60).toFixed(1).replace(".0", "") + " ساعة" : m / 60 + " ساعات"); };
+  function localTotal() { return items().reduce(function (a, it) { return a + lineTotal(SV[it.id], it.qty); }, 0); }
+  function count() { return items().reduce(function (a, it) { return a + it.qty; }, 0); }
+
+  // ───── الخطوة 1: الخدمات ─────
+  function renderCats() {
+    $("cats").innerHTML = D.cats.map(function (k, i) {
+      return '<button type="button" class="cat" style="--c:var(' + CAT_C[i % 6] + ')" aria-pressed="' + (cat === k.id && !q) + '" data-cat="' + esc(k.id) + '"><i>' + esc(k.icon) + "</i>" + esc(k.name) + "</button>";
+    }).join("");
+  }
+  function norm(s) { return String(s || "").replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/[ًٌٍَُِّْـ]/g, "").toLowerCase(); }
+  function renderSvcs() {
+    var nq = norm(q.trim());
+    var list = D.svcs.filter(function (s) { return nq ? nq.split(/\s+/).every(function (w) { return norm(s.name).indexOf(w) >= 0; }) : s.cat === cat; });
+    if (!list.length) { $("svcs").innerHTML = '<p class="empty">ما لقينا خدمة بهالاسم، جرّب كلمة ثانية</p>'; return; }
+    $("svcs").innerHTML = list.map(function (s) {
+      var n = cart[s.id] || 0;
+      var ctl = n ? '<span class="qty" role="group" aria-label="العدد"><button type="button" data-dec="' + s.id + '" aria-label="أقل">−</button><span>' + n + '</span><button type="button" data-inc="' + s.id + '" aria-label="أكثر"' + (s.custom ? " disabled" : "") + ">+</button></span>"
+        : '<button type="button" class="add" data-inc="' + s.id + '">أضف</button>';
+      var pr = s.custom || !s.price ? "بعد المعاينة" : s.price + "<small>ر.س</small>";
+      return '<article class="svc' + (n ? " in" : "") + '">' + (s.img ? '<img src="' + esc(s.img) + '" alt="" loading="lazy">' : '<div class="ph" aria-hidden="true">🔧</div>') +
+        '<div><b>' + esc(s.name) + '</b><div class="du">' + esc(durTx(s.dur)) + '</div><div class="meta"><span class="pr">' + pr + "</span>" + ctl + "</div></div></article>";
+    }).join("");
+  }
+  function setQty(id, d) {
+    var s = SV[id]; if (!s) return;
+    var n = Math.max(0, Math.min(s.custom ? 1 : 20, (cart[id] || 0) + d));
+    if (n && !cart[id] && items().length >= 10) { toast("الحد 10 خدمات بالطلب الواحد"); return; }
+    if (n) cart[id] = n; else delete cart[id];
+    renderSvcs(); bar();
+  }
+
+  // ───── الخطوة 2: البيت ─────
+  function initMap() {
+    if (map) { setTimeout(function () { map.invalidateSize(); }, 50); return; }
+    var c = D.last ? [D.last.lat, D.last.lng] : [26.2794, 50.2083];
+    map = L.map("map", { zoomControl: false, attributionControl: true }).setView(c, D.last ? 17 : 12);
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    map.attributionControl.setPrefix(false);
+    map.on("movestart", function () { $("mapbox").classList.add("moving"); });
+    map.on("moveend", function () { $("mapbox").classList.remove("moving"); onMoved(); });
+    map.on("dragstart zoomstart", function () { loc.userMoved = true; });
+    if (D.last) useLast(true);
+  }
+  function onMoved() {
+    var p = map.getCenter();
+    loc.lat = +p.lat.toFixed(6); loc.lng = +p.lng.toFixed(6);
+    if (!loc.userMoved && !loc.set) return;
+    loc.set = true;
+    clearTimeout(geoT);
+    $("placeT").textContent = "نجيب العنوان…"; $("placeS").textContent = "";
+    geoT = setTimeout(geocode, 450); bar();
+  }
+  function geocode() {
+    var seq = ++geoSeq;
+    api("geo", { lat: loc.lat, lng: loc.lng }).then(function (g) {
+      if (seq !== geoSeq) return;
+      loc.city = g.city || ""; loc.raw = g.raw || "";
+      if (g.district && (!$("district").value || $("district").dataset.auto === "1")) { $("district").value = g.district; $("district").dataset.auto = "1"; }
+      showPlace(g);
+    }).catch(function () { if (seq === geoSeq) { loc.city = ""; showPlace({ net: true }); } });
+  }
+  function showPlace(g) {
+    var bad = false, t, s;
+    $("cities").hidden = true;
+    if (g.out) { bad = true; t = "الموقع خارج المملكة"; s = "حرّك الخريطة على بيتك"; }
+    else if (g.net) { bad = true; t = "ما قدرنا نجيب العنوان"; s = ERR.NET; }
+    else if (loc.city) { t = loc.city + ($("district").value ? " · " + $("district").value : ""); s = "الفني يوصلك على الدبوس بالضبط"; }
+    else if (loc.raw) { bad = true; t = "موقعك يطلع في " + loc.raw; s = "حاليًا نخدم " + D.cover.join(" و") + " فقط"; }
+    else { t = "وش المدينة؟"; s = "اختر مدينة البيت"; cityChips(); }
+    $("place").classList.toggle("bad", bad); $("placeT").textContent = t; $("placeS").textContent = s; bar();
+  }
+  function cityChips() {
+    $("cities").hidden = false;
+    $("cities").innerHTML = D.cover.map(function (c) { return '<button type="button" class="chipbtn' + (loc.pickCity === c ? " dark" : "") + '" data-city="' + esc(c) + '">' + esc(c) + "</button>"; }).join("");
+  }
+  function cityNow() { return loc.city || (!loc.raw ? loc.pickCity : ""); }
+  function useLast(silent) {
+    var a = D.last; if (!a) return;
+    $("lastBtn").hidden = false;
+    loc.set = true; loc.userMoved = true;
+    map.setView([a.lat, a.lng], 17);
+    if (a.district) { $("district").value = a.district; $("district").dataset.auto = "1"; }
+    if (a.house && !$("house").value) $("house").value = a.house;
+    onMoved();
+    if (!silent) toast("رجعنا لعنوانك السابق 👍");
+  }
+  function gps() {
+    if (!navigator.geolocation) { toast("جوالك ما يدعم تحديد الموقع، حرّك الخريطة بيدك"); return; }
+    $("gps").textContent = "📍 نحدد موقعك…";
+    navigator.geolocation.getCurrentPosition(function (p) {
+      $("gps").textContent = "📍 موقعي الحالي";
+      loc.userMoved = true; map.setView([p.coords.latitude, p.coords.longitude], 18);
+    }, function () {
+      $("gps").textContent = "📍 موقعي الحالي";
+      toast("ما قدرنا نحدد موقعك، اسمح بالموقع أو حرّك الخريطة بيدك");
+    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+  }
+
+  // ───── الخطوة 3: الموعد ─────
+  function loadSlots() {
+    var key = JSON.stringify([items(), cityNow()]);
+    if (slots && slotKey === key) { renderDays(); return; }
+    slotKey = key; slots = null;
+    $("days").innerHTML = '<div class="skel" style="height:62px;width:100%"></div>'; $("times").innerHTML = "";
+    api("slots", { items: items(), city: cityNow() }).then(function (r) {
+      if (slotKey !== key) return;
+      slots = r.days || [];
+      if (!slots.some(function (d) { return d.d === day && d.times.some(function (t) { return t.s === start; }); })) { start = null; if (!slots.some(function (d) { return d.d === day; })) day = slots[0] ? slots[0].d : ""; }
+      renderDays();
+    }).catch(function (e) { if (e.message !== "expired") { $("days").innerHTML = ""; $("slotHint").hidden = false; $("slotHint").textContent = ERR.NET; } });
+  }
+  function renderDays() {
+    if (!slots.length) { $("days").innerHTML = ""; $("times").innerHTML = ""; $("slotHint").hidden = false; $("slotHint").textContent = "ما فيه مواعيد متاحة خلال الأسبوعين الجايين لهالطلب"; bar(); return; }
+    $("slotHint").hidden = true;
+    $("days").innerHTML = slots.map(function (d) {
+      // «اليوم · الثلاثاء 6/10» ← اليوم فوق والتاريخ تحت، و«الخميس 8/10» ← الخميس فوق
+      var p = d.label.split(" · "), w = d.label.split(" ");
+      return '<button type="button" class="day" aria-pressed="' + (d.d === day) + '" data-day="' + d.d + '" aria-label="' + esc(d.label) + '"><small>' + esc(p.length > 1 ? p[0] : w[0]) + "</small><b>" + esc(w[w.length - 1]) + "</b></button>";
+    }).join("");
+    renderTimes(); bar();
+  }
+  function renderTimes() {
+    var d = slots.filter(function (x) { return x.d === day; })[0];
+    $("times").innerHTML = d ? d.times.map(function (t) { return '<button type="button" class="time" aria-pressed="' + (t.s === start) + '" data-start="' + t.s + '">' + esc(t.label) + "</button>"; }).join("") : "";
+  }
+
+  // ───── الخطوة 4: الملخص ─────
+  function loadQuote() {
+    var key = JSON.stringify(items());
+    if (quote && quoteKey === key) { renderSummary(); return; }
+    quoteKey = key; quote = null; renderSummary();
+    api("quote", { items: items() }).then(function (r) { if (quoteKey === key) { quote = r; renderSummary(); } }).catch(function () {});
+  }
+  function renderSummary() {
+    $("sumItems").innerHTML = items().map(function (it) {
+      var s = SV[it.id];
+      return '<div class="line"><span>' + esc(s.name) + (it.qty > 1 ? " × " + it.qty : "") + "</span><span>" + (s.custom ? "بعد المعاينة" : lineTotal(s, it.qty) + " ر.س") + "</span></div>";
+    }).join("");
+    var d = (slots || []).filter(function (x) { return x.d === day; })[0], tt = d && d.times.filter(function (t) { return t.s === start; })[0];
+    $("sumWhen").innerHTML = '<div class="line"><span>' + esc(d ? d.label : "") + "</span><span>" + esc(tt ? tt.label : "") + "</span></div>";
+    $("sumAddr").innerHTML = '<div class="line"><span>' + esc([cityNow(), $("district").value.trim()].filter(Boolean).join(" · ")) + "</span><span></span></div>" +
+      ($("house").value.trim() ? '<div class="line"><span>' + esc($("house").value.trim()) + "</span><span></span></div>" : "");
+    var m = quote;
+    $("sumMoney").innerHTML = !m ? '<div class="skel" style="height:60px"></div>' :
+      (m.credit > 0 || m.gift > 0 ? '<div class="line"><span>المجموع</span><span>' + m.price + " ر.س</span></div>" : "") +
+      (m.gift > 0 ? '<div class="line minus"><span>هدية أول طلب</span><span>−' + m.gift + " ر.س</span></div>" : "") +
+      (m.credit > 0 ? '<div class="line minus"><span>من رصيدك</span><span>−' + m.credit + " ر.س</span></div>" : "") +
+      '<div class="total"><span>' + (m.final > 0 ? "المطلوب" : "ما عليك دفع الحين") + "</span><span>" + (m.final > 0 ? m.final + " ر.س" : "") + "</span></div>" +
+      (m.custom ? '<p class="hint">والخدمة المخصّصة تتسعّر بعد المعاينة</p>' : "");
+    bar();
+  }
+  function book() {
+    var go = $("go");
+    go.disabled = true; go.innerHTML = '<span class="spin"></span> نجهز الدفع…';
+    api("book", { items: items(), date: day, start: start, lat: loc.lat, lng: loc.lng, city: cityNow(), district: $("district").value.trim(), house: $("house").value.trim(), notes: $("notes").value.trim() }).then(function (r) {
+      if (r.pay) {
+        if (/#sim-pay$/.test(r.pay)) { done("تجربة ✅", "هنا تنفتح صفحة الدفع، وبعدها يرجع العميل للواتساب ويوصله التأكيد"); return; }
+        location.href = r.pay; return;
+      }
+      if (r.ok) { done("تأكد حجزك ✅", (r.order_no ? "رقم الطلب " + r.order_no + "، " : "") + "ويوصلك التأكيد على الواتساب"); return; }
+      var code = r.error || "ERROR";
+      toast(ERR[code] || ERR.ERROR);
+      if (code === "KHAFET_BAD_TIME" || code === "KHAFET_OFF_DAY") { slots = null; start = null; show(2); }
+      else if (code === "KHAFET_COVERAGE" || code === "KHAFET_NO_LOCATION") show(1);
+      else if (code === "KHAFET_BAD_ITEM" || code === "KHAFET_NO_ITEMS") show(0);
+      bar();
+    }).catch(function (e) { if (e.message !== "expired") { toast(ERR.NET); bar(); } });
+  }
+  function done(t, p) {
+    ["s0", "s1", "s2", "s3", "bar"].forEach(function (id) { $(id).hidden = true; });
+    $("steps").hidden = true; $("back").hidden = true;
+    $("doneT").textContent = t; $("doneP").textContent = p; $("doneWa").href = waLink(); $("endDone").hidden = false;
+  }
+
+  // ───── التنقل والشريط ─────
+  function ready(n) {
+    if (n === 0) return items().length > 0;
+    if (n === 1) return loc.set && !!cityNow() && !$("place").classList.contains("bad");
+    if (n === 2) return !!day && start != null;
+    return !!quote;
+  }
+  function bar() {
+    var go = $("go"), n = count(), tot = localTotal();
+    $("barK").textContent = n ? (n === 1 ? "خدمة وحدة" : n === 2 ? "خدمتين" : n + " خدمات") : "طلبك فاضي";
+    $("barV").textContent = step === 3 && quote ? quote.final + " ر.س" : tot + " ر.س";
+    go.classList.toggle("pay", step === 3);
+    go.disabled = !ready(step);
+    go.textContent = step === 0 ? (n ? "التالي: البيت" : "اختر خدمة")
+      : step === 1 ? (!loc.set ? "حرّك الخريطة على بيتك" : !cityNow() ? "حدد المدينة" : "التالي: الموعد")
+      : step === 2 ? (start == null ? "اختر الوقت" : "التالي: المراجعة")
+      : quote && quote.final > 0 ? "ادفع " + quote.final + " ر.س" : "أكد الحجز";
+  }
+  function show(n, fromPop) {
+    step = n;
+    for (var i = 0; i < 4; i++) $("s" + i).hidden = i !== n;
+    Array.prototype.forEach.call($("steps").children, function (li, i) { li.className = i === n ? "on" : i < n ? "done" : ""; });
+    $("back").hidden = n === 0;
+    if (n === 1) initMap();
+    if (n === 2) loadSlots();
+    if (n === 3) loadQuote();
+    if (!fromPop) { try { history.pushState({ s: n }, "", ""); } catch (e) { /* متصفح قديم */ } }
+    window.scrollTo(0, 0); bar();
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("button,a"); if (!b) return;
+    if (b.dataset.cat) { cat = b.dataset.cat; q = ""; $("q").value = ""; renderCats(); renderSvcs(); return; }
+    if (b.dataset.inc) { setQty(b.dataset.inc, 1); return; }
+    if (b.dataset.dec) { setQty(b.dataset.dec, -1); return; }
+    if (b.dataset.city) { loc.pickCity = b.dataset.city; cityChips(); $("placeT").textContent = loc.pickCity; $("placeS").textContent = "الفني يوصلك على الدبوس بالضبط"; $("place").classList.remove("bad"); bar(); return; }
+    if (b.dataset.day) { day = b.dataset.day; start = null; renderDays(); return; }
+    if (b.dataset.start) { start = +b.dataset.start; renderTimes(); bar(); return; }
+    if (b.dataset.goto) { show(+b.dataset.goto); return; }
+    if (b.id === "gps") { gps(); return; }
+    if (b.id === "lastBtn") { useLast(false); return; }
+    if (b.id === "back") { history.back(); return; }
+    if (b.id === "go") { if (step < 3) show(step + 1); else book(); }
+  });
+  $("q").addEventListener("input", function () { q = this.value; renderCats(); renderSvcs(); });
+  $("district").addEventListener("input", function () { this.dataset.auto = "0"; });
+  window.addEventListener("popstate", function (e) { var s = e.state && typeof e.state.s === "number" ? e.state.s : 0; if (!$("endDone").hidden) return; show(Math.min(s, 3), true); });
+
+  // ───── البداية ─────
+  if (!T) { expired(); return; }
+  api("init").then(function (d) {
+    if (!d || !d.ok) { expired(); return; }
+    D = d; d.svcs.forEach(function (s) { SV[s.id] = s; });
+    cat = d.cats[0] ? d.cats[0].id : "";
+    $("hello").textContent = d.name ? "هلا " + d.name + " 👋" : "خافت للصيانة المنزلية";
+    $("expWa").href = waLink();
+    if (d.last) $("lastBtn").hidden = false;
+    $("loading").hidden = true; $("top").hidden = false; $("bar").hidden = false;
+    renderCats(); renderSvcs();
+    try { history.replaceState({ s: 0 }, "", ""); } catch (e) { /* */ }
+    show(0, true);
+  }).catch(function (e) { if (e.message !== "expired") { $("loading").innerHTML = '<div><div class="ic" style="width:84px;height:84px;border-radius:28px;margin:0 auto 14px;display:grid;place-items:center;font-size:40px;background:var(--gold)">📶</div><h2>ما قدرنا نفتح الصفحة</h2><p style="color:var(--muted)">' + ERR.NET + '</p><button type="button" class="go" onclick="location.reload()">جرّب مرة ثانية</button></div>'; } });
+})();
+</script>
+</body>
+</html>
