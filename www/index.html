@@ -1175,6 +1175,11 @@
   .city-select b{flex:1;text-align:center;font-size:1.05rem;font-weight:900}
   .city-select .chev{color:var(--muted);font-size:.9rem}
   .loc-hint{color:var(--muted);font-size:.9rem;font-weight:600;margin-bottom:10px}
+.sa-row{display:flex;gap:8px;margin-top:10px}
+.sa-row input{flex:1;min-width:0;font-weight:800;letter-spacing:2px;text-transform:uppercase;text-align:center;font-size:1.05rem;border:0;background:#fff;border-radius:var(--r-sm,14px);min-height:52px;padding:12px 14px;font-family:inherit;color:inherit}
+.sa-row input:focus{outline:none;box-shadow:0 0 0 3px var(--accent-soft,#FBF1C9)}
+.sa-row input::placeholder{color:var(--muted);letter-spacing:2px}
+.sa-row .sa-go{flex:0 0 auto;border-radius:14px;padding:0 14px;font-weight:900;background:var(--accent,#F5C518);color:#1d1a16;border:0;font-family:inherit;font-size:.92rem}
   .pickmap{height:260px;width:100%;border-radius:14px;overflow:hidden;border:1.5px solid var(--line);margin-bottom:12px;z-index:0}
   .pickmap .leaflet-control-attribution{font-size:.6rem}
   .loc-btn{display:flex;align-items:center;gap:13px;width:100%;background:var(--ink);color:#fff;border-radius:14px;padding:15px 16px;text-align:right;transition:.15s}
@@ -5906,6 +5911,10 @@ function renderInfo(){
           <span class="lb-ic">📍</span>
           <span class="lb-t"><b>استخدم موقعي الحالي</b><small>نحدّد موقعك تلقائياً، وتقدر تعدّله على الخريطة</small></span>
         </button>
+        <div class="sa-row">
+          <input id="f_short" value="${esc(a.short||'')}" maxlength="10" dir="ltr" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ELAB3180" oninput="state.address.short=this.value.trim().toUpperCase()" onkeydown="if(event.key==='Enter'){event.preventDefault();useShortAddr();}" />
+          <button type="button" class="sa-go" onclick="useShortAddr()">${LX('حدّد بالعنوان المختصر','Use short address')}</button>
+        </div>
         <div id="loc-status">${a.lat&&a.lng?locOkHtml():''}</div>
         ${a.city&&!inCoverage(a.city)?`<div class="late-note" id="cov-note"><span>📍</span><div><b>${esc(a.city)} خارج مناطق التغطية حاليًا</b>${esc(SETTINGS.coverage_msg||'نخدم الخبر والدمام والظهران حاليًا ونتوسع قريبًا.')}<div class="oact" style="margin-top:8px"><a class="sbtn ok" href="https://wa.me/${WHATSAPP}?text=${encodeURIComponent('أبي أعرف متى توصلون '+(a.city||'')+'، رقمي: '+(c.phone||''))}" target="_blank" rel="noopener">💬 بلّغوني لما توصلون</a></div></div></div>`:''}
         <div class="field" style="margin-top:14px"><label>رقم المنزل / الشقة</label><input id="f_house" value="${esc(a.house)}" placeholder="مثال: 2451 · الدور الأول" /></div>
@@ -6094,7 +6103,7 @@ function addrChipsHtml(){
   return `<div class="addr-chips">${chips}<button type="button" class="addr-chip new" onclick="newAddress()">＋ عنوان جديد</button></div>`;
 }
 function useAddress(i){ const a=(state.addresses||[])[i]; if(!a) return; captureBookingInputs(); state.address=Object.assign({}, a); save(); render(); }
-function newAddress(){ captureBookingInputs(); state.address={city:'',district:'',street:'',house:'',mark:'',notes:'',lat:'',lng:'',mapUrl:'',photoUrl:'',label:''}; save(); render(); }
+function newAddress(){ captureBookingInputs(); state.address={city:'',district:'',street:'',house:'',mark:'',notes:'',lat:'',lng:'',mapUrl:'',photoUrl:'',label:'',short:''}; save(); render(); }
 /* يحفظ العنوان الحالي في القائمة: يحدّث الموجود أو يضيف جديد (حد أقصى 6) */
 function rememberAddress(){
   const a=state.address||{}; if(!(a.lat&&a.lng) && !a.house) return;
@@ -6120,6 +6129,26 @@ function initPickMap(){
   if(hasLoc) ensureMarker(lat,lng);
   _pmap.on('click',(e)=>{ ensureMarker(e.latlng.lat,e.latlng.lng); setPin(e.latlng.lat,e.latlng.lng); });
   setTimeout(()=>{ try{_pmap.invalidateSize();}catch(e){} },220);   // إصلاح حجم الخريطة بعد الرسم
+}
+/* العنوان المختصر (العنوان الوطني، 4 حروف و4 أرقام): الخادم يرجّع الإحداثيات ورقم المبنى، وبدون مفتاح الخدمة يُحفظ الكود في العنوان للفني */
+async function useShortAddr(){
+  const el=document.getElementById('f_short'); if(!el) return;
+  const code=String(el.value||'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!/^[A-Z]{4}\d{4}$/.test(code)){ toast(LX('اكتب العنوان المختصر: 4 حروف و4 أرقام، مثل ELAB3180','Enter the short address: 4 letters and 4 digits, like ELAB3180')); el.focus(); return; }
+  el.value=code; state.address.short=code; save();
+  toast(LX('⏳ نحدّد موقعك...','⏳ Finding your location...'));
+  let d=null;
+  try{ const r=await fetch(SUPABASE_URL+'/functions/v1/addr-short',{method:'POST',headers:{apikey:SUPABASE_ANON,'content-type':'application/json'},body:JSON.stringify({code})}); d=await r.json(); }catch(e){}
+  if(d&&d.ok&&d.lat&&d.lng){
+    if(_pmap){ _pmap.setView([d.lat,d.lng],18); ensureMarker(d.lat,d.lng); }
+    if(d.building&&!String(state.address.house||'').trim()){ state.address.house=String(d.building); const h=document.getElementById('f_house'); if(h) h.value=state.address.house; }
+    if(d.district&&!state.address.district) state.address.district=d.district;
+    if(d.street&&!state.address.street) state.address.street=d.street;
+    setPin(d.lat,d.lng);
+    toast(LX('✅ انحدد موقعك من العنوان المختصر','✅ Location set from your short address')); return;
+  }
+  if(d&&d.error==='not_found'){ toast(LX('ما لقينا هذا العنوان المختصر، تأكد منه','We could not find this short address, please check it')); return; }
+  toast(LX('✅ انحفظ العنوان المختصر · حدّد بيتك على الخريطة بعد','✅ Short address saved · set your home on the map too'));
 }
 function setPin(lat,lng){
   const la=(+lat).toFixed(6), ln=(+lng).toFixed(6);
