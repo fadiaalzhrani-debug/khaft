@@ -1,0 +1,2699 @@
+/*
+ * دفتر حسابات المطعم — الواجهة
+ * يعتمد على core.js (RB) وdemo.js. الحفظ: في المتصفح (localStorage)،
+ * أو في قاعدة بيانات مشتركة عند فتحه كـ Artifact داخل Claude.
+ */
+(function () {
+  'use strict';
+  const RB = window.RB;
+  const { r2, num } = RB;
+
+  // ═════════════ الحالة ═════════════
+  let S = RB.emptyState();
+  let VER = 0;
+  const APP = { mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false };
+  const UI_KEY = 'rb-restaurant-ui';
+  const ui = Object.assign(
+    { page: 'dashboard', period: 'month', from: '', to: '', expCat: '', purCat: '', cashAcc: '1101', report: 'income', salesTab: 'days', staffTab: 'emp', rawTab: 'list' },
+    safeJSON(lsGet(UI_KEY)) || {}
+  );
+
+  function lsGet(k) {
+    try {
+      return localStorage.getItem(k);
+    } catch (e) {
+      return null;
+    }
+  }
+  function lsSet(k, v) {
+    try {
+      localStorage.setItem(k, v);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function safeJSON(s) {
+    try {
+      return s ? JSON.parse(s) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  const clone = (o) => JSON.parse(JSON.stringify(o));
+  const saveUI = () => lsSet(UI_KEY, JSON.stringify(ui));
+  const today = () => RB.todayISO();
+  const minD = (a, b) => (a < b ? a : b);
+
+  // ═════════════ التنسيق ═════════════
+  const NF2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const NF0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+  const fmt = (n) => NF2.format(r2(n) || 0);
+  const fmt0 = (n) => NF0.format(Math.round(n) || 0);
+  const fmtQ = (n) => {
+    const v = Math.round((Number(n) || 0) * 1000) / 1000;
+    return NF0.format(Math.trunc(v)) + (v % 1 ? String(Math.abs(v % 1).toFixed(3)).replace(/0+$/, '').slice(1) : '');
+  };
+  const pctT = (n, d) => (isFinite(n) ? (Number(n) || 0).toFixed(d === undefined ? 1 : d) : '—') + '%';
+  const pct = (n, d) => `<span class="n">${pctT(n, d)}</span>`;
+  const esc = (s) => String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const N = (n, cls) => `<span class="n ${cls || ''} ${r2(n) < 0 ? 'neg' : ''}">${fmt(n)}</span>`;
+  const N0 = (n) => `<span class="n">${fmt0(n)}</span>`;
+  const cur = () => esc(S.settings.currency || 'ر.س');
+  const dt = (iso) => {
+    if (!iso) return '';
+    const y = iso.slice(0, 4);
+    const s = +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1];
+    return `<span class="dt">${s}${y !== today().slice(0, 4) ? ' ' + y : ''}</span>`;
+  };
+  const dtText = (iso) => (iso ? +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4) : '');
+  const chip = (t, k) => `<span class="chip ${k || ''}">${t}</span>`;
+
+  // ═════════════ الفترة ═════════════
+  const PERIODS = [
+    ['month', 'هذا الشهر'],
+    ['prev', 'الشهر الماضي'],
+    ['3m', 'آخر 3 أشهر'],
+    ['quarter', 'هذا الربع'],
+    ['year', 'هذه السنة'],
+    ['all', 'كل الفترات'],
+    ['custom', 'فترة مخصصة'],
+  ];
+  function dataBounds() {
+    let lo = today();
+    let hi = today();
+    for (const k of RB.SECTIONS) for (const r of S[k]) if (r.date) {
+      if (r.date < lo) lo = r.date;
+      if (r.date > hi) hi = r.date;
+    }
+    return [lo, hi];
+  }
+  function range() {
+    const t = today();
+    const ym = t.slice(0, 7);
+    switch (ui.period) {
+      case 'prev': {
+        const p = RB.ymAdd(ym, -1);
+        return [p + '-01', RB.monthEnd(p)];
+      }
+      case '3m':
+        return [RB.ymAdd(ym, -2) + '-01', RB.monthEnd(ym)];
+      case 'quarter': {
+        const q = Math.floor((+ym.slice(5, 7) - 1) / 3) * 3 + 1;
+        const s = ym.slice(0, 5) + String(q).padStart(2, '0');
+        return [s + '-01', RB.monthEnd(RB.ymAdd(s, 2))];
+      }
+      case 'year':
+        return [ym.slice(0, 4) + '-01-01', ym.slice(0, 4) + '-12-31'];
+      case 'all':
+        return dataBounds();
+      case 'custom':
+        if (ui.from && ui.to && ui.from <= ui.to) return [ui.from, ui.to];
+        return [ym + '-01', RB.monthEnd(ym)];
+      default:
+        return [ym + '-01', RB.monthEnd(ym)];
+    }
+  }
+  const inRange = (d) => {
+    const [a, b] = range();
+    return d >= a && d <= b;
+  };
+  function periodLabel() {
+    const [a, b] = range();
+    if (a.slice(0, 7) === b.slice(0, 7) && a.endsWith('-01') && b === RB.monthEnd(b.slice(0, 7))) return RB.monthName(a.slice(0, 7));
+    return dtText(a) + ' — ' + dtText(b);
+  }
+
+  // دفتر القيود محفوظ مؤقتاً حتى يتغير شيء
+  const ledgerCache = {};
+  function ledger(asOf) {
+    const k = VER + '|' + asOf;
+    if (!ledgerCache[k]) {
+      for (const key of Object.keys(ledgerCache)) delete ledgerCache[key];
+      ledgerCache[k] = RB.buildLedger(S, asOf);
+    }
+    return ledgerCache[k];
+  }
+  let costCache = null;
+  function costing() {
+    if (!costCache || costCache.v !== VER) costCache = { v: VER, c: RB.costing(S) };
+    return costCache.c;
+  }
+
+  // ═════════════ الحفظ ═════════════
+  class LocalBackend {
+    constructor() {
+      this.kind = 'local';
+      this.key = 'rb-restaurant-books-v1';
+      this.t = null;
+    }
+    async load() {
+      return safeJSON(lsGet(this.key));
+    }
+    flush() {
+      clearTimeout(this.t);
+      this.t = null;
+      if (APP.demo) return;
+      if (lsSet(this.key, JSON.stringify(S))) {
+        APP.savedAt = Date.now();
+        updateSaveStatus();
+      } else toast('تعذّر الحفظ في هذا المتصفح. صدّر نسخة احتياطية من الإعدادات الآن.', 'bad');
+    }
+    schedule() {
+      clearTimeout(this.t);
+      this.t = setTimeout(() => this.flush(), 200);
+    }
+    put() {
+      this.schedule();
+    }
+    del() {
+      this.schedule();
+    }
+    saveSettings() {
+      this.schedule();
+    }
+    async replaceAll() {
+      this.flush();
+    }
+  }
+
+  class CloudBackend {
+    constructor(db) {
+      this.kind = 'cloud';
+      this.db = db;
+      this.q = {};
+      this.unsubs = [];
+    }
+    async load() {
+      const out = {};
+      const st = await this.db.doc('config/settings').get();
+      out.settings = st.exists ? clone(st.data()) : null;
+      for (const k of RB.SECTIONS) {
+        const snap = await this.db.collection(k).get();
+        out[k] = snap.docs.map((d) => clone(d.data()));
+      }
+      if (!out.settings && RB.SECTIONS.every((k) => !out[k].length)) return null;
+      out.settings = out.settings || {};
+      return out;
+    }
+    subscribe(cb) {
+      const onErr = (e) => console.warn('db subscription', e && e.code);
+      this.unsubs.push(this.db.doc('config/settings').onSnapshot((s) => s.exists && cb('settings', clone(s.data())), onErr));
+      for (const k of RB.SECTIONS) this.unsubs.push(this.db.collection(k).onSnapshot((snap) => cb(k, snap.docs.map((d) => clone(d.data()))), onErr));
+    }
+    async retry(fn) {
+      for (let i = 0; ; i++) {
+        try {
+          return await fn();
+        } catch (e) {
+          const code = e && e.code;
+          if ((code === 'resource_exhausted' || code === 'unavailable') && i < 6) {
+            await new Promise((r) => setTimeout(r, 700 * (i + 1) + Math.random() * 400));
+            continue;
+          }
+          throw e;
+        }
+      }
+    }
+    write(path, fn) {
+      const p = (this.q[path] || Promise.resolve())
+        .then(() => this.retry(fn))
+        .then(() => {
+          APP.savedAt = Date.now();
+          updateSaveStatus();
+        })
+        .catch((e) => {
+          const code = e && e.code;
+          toast(code === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة. صدّر نسخة احتياطية واحذف سجلات قديمة.' : code === 'invalid_argument' ? 'ليست لديك صلاحية تعديل هذه البيانات.' : 'تعذّر الحفظ: ' + ((e && e.message) || code || ''), 'bad');
+        });
+      this.q[path] = p;
+      return p;
+    }
+    put(section, rec) {
+      const body = clone(rec);
+      return this.write(section + '/' + rec.id, () => this.db.collection(section).doc(rec.id).set(body));
+    }
+    del(section, id) {
+      return this.write(section + '/' + id, () => this.db.collection(section).doc(id).delete());
+    }
+    saveSettings(settings) {
+      const body = clone(settings);
+      return this.write('config/settings', () => this.db.doc('config/settings').set(body));
+    }
+    async replaceAll(state, progress) {
+      const jobs = [];
+      for (const k of RB.SECTIONS) {
+        const snap = await this.retry(() => this.db.collection(k).get());
+        const keep = new Set(state[k].map((r) => r.id));
+        snap.docs.forEach((d) => {
+          if (!keep.has(d.id)) jobs.push(() => this.db.collection(k).doc(d.id).delete());
+        });
+        state[k].forEach((r) => {
+          const body = clone(r);
+          jobs.push(() => this.db.collection(k).doc(r.id).set(body));
+        });
+      }
+      const st = clone(state.settings);
+      jobs.push(() => this.db.doc('config/settings').set(st));
+      let done = 0;
+      const worker = async () => {
+        while (jobs.length) {
+          const j = jobs.shift();
+          await this.retry(j);
+          done++;
+          if (progress) progress(done);
+        }
+      };
+      const total = jobs.length;
+      if (progress) progress(0, total);
+      await Promise.all([worker(), worker(), worker()]);
+      APP.savedAt = Date.now();
+      updateSaveStatus();
+    }
+  }
+
+  function persistPut(section, rec) {
+    if (APP.demo) return demoNote();
+    APP.backend.put(section, rec);
+  }
+  function persistDel(section, id) {
+    if (APP.demo) return demoNote();
+    APP.backend.del(section, id);
+  }
+  function persistSettings() {
+    if (APP.demo) return demoNote();
+    APP.backend.saveSettings(S.settings);
+  }
+  function demoNote() {
+    if (APP.warnedDemo) return;
+    APP.warnedDemo = true;
+    toast('أنت في وضع التجربة: التعديلات تظهر الآن لكنها لا تُحفظ.');
+  }
+
+  function bump() {
+    VER++;
+    costCache = null;
+  }
+  const find = (section, id) => S[section].find((x) => x.id === id);
+  function upsert(section, rec) {
+    const arr = S[section];
+    const i = arr.findIndex((x) => x.id === rec.id);
+    if (i >= 0) arr[i] = rec;
+    else arr.push(rec);
+    bump();
+    persistPut(section, rec);
+  }
+  function remove(section, id) {
+    S[section] = S[section].filter((x) => x.id !== id);
+    bump();
+    persistDel(section, id);
+  }
+  function saveSettings() {
+    bump();
+    persistSettings();
+  }
+
+  // ═════════════ أدوات الواجهة ═════════════
+  function toast(msg, kind) {
+    const el = document.getElementById('toast');
+    if (!el) return;
+    const t = document.createElement('div');
+    t.className = 'toast ' + (kind || '');
+    t.textContent = msg;
+    el.appendChild(t);
+    setTimeout(() => t.classList.add('out'), 4200);
+    setTimeout(() => t.remove(), 4700);
+  }
+
+  function openModal(o) {
+    const root = document.getElementById('modals');
+    const wrap = document.createElement('div');
+    wrap.className = 'overlay';
+    wrap.innerHTML = `<div class="dialog ${o.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="dlg-t-${VER}"><header class="dlg-h"><h3 id="dlg-t-${VER}">${esc(o.title)}</h3><button type="button" class="icon-btn" data-close aria-label="إغلاق">✕</button></header><div class="dlg-b"></div><footer class="dlg-f"></footer></div>`;
+    root.appendChild(wrap);
+    const prevFocus = document.activeElement;
+    const onKey = (e) => {
+      if (e.key === 'Escape' && root.lastElementChild === wrap) close();
+    };
+    function close() {
+      wrap.remove();
+      document.removeEventListener('keydown', onKey);
+      if (o.onClose) o.onClose();
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+    }
+    document.addEventListener('keydown', onKey);
+    wrap.addEventListener('click', (e) => {
+      if (e.target.closest('[data-close]')) close();
+    });
+    return { el: wrap, body: wrap.querySelector('.dlg-b'), foot: wrap.querySelector('.dlg-f'), close };
+  }
+
+  function confirmBox(msg, opt) {
+    opt = opt || {};
+    return new Promise((resolve) => {
+      let done = false;
+      const m = openModal({ title: opt.title || 'تأكيد', onClose: () => !done && resolve(false) });
+      m.body.innerHTML = `<p class="confirm-msg">${msg}</p>`;
+      m.foot.innerHTML = `<button type="button" class="btn ${opt.danger ? 'danger' : 'primary'}" data-ok>${esc(opt.ok || 'نعم')}</button><button type="button" class="btn ghost" data-close>إلغاء</button>`;
+      m.foot.querySelector('[data-ok]').addEventListener('click', () => {
+        done = true;
+        resolve(true);
+        m.close();
+      });
+      m.foot.querySelector('[data-ok]').focus();
+    });
+  }
+
+  function infoBox(title, html, wide) {
+    const m = openModal({ title, wide });
+    m.body.innerHTML = html;
+    m.foot.innerHTML = `<button type="button" class="btn ghost" data-close>إغلاق</button>`;
+    afterRender(m.body);
+    return m;
+  }
+
+  // ─── محرك النماذج: أي عنصر فيه data-path يرتبط بالقيمة ───
+  function getPath(o, p) {
+    return p.split('.').reduce((a, k) => (a === undefined || a === null ? undefined : a[k]), o);
+  }
+  function setPath(o, p, v) {
+    const ks = p.split('.');
+    let a = o;
+    for (let i = 0; i < ks.length - 1; i++) {
+      if (a[ks[i]] === undefined || a[ks[i]] === null || typeof a[ks[i]] !== 'object') a[ks[i]] = /^\d+$/.test(ks[i + 1]) ? [] : {};
+      a = a[ks[i]];
+    }
+    a[ks[ks.length - 1]] = v;
+  }
+  function readInput(el) {
+    if (el.type === 'checkbox') return el.checked;
+    if (el.dataset.type === 'num') return el.value === '' ? '' : parseFloat(el.value);
+    return el.value;
+  }
+  let FID = 0;
+  function optionsHTML(opts, v) {
+    return opts.map((o) => {
+      const [val, label] = Array.isArray(o) ? o : [o, o];
+      return `<option value="${esc(val)}" ${String(val) === String(v === undefined ? '' : v) ? 'selected' : ''}>${esc(label)}</option>`;
+    }).join('');
+  }
+  function fieldHTML(f, val) {
+    if (f.show && !f.show(val)) return '';
+    if (f.type === 'row') return `<div class="frow">${f.fields.map((x) => fieldHTML(x, val)).join('')}</div>`;
+    if (f.type === 'html') return `<div class="fhtml">${f.html(val)}</div>`;
+    if (f.type === 'section') return `<h4 class="fsec">${esc(f.label)}</h4>`;
+    if (f.type === 'lines') return linesHTML(f, val);
+    const v = getPath(val, f.k);
+    const id = 'f' + ++FID;
+    const rd = f.redraw ? 'data-redraw="1"' : '';
+    const lab = `<label for="${id}">${esc(f.label)}${f.req ? ' <b class="req">*</b>' : ''}</label>`;
+    let inp;
+    switch (f.type) {
+      case 'select': {
+        const opts = typeof f.options === 'function' ? f.options(val) : f.options;
+        inp = `<select id="${id}" data-path="${f.k}" ${rd}>${optionsHTML(opts, v)}</select>`;
+        break;
+      }
+      case 'check':
+        return `<div class="field check ${f.cls || ''}"><label class="checkl"><input id="${id}" type="checkbox" data-path="${f.k}" ${rd} ${v ? 'checked' : ''}><span>${esc(f.label)}</span></label>${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+      case 'textarea':
+        inp = `<textarea id="${id}" data-path="${f.k}" rows="2">${esc(v)}</textarea>`;
+        break;
+      case 'num':
+      case 'money':
+        inp = `<input id="${id}" type="number" inputmode="decimal" step="${f.step || 'any'}" ${f.min !== undefined ? `min="${f.min}"` : ''} data-type="num" data-path="${f.k}" value="${v === undefined || v === null ? '' : esc(v)}" ${f.req ? 'required' : ''} ${rd}>`;
+        break;
+      default:
+        inp = `<input id="${id}" type="${f.type || 'text'}" data-path="${f.k}" value="${esc(v)}" ${f.list ? `list="${id}l"` : ''} ${f.req ? 'required' : ''} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ''} ${rd}>${f.list ? `<datalist id="${id}l">${f.list(val).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>` : ''}`;
+    }
+    return `<div class="field ${f.cls || ''}" data-k="${f.k}">${lab}${inp}${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+  }
+  function linesHTML(f, val) {
+    const rows = getPath(val, f.k) || [];
+    const head = f.cols.map((c) => `<th class="${c.num ? 'num' : ''}" ${c.w ? `style="width:${c.w}"` : ''}>${esc(c.label)}</th>`).join('');
+    const body = rows
+      .map((r, i) => {
+        const cells = f.cols
+          .map((c) => {
+            const p = `${f.k}.${i}.${c.k}`;
+            const rd = c.redraw ? 'data-redraw="1"' : '';
+            const aria = `aria-label="${esc(c.label)} ${i + 1}"`;
+            let h;
+            if (c.calc) h = `<span class="calc n" data-calc="${f.k}|${i}|${c.k}">${c.calc(r, val)}</span>`;
+            else if (c.type === 'select') h = `<select data-path="${p}" ${rd} ${aria}>${optionsHTML(c.options(r, val), r[c.k])}</select>`;
+            else if (c.type === 'num') h = `<input type="number" inputmode="decimal" step="any" data-type="num" data-path="${p}" value="${r[c.k] === undefined || r[c.k] === null ? '' : esc(r[c.k])}" ${aria}>`;
+            else if (c.type === 'static') h = `<span>${esc(c.text ? c.text(r, val) : r[c.k])}</span>`;
+            else h = `<input type="text" data-path="${p}" value="${esc(r[c.k])}" ${aria}>`;
+            return `<td class="${c.num ? 'num' : ''}">${h}</td>`;
+          })
+          .join('');
+        return `<tr>${cells}<td class="act"><button type="button" class="icon-btn" data-lact="del" data-lk="${f.k}" data-i="${i}" aria-label="حذف السطر ${i + 1}">✕</button></td></tr>`;
+      })
+      .join('');
+    return `<div class="field lines ${f.cls || ''}"><div class="lines-h"><label>${esc(f.label)}</label>${(f.tools || []).map((t) => `<button type="button" class="btn ghost sm" data-ltool="${t.id}" data-lk="${f.k}">${esc(t.label)}</button>`).join('')}</div>
+      <div class="tbl-wrap"><table class="lines-tbl"><thead><tr>${head}<th></th></tr></thead><tbody>${body || `<tr><td colspan="${f.cols.length + 1}" class="empty">${esc(f.empty || 'لا توجد أسطر بعد')}</td></tr>`}</tbody></table></div>
+      ${f.foot ? `<div class="lines-foot" data-lfoot="${f.k}">${f.foot(val)}</div>` : ''}
+      <button type="button" class="btn ghost sm add-line" data-lact="add" data-lk="${f.k}">+ ${esc(f.addLabel || 'إضافة سطر')}</button>${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+  }
+  function flatFields(fields) {
+    const out = [];
+    for (const f of fields) {
+      if (f.type === 'row') out.push(...flatFields(f.fields));
+      else out.push(f);
+    }
+    return out;
+  }
+
+  function formModal(o) {
+    const val = clone(o.value || {});
+    const m = openModal({ title: o.title, wide: o.wide });
+    const fields = () => (typeof o.fields === 'function' ? o.fields(val) : o.fields);
+    let saving = false;
+    function draw() {
+      const sc = m.body.scrollTop;
+      m.body.innerHTML = `<form class="form" novalidate>${fields().map((f) => fieldHTML(f, val)).join('')}<div class="form-preview" ${o.preview ? '' : 'hidden'}></div><button type="submit" hidden></button></form>`;
+      m.body.scrollTop = sc;
+      upd();
+    }
+    function upd() {
+      const lf = flatFields(fields()).filter((f) => f.type === 'lines');
+      for (const f of lf) {
+        m.body.querySelectorAll(`[data-calc^="${f.k}|"]`).forEach((el) => {
+          const [, i, ck] = el.dataset.calc.split('|');
+          const c = f.cols.find((x) => x.k === ck);
+          const row = (getPath(val, f.k) || [])[+i];
+          if (c && row) el.innerHTML = c.calc(row, val);
+        });
+        const ft = m.body.querySelector(`[data-lfoot="${f.k}"]`);
+        if (ft && f.foot) ft.innerHTML = f.foot(val);
+      }
+      const pv = m.body.querySelector('.form-preview');
+      if (pv && o.preview) pv.innerHTML = o.preview(val);
+    }
+    function onField(e, isChange) {
+      const el = e.target;
+      const p = el.dataset && el.dataset.path;
+      if (!p) return;
+      setPath(val, p, readInput(el));
+      el.closest('.field') && el.closest('.field').classList.remove('invalid');
+      if (o.onChange) o.onChange(p, val);
+      if (isChange && el.dataset.redraw) draw();
+      else upd();
+    }
+    m.el.addEventListener('input', (e) => onField(e, false));
+    m.el.addEventListener('change', (e) => {
+      if (e.target.dataset && e.target.dataset.redraw) onField(e, true);
+    });
+    m.el.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-lact],[data-ltool]');
+      if (!b) return;
+      const f = flatFields(fields()).find((x) => x.k === b.dataset.lk);
+      if (!f) return;
+      const rows = getPath(val, f.k) || [];
+      if (b.dataset.lact === 'add') rows.push(f.newRow ? f.newRow(val) : {});
+      else if (b.dataset.lact === 'del') rows.splice(+b.dataset.i, 1);
+      else {
+        const t = (f.tools || []).find((x) => x.id === b.dataset.ltool);
+        if (t) t.run(val, rows);
+      }
+      setPath(val, f.k, rows);
+      draw();
+      if (b.dataset.lact === 'add') {
+        const trs = m.body.querySelectorAll(`[data-path^="${f.k}.${rows.length - 1}."]`);
+        if (trs[0]) trs[0].focus();
+      }
+    });
+    async function submit() {
+      if (saving) return;
+      let bad = null;
+      for (const f of flatFields(fields())) {
+        if (!f.req || (f.show && !f.show(val))) continue;
+        const v = getPath(val, f.k);
+        if (v === '' || v === undefined || v === null || (typeof v === 'string' && !v.trim())) {
+          const fe = m.body.querySelector(`.field[data-k="${f.k}"]`);
+          if (fe) fe.classList.add('invalid');
+          bad = bad || f;
+        }
+      }
+      if (bad) {
+        toast('أكمل الحقل: ' + bad.label, 'bad');
+        const fe = m.body.querySelector(`.field[data-k="${bad.k}"] input, .field[data-k="${bad.k}"] select`);
+        if (fe) fe.focus();
+        return;
+      }
+      saving = true;
+      try {
+        const res = await o.onSave(val);
+        if (typeof res === 'string') {
+          toast(res, 'bad');
+          return;
+        }
+        m.close();
+        render();
+        if (o.done) toast(o.done);
+      } finally {
+        saving = false;
+      }
+    }
+    m.el.addEventListener('submit', (e) => {
+      e.preventDefault();
+      submit();
+    });
+    m.foot.innerHTML = `<button type="button" class="btn primary" data-save>${esc(o.ok || 'حفظ')}</button><button type="button" class="btn ghost" data-close>إلغاء</button>${o.extra || ''}`;
+    m.foot.querySelector('[data-save]').addEventListener('click', submit);
+    draw();
+    const first = m.body.querySelector('input:not([type=checkbox]),select,textarea');
+    if (first && !o.noFocus) first.focus();
+    return m;
+  }
+
+  // ─── جداول وأقسام ───
+  function table(cols, rows, o) {
+    o = o || {};
+    if (!rows.length) return `<div class="empty-box">${o.empty || 'لا توجد بيانات في هذه الفترة.'}</div>`;
+    const head = cols.map((c) => `<th class="${c.num ? 'num' : ''} ${c.cls || ''}">${c.h}</th>`).join('');
+    const body = rows
+      .map((r) => `<tr ${o.rowCls ? `class="${o.rowCls(r)}"` : ''}>${cols.map((c) => `<td class="${c.num ? 'num' : ''} ${c.cls || ''}">${c.f(r)}</td>`).join('')}</tr>`)
+      .join('');
+    const foot = o.foot ? `<tfoot><tr>${o.foot.map((x, i) => `<td class="${cols[i] && cols[i].num ? 'num' : ''}">${x}</td>`).join('')}</tr></tfoot>` : '';
+    return `<div class="tbl-wrap"><table class="tbl ${o.cls || ''}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table></div>`;
+  }
+  function card(title, body, o) {
+    o = o || {};
+    return `<section class="card ${o.cls || ''}">${title ? `<div class="card-h"><div><h3>${title}</h3>${o.sub ? `<p class="sub">${o.sub}</p>` : ''}</div>${o.actions ? `<div class="card-a">${o.actions}</div>` : ''}</div>` : ''}<div class="card-b">${body}</div></section>`;
+  }
+  function kpi(label, value, sub, state) {
+    return `<div class="kpi ${state || ''}"><div class="kpi-l">${label}</div><div class="kpi-v">${value}</div>${sub ? `<div class="kpi-s">${sub}</div>` : ''}</div>`;
+  }
+  const money = (n) => `<span class="money">${N(n)} <small class="cur">${cur()}</small></span>`;
+  const btn = (label, act, attrs, kind) => `<button type="button" class="btn ${kind || ''}" data-act="${act}" ${attrs || ''}>${label}</button>`;
+  const rowActs = (s, id, extra) =>
+    `<div class="row-acts">${extra || ''}<button type="button" class="icon-btn" data-act="edit" data-s="${s}" data-id="${id}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn" data-act="dup" data-s="${s}" data-id="${id}" aria-label="نسخ" title="نسخ">⧉</button><button type="button" class="icon-btn danger" data-act="del" data-s="${s}" data-id="${id}" aria-label="حذف" title="حذف">✕</button></div>`;
+  function hbars(items, o) {
+    o = o || {};
+    if (!items.length) return `<div class="empty-box">${o.empty || 'لا توجد بيانات.'}</div>`;
+    const max = Math.max(...items.map((x) => Math.abs(x.v)), 1);
+    const total = o.total !== undefined ? o.total : items.reduce((s, x) => s + Math.max(x.v, 0), 0);
+    return `<div class="hbars">${items
+      .map(
+        (x) => `<div class="hbar" data-tip="${esc(x.label)}: ${fmt(x.v)} ${esc(S.settings.currency)}${total ? ' · ' + pctT((x.v / total) * 100) : ''}"><span class="hb-l">${esc(x.label)}</span><span class="hb-t"><i style="width:${Math.max((Math.abs(x.v) / max) * 100, 0.5).toFixed(2)}%"></i></span><span class="hb-v">${N(x.v)}${total ? `<small>${pct((x.v / total) * 100, 0)}</small>` : ''}</span></div>`
+      )
+      .join('')}</div>`;
+  }
+  function tabs(id, items, active) {
+    return `<div class="tabs" role="tablist">${items.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === active}" class="tab ${k === active ? 'on' : ''}" data-act="tab" data-tab="${id}" data-v="${k}">${l}</button>`).join('')}</div>`;
+  }
+  function pageHead(title, sub, actions) {
+    return `<div class="page-h"><div><h1>${title}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}</div>${actions ? `<div class="page-a">${actions}</div>` : ''}</div>`;
+  }
+  const payOptions = (withPayable, withPartners) => {
+    const o = [['bank', RB.PAY_LABEL.bank], ['cash', RB.PAY_LABEL.cash]];
+    if (withPayable) o.push(['payable', RB.PAY_LABEL.payable]);
+    if (withPartners !== false) S.partners.forEach((p) => o.push(['partner:' + p.id, 'دفعها ' + p.name + ' من حسابه']));
+    return o;
+  };
+  const vatPreview = (amount, includesVat, taxable) => {
+    const v = RB.vatSplit(amount, includesVat, taxable, S.settings);
+    const reg = S.settings.vatRegistered;
+    return `<div class="pv-grid"><div><span>قبل الضريبة</span>${money(v.net)}</div><div><span>الضريبة ${taxable ? pct(S.settings.vatRate, 0) : '(غير خاضعة)'}</span>${money(v.vat)}</div><div><span>الإجمالي المدفوع</span>${money(v.gross)}</div></div>${taxable && !reg ? '<p class="note">المطعم غير مسجل في الضريبة، فتُحسب الضريبة ضمن التكلفة.</p>' : ''}`;
+  };
+
+  // ═════════════ الرسوم البيانية ═════════════
+  const CHARTS = {};
+  let chartN = 0;
+  function chartSlot(data) {
+    const id = 'chart' + ++chartN;
+    CHARTS[id] = data;
+    return `<div class="chart" id="${id}" role="img" aria-label="${esc(data.label || '')}"></div>`;
+  }
+  function niceMax(v) {
+    if (v <= 0) return 1;
+    const p = Math.pow(10, Math.floor(Math.log10(v)));
+    for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
+    return 10 * p;
+  }
+  function drawColumns(el, d) {
+    const W = Math.max(el.clientWidth, 260);
+    const H = d.h || 210;
+    const pl = 52;
+    const pr = 8;
+    const pt = 14;
+    const pb = 26;
+    const pts = d.points;
+    const max = niceMax(Math.max(...pts.map((p) => p.v), 0));
+    const n = pts.length || 1;
+    const band = (W - pl - pr) / n;
+    const bw = Math.max(Math.min(24, band - 2), 1.5);
+    const y = (v) => pt + (1 - v / max) * (H - pt - pb);
+    const y0 = y(0);
+    let g = '';
+    for (let i = 0; i <= 4; i++) {
+      const v = (max / 4) * i;
+      const yy = y(v);
+      g += `<line x1="${pl}" x2="${W - pr}" y1="${yy}" y2="${yy}" class="grid"/><text x="${pl - 8}" y="${yy + 4}" text-anchor="end" class="ax">${fmt0(v)}</text>`;
+    }
+    const every = Math.max(1, Math.ceil(n / Math.floor((W - pl) / 44)));
+    let bars = '';
+    let labels = '';
+    pts.forEach((p, i) => {
+      const x = pl + i * band + (band - bw) / 2;
+      const yy = y(Math.max(p.v, 0));
+      const h = y0 - yy;
+      const r = Math.min(4, bw / 2, h);
+      if (h > 0.3) bars += `<path class="bar ${p.hl ? 'hl' : ''}" d="M${x},${y0} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${y0} Z"/>`;
+      bars += `<rect class="hit" x="${pl + i * band}" y="${pt}" width="${band}" height="${H - pt - pb}" data-tip="${esc(p.tip)}"/>`;
+      if (i % every === 0) labels += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle" class="ax">${esc(p.label)}</text>`;
+    });
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" dir="ltr">${g}<line x1="${pl}" x2="${W - pr}" y1="${y0}" y2="${y0}" class="base"/>${bars}${labels}</svg>`;
+  }
+  function afterRender(scope) {
+    (scope || document).querySelectorAll('.chart').forEach((el) => {
+      const d = CHARTS[el.id];
+      if (d) drawColumns(el, d);
+    });
+  }
+
+  // ═════════════ الصفحات ═════════════
+  const NAV = [
+    ['نظرة عامة', [['dashboard', 'لوحة المتابعة']]],
+    ['التأسيس', [['partners', 'الشركاء ورأس المال'], ['assets', 'الأصول والأثاث']]],
+    ['المصاريف', [['expenses', 'المصاريف التشغيلية'], ['gov', 'الرسوم الحكومية والاشتراكات'], ['staff', 'العمال والرواتب'], ['purchases', 'المشتريات']]],
+    ['المنيو والتكلفة', [['raw', 'المواد الخام'], ['composites', 'المنتجات المجمّعة'], ['products', 'المنيو والتسعير']]],
+    ['المبيعات والنقد', [['sales', 'المبيعات اليومية'], ['cash', 'الصندوق والبنك']]],
+    ['التقارير', [['reports', 'التقارير المالية'], ['settings', 'الإعدادات والنسخ الاحتياطي']]],
+  ];
+  const PAGE_TITLES = Object.fromEntries(NAV.flatMap((g) => g[1]));
+  const PAGES = {};
+
+  // ─── لوحة المتابعة ───
+  PAGES.dashboard = () => {
+    const [from, to] = range();
+    const asOf = minD(to, today());
+    const L = ledger(to);
+    const inc = RB.incomeStatement(S, from, to, L);
+    const sales = RB.salesByChannel(S, from, to);
+    const bal = RB.balances(L.entries, null, asOf);
+    const target = num(S.settings.targetFoodCost);
+    const fcState = !inc.revenue ? '' : inc.ratios.foodCost > target + 3 ? 'warn' : 'good';
+    const primeState = !inc.revenue ? '' : inc.ratios.prime > 65 ? 'bad' : inc.ratios.prime > 60 ? 'warn' : 'good';
+    const vatBal = -(bal['2102'] || 0);
+    let h = pageHead('لوحة المتابعة', `${esc(S.settings.name)} · ${periodLabel()}`, btn('+ إقفال يومي', 'add', 'data-s="sales"', 'primary') + btn('+ فاتورة مشتريات', 'add', 'data-s="purchases"') + btn('+ مصروف', 'add', 'data-s="expenses"'));
+    h += `<div class="kpis">
+      ${kpi('المبيعات شاملة الضريبة', money(sales.total.gross), `${fmt0(sales.total.orders)} طلب · متوسط الفاتورة ${fmt(sales.total.avgTicket)}`)}
+      ${kpi('صافي الربح', money(inc.net), `هامش ${pct(inc.ratios.netMargin)} من المبيعات بدون الضريبة`, inc.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
+      ${kpi('تكلفة المواد', pct(inc.ratios.foodCost), `المستهدف ${pct(target, 0)} · ${fmt(inc.tot.cogs)} ${cur()}`, fcState)}
+      ${kpi('التكلفة الأساسية', pct(inc.ratios.prime), 'المواد + العمالة · الأفضل أقل من 60%', primeState)}
+    </div>`;
+    h += `<div class="kpis small">
+      ${kpi('الصندوق (الكاشير)', money(bal['1101'] || 0), 'حتى ' + dtText(asOf), (bal['1101'] || 0) < 0 ? 'bad' : '')}
+      ${kpi('الحساب البنكي', money(bal['1102'] || 0), 'حتى ' + dtText(asOf), (bal['1102'] || 0) < 0 ? 'bad' : '')}
+      ${kpi('مستحقات التطبيقات', money(bal['1103'] || 0), 'لم تُحوَّل للبنك بعد')}
+      ${kpi(vatBal >= 0 ? 'ضريبة مستحقة للهيئة' : 'ضريبة مستردة', money(Math.abs(vatBal)), 'الرصيد المتراكم حتى ' + dtText(asOf))}
+    </div>`;
+    // المبيعات اليومية أو الشهرية
+    const days = RB.daysBetween(from, to) + 1;
+    let pts = [];
+    if (days <= 93) {
+      for (let d = from; d <= to; d = RB.addDays(d, 1)) {
+        const v = sales.days[d] || 0;
+        pts.push({ label: String(+d.slice(8, 10)), v, tip: `${dtText(d)}: ${fmt(v)} ${S.settings.currency}`, hl: d === today() });
+      }
+    } else {
+      const m = {};
+      for (const d of Object.keys(sales.days)) m[d.slice(0, 7)] = (m[d.slice(0, 7)] || 0) + sales.days[d];
+      for (let ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = RB.ymAdd(ym, 1)) pts.push({ label: RB.MONTHS[+ym.slice(5, 7) - 1].slice(0, 3), v: m[ym] || 0, tip: `${RB.monthName(ym)}: ${fmt(m[ym] || 0)} ${S.settings.currency}` });
+    }
+    const best = Object.entries(sales.days).sort((a, b) => b[1] - a[1])[0];
+    h += card(days <= 93 ? 'المبيعات اليومية' : 'المبيعات الشهرية', sales.total.gross ? chartSlot({ points: pts, label: 'المبيعات اليومية شاملة الضريبة' }) : `<div class="empty-box">لا توجد مبيعات مسجلة في هذه الفترة. سجّل أول إقفال يومي من زر «إقفال يومي».</div>`, {
+      sub: best ? `شاملة الضريبة · أعلى يوم ${dtText(best[0])} بمبلغ ${fmt(best[1])} ${cur()}` : 'شاملة الضريبة',
+    });
+    // القنوات وتوزيع المصاريف
+    const chItems = sales.list.map((c) => ({ label: c.name, v: c.gross }));
+    const typeTot = { cash: 0, card: 0, app: 0 };
+    sales.list.forEach((c) => (typeTot[c.type] = (typeTot[c.type] || 0) + c.gross));
+    const typeLine = sales.total.gross ? `كاش ${pct((typeTot.cash / sales.total.gross) * 100, 0)} · شبكة ${pct((typeTot.card / sales.total.gross) * 100, 0)} · تطبيقات ${pct((typeTot.app / sales.total.gross) * 100, 0)}` : '';
+    const gItems = Object.keys(RB.GROUPS).map((g) => ({ label: RB.GROUPS[g], v: inc.tot[g] })).filter((x) => x.v);
+    h += `<div class="grid2">${card('المبيعات حسب القناة', hbars(chItems, { empty: 'لا توجد مبيعات.' }), { sub: typeLine })}${card('أين ذهبت الإيرادات؟', hbars(gItems, { total: inc.revenue, empty: 'لا توجد مصاريف في هذه الفترة.' }), { sub: `النسبة من المبيعات بدون الضريبة (${fmt(inc.revenue)} ${cur()})` })}</div>`;
+    // التنبيهات
+    h += card('تنبيهات تحتاج متابعة', alertsHTML(asOf), { sub: 'تجديدات، ضريبة، أسعار، وأرصدة' });
+    return h;
+  };
+
+  function alertsHTML(asOf) {
+    const out = [];
+    for (const r of RB.renewals(S, today())) {
+      if (r.status === 'ok') continue;
+      const name = (r.rec.desc || RB.expenseCat(r.rec.category).name) + (r.rec.entity ? ' — ' + r.rec.entity : '') + empName(r.rec.employeeId, ' · ');
+      out.push([r.status === 'expired' ? 'bad' : 'warn', r.status === 'expired' ? `انتهى: ${esc(name)} منذ ${-r.days} يوم` : `يحتاج تجديد: ${esc(name)} خلال ${r.days} يوم (${dtText(r.end)})`, btn('تجديد', 'renew', `data-id="${r.rec.id}"`, 'sm')]);
+    }
+    // ضريبة الفترة المنتهية الأخيرة
+    if (S.settings.vatRegistered) {
+      const per = RB.vatPeriodsBetween(S, RB.addDays(today(), -120), today()).filter((p) => p.to < today()).pop();
+      if (per) {
+        const v = RB.vatDue(S, per, ledger(per.to));
+        const deadline = RB.monthEnd(RB.ymAdd(per.to.slice(0, 7), 1));
+        const b = btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(per.label)}"`, 'sm');
+        if (!v.settled && deadline >= today()) out.push(['warn', `إقرار ضريبة ${per.label}: المستحق ${fmt(v.due - v.paid)} ${cur()} — آخر موعد ${dtText(deadline)}`, b]);
+        if (!v.settled && deadline < today()) out.push(['bad', `ضريبة ${per.label} (${fmt(v.due - v.paid)} ${cur()}) لم يُسجَّل سدادها وفات موعدها`, b]);
+        if (v.settled && v.credit > 0 && deadline >= today()) out.push(['warn', `إقرار ضريبة ${per.label}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(v.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار قبل ${dtText(deadline)}.`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm')]);
+      }
+    }
+    const C = costing();
+    const target = num(S.settings.targetFoodCost);
+    const high = S.products.filter((p) => p.active !== false && num(p.price) > 0 && RB.productStats(S, p, C).foodCost > target + 5);
+    if (high.length) out.push(['warn', `${high.length} من أصناف المنيو تكلفتها أعلى من المستهدف بأكثر من 5 نقاط: ${high.slice(0, 4).map((p) => esc(p.name)).join('، ')}${high.length > 4 ? '…' : ''}`, btn('راجع التسعير', 'go', 'data-v="products"', 'sm')]);
+    if (C.errors.length) out.push(['bad', 'يوجد تداخل دائري في وصفة: منتج يحتوي نفسه. افتح المنتجات المجمّعة وصحّح المكونات.', '']);
+    const bal = RB.balances(ledger(asOf).entries, null, asOf);
+    if ((bal['1101'] || 0) < -0.5) out.push(['bad', 'رصيد الصندوق بالسالب: سجّلت مصروفات نقدية أكثر من الكاش الموجود. راجع الإقفالات والتحويلات.', btn('كشف الصندوق', 'go', 'data-v="cash"', 'sm')]);
+    if ((bal['1102'] || 0) < -0.5) out.push(['bad', 'رصيد البنك بالسالب: تأكد من تسجيل إيداعات رأس المال والتحويلات.', btn('كشف البنك', 'go', 'data-v="cash"', 'sm')]);
+    for (const a of RB.appReceivables(S, asOf)) {
+      if (a.balance > 1 && (!a.lastPayout || RB.daysBetween(a.lastPayout, asOf) > 14)) out.push(['warn', `${esc(a.name)}: مستحقات ${fmt(a.balance)} ${cur()} ولم يُسجَّل تحويل منذ ${a.lastPayout ? RB.daysBetween(a.lastPayout, asOf) + ' يوم' : 'البداية'}`, btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${a.id}"`, 'sm')]);
+    }
+    const shares = RB.sum(S.partners, (p) => num(p.share));
+    if (S.partners.length && Math.abs(shares - 100) > 0.01) out.push(['warn', `مجموع نسب الشركاء ${fmt(shares)}% وليس 100%.`, btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
+    if (!out.length) return `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
+    return `<ul class="alerts">${out.map(([k, t, a]) => `<li class="al ${k}"><span class="al-dot" aria-hidden="true"></span><span class="al-t">${t}</span>${a}</li>`).join('')}</ul>`;
+  }
+  const empName = (id, pre) => {
+    const e = id && S.employees.find((x) => x.id === id);
+    return e ? (pre || '') + esc(e.name) : '';
+  };
+
+  // ─── الشركاء ورأس المال ───
+  PAGES.partners = () => {
+    const [from, to] = range();
+    const L = ledger('9999-12-31');
+    const rep = RB.partnersReport(S, from, minD(to, today()), ledger(minD(to, today())));
+    const uses = RB.capitalUses(S, L);
+    let h = pageHead('الشركاء ورأس المال', 'رأس المال التأسيسي، مساهمة كل شريك، ونصيبه من الأرباح', btn('+ شريك', 'add', 'data-s="partners"') + btn('+ إيداع رأس مال', 'add', 'data-s="capital" data-x="contribution"', 'primary') + btn('+ سحب شريك', 'add', 'data-s="capital" data-x="withdrawal"'));
+    h += card(
+      'حصص الشركاء',
+      table(
+        [
+          { h: 'الشريك', f: (r) => `<b>${esc(r.name)}</b>` },
+          { h: 'النسبة المتفق عليها', num: 1, f: (r) => pct(r.sharePct, 0) },
+          { h: 'إجمالي مساهمته', num: 1, f: (r) => N(r.contributed) },
+          { h: 'منها دفعها مباشرة', num: 1, f: (r) => N(r.direct) },
+          { h: 'المطلوب حسب نسبته', num: 1, f: (r) => N(r.required) },
+          { h: 'الفرق', num: 1, f: (r) => (Math.abs(r.diff) < 0.5 ? '—' : `${N(r.diff)} ${r.diff > 0 ? chip('زيادة', 'good') : chip('ناقص', 'warn')}`) },
+          { h: 'المسحوبات', num: 1, f: (r) => N(r.drawings) },
+          { h: 'نصيبه من ربح الفترة', num: 1, f: (r) => N(r.profitPeriod) },
+          { h: 'رصيد حقوقه', num: 1, f: (r) => N(r.equity) },
+          { h: '', f: (r) => rowActs('partners', r.id) },
+        ],
+        rep.rows,
+        { empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
+      ),
+      { sub: `ربح الفترة يوزّع حسب النسب (${periodLabel()}). «رصيد حقوقه» = مساهمته − مسحوباته + نصيبه من الأرباح المتراكمة.` }
+    );
+    const useItems = uses.assets.map((a) => ({ label: a.name, v: a.amount }));
+    if (uses.preopen.expenses) useItems.push({ label: 'مصاريف قبل الافتتاح (إيجار، رسوم، تأمين…)', v: uses.preopen.expenses });
+    if (uses.preopen.purchases) useItems.push({ label: 'مشتريات المخزون الافتتاحي', v: uses.preopen.purchases });
+    if (uses.preopen.payroll) useItems.push({ label: 'رواتب قبل الافتتاح', v: uses.preopen.payroll });
+    h += `<div class="grid2">${card(
+      'أين ذهب رأس المال التأسيسي؟',
+      `<div class="pv-grid three"><div><span>إجمالي رأس المال</span>${money(uses.sources)}</div><div><span>المصروف على التأسيس</span>${money(uses.used)}</div><div><span>المتبقي كرأس مال عامل</span>${money(uses.remaining)}</div></div>${hbars(useItems, { total: uses.sources })}`,
+      { sub: uses.open ? `حسب الأصول وما صُرف قبل تاريخ الافتتاح (${dtText(uses.open)})` : 'حدّد تاريخ الافتتاح في الإعدادات لفصل مصاريف ما قبل الافتتاح.' }
+    )}${card(
+      'حركة رأس المال',
+      table(
+        [
+          { h: 'التاريخ', f: (r) => dt(r.date) },
+          { h: 'الشريك', f: (r) => esc((S.partners.find((p) => p.id === r.partnerId) || {}).name || '—') },
+          { h: 'النوع', f: (r) => (r.type === 'withdrawal' ? chip('سحب', 'warn') : chip('إيداع', 'good')) },
+          { h: 'الحساب', f: (r) => esc(RB.srcLabel(r.account, S)) },
+          { h: 'المبلغ', num: 1, f: (r) => N(r.amount) },
+          { h: '', f: (r) => rowActs('capital', r.id) },
+        ],
+        S.capital.slice().sort((a, b) => (a.date < b.date ? 1 : -1)),
+        { empty: 'لا توجد إيداعات بعد.' }
+      ),
+      { sub: `المدفوع مباشرة من حساب شريك (أصل أو مصروف) يُضاف تلقائياً لرأس ماله: ${fmt(uses.direct)} ${cur()}` }
+    )}</div>`;
+    return h;
+  };
+
+  // ─── الأصول ───
+  PAGES.assets = () => {
+    const [from, to] = range();
+    const asOf = minD(to, today());
+    const rows = S.assets.map((a) => {
+      const sch = RB.depSchedule(a, S);
+      const accum = r2(RB.sum(sch.months.filter((m) => m.date <= asOf), (m) => m.amount));
+      return { a, sch, accum, book: r2(sch.cost - accum) };
+    });
+    const cats = {};
+    rows.forEach((r) => {
+      const c = RB.assetCat(r.a.category);
+      const o = (cats[c.id] = cats[c.id] || { name: c.name, n: 0, cost: 0, monthly: 0, accum: 0, book: 0 });
+      o.n++;
+      o.cost += r.sch.cost;
+      o.monthly += r.sch.months.some((m) => m.ym === asOf.slice(0, 7)) ? r.sch.monthly : 0;
+      o.accum += r.accum;
+      o.book += r.book;
+    });
+    const catRows = Object.values(cats).sort((a, b) => b.cost - a.cost);
+    const monthlyDep = RB.sum(catRows, (c) => c.monthly);
+    const sales = RB.salesByChannel(S, from, to);
+    const months = RB.monthsIn(from, minD(to, today()));
+    const ordersPerMonth = sales.total.orders / months;
+    let h = pageHead('الأصول والأثاث', 'معدات المطبخ والأثاث والأدوات والديكور، وتوزيع تكلفتها على أشهر التشغيل (الإهلاك)', btn('+ أصل جديد', 'add', 'data-s="assets"', 'primary'));
+    h += `<div class="kpis small">
+      ${kpi('تكلفة الأصول', money(RB.sum(catRows, (c) => c.cost)), `${S.assets.length} أصل`)}
+      ${kpi('الإهلاك الشهري الحالي', money(monthlyDep), 'يُحمّل على مصاريف كل شهر')}
+      ${kpi('نصيب الطلب الواحد', money(ordersPerMonth ? monthlyDep / ordersPerMonth : 0), ordersPerMonth ? `على أساس ${fmt0(ordersPerMonth)} طلب شهرياً` : 'يظهر بعد تسجيل المبيعات')}
+      ${kpi('القيمة الدفترية الحالية', money(RB.sum(catRows, (c) => c.book)), 'التكلفة − الإهلاك المتراكم')}
+    </div>`;
+    h += card(
+      'حسب الصنف',
+      table(
+        [
+          { h: 'الصنف', f: (r) => esc(r.name) },
+          { h: 'العدد', num: 1, f: (r) => r.n },
+          { h: 'التكلفة', num: 1, f: (r) => N(r.cost) },
+          { h: 'الإهلاك الشهري', num: 1, f: (r) => N(r.monthly) },
+          { h: 'الإهلاك المتراكم', num: 1, f: (r) => N(r.accum) },
+          { h: 'القيمة الدفترية', num: 1, f: (r) => N(r.book) },
+        ],
+        catRows,
+        { empty: 'لم تُسجَّل أصول بعد. أضف معدات المطبخ والأثاث والأدوات.' }
+      )
+    );
+    h += card(
+      'سجل الأصول',
+      table(
+        [
+          { h: 'الأصل', f: (r) => `<b>${esc(r.a.name)}</b>${r.a.note ? `<div class="muted sm">${esc(r.a.note)}</div>` : ''}` },
+          { h: 'الصنف', f: (r) => esc(RB.assetCat(r.a.category).name) },
+          { h: 'تاريخ الشراء', f: (r) => dt(r.a.date) },
+          { h: 'التكلفة', num: 1, f: (r) => N(r.sch.cost) },
+          { h: 'العمر', num: 1, f: (r) => (r.sch.life ? `${r.sch.life} شهر` : 'لا يُستهلك') },
+          { h: 'الإهلاك الشهري', num: 1, f: (r) => N(r.sch.monthly) },
+          { h: 'المتراكم', num: 1, f: (r) => N(r.accum) },
+          { h: 'القيمة الدفترية', num: 1, f: (r) => N(r.book) },
+          { h: 'الدفع من', f: (r) => `<span class="muted">${esc(RB.srcLabel(r.a.account, S))}</span>` },
+          { h: '', f: (r) => rowActs('assets', r.a.id) },
+        ],
+        rows.sort((a, b) => (a.a.date < b.a.date ? 1 : -1))
+      ),
+      { sub: `الإهلاك المتراكم حتى ${dtText(asOf)}. الأصول المشتراة قبل الافتتاح يبدأ إهلاكها من تاريخ الافتتاح.` }
+    );
+    return h;
+  };
+
+  // ─── المصاريف التشغيلية ───
+  PAGES.expenses = () => {
+    const [from, to] = range();
+    const list = S.expenses.filter((x) => inRange(x.date) && (!ui.expCat || x.category === ui.expCat)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    const counts = {};
+    S.expenses.filter((x) => inRange(x.date)).forEach((x) => (counts[x.category] = (counts[x.category] || 0) + 1));
+    // المدفوع مقابل المحمّل على الفترة لكل تصنيف
+    const b = RB.balances(ledger(to).entries, from, to);
+    const catRows = RB.EXPENSE_CATS.map((c) => {
+      const paid = RB.sum(S.expenses.filter((x) => x.category === c.id && inRange(x.date)), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
+      return { c, paid, charged: b[c.acc] || 0 };
+    }).filter((r) => r.paid || r.charged);
+    const months = RB.monthsIn(from, to);
+    let h = pageHead('المصاريف التشغيلية', 'إيجار المحل وسكن العمال والكهرباء والصيانة والتسويق وغيرها. المصروف المدفوع لعدة أشهر يُوزّع تلقائياً على أشهره.', btn('+ مصروف', 'add', 'data-s="expenses"', 'primary'));
+    h += `<div class="quick">${['rent', 'housing', 'utilities', 'telecom', 'maintenance', 'marketing', 'cleaning'].map((k) => btn('+ ' + RB.expenseCat(k).name, 'add', `data-s="expenses" data-x="${k}"`, 'sm ghost')).join('')}</div>`;
+    h += card(
+      'ملخص الفترة',
+      table(
+        [
+          { h: 'التصنيف', f: (r) => esc(r.c.name) },
+          { h: 'المدفوع في الفترة', num: 1, f: (r) => N(r.paid) },
+          { h: 'المحمّل على الفترة', num: 1, f: (r) => N(r.charged) },
+          { h: 'المتوسط الشهري المحمّل', num: 1, f: (r) => N(r.charged / months) },
+        ],
+        catRows,
+        { foot: ['الإجمالي', N(RB.sum(catRows, (r) => r.paid)), N(RB.sum(catRows, (r) => r.charged)), N(RB.sum(catRows, (r) => r.charged) / months)], empty: 'لا مصاريف في هذه الفترة.' }
+      ),
+      { sub: '«المدفوع» شامل الضريبة كما خرج من الحساب. «المحمّل» هو نصيب الفترة من المصروف بدون الضريبة المستردة (مثلاً: إيجار 6 أشهر يُحمّل سدسه كل شهر). الرواتب والمشتريات في صفحاتها.' }
+    );
+    const filt = `<div class="chips">${[['', 'الكل']].concat(RB.EXPENSE_CATS.filter((c) => counts[c.id]).map((c) => [c.id, `${c.name} (${counts[c.id]})`])).map(([k, l]) => `<button type="button" class="fchip ${ui.expCat === k ? 'on' : ''}" data-act="filter" data-f="expCat" data-v="${k}">${esc(l)}</button>`).join('')}</div>`;
+    h += card('المدفوعات', filt + expensesTable(list), { actions: btn('تصدير CSV', 'csv', 'data-v="expenses"', 'sm ghost') });
+    return h;
+  };
+  function expensesTable(list) {
+    return table(
+      [
+        { h: 'التاريخ', f: (x) => dt(x.date) },
+        { h: 'التصنيف', f: (x) => esc(RB.expenseCat(x.category).name) },
+        { h: 'البيان', f: (x) => `${esc(x.desc || '')}${x.entity ? `<div class="muted sm">${esc(x.entity)}${empName(x.employeeId, ' · ')}</div>` : empName(x.employeeId, '<div class="muted sm">') }` },
+        { h: 'المبلغ', num: 1, f: (x) => N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross) },
+        { h: 'الضريبة', num: 1, f: (x) => (x.taxable ? N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).vat) : chip('غير خاضع', 'mute')) },
+        { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${num(x.months)} شهر<div class="muted sm">حتى ${dtText(RB.coverageEnd(x.startDate || x.date, x.months))}</div>` : 'شهر واحد') },
+        { h: 'الدفع من', f: (x) => `<span class="muted">${esc(RB.srcLabel(x.account, S))}</span>` },
+        { h: '', f: (x) => rowActs('expenses', x.id) },
+      ],
+      list,
+      { empty: 'لا توجد مصاريف بهذا التصنيف في الفترة المحددة.' }
+    );
+  }
+
+  // ─── الرسوم الحكومية ───
+  PAGES.gov = () => {
+    const rn = RB.renewals(S, today()).filter((r) => RB.GOV_CATS.includes(r.rec.category) || ['rent', 'housing'].includes(r.rec.category));
+    const annual = RB.sum(rn.filter((r) => RB.GOV_CATS.includes(r.rec.category)), (r) => (RB.vatSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings).gross * 12) / Math.max(1, num(r.rec.months)));
+    const list = S.expenses.filter((x) => RB.GOV_CATS.includes(x.category) && inRange(x.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    let h = pageHead('الرسوم الحكومية والاشتراكات', 'السجل التجاري والبلدية والدفاع المدني والغرفة التجارية، ورسوم العمالة (قوى ومقيم)، والتأمين، واشتراكات الأنظمة — مع تنبيه قبل انتهاء كل منها', btn('+ رسم أو اشتراك', 'add', 'data-s="expenses" data-x="gov"', 'primary'));
+    const soon = rn.filter((r) => r.status !== 'ok').length;
+    h += `<div class="kpis small">
+      ${kpi('التكلفة السنوية التقديرية', money(annual), 'لآخر دفعة من كل بند')}
+      ${kpi('ما يعادل شهرياً', money(annual / 12), 'يُوزّع على أشهر التغطية')}
+      ${kpi('بنود تحتاج تجديد', `<span class="n">${soon}</span>`, 'منتهية أو تنتهي خلال 30 يوماً', soon ? 'warn' : 'good')}
+    </div>`;
+    h += card(
+      'متابعة التجديد',
+      table(
+        [
+          { h: 'الحالة', f: (r) => (r.status === 'expired' ? chip('منتهي', 'bad') : r.status === 'soon' ? chip(`باقي ${r.days} يوم`, 'warn') : chip('ساري', 'good')) },
+          { h: 'البند', f: (r) => `<b>${esc(r.rec.desc || RB.expenseCat(r.rec.category).name)}</b><div class="muted sm">${esc(RB.expenseCat(r.rec.category).name)}</div>` },
+          { h: 'الجهة', f: (r) => esc(r.rec.entity || '—') + empName(r.rec.employeeId, '<div class="muted sm">') },
+          { h: 'آخر دفعة', f: (r) => dt(r.rec.date) },
+          { h: 'المبلغ', num: 1, f: (r) => N(RB.vatSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings).gross) },
+          { h: 'ينتهي في', f: (r) => dt(r.end) },
+          { h: '', f: (r) => btn('تجديد', 'renew', `data-id="${r.rec.id}"`, 'sm') },
+        ],
+        rn,
+        { empty: 'لا توجد رسوم أو اشتراكات مسجلة. أضف السجل التجاري ورخصة البلدية وشهادة السلامة ورسوم العمالة.', rowCls: (r) => r.status }
+      ),
+      { sub: 'آخر تغطية لكل بند. الإيجارات وسكن العمال تظهر هنا أيضاً لمتابعة مواعيدها.' }
+    );
+    h += card('مدفوعات الفترة', expensesTable(list));
+    return h;
+  };
+
+  // ─── العمال والرواتب ───
+  PAGES.staff = () => {
+    const ym = today().slice(0, 7);
+    const emps = S.employees.slice().sort((a, b) => (a.active === false) - (b.active === false));
+    const active = emps.filter((e) => RB.isEmployeeActive(e, ym));
+    const costs = Object.fromEntries(emps.map((e) => [e.id, RB.employeeMonthlyCost(e, S)]));
+    const saudi = active.filter((e) => e.nationality === 'saudi').length;
+    let h = pageHead('العمال والرواتب', 'الرواتب والبدلات، التأمينات الاجتماعية، المقابل المالي والإقامات، والتكلفة الحقيقية لكل عامل', btn('+ موظف', 'add', 'data-s="employees"') + btn('+ مسير رواتب', 'add', 'data-s="payroll"', 'primary'));
+    h += `<div class="kpis small">
+      ${kpi('عدد العمال النشطين', `<span class="n">${active.length}</span>`, `سعوديون ${saudi} · غير سعوديين ${active.length - saudi}${active.length ? ' · نسبة التوطين ' + pct((saudi / active.length) * 100, 0) : ''}`)}
+      ${kpi('الرواتب الشهرية', money(RB.sum(active, (e) => costs[e.id].salary)), 'الأساسي + البدلات')}
+      ${kpi('التكلفة الشهرية الحقيقية', money(RB.sum(active, (e) => costs[e.id].total)), 'تشمل التأمينات والرسوم والسكن ونهاية الخدمة')}
+      ${kpi('تأمينات المنشأة شهرياً', money(RB.sum(active, (e) => costs[e.id].gosi.er)), 'حسب النسب في الإعدادات')}
+    </div>`;
+    h += tabs('staffTab', [['emp', 'الموظفون'], ['payroll', 'مسيرات الرواتب']], ui.staffTab);
+    if (ui.staffTab === 'payroll') {
+      const runs = S.payroll.slice().sort((a, b) => (a.month < b.month ? 1 : -1));
+      h += card(
+        'مسيرات الرواتب',
+        table(
+          [
+            { h: 'الشهر', f: (p) => `<b>${RB.monthName(p.month)}</b>${p.note ? `<div class="muted sm">${esc(p.note)}</div>` : ''}` },
+            { h: 'تاريخ الصرف', f: (p) => dt(p.date) },
+            { h: 'العدد', num: 1, f: (p) => RB.payrollTotals(p).count },
+            { h: 'إجمالي الرواتب', num: 1, f: (p) => N(RB.payrollTotals(p).gross) },
+            { h: 'تأمينات (موظف + منشأة)', num: 1, f: (p) => N(RB.payrollTotals(p).gosiEe + RB.payrollTotals(p).gosiEr) },
+            { h: 'الصافي المصروف', num: 1, f: (p) => N(RB.payrollTotals(p).net) },
+            { h: 'التكلفة على المطعم', num: 1, f: (p) => N(RB.payrollTotals(p).cost) },
+            { h: 'من', f: (p) => `<span class="muted">${esc(RB.srcLabel(p.account, S))}</span>` },
+            { h: '', f: (p) => rowActs('payroll', p.id) },
+          ],
+          runs,
+          { empty: 'لا توجد مسيرات رواتب. اضغط «مسير رواتب» ليتعبأ تلقائياً من بيانات الموظفين.' }
+        ),
+        { sub: 'التكلفة على المطعم = إجمالي الرواتب + حصة المنشأة في التأمينات. حصة الموظف تُخصم من راتبه وتُورّد مع حصة المنشأة.' }
+      );
+      return h;
+    }
+    h += card(
+      'الموظفون',
+      table(
+        [
+          { h: 'الاسم', f: (e) => `<b>${esc(e.name)}</b><div class="muted sm">${esc(e.job || '')}</div>` },
+          { h: 'الجنسية', f: (e) => (e.nationality === 'saudi' ? chip('سعودي', 'accent') : chip('غير سعودي', 'mute')) },
+          { h: 'الراتب والبدلات', num: 1, f: (e) => N(costs[e.id].salary) },
+          { h: 'تأمينات المنشأة', num: 1, f: (e) => N(costs[e.id].gosi.er) },
+          { h: 'المقابل المالي والإقامة', num: 1, f: (e) => N(costs[e.id].items[2].v + costs[e.id].items[3].v) },
+          { h: 'التكلفة الشهرية الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
+          { h: 'الحالة', f: (e) => (RB.isEmployeeActive(e, ym) ? chip('على رأس العمل', 'good') : chip('متوقف', 'mute')) },
+          { h: '', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${e.id}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
+        ],
+        emps,
+        { empty: 'أضف العمال مع رواتبهم لحساب التأمينات والمقابل المالي والتكلفة الحقيقية.' }
+      ),
+      { sub: 'المقابل المالي ورسوم الإقامة تُسجَّل كدفعات فعلية في «الرسوم الحكومية» عند السداد؛ هنا تقدير شهري لتكلفة العامل.' }
+    );
+    return h;
+  };
+
+  // ─── المشتريات ───
+  PAGES.purchases = () => {
+    const [, to] = range();
+    const all = S.purchases.filter((p) => inRange(p.date));
+    const list = all.filter((p) => !ui.purCat || p.category === ui.purCat).sort((a, b) => (a.date < b.date ? 1 : -1));
+    const sp = (p) => RB.vatSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings);
+    const byCat = {};
+    const bySrc = {};
+    let taxable = 0;
+    let exempt = 0;
+    let vat = 0;
+    all.forEach((p) => {
+      const v = sp(p);
+      byCat[p.category] = (byCat[p.category] || 0) + v.gross;
+      bySrc[p.account] = (bySrc[p.account] || 0) + v.gross;
+      if (p.taxable) taxable += v.gross;
+      else exempt += v.gross;
+      vat += v.vat;
+    });
+    let h = pageHead('المشتريات التشغيلية', 'فواتير المواد الخام والتغليف والمستهلكات — من البنك أو من الكاشير أو آجل، خاضعة للضريبة أو غير خاضعة', btn('سداد مورد', 'add', 'data-s="supplierPayments"') + btn('+ فاتورة مشتريات', 'add', 'data-s="purchases"', 'primary'));
+    h += `<div class="kpis small">
+      ${kpi('إجمالي المشتريات', money(taxable + exempt), `${all.length} فاتورة في الفترة`)}
+      ${kpi('من البنك', money(bySrc.bank || 0), '')}
+      ${kpi('من الكاشير', money(bySrc.cash || 0), '')}
+      ${kpi('آجل على الموردين', money(bySrc.payable || 0), '')}
+    </div>`;
+    h += `<div class="grid2">${card('حسب التصنيف', hbars(RB.PURCHASE_CATS.filter((c) => byCat[c.id]).map((c) => ({ label: c.name, v: byCat[c.id] }))))}${card(
+      'الضريبة',
+      `<div class="pv-grid"><div><span>مشتريات خاضعة للضريبة</span>${money(taxable)}</div><div><span>مشتريات غير خاضعة</span>${money(exempt)}</div><div><span>ضريبة المدخلات</span>${money(vat)}</div></div><p class="note">${S.settings.vatRegistered ? 'ضريبة المدخلات تُخصم من ضريبة المبيعات في الإقرار.' : 'المطعم غير مسجل في الضريبة، فالضريبة المدفوعة جزء من التكلفة.'} غير الخاضعة مثل مشتريات من موردين غير مسجلين أو بدون فاتورة ضريبية.</p>`
+    )}</div>`;
+    const counts = {};
+    all.forEach((p) => (counts[p.category] = (counts[p.category] || 0) + 1));
+    const filt = `<div class="chips">${[['', 'الكل']].concat(RB.PURCHASE_CATS.filter((c) => counts[c.id]).map((c) => [c.id, `${c.name} (${counts[c.id]})`])).map(([k, l]) => `<button type="button" class="fchip ${ui.purCat === k ? 'on' : ''}" data-act="filter" data-f="purCat" data-v="${k}">${esc(l)}</button>`).join('')}</div>`;
+    h += card(
+      'الفواتير',
+      filt +
+        table(
+          [
+            { h: 'التاريخ', f: (p) => dt(p.date) },
+            { h: 'المورد', f: (p) => `<b>${esc(p.supplier || '—')}</b>${p.invoiceNo ? `<div class="muted sm">فاتورة ${esc(p.invoiceNo)}</div>` : ''}` },
+            { h: 'التصنيف', f: (p) => esc(RB.purchaseCat(p.category).name) },
+            { h: 'الأصناف', f: (p) => `<span class="muted sm">${esc((p.lines || []).map((l) => l.desc || RB.itemName(S, 'raw', l.rawId)).slice(0, 3).join('، '))}${(p.lines || []).length > 3 ? '…' : ''}</span>` },
+            { h: 'الدفع', f: (p) => (p.account === 'payable' ? chip('آجل', 'warn') : p.account === 'cash' ? chip('الكاشير', 'mute') : p.account === 'bank' ? chip('البنك', 'mute') : chip(esc(RB.srcLabel(p.account, S)), 'accent')) },
+            { h: 'الضريبة', f: (p) => (p.taxable ? chip('خاضعة', 'good') : chip('غير خاضعة', 'mute')) },
+            { h: 'قبل الضريبة', num: 1, f: (p) => N(sp(p).net) },
+            { h: 'الضريبة', num: 1, f: (p) => N(sp(p).vat) },
+            { h: 'الإجمالي', num: 1, f: (p) => `<b>${N(sp(p).gross)}</b>` },
+            { h: '', f: (p) => rowActs('purchases', p.id) },
+          ],
+          list,
+          { empty: 'لا توجد فواتير في هذه الفترة.' }
+        ),
+      { actions: btn('تصدير CSV', 'csv', 'data-v="purchases"', 'sm ghost') }
+    );
+    const sb = RB.supplierBalances(S, minD(to, today()));
+    h += card(
+      'الموردون بالآجل',
+      table(
+        [
+          { h: 'المورد', f: (r) => `<b>${esc(r.supplier)}</b>` },
+          { h: 'مشتريات آجلة', num: 1, f: (r) => N(r.purchases) },
+          { h: 'المسدد', num: 1, f: (r) => N(r.paid) },
+          { h: 'الرصيد المستحق', num: 1, f: (r) => `<b>${N(r.balance)}</b>` },
+          { h: '', f: (r) => (r.balance > 0.005 ? btn('سداد', 'add', `data-s="supplierPayments" data-x="${esc(r.supplier)}"`, 'sm') : chip('مسدد', 'good')) },
+        ],
+        sb,
+        { empty: 'لا توجد مشتريات آجلة.' }
+      ) +
+        (S.supplierPayments.length
+          ? `<h4 class="sub-h">دفعات السداد</h4>` +
+            table(
+              [
+                { h: 'التاريخ', f: (p) => dt(p.date) },
+                { h: 'المورد', f: (p) => esc(p.supplier) },
+                { h: 'من', f: (p) => esc(RB.srcLabel(p.account, S)) },
+                { h: 'المبلغ', num: 1, f: (p) => N(p.amount) },
+                { h: '', f: (p) => rowActs('supplierPayments', p.id) },
+              ],
+              S.supplierPayments.slice().sort((a, b) => (a.date < b.date ? 1 : -1))
+            )
+          : '')
+    );
+    return h;
+  };
+
+  // ─── المواد الخام ───
+  PAGES.raw = () => {
+    const C = costing();
+    const usedIn = (rid) => S.composites.filter((c) => (c.items || []).some((i) => i.kind === 'raw' && i.id === rid)).length + S.products.filter((p) => (p.items || []).some((i) => i.kind === 'raw' && i.id === rid)).length;
+    let h = pageHead('المواد الخام', 'كل ما يدخل في المنيو: اللحم والخبز والصوصات والتغليف. التكلفة تُحسب لوحدة الاستخدام بعد الهدر.', btn('+ جرد', 'add', 'data-s="stockCounts"') + btn('+ مادة خام', 'add', 'data-s="raw"', 'primary'));
+    h += tabs('rawTab', [['list', 'المواد'], ['counts', 'الجرد']], ui.rawTab);
+    if (ui.rawTab === 'counts') {
+      h += card(
+        'الجرد',
+        table(
+          [
+            { h: 'التاريخ', f: (c) => dt(c.date) },
+            { h: 'عدد الأصناف', num: 1, f: (c) => (c.lines || []).filter((l) => num(l.qty)).length },
+            { h: 'قيمة المخزون', num: 1, f: (c) => `<b>${N(RB.stockValue(c))}</b>` },
+            { h: 'ملاحظات', f: (c) => esc(c.note || '') },
+            { h: '', f: (c) => rowActs('stockCounts', c.id) },
+          ],
+          S.stockCounts.slice().sort((a, b) => (a.date < b.date ? 1 : -1)),
+          { empty: 'سجّل جرد آخر الشهر لتصبح تكلفة المواد دقيقة: تكلفة المواد = المشتريات − الزيادة في المخزون.' }
+        ),
+        { sub: 'قيمة الجرد = الكمية الموجودة × سعر وحدة الشراء. الفرق بين جرد وآخر يعدّل تكلفة المواد في قائمة الدخل.' }
+      );
+      return h;
+    }
+    const rows = S.raw.slice().sort((a, b) => (a.category + a.name).localeCompare(b.category + b.name, 'ar'));
+    h += card(
+      'قائمة المواد',
+      table(
+        [
+          { h: 'المادة', f: (r) => `<b>${esc(r.name)}</b><div class="muted sm">${esc(r.category || '')}${r.supplier ? ' · ' + esc(r.supplier) : ''}</div>` },
+          { h: 'وحدة الشراء', f: (r) => `${esc(r.buyUnit || '')}<div class="muted sm">= ${fmtQ(r.packQty)} ${esc(r.useUnit)}</div>` },
+          { h: 'سعر الشراء', num: 1, f: (r) => N(r.price) },
+          { h: 'الهدر', num: 1, f: (r) => (num(r.wastePct) ? pct(r.wastePct, 0) : '—') },
+          { h: 'الضريبة', f: (r) => (r.taxable ? chip('خاضعة', 'good') : chip('غير خاضعة', 'mute')) },
+          { h: 'تكلفة وحدة الاستخدام', num: 1, f: (r) => `<b class="n">${(C.raw[r.id] || 0).toFixed(4)}</b><div class="muted sm">لكل 1 ${esc(r.useUnit)}</div>` },
+          { h: 'تستخدم في', num: 1, f: (r) => usedIn(r.id) || '—' },
+          { h: '', f: (r) => rowActs('raw', r.id) },
+        ],
+        rows,
+        { empty: 'ابدأ بإضافة المواد الخام: اللحم، الخبز، الجبن، الصوصات، البطاطس، علب التغليف…' }
+      ),
+      { sub: S.settings.vatRegistered ? 'السعر بدون ضريبة لأن المطعم مسجل ويسترد ضريبة المدخلات. يتحدث السعر تلقائياً من آخر فاتورة مشتريات مرتبطة بالمادة.' : 'المطعم غير مسجل في الضريبة: التكلفة تشمل الضريبة للمواد الخاضعة.' }
+    );
+    return h;
+  };
+
+  // ─── المنتجات المجمّعة ───
+  PAGES.composites = () => {
+    const C = costing();
+    const usedIn = (cid) => S.composites.filter((c) => (c.items || []).some((i) => i.kind === 'comp' && i.id === cid)).length + S.products.filter((p) => (p.items || []).some((i) => i.kind === 'comp' && i.id === cid)).length;
+    let h = pageHead('المنتجات المجمّعة', 'التحضيرات التي تُصنع من مواد خام أو من منتجات مجمّعة أخرى: قطعة اللحم، الصوص الخاص، خلطة الخضار، حصة البطاطس…', btn('+ منتج مجمّع', 'add', 'data-s="composites"', 'primary'));
+    h += card(
+      'التحضيرات',
+      table(
+        [
+          { h: 'المنتج المجمّع', f: (c) => `<b>${esc(c.name)}</b>${(c.items || []).some((i) => i.kind === 'comp') ? ' ' + chip('يحتوي منتجاً مجمّعاً', 'accent') : ''}<div class="muted sm">${esc((c.items || []).map((i) => RB.itemName(S, i.kind, i.id)).join('، '))}</div>` },
+          { h: 'الكمية الناتجة', num: 1, f: (c) => `${fmtQ(c.yieldQty)} ${esc(c.yieldUnit)}` },
+          { h: 'تكلفة الدفعة', num: 1, f: (c) => N((C.comp[c.id] || 0) * (num(c.yieldQty) || 1)) },
+          { h: 'تكلفة الوحدة', num: 1, f: (c) => `<b class="n">${(C.comp[c.id] || 0).toFixed(4)}</b><div class="muted sm">لكل 1 ${esc(c.yieldUnit)}</div>` },
+          { h: 'يستخدم في', num: 1, f: (c) => usedIn(c.id) || '—' },
+          { h: '', f: (c) => rowActs('composites', c.id, `<button type="button" class="icon-btn" data-act="view" data-s="composites" data-id="${c.id}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
+        ],
+        S.composites.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')),
+        { empty: 'أضف أول منتج مجمّع، مثل «قطعة لحم 120 جم» = لحم مفروم + ملح + بهارات.' }
+      ),
+      { sub: 'المنتج المجمّع يمكن أن يدخل كمكوّن في منتج مجمّع آخر (مثل صوص سبايسي مبني على الصوص الخاص) وفي أصناف المنيو.' }
+    );
+    return h;
+  };
+
+  // ─── المنيو والتسعير ───
+  PAGES.products = () => {
+    const C = costing();
+    const target = num(S.settings.targetFoodCost);
+    const rows = S.products.map((p) => ({ p, st: RB.productStats(S, p, C) })).sort((a, b) => (a.p.category || '').localeCompare(b.p.category || '', 'ar') || a.p.name.localeCompare(b.p.name, 'ar'));
+    const act = rows.filter((r) => r.p.active !== false && r.st.price > 0);
+    const avgFc = act.length ? RB.sum(act, (r) => r.st.foodCost) / act.length : 0;
+    let h = pageHead('المنيو والتسعير', 'تكلفة كل صنف وسعر بيعه، ومقارنته بأسعار السوق المحلي وبصافي ربحه في تطبيقات التوصيل', btn('+ صنف في المنيو', 'add', 'data-s="products"', 'primary'));
+    h += `<div class="kpis small">
+      ${kpi('أصناف المنيو', `<span class="n">${act.length}</span>`, `${rows.length - act.length} غير مفعّل`)}
+      ${kpi('متوسط تكلفة الطعام', pct(avgFc), `المستهدف ${pct(target, 0)}`, avgFc > target + 3 ? 'warn' : 'good')}
+      ${kpi('أعلى من المستهدف', `<span class="n">${act.filter((r) => r.st.foodCost > target + 3).length}</span>`, 'صنف يحتاج مراجعة سعر أو مكونات', act.some((r) => r.st.foodCost > target + 3) ? 'warn' : 'good')}
+      ${kpi('متوسط عمولة التطبيقات', pct(RB.appChannels(S).length ? RB.sum(RB.appChannels(S), (c) => num(c.feePct)) / RB.appChannels(S).length : 0), 'تعدّلها من الإعدادات')}
+    </div>`;
+    const fcChip = (fc) => (fc > target + 3 ? chip(pct(fc), 'bad') : fc > target ? chip(pct(fc), 'warn') : chip(pct(fc), 'good'));
+    h += card(
+      'الأصناف',
+      table(
+        [
+          { h: 'الصنف', f: (r) => `<b>${esc(r.p.name)}</b>${r.p.active === false ? ' ' + chip('غير مفعّل', 'mute') : ''}<div class="muted sm">${esc(r.p.category || '')}${(r.p.items || []).some((i) => i.kind === 'prod') ? ' · وجبة مركّبة' : ''}</div>` },
+          { h: 'التكلفة', num: 1, f: (r) => N(r.st.cost) },
+          { h: 'سعر البيع', num: 1, f: (r) => `<b>${N(r.st.price)}</b>` },
+          { h: 'تكلفة الطعام', num: 1, f: (r) => (r.st.price ? fcChip(r.st.foodCost) : '—') },
+          { h: 'ربح الحبة', num: 1, f: (r) => N(r.st.profit) },
+          { h: 'السعر المقترح', num: 1, f: (r) => (r.st.suggested ? `${N(r.st.suggested)}${r.st.suggested > r.st.price + 0.01 ? '<div class="muted sm">لتحقيق المستهدف</div>' : ''}` : '—') },
+          { h: 'متوسط السوق', num: 1, f: (r) => (r.st.market ? `${N(r.st.market.avg)}<div class="sm">${r.st.vsMarket > 5 ? chip('أغلى ' + pct(r.st.vsMarket, 0), 'warn') : r.st.vsMarket < -5 ? chip('أرخص ' + pct(-r.st.vsMarket, 0), 'accent') : chip('مماثل', 'good')}</div>` : '<span class="muted">—</span>') },
+          { h: 'سعر التطبيقات', num: 1, f: (r) => N(r.st.appPrice) },
+          { h: 'ربحه في التطبيقات', num: 1, f: (r) => (r.st.avgApp ? `${N(r.st.avgApp.profit)}<div class="muted sm">هامش ${pct(r.st.avgApp.margin, 0)}</div>` : '—') },
+          { h: '', f: (r) => rowActs('products', r.p.id, `<button type="button" class="icon-btn" data-act="view" data-s="products" data-id="${r.p.id}" aria-label="تحليل الصنف" title="تحليل الصنف">ⓘ</button>`) },
+        ],
+        rows,
+        { empty: 'أضف أصناف المنيو وحدّد مكونات كل صنف (مواد خام أو منتجات مجمّعة) وسعر البيع.', rowCls: (r) => (r.p.active === false ? 'off' : '') }
+      ),
+      { sub: `الأسعار شاملة ضريبة ${pct(S.settings.vatRate, 0)}. تكلفة الطعام = التكلفة ÷ السعر بدون الضريبة. السعر المقترح يحقق المستهدف (${pct(target, 0)}) مقرّباً لأعلى. ربح التطبيقات بعد خصم متوسط العمولة.` }
+    );
+    return h;
+  };
+
+  // ─── المبيعات ───
+  PAGES.sales = () => {
+    const [from, to] = range();
+    const sales = RB.salesByChannel(S, from, to);
+    let h = pageHead('المبيعات اليومية', 'إقفال كل يوم حسب القناة: كاش، شبكة، وتطبيقات التوصيل — مع العمولات والضريبة وتحويلات التطبيقات', btn('+ تحويل من تطبيق', 'add', 'data-s="payouts"') + btn('+ إقفال يومي', 'add', 'data-s="sales"', 'primary'));
+    h += `<div class="kpis small">
+      ${kpi('المبيعات شاملة الضريبة', money(sales.total.gross), periodLabel())}
+      ${kpi('ضريبة المبيعات', money(sales.total.vat), '')}
+      ${kpi('عمولات ورسوم', money(sales.total.fee), 'التطبيقات والشبكة شاملة ضريبتها')}
+      ${kpi('عدد الطلبات', N0(sales.total.orders), `متوسط الفاتورة ${fmt(sales.total.avgTicket)} ${cur()}`)}
+    </div>`;
+    h += card(
+      'حسب القناة',
+      table(
+        [
+          { h: 'القناة', f: (c) => `<b>${esc(c.name)}</b><div class="muted sm">${esc(RB.CHANNEL_TYPES[c.type] || '')}</div>` },
+          { h: 'الطلبات', num: 1, f: (c) => N0(c.orders) },
+          { h: 'المبيعات', num: 1, f: (c) => N(c.gross) },
+          { h: 'الحصة', num: 1, f: (c) => pct(sales.total.gross ? (c.gross / sales.total.gross) * 100 : 0, 0) },
+          { h: 'الضريبة', num: 1, f: (c) => N(c.vat) },
+          { h: 'العمولة', num: 1, f: (c) => N(c.fee) },
+          { h: 'الصافي الواصل', num: 1, f: (c) => `<b>${N(c.receive)}</b>` },
+          { h: 'متوسط الطلب', num: 1, f: (c) => N(c.avgTicket) },
+        ],
+        sales.list,
+        { foot: ['الإجمالي', N0(sales.total.orders), N(sales.total.gross), '100%', N(sales.total.vat), N(sales.total.fee), N(RB.sum(sales.list, (c) => c.receive)), N(sales.total.avgTicket)] }
+      )
+    );
+    h += tabs('salesTab', [['days', 'الإقفالات اليومية'], ['apps', 'تحويلات التطبيقات']], ui.salesTab);
+    if (ui.salesTab === 'apps') {
+      const asOf = minD(to, today());
+      h += card(
+        'مستحقات التطبيقات',
+        table(
+          [
+            { h: 'التطبيق', f: (a) => `<b>${esc(a.name)}</b>` },
+            { h: 'الرصيد المستحق', num: 1, f: (a) => N(a.balance) },
+            { h: 'آخر تحويل', f: (a) => (a.lastPayout ? dt(a.lastPayout) : '—') },
+            { h: '', f: (a) => btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${a.id}"`, 'sm') },
+          ],
+          RB.appReceivables(S, asOf),
+          { empty: 'لا توجد مبيعات تطبيقات.' }
+        ),
+        { sub: `حتى ${dtText(asOf)}. الرصيد = المبيعات − العمولة وضريبتها − ما حُوّل للبنك. إن حوّل التطبيق مبلغاً أقل بسبب عروض أو غرامات سجّل الفرق في «خصومات».` }
+      );
+      h += card(
+        'التحويلات',
+        table(
+          [
+            { h: 'التاريخ', f: (p) => dt(p.date) },
+            { h: 'التطبيق', f: (p) => esc((RB.channelOf(S, p.channelId) || {}).name || p.channelId) },
+            { h: 'المبلغ المحوّل', num: 1, f: (p) => N(p.amount) },
+            { h: 'خصومات', num: 1, f: (p) => N(p.deductions) },
+            { h: 'ملاحظات', f: (p) => esc(p.note || '') },
+            { h: '', f: (p) => rowActs('payouts', p.id) },
+          ],
+          S.payouts.filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? 1 : -1))
+        )
+      );
+      return h;
+    }
+    const days = S.sales.filter((s) => inRange(s.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    const chs = S.settings.channels.filter((c) => c.active !== false || days.some((s) => s.channels && s.channels[c.id]));
+    const showApps = chs.filter((c) => c.type === 'app');
+    const compact = showApps.length > 3;
+    const cols = [{ h: 'اليوم', f: (s) => `${dt(s.date)}<div class="muted sm">${['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][RB.weekday(s.date)]}</div>` }];
+    chs.filter((c) => c.type !== 'app' || !compact).forEach((c) => cols.push({ h: esc(c.name), num: 1, f: (s) => (s.channels && s.channels[c.id] ? N(s.channels[c.id].amount) : '—') }));
+    if (compact) cols.push({ h: 'التطبيقات', num: 1, f: (s) => N(RB.sum(showApps, (c) => num(s.channels && s.channels[c.id] && s.channels[c.id].amount))) });
+    cols.push({ h: 'الطلبات', num: 1, f: (s) => N0(RB.saleOrders(s)) });
+    cols.push({ h: 'الإجمالي', num: 1, f: (s) => `<b>${N(RB.saleTotal(s))}</b>` });
+    cols.push({ h: '', f: (s) => rowActs('sales', s.id) });
+    h += card('الإقفالات اليومية', table(cols, days, { empty: 'لا توجد إقفالات في هذه الفترة. اضغط «إقفال يومي» وأدخل مبيعات كل قناة.' }), { actions: btn('تصدير CSV', 'csv', 'data-v="sales"', 'sm ghost'), sub: 'المبالغ شاملة الضريبة.' });
+    return h;
+  };
+
+  // ─── الصندوق والبنك ───
+  PAGES.cash = () => {
+    const [from, to] = range();
+    const asOf = minD(to, today());
+    const L = ledger(to);
+    const bal = RB.balances(L.entries, null, asOf);
+    const acc = ui.cashAcc === '1102' ? '1102' : '1101';
+    const st = RB.accountStatement(S, acc, from, to, L);
+    let h = pageHead('الصندوق والبنك', 'كل حركة تدخل أو تخرج من الكاشير والحساب البنكي، مع الرصيد بعد كل حركة', btn('سحب من البنك للصندوق', 'add', 'data-s="transfers" data-x="bank"') + btn('+ إيداع الكاش في البنك', 'add', 'data-s="transfers" data-x="cash"', 'primary'));
+    h += `<div class="kpis small">
+      ${kpi('الصندوق (الكاشير)', money(bal['1101'] || 0), 'حتى ' + dtText(asOf), (bal['1101'] || 0) < 0 ? 'bad' : '')}
+      ${kpi('الحساب البنكي', money(bal['1102'] || 0), 'حتى ' + dtText(asOf), (bal['1102'] || 0) < 0 ? 'bad' : '')}
+      ${kpi('مستحقات التطبيقات', money(bal['1103'] || 0), 'تتحول للبنك لاحقاً')}
+      ${kpi('مستحق للموردين', money(-(bal['2101'] || 0)), 'مشتريات آجلة')}
+    </div>`;
+    h += tabs('cashAcc', [['1101', 'كشف الصندوق'], ['1102', 'كشف البنك']], acc);
+    const rows = st.rows.slice().reverse();
+    h += card(
+      RB.ACC[acc].name,
+      `<div class="pv-grid four"><div><span>رصيد أول الفترة</span>${money(st.opening)}</div><div><span>الداخل</span>${money(st.totIn)}</div><div><span>الخارج</span>${money(st.totOut)}</div><div><span>رصيد آخر الفترة</span>${money(st.closing)}</div></div>` +
+        table(
+          [
+            { h: 'التاريخ', f: (r) => dt(r.date) },
+            { h: 'البيان', f: (r) => esc(r.desc) },
+            { h: 'داخل', num: 1, f: (r) => (r.in ? N(r.in, 'pos') : '') },
+            { h: 'خارج', num: 1, f: (r) => (r.out ? N(r.out) : '') },
+            { h: 'الرصيد', num: 1, f: (r) => N(r.balance) },
+            { h: '', f: (r) => (r.ref && r.ref.s ? `<button type="button" class="icon-btn" data-act="edit" data-s="${r.ref.s}" data-id="${r.ref.id}" aria-label="فتح العملية" title="فتح العملية">↗</button>` : '') },
+          ],
+          rows.slice(0, 400),
+          { empty: 'لا توجد حركات في هذه الفترة.' }
+        ) +
+        (rows.length > 400 ? `<p class="note">يظهر آخر 400 حركة. صدّر الكشف كاملاً بصيغة CSV.</p>` : ''),
+      { actions: btn('تصدير CSV', 'csv', `data-v="statement"`, 'sm ghost'), sub: periodLabel() }
+    );
+    return h;
+  };
+
+  // ─── التقارير ───
+  const REPORTS = [
+    ['income', 'قائمة الدخل'],
+    ['balance', 'الميزانية'],
+    ['vat', 'ضريبة القيمة المضافة'],
+    ['breakeven', 'نقطة التعادل'],
+    ['menu', 'تحليل المنيو'],
+    ['monthly', 'مقارنة الأشهر'],
+    ['trial', 'ميزان المراجعة'],
+    ['journal', 'دفتر اليومية'],
+  ];
+  PAGES.reports = () => {
+    const canPrint = !window.claude;
+    let h = pageHead('التقارير المالية', periodLabel(), (canPrint ? btn('طباعة', 'print', '', 'ghost') : '') + btn('تصدير CSV', 'csv', `data-v="report"`, 'ghost'));
+    h += tabs('report', REPORTS, ui.report);
+    h += (REPORT[ui.report] || REPORT.income)();
+    return h;
+  };
+  const REPORT = {};
+  function lineRows(list, total, label) {
+    return list.map((x) => `<tr><td class="ind">${esc(x.name)}</td><td class="num">${N(x.amount)}</td><td class="num muted">${total ? pct((x.amount / total) * 100) : ''}</td></tr>`).join('') + (label ? `<tr class="sum"><td>${label}</td><td class="num">${N(RB.sum(list, (x) => x.amount))}</td><td class="num muted">${total ? pct((RB.sum(list, (x) => x.amount) / total) * 100) : ''}</td></tr>` : '');
+  }
+  REPORT.income = () => {
+    const [from, to] = range();
+    const inc = RB.incomeStatement(S, from, to, ledger(to));
+    const rev = inc.revenue;
+    const G = (g, label) => (inc.groups[g].length ? `<tr class="grp"><td colspan="3">${label}</td></tr>${lineRows(inc.groups[g], rev, 'إجمالي ' + label)}` : '');
+    const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th><th class="num">المبلغ (${cur()})</th><th class="num">من المبيعات</th></tr></thead><tbody>
+      <tr class="grp"><td colspan="3">الإيرادات</td></tr>
+      <tr><td class="ind">المبيعات بدون الضريبة</td><td class="num">${N(rev)}</td><td class="num muted">100%</td></tr>
+      ${G('cogs', RB.GROUPS.cogs)}
+      <tr class="total"><td>مجمل الربح</td><td class="num">${N(inc.grossProfit)}</td><td class="num">${pct(rev ? (inc.grossProfit / rev) * 100 : 0)}</td></tr>
+      ${G('sell', RB.GROUPS.sell)}${G('labor', RB.GROUPS.labor)}${G('occ', RB.GROUPS.occ)}${G('opex', RB.GROUPS.opex)}${G('dep', RB.GROUPS.dep)}
+      <tr class="total big ${inc.net < 0 ? 'neg' : ''}"><td>صافي الربح (الخسارة)</td><td class="num">${N(inc.net)}</td><td class="num">${pct(inc.ratios.netMargin)}</td></tr>
+      </tbody></table></div>`;
+    const R = inc.ratios;
+    const ratio = (l, v, hint) => `<div><span>${l}</span><b class="n">${pct(v)}</b><small>${hint}</small></div>`;
+    return card('قائمة الدخل', body, { sub: `${periodLabel()} · المصاريف المدفوعة مقدماً محمّلة حسب أشهرها، والإهلاك شهرياً.` }) + card('مؤشرات المطعم', `<div class="ratios">${ratio('تكلفة المواد', R.foodCost, 'المستهدف ' + pct(S.settings.targetFoodCost, 0))}${ratio('تكلفة العمالة', R.labor, 'تشمل التأمينات والسكن والرسوم')}${ratio('التكلفة الأساسية', R.prime, 'المواد + العمالة')}${ratio('الإيجار', R.occupancy, 'من المبيعات')}${ratio('عمولات البيع', R.sell, 'التطبيقات والشبكة')}${ratio('صافي الهامش', R.netMargin, 'الربح ÷ المبيعات')}</div>`);
+  };
+  REPORT.balance = () => {
+    const [, to] = range();
+    const asOf = minD(to, today());
+    const b = RB.balanceSheet(S, asOf, ledger(asOf));
+    const rows = (list) => list.map((x) => `<tr><td class="ind">${esc(x.name)}</td><td class="num">${N(x.amount)}</td></tr>`).join('');
+    const body = `<div class="grid2 tight"><div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>الأصول</th><th class="num">${cur()}</th></tr></thead><tbody>
+      <tr class="grp"><td colspan="2">أصول متداولة</td></tr>${rows(b.cur)}<tr class="sum"><td>إجمالي المتداولة</td><td class="num">${N(b.tCur)}</td></tr>
+      <tr class="grp"><td colspan="2">أصول ثابتة</td></tr>${rows(b.fixed)}<tr class="sum"><td>صافي الأصول الثابتة</td><td class="num">${N(b.tFixed)}</td></tr>
+      <tr class="total"><td>إجمالي الأصول</td><td class="num">${N(b.tAssets)}</td></tr></tbody></table></div>
+      <div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>الالتزامات وحقوق الشركاء</th><th class="num">${cur()}</th></tr></thead><tbody>
+      <tr class="grp"><td colspan="2">الالتزامات</td></tr>${rows(b.liab) || '<tr><td class="ind muted">لا توجد</td><td></td></tr>'}<tr class="sum"><td>إجمالي الالتزامات</td><td class="num">${N(b.tLiab)}</td></tr>
+      <tr class="grp"><td colspan="2">حقوق الشركاء</td></tr>${rows(b.equity)}<tr class="sum"><td>إجمالي حقوق الشركاء</td><td class="num">${N(b.tEq)}</td></tr>
+      <tr class="total"><td>الإجمالي</td><td class="num">${N(b.tLiab + b.tEq)}</td></tr></tbody></table></div></div>
+      ${Math.abs(b.check) > 0.01 ? `<p class="note bad">فرق غير متوقع ${fmt(b.check)} — راجع البيانات.</p>` : `<p class="note">الميزانية متوازنة: الأصول = الالتزامات + حقوق الشركاء.</p>`}`;
+    return card('الميزانية العمومية', body, { sub: 'كما في ' + dtText(asOf) });
+  };
+  REPORT.vat = () => {
+    const [from, to] = range();
+    const L = ledger(to);
+    const pers = RB.vatPeriodsBetween(S, from, to);
+    const v = RB.vatReport(S, from, to, L);
+    let h = '';
+    if (!S.settings.vatRegistered) h += `<p class="note">المطعم غير مسجل في ضريبة القيمة المضافة حسب الإعدادات، فلا تُحسب ضريبة على المبيعات.</p>`;
+    const inRows = Object.keys(v.inputs).map((k) => `<tr><td class="ind">${esc(k)}</td><td class="num">${N(v.inputs[k].base)}</td><td class="num">${N(v.inputs[k].vat)}</td></tr>`).join('');
+    h += card(
+      'ملخص الفترة',
+      `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th><th class="num">المبلغ الخاضع</th><th class="num">الضريبة</th></tr></thead><tbody>
+      <tr class="grp"><td colspan="3">ضريبة المخرجات</td></tr><tr><td class="ind">المبيعات (كل القنوات)</td><td class="num">${N(v.sales.base)}</td><td class="num">${N(v.sales.vat)}</td></tr>
+      <tr class="grp"><td colspan="3">ضريبة المدخلات (القابلة للخصم)</td></tr>${inRows || '<tr><td class="ind muted" colspan="3">لا توجد</td></tr>'}
+      <tr class="sum"><td>إجمالي المدخلات</td><td class="num">${N(v.inBase)}</td><td class="num">${N(v.inVat)}</td></tr>
+      <tr class="total big"><td>${v.net >= 0 ? 'صافي الضريبة المستحقة' : 'صافي الضريبة المستردة'}</td><td></td><td class="num">${N(Math.abs(v.net))}</td></tr>
+      <tr><td class="ind">المسدد في الفترة</td><td></td><td class="num">${N(v.paid)}</td></tr></tbody></table></div>`,
+      { sub: periodLabel() + ' · المشتريات غير الخاضعة لا تدخل في المدخلات.' }
+    );
+    h += card(
+      S.settings.vatPeriod === 'monthly' ? 'الإقرارات الشهرية' : 'الإقرارات الربع سنوية',
+      table(
+        [
+          { h: 'الفترة', f: (p) => `<b>${esc(p.label)}</b><div class="muted sm">${dtText(p.from)} — ${dtText(p.to)}</div>` },
+          { h: 'ضريبة المبيعات', num: 1, f: (p) => N(p.d.report.sales.vat) },
+          { h: 'ضريبة المدخلات', num: 1, f: (p) => N(p.d.report.inVat) },
+          { h: 'صافي الفترة', num: 1, f: (p) => N(p.d.net) },
+          { h: 'مرحّل من قبل', num: 1, f: (p) => (Math.abs(p.d.carried) < 0.005 ? '—' : `${N(p.d.carried)}<div class="muted sm">${p.d.carried < 0 ? 'رصيد دائن لك' : 'مستحق سابق'}</div>`) },
+          { h: 'المستحق للسداد', num: 1, f: (p) => `<b>${N(p.d.due)}</b>${p.d.credit ? `<div class="muted sm">رصيد دائن ${fmt(p.d.credit)}</div>` : ''}` },
+          { h: 'آخر موعد', f: (p) => dt(RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1))) },
+          { h: 'السداد', f: (p) => (p.to >= today() ? chip('الفترة جارية', 'mute') : p.d.paid ? chip('مسدد ' + fmt(p.d.paid), p.d.settled ? 'good' : 'warn') : p.d.due > 0.01 ? btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(p.label)}"`, 'sm') : chip('لا يوجد مستحق', 'good')) },
+        ],
+        pers.map((p) => ({ ...p, d: RB.vatDue(S, p, ledger(p.to)) })),
+        { empty: 'لا توجد فترات.' }
+      ),
+      { sub: 'آخر موعد لتقديم الإقرار والسداد: نهاية الشهر التالي للفترة. الرصيد الدائن (ضريبة مدخلات أكبر من المبيعات، مثل فترة التأسيس) يُرحّل ويُخصم من الفترات التالية، إلا إذا طلبت استرداده.' }
+    );
+    return h;
+  };
+  REPORT.breakeven = () => {
+    const [from, to] = range();
+    const e = RB.breakEven(S, from, minD(to, today()), ledger(minD(to, today())));
+    const body = `<div class="pv-grid three"><div><span>المصاريف الثابتة شهرياً</span>${money(e.fixedMonthly)}</div><div><span>المصاريف المتغيرة</span><b class="n">${pct(e.varRatio * 100)}</b><small>المواد + العمولات من المبيعات</small></div><div><span>هامش المساهمة</span><b class="n">${pct((1 - e.varRatio) * 100)}</b><small>ما يبقى من كل ريال لتغطية الثابت</small></div></div>
+      <div class="be-hero"><div><span>مبيعات التعادل الشهرية (شاملة الضريبة)</span><b class="n">${fmt(e.beGross)}</b> <small>${cur()}</small></div><div><span>يومياً</span><b class="n">${fmt(e.beDaily)}</b></div><div><span>طلبات يومياً تقريباً</span><b class="n">${e.avgTicket ? fmt0(e.beOrders / 30) : '—'}</b></div></div>
+      <p class="note">${e.revenue ? (e.safety >= 0 ? `مبيعاتك أعلى من نقطة التعادل بنسبة ${pct(e.safety)} (هامش الأمان).` : `مبيعاتك أقل من نقطة التعادل بنسبة ${pct(-e.safety)}.`) : 'سجّل مبيعات ومصاريف لحساب نقطة التعادل.'}</p>`;
+    const parts = [
+      { label: RB.GROUPS.labor, v: e.fixedParts.labor },
+      { label: RB.GROUPS.occ, v: e.fixedParts.occ },
+      { label: RB.GROUPS.opex, v: e.fixedParts.opex },
+      { label: RB.GROUPS.dep, v: e.fixedParts.dep },
+    ].filter((x) => x.v);
+    return card('نقطة التعادل', body, { sub: `محسوبة من أرقام الفترة (${periodLabel()})` }) + card('المصاريف الثابتة الشهرية', hbars(parts, { total: e.fixedMonthly }));
+  };
+  REPORT.menu = () => {
+    const [from, to] = range();
+    const m = RB.menuAnalysis(S, from, to, ledger(to));
+    if (!m.hasItems) return card('تحليل المنيو', `<div class="empty-box">لتحليل المنيو سجّل الكميات المباعة من كل صنف في الإقفال اليومي (قسم «الأصناف المباعة»).</div>`);
+    const cls = (c) => chip(RB.MENU_CLASS[c].name, { star: 'good', plow: 'accent', puzzle: 'warn', dog: 'bad' }[c]);
+    let h = card(
+      'هندسة المنيو',
+      table(
+        [
+          { h: 'الصنف', f: (r) => `<b>${esc(r.name)}</b>` },
+          { h: 'الكمية', num: 1, f: (r) => N0(r.qty) },
+          { h: 'حصة المبيعات', num: 1, f: (r) => pct(r.mix) },
+          { h: 'ربح الحبة', num: 1, f: (r) => N(r.profit) },
+          { h: 'إجمالي الربح', num: 1, f: (r) => N(r.totalProfit) },
+          { h: 'تكلفة الطعام', num: 1, f: (r) => pct(r.foodCost) },
+          { h: 'التصنيف', f: (r) => `${cls(r.cls)}<div class="muted sm">${RB.MENU_CLASS[r.cls].tip}</div>` },
+        ],
+        m.rows
+      ),
+      { sub: `متوسط ربح الحبة ${fmt(m.avgProfit)} ${cur()}. «مطلوب» = كميته أعلى من 70% من متوسط حصة الصنف.` }
+    );
+    h += card(
+      'التكلفة النظرية مقابل الفعلية',
+      `<div class="pv-grid three"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق (هدر أو نقص أو سرقة)</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">فرق موجب كبير يعني استهلاكاً أكثر من الوصفات: هدر، حصص أكبر، أو نقص في الجرد. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة.</p>`
+    );
+    h += card(
+      'الاستهلاك النظري للمواد الخام',
+      table(
+        [
+          { h: 'المادة', f: (r) => `<b>${esc(r.name)}</b>` },
+          { h: 'الكمية', num: 1, f: (r) => `${fmtQ(Math.round(r.qty))} ${esc(r.unit)}` },
+          { h: 'بوحدة الشراء', num: 1, f: (r) => `${r.buyQty.toFixed(1)} <span class="muted sm">${esc(r.buyUnit || '')}</span>` },
+          { h: 'التكلفة', num: 1, f: (r) => N(r.cost) },
+        ],
+        m.rawUsage
+      ),
+      { sub: 'ما كان يُفترض استهلاكه حسب الوصفات والكميات المباعة — قارنه بالمشتريات والجرد.' }
+    );
+    return h;
+  };
+  REPORT.monthly = () => {
+    const [from, to] = range();
+    let a = from.slice(0, 7);
+    const b = to.slice(0, 7);
+    if (a === b) a = RB.ymAdd(b, -5);
+    const months = [];
+    for (let ym = a; ym <= b && months.length < 24; ym = RB.ymAdd(ym, 1)) months.push(ym);
+    const L = ledger(RB.monthEnd(b));
+    const incs = months.map((ym) => RB.incomeStatement(S, ym + '-01', RB.monthEnd(ym), L));
+    const row = (label, f, cls) => `<tr class="${cls || ''}"><td>${label}</td>${incs.map((i) => `<td class="num">${f(i)}</td>`).join('')}</tr>`;
+    const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th>${months.map((m) => `<th class="num">${RB.monthName(m)}</th>`).join('')}</tr></thead><tbody>
+      ${row('المبيعات بدون الضريبة', (i) => N(i.revenue))}
+      ${Object.keys(RB.GROUPS).map((g) => row(RB.GROUPS[g], (i) => N(i.tot[g]))).join('')}
+      ${row('صافي الربح', (i) => N(i.net), 'total')}
+      ${row('تكلفة المواد %', (i) => pct(i.ratios.foodCost))}
+      ${row('التكلفة الأساسية %', (i) => pct(i.ratios.prime))}
+      ${row('صافي الهامش %', (i) => pct(i.ratios.netMargin))}
+      </tbody></table></div>`;
+    return card('مقارنة الأشهر', body, { sub: a === from.slice(0, 7) ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: RB.MONTHS[+m.slice(5, 7) - 1], v: Math.max(incs[i].net, 0), tip: `${RB.monthName(m)}: ${fmt(incs[i].net)} ${S.settings.currency}` })), label: 'صافي الربح الشهري' }), { sub: 'الأشهر الخاسرة تظهر بدون عمود.' });
+  };
+  REPORT.trial = () => {
+    const [from, to] = range();
+    const t = RB.trialBalance(S, from, to, ledger(to));
+    return card(
+      'ميزان المراجعة (حركة الفترة)',
+      table(
+        [
+          { h: 'الحساب', f: (r) => `<span class="muted sm n">${esc(r.code)}</span> ${esc(r.name)}` },
+          { h: 'مدين', num: 1, f: (r) => (r.dr ? N(r.dr) : '') },
+          { h: 'دائن', num: 1, f: (r) => (r.cr ? N(r.cr) : '') },
+        ],
+        t.rows,
+        { foot: ['الإجمالي', N(t.dr), N(t.cr)] }
+      ),
+      { sub: 'القيود تُولّد تلقائياً من كل عملية تسجلها. تساوي المدين والدائن يؤكد سلامة القيود.' }
+    );
+  };
+  REPORT.journal = () => {
+    const [from, to] = range();
+    const es = ledger(to).entries.filter((e) => e.date >= from && e.date <= to);
+    const shown = es.slice(-300).reverse();
+    const body = shown
+      .map(
+        (e) => `<tr class="jh"><td>${dt(e.date)}</td><td colspan="2">${esc(e.desc)}</td></tr>${e.lines.map((l) => `<tr><td></td><td class="ind">${l.v > 0 ? '' : '&emsp;'}${esc(RB.accInfo(l.a, S).name)}</td><td class="num">${l.v > 0 ? N(l.v) : ''}</td><td class="num">${l.v < 0 ? N(-l.v) : ''}</td></tr>`).join('')}`
+      )
+      .join('');
+    return card('دفتر اليومية', es.length ? `<div class="tbl-wrap"><table class="tbl journal"><thead><tr><th>التاريخ</th><th>الحساب</th><th class="num">مدين</th><th class="num">دائن</th></tr></thead><tbody>${body}</tbody></table></div>${es.length > 300 ? `<p class="note">يظهر آخر 300 قيد من ${es.length}. صدّر الكل بصيغة CSV.</p>` : ''}` : `<div class="empty-box">لا قيود في هذه الفترة.</div>`, { sub: `${es.length} قيد · تُنشأ تلقائياً` });
+  };
+
+  // ─── الإعدادات ───
+  PAGES.settings = () => {
+    const st = S.settings;
+    const backend = APP.backend ? APP.backend.kind : '';
+    const where = APP.demo ? 'وضع التجربة — لا يُحفظ شيء' : backend === 'cloud' ? 'قاعدة بيانات مشتركة لهذه الصفحة: يراها ويعدّلها كل من لديه صلاحية التعديل عليها (مثل شريكك).' : 'هذا المتصفح على هذا الجهاز فقط. صدّر نسخة احتياطية بانتظام وانقلها لشريكك.';
+    const kv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
+    let h = pageHead('الإعدادات والنسخ الاحتياطي', 'بيانات المطعم، الضريبة، نسب التأمينات، قنوات البيع، والنسخ الاحتياطي');
+    h += `<div class="grid2">`;
+    h += card('بيانات المطعم', kv('الاسم', esc(st.name)) + kv('المدينة', esc(st.city || '—')) + kv('السجل التجاري', esc(st.crNumber || '—')) + kv('تاريخ الافتتاح', st.openingDate ? dtText(st.openingDate) : '—') + kv('مستهدف تكلفة الطعام', pct(st.targetFoodCost, 0)) + kv('تقريب السعر المقترح', fmt(st.priceRounding) + ' ' + cur()), { actions: btn('تعديل', 'settings', 'data-v="general"', 'sm') });
+    h += card('ضريبة القيمة المضافة', kv('مسجل في الضريبة', st.vatRegistered ? 'نعم' : 'لا') + kv('الرقم الضريبي', esc(st.vatNumber || '—')) + kv('النسبة', pct(st.vatRate, 0)) + kv('فترة الإقرار', st.vatPeriod === 'monthly' ? 'شهرية' : 'ربع سنوية') + kv('ضريبة على العمولات والرسوم', st.feeVat ? 'نعم' : 'لا'), { actions: btn('تعديل', 'settings', 'data-v="vat"', 'sm') });
+    h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
+    h += card(
+      'الحفظ والنسخ الاحتياطي',
+      `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${new Date(APP.savedAt).toLocaleTimeString('ar-SA')}` : ''}</p>
+      <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}<label class="btn ghost file-btn">استيراد نسخة<input type="file" accept=".json,application/json" id="importFile" hidden></label></div>
+      <div class="btn-row">${APP.demo ? btn('ابدأ ببيانات مطعمك', 'start', '', 'primary') + (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'ghost') : '') : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + btn('مسح كل البيانات', 'wipe', '', 'danger ghost')}</div>`
+    );
+    h += `</div>`;
+    h += card(
+      'قنوات البيع وعمولاتها',
+      table(
+        [
+          { h: 'القناة', f: (c) => `<b>${esc(c.name)}</b>` },
+          { h: 'النوع', f: (c) => esc(RB.CHANNEL_TYPES[c.type] || c.type) },
+          { h: 'العمولة / الرسوم', num: 1, f: (c) => (c.type === 'cash' ? '—' : pct(c.feePct, 2)) },
+          { h: 'الحالة', f: (c) => (c.active === false ? chip('موقوفة', 'mute') : chip('مفعّلة', 'good')) },
+          { h: '', f: (c) => `<div class="row-acts"><button type="button" class="icon-btn" data-act="channel" data-id="${c.id}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn danger" data-act="delchannel" data-id="${c.id}" aria-label="حذف" title="حذف">✕</button></div>` },
+        ],
+        st.channels
+      ),
+      { actions: btn('+ قناة أو تطبيق', 'channel', '', 'sm'), sub: 'نسب العمولات افتراضية — عدّلها حسب عقدك مع كل تطبيق. العمولة تُحفظ مع كل إقفال، فتعديلها لا يغيّر الأيام السابقة.' }
+    );
+    return h;
+  };
+
+  // ═════════════ النماذج ═════════════
+  const FORMS = {};
+  const vatFields = (redraw) => [
+    { type: 'row', fields: [{ k: 'taxable', type: 'check', label: 'خاضع لضريبة القيمة المضافة', redraw: true }, { k: 'includesVat', type: 'check', label: 'المبلغ المدخل شامل الضريبة', redraw: !!redraw, show: (v) => v.taxable }] },
+  ];
+
+  FORMS.partners = (rec) =>
+    formModal({
+      title: rec ? 'تعديل شريك' : 'شريك جديد',
+      value: rec || { id: RB.uid(), name: '', share: S.partners.length ? Math.max(0, 100 - RB.sum(S.partners, (p) => num(p.share))) : 50, phone: '', note: '' },
+      fields: [
+        { k: 'name', label: 'اسم الشريك', req: 1 },
+        { type: 'row', fields: [{ k: 'share', type: 'num', label: 'نسبة الشراكة %', req: 1, help: 'يتوزع الربح حسبها' }, { k: 'phone', label: 'الجوال' }] },
+        { k: 'note', type: 'textarea', label: 'ملاحظات' },
+      ],
+      onSave: (v) => upsert('partners', v),
+    });
+
+  FORMS.capital = (rec, x) => {
+    if (!S.partners.length) return toast('أضف الشركاء أولاً.', 'bad');
+    return formModal({
+      title: rec ? 'تعديل حركة رأس مال' : x === 'withdrawal' ? 'سحب شريك' : 'إيداع رأس مال',
+      value: rec || { id: RB.uid(), date: today(), partnerId: S.partners[0].id, type: x || 'contribution', account: 'bank', amount: '', note: '' },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'partnerId', type: 'select', label: 'الشريك', options: S.partners.map((p) => [p.id, p.name]) }] },
+        { type: 'row', fields: [{ k: 'type', type: 'select', label: 'النوع', options: [['contribution', 'إيداع في رأس المال'], ['withdrawal', 'سحب / توزيع أرباح']] }, { k: 'account', type: 'select', label: 'الحساب', options: [['bank', RB.PAY_LABEL.bank], ['cash', RB.PAY_LABEL.cash]] }] },
+        { k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 },
+        { k: 'note', label: 'ملاحظة' },
+      ],
+      onSave: (v) => upsert('capital', v),
+    });
+  };
+
+  FORMS.assets = (rec) =>
+    formModal({
+      title: rec ? 'تعديل أصل' : 'أصل جديد',
+      value: rec || { id: RB.uid(), date: today(), name: '', category: 'kitchen', amount: '', includesVat: false, taxable: true, account: 'bank', lifeMonths: 60, salvage: 0, supplier: '', note: '' },
+      onChange: (p, v) => {
+        if (p === 'category') v.lifeMonths = RB.assetCat(v.category).life;
+      },
+      fields: [
+        { k: 'name', label: 'اسم الأصل', req: 1, placeholder: 'مثال: شواية برقر مسطحة' },
+        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'الصنف', options: RB.ASSET_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الشراء', req: 1 }] },
+        { type: 'html', html: (v) => `<p class="note">${esc(RB.assetCat(v.category).hint)}</p>` },
+        { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'دُفع من', options: payOptions(true) }] },
+        ...vatFields(),
+        { type: 'row', fields: [{ k: 'lifeMonths', type: 'num', label: 'العمر الإنتاجي (بالأشهر)', min: 0, help: '0 = لا يُستهلك (مثل التأمين المسترد)' }, { k: 'salvage', type: 'money', label: 'القيمة المتبقية في النهاية', min: 0 }] },
+        { k: 'supplier', label: 'المورد' },
+        { k: 'note', type: 'textarea', label: 'ملاحظات' },
+      ],
+      preview: (v) => {
+        const sch = RB.depSchedule(Object.assign({}, v, { date: v.date || today() }), S);
+        return vatPreview(v.amount, v.includesVat, v.taxable) + (sch.monthly ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>` : `<p class="note">لا يُستهلك هذا الأصل.</p>`);
+      },
+      onSave: (v) => upsert('assets', v),
+    });
+
+  FORMS.expenses = (rec, x) => {
+    const isGov = x === 'gov' || (rec && RB.GOV_CATS.includes(rec.category));
+    const cat0 = x && RB.EXPENSE_CATS.some((c) => c.id === x) ? x : isGov ? 'gov' : 'utilities';
+    const base = { id: RB.uid(), date: today(), category: cat0, desc: '', entity: '', amount: '', includesVat: true, taxable: !['housing', 'gov', 'labor_gov'].includes(cat0), account: 'bank', months: RB.expenseCat(cat0).months, startDate: '', employeeId: '', note: '', preset: '' };
+    const presetList = RB.GOV_PRESETS.map((p, i) => [String(i), p.entity + ' — ' + p.desc]);
+    return formModal({
+      title: rec ? 'تعديل مصروف' : isGov ? 'رسم حكومي أو اشتراك' : 'مصروف تشغيلي',
+      value: rec ? Object.assign({ preset: '' }, rec) : base,
+      onChange: (p, v) => {
+        if (p === 'category') {
+          v.months = RB.expenseCat(v.category).months;
+          v.taxable = !['housing', 'gov', 'labor_gov'].includes(v.category);
+        }
+        if (p === 'preset' && v.preset !== '') {
+          const pr = RB.GOV_PRESETS[+v.preset];
+          Object.assign(v, { entity: pr.entity, desc: pr.desc, category: pr.category, months: pr.months, taxable: ['insurance', 'software'].includes(pr.category) });
+        }
+        if (p === 'employeeId' && v.employeeId && v.category === 'labor_gov' && !num(v.amount)) {
+          const e = S.employees.find((z) => z.id === v.employeeId);
+          if (e && e.nationality !== 'saudi') v.amount = num(e.levyMonthly) * 12 + num(e.iqamaAnnual) + num(e.workPermitAnnual);
+        }
+      },
+      fields: (v) => [
+        ...(isGov && !rec ? [{ k: 'preset', type: 'select', label: 'اختر من القائمة (اختياري)', options: [['', '— بند آخر —']].concat(presetList), redraw: true }] : []),
+        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.EXPENSE_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الدفع', req: 1 }] },
+        { type: 'row', fields: [{ k: 'desc', label: 'البيان', req: 1, placeholder: 'مثال: فاتورة الكهرباء' }, { k: 'entity', label: v.category === 'rent' || v.category === 'housing' ? 'المؤجر' : 'الجهة / المورد', list: () => [...new Set(S.expenses.map((e) => e.entity).filter(Boolean))] }] },
+        ...(['labor_gov', 'insurance', 'staff'].includes(v.category) ? [{ k: 'employeeId', type: 'select', label: 'العامل (اختياري)', options: [['', '— للجميع —']].concat(S.employees.map((e) => [e.id, e.name])), redraw: true }] : []),
+        { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'دُفع من', options: payOptions(true) }] },
+        ...vatFields(),
+        { type: 'row', fields: [{ k: 'months', type: 'num', label: 'يغطي كم شهر؟', min: 1, help: 'مثال: إيجار 6 أشهر، رخصة سنة = 12' }, { k: 'startDate', type: 'date', label: 'بداية التغطية', help: 'إن اختلفت عن تاريخ الدفع' }] },
+        { k: 'note', type: 'textarea', label: 'ملاحظات' },
+      ],
+      preview: (v) => {
+        const months = Math.max(1, Math.round(num(v.months) || 1));
+        const c = RB.costSplit(v.amount, v.includesVat, v.taxable, S.settings);
+        return vatPreview(v.amount, v.includesVat, v.taxable) + (months > 1 ? `<p class="note">يُوزّع على ${months} شهر: <b class="n">${fmt(c.cost / months)}</b> ${cur()} شهرياً، والتغطية حتى ${dtText(RB.coverageEnd(v.startDate || v.date || today(), months))}.</p>` : '');
+      },
+      onSave: (v) => {
+        delete v.preset;
+        upsert('expenses', v);
+      },
+    });
+  };
+
+  FORMS.employees = (rec) => {
+    const L = S.settings.labor;
+    return formModal({
+      title: rec ? 'تعديل بيانات موظف' : 'موظف جديد',
+      wide: true,
+      value: rec || { id: RB.uid(), name: '', job: '', nationality: 'expat', startDate: today(), endDate: '', active: true, basic: '', housing: 0, transport: 0, otherAllow: 0, levyMonthly: L.levyMonthly, iqamaAnnual: L.iqamaAnnual, workPermitAnnual: L.workPermitAnnual, medicalAnnual: L.medicalAnnual, ticketAnnual: 0, housingCost: 0, otherAnnual: 0, note: '' },
+      onChange: (p, v) => {
+        if (p === 'nationality' && v.nationality === 'saudi') Object.assign(v, { levyMonthly: 0, iqamaAnnual: 0, workPermitAnnual: 0 });
+        if (p === 'nationality' && v.nationality !== 'saudi' && !num(v.levyMonthly)) Object.assign(v, { levyMonthly: L.levyMonthly, iqamaAnnual: L.iqamaAnnual, workPermitAnnual: L.workPermitAnnual });
+      },
+      fields: (v) => [
+        { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1 }, { k: 'job', label: 'الوظيفة', placeholder: 'طباخ، كاشير، عامل نظافة…' }] },
+        { type: 'row', fields: [{ k: 'nationality', type: 'select', label: 'الجنسية', options: [['expat', 'غير سعودي'], ['saudi', 'سعودي']], redraw: true }, { k: 'startDate', type: 'date', label: 'تاريخ المباشرة' }, { k: 'endDate', type: 'date', label: 'تاريخ ترك العمل' }] },
+        { type: 'section', label: 'الراتب الشهري' },
+        { type: 'row', fields: [{ k: 'basic', type: 'money', label: 'الراتب الأساسي', req: 1, min: 0 }, { k: 'housing', type: 'money', label: 'بدل السكن', min: 0 }, { k: 'transport', type: 'money', label: 'بدل النقل', min: 0 }, { k: 'otherAllow', type: 'money', label: 'بدلات أخرى (إعاشة…)', min: 0 }] },
+        { type: 'section', label: 'تكاليف أخرى على المطعم' },
+        ...(v.nationality !== 'saudi' ? [{ type: 'row', fields: [{ k: 'levyMonthly', type: 'money', label: 'المقابل المالي شهرياً', min: 0 }, { k: 'iqamaAnnual', type: 'money', label: 'رسوم الإقامة سنوياً', min: 0 }, { k: 'workPermitAnnual', type: 'money', label: 'رخصة العمل سنوياً', min: 0 }] }] : []),
+        { type: 'row', fields: [{ k: 'medicalAnnual', type: 'money', label: 'التأمين الطبي سنوياً', min: 0 }, { k: 'ticketAnnual', type: 'money', label: 'تذاكر السفر سنوياً', min: 0 }, { k: 'housingCost', type: 'money', label: 'نصيبه من سكن العمال شهرياً', min: 0 }, { k: 'otherAnnual', type: 'money', label: 'رسوم أخرى سنوياً', min: 0 }] },
+        { k: 'active', type: 'check', label: 'على رأس العمل' },
+        { k: 'note', type: 'textarea', label: 'ملاحظات' },
+      ],
+      preview: (v) => empCostHTML(v),
+      onSave: (v) => upsert('employees', v),
+    });
+  };
+  function empCostHTML(e) {
+    const c = RB.employeeMonthlyCost(e, S);
+    return `<div class="tbl-wrap"><table class="tbl mini"><tbody>${c.items.filter((i) => i.v).map((i) => `<tr><td>${esc(i.label)}</td><td class="num">${N(i.v)}</td></tr>`).join('')}<tr class="total"><td>التكلفة الشهرية الحقيقية</td><td class="num">${N(c.total)}</td></tr></tbody></table></div>
+      <p class="note">التأمينات على أجر خاضع ${fmt(c.gosi.base)} (الأساسي + السكن). ${c.gosi.ee ? `يُخصم من الموظف ${fmt(c.gosi.ee)} فيصله صافي ${fmt(c.netPay)}.` : 'لا يُخصم من الموظف غير السعودي.'} تكلفته السنوية ≈ ${fmt(c.total * 12)} ${cur()}.</p>`;
+  }
+
+  FORMS.payroll = (rec) => {
+    const ym = RB.ymAdd(today().slice(0, 7), today().slice(8) >= '25' ? 0 : -1);
+    const fill = (v) => (v.lines = S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S)));
+    const base = { id: RB.uid(), month: ym, date: RB.monthEnd(ym) <= today() ? RB.monthEnd(ym) : today(), account: 'bank', gosiAccount: 'bank', lines: [], note: '' };
+    if (!rec) fill(base);
+    const nCol = (k, label) => ({ k, label, type: 'num', num: 1 });
+    return formModal({
+      title: rec ? 'تعديل مسير رواتب' : 'مسير رواتب',
+      wide: true,
+      value: rec || base,
+      onChange: (p, v) => {
+        if (p === 'month' && !rec) {
+          fill(v);
+          v.date = RB.monthEnd(v.month) <= today() ? RB.monthEnd(v.month) : today();
+        }
+      },
+      fields: [
+        { type: 'row', fields: [{ k: 'month', type: 'month', label: 'الشهر', req: 1, redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الصرف', req: 1 }, { k: 'account', type: 'select', label: 'صُرفت من', options: payOptions(false, false) }, { k: 'gosiAccount', type: 'select', label: 'التأمينات سُددت من', options: payOptions(false, false) }] },
+        {
+          k: 'lines',
+          type: 'lines',
+          label: 'الموظفون',
+          addLabel: 'إضافة موظف',
+          tools: [{ id: 'fill', label: 'تعبئة من بيانات الموظفين', run: (v, rows) => rows.splice(0, rows.length, ...S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S))) }],
+          newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0 }),
+          cols: [
+            { k: 'name', label: 'الموظف', w: '9rem' },
+            nCol('basic', 'الأساسي'),
+            nCol('housing', 'السكن'),
+            nCol('allowances', 'بدلات'),
+            nCol('additions', 'إضافي ومكافآت'),
+            nCol('deductions', 'خصومات وغياب'),
+            nCol('gosiEe', 'تأمينات الموظف'),
+            nCol('gosiEr', 'تأمينات المنشأة'),
+            { k: 'net', label: 'الصافي', num: 1, calc: (r) => fmt(RB.payrollLineGross(r) - num(r.gosiEe)) },
+          ],
+          foot: (v) => {
+            const t = RB.payrollTotals(v);
+            return `<div class="pv-grid four"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>`;
+          },
+        },
+        { k: 'note', label: 'ملاحظات' },
+      ],
+      onSave: (v) => {
+        if (!v.lines.length) return 'المسير فارغ.';
+        upsert('payroll', v);
+      },
+    });
+  };
+
+  FORMS.purchases = (rec) => {
+    const r = S.settings.vatRate / 100;
+    const rawOpts = () => [['', '— بند حر —']].concat(S.raw.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name + (x.buyUnit ? ' (' + x.buyUnit + ')' : '')]));
+    const last = S.purchases.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+    return formModal({
+      title: rec ? 'تعديل فاتورة مشتريات' : 'فاتورة مشتريات',
+      wide: true,
+      value: rec ? Object.assign({ updatePrices: false }, rec) : { id: RB.uid(), date: today(), supplier: '', invoiceNo: '', category: 'food', account: 'bank', taxable: true, includesVat: false, lines: [{ rawId: '', desc: '', qty: 1, price: '' }], note: '', updatePrices: true },
+      onChange: (p, v) => {
+        const m = p.match(/^lines\.(\d+)\.rawId$/);
+        if (m) {
+          const row = v.lines[+m[1]];
+          const raw = S.raw.find((x) => x.id === row.rawId);
+          if (raw) {
+            row.desc = raw.name;
+            row.price = v.includesVat && v.taxable ? r2(raw.price * (1 + r)) : raw.price;
+          }
+        }
+        if (p === 'supplier' && !rec) {
+          const prev = S.purchases.filter((x) => x.supplier === v.supplier).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+          if (prev) Object.assign(v, { category: prev.category, account: prev.account, taxable: prev.taxable, includesVat: prev.includesVat });
+        }
+      },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'supplier', label: 'المورد', req: 1, list: () => [...new Set(S.purchases.map((p) => p.supplier).filter(Boolean))], placeholder: last ? last.supplier : '' }, { k: 'invoiceNo', label: 'رقم الفاتورة' }] },
+        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.PURCHASE_CATS.map((c) => [c.id, c.name]) }, { k: 'account', type: 'select', label: 'الدفع', options: payOptions(true), help: 'آجل = يُسدد للمورد لاحقاً' }] },
+        ...vatFields(true),
+        {
+          k: 'lines',
+          type: 'lines',
+          label: 'الأصناف',
+          addLabel: 'إضافة صنف',
+          newRow: () => ({ rawId: '', desc: '', qty: 1, price: '' }),
+          cols: [
+            { k: 'rawId', label: 'المادة الخام', type: 'select', options: rawOpts, redraw: true, w: '12rem' },
+            { k: 'desc', label: 'الوصف' },
+            { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
+            { k: 'price', label: 'سعر الوحدة', type: 'num', num: 1 },
+            { k: 'total', label: 'المجموع', num: 1, calc: (row) => fmt(num(row.qty) * num(row.price)) },
+          ],
+          foot: (v) => vatPreview(RB.purchaseTotal(v), v.includesVat, v.taxable),
+          help: 'اربط السطر بالمادة الخام لتتحدث تكلفتها تلقائياً. الكمية بوحدة الشراء (كرتون، كيس…).',
+        },
+        { k: 'updatePrices', type: 'check', label: 'تحديث أسعار المواد الخام من هذه الفاتورة' },
+        { k: 'note', label: 'ملاحظات' },
+      ],
+      onSave: (v) => {
+        v.lines = v.lines.filter((l) => num(l.qty) || num(l.price) || l.desc || l.rawId);
+        if (!v.lines.length) return 'أضف صنفاً واحداً على الأقل.';
+        const upd = v.updatePrices;
+        delete v.updatePrices;
+        upsert('purchases', v);
+        if (upd) {
+          let n = 0;
+          for (const l of v.lines) {
+            const raw = l.rawId && S.raw.find((x) => x.id === l.rawId);
+            if (!raw || !num(l.price)) continue;
+            const net = v.includesVat && v.taxable ? r2(num(l.price) / (1 + r)) : num(l.price);
+            if (Math.abs(net - num(raw.price)) > 0.004) {
+              upsert('raw', Object.assign({}, raw, { price: net, taxable: !!v.taxable }));
+              n++;
+            }
+          }
+          if (n) toast(`تحدّث سعر ${n} من المواد الخام وتكلفة الوصفات المرتبطة بها.`);
+        }
+      },
+    });
+  };
+
+  FORMS.supplierPayments = (rec, x) => {
+    const bal = RB.supplierBalances(S, today());
+    return formModal({
+      title: rec ? 'تعديل سداد مورد' : 'سداد مورد',
+      value: rec || { id: RB.uid(), date: today(), supplier: x || (bal.find((b) => b.balance > 0) || {}).supplier || '', account: 'bank', amount: x ? (bal.find((b) => b.supplier === x) || {}).balance || '' : '', note: '' },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'supplier', label: 'المورد', req: 1, list: () => bal.map((b) => b.supplier), redraw: true }] },
+        { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'من', options: payOptions(false) }] },
+        { k: 'note', label: 'ملاحظة' },
+      ],
+      preview: (v) => {
+        const b = bal.find((z) => z.supplier === (v.supplier || '').trim());
+        return b ? `<p class="note">الرصيد المستحق لهذا المورد: <b class="n">${fmt(b.balance)}</b> ${cur()}</p>` : '';
+      },
+      onSave: (v) => upsert('supplierPayments', v),
+    });
+  };
+
+  FORMS.raw = (rec) =>
+    formModal({
+      title: rec ? 'تعديل مادة خام' : 'مادة خام جديدة',
+      value: rec || { id: RB.uid(), name: '', category: 'لحوم', supplier: '', buyUnit: 'كرتون', packQty: 1, useUnit: 'جم', price: '', taxable: true, wastePct: 0 },
+      fields: [
+        { type: 'row', fields: [{ k: 'name', label: 'اسم المادة', req: 1 }, { k: 'category', type: 'select', label: 'الفئة', options: RB.RAW_CATS }] },
+        { k: 'supplier', label: 'المورد المعتاد', list: () => [...new Set(S.purchases.map((p) => p.supplier).filter(Boolean))] },
+        { type: 'section', label: 'كيف تشتريها وكيف تستخدمها' },
+        { type: 'row', fields: [{ k: 'buyUnit', label: 'وحدة الشراء', req: 1, placeholder: 'كرتون 10 كجم' }, { k: 'price', type: 'money', label: 'سعر وحدة الشراء (بدون ضريبة)', req: 1, min: 0 }] },
+        { type: 'row', fields: [{ k: 'useUnit', type: 'select', label: 'وحدة الاستخدام في الوصفات', options: RB.UNITS, redraw: true }, { k: 'packQty', type: 'num', label: 'كم وحدة استخدام في وحدة الشراء؟', req: 1, min: 0, help: 'كرتون 10 كجم بوحدة جم = 10000' }] },
+        { type: 'row', fields: [{ k: 'wastePct', type: 'num', label: 'نسبة الهدر %', min: 0, help: 'تقشير، تقطيع، تلف' }, { k: 'taxable', type: 'check', label: 'خاضعة لضريبة القيمة المضافة' }] },
+      ],
+      preview: (v) => {
+        const u = RB.rawUnitCost(v, S);
+        return `<div class="pv-grid"><div><span>تكلفة 1 ${esc(v.useUnit)}</span><b class="n">${u.toFixed(4)}</b></div><div><span>تكلفة 100 ${esc(v.useUnit)}</span><b class="n">${fmt(u * 100)}</b></div><div><span>تكلفة 1000 ${esc(v.useUnit)}</span><b class="n">${fmt(u * 1000)}</b></div></div>`;
+      },
+      onSave: (v) => {
+        if (!(num(v.packQty) > 0)) return 'كمية وحدة الشراء لازم تكون أكبر من صفر.';
+        upsert('raw', v);
+      },
+    });
+
+  FORMS.stockCounts = (rec) => {
+    const all = () => S.raw.slice().sort((a, b) => (a.category + a.name).localeCompare(b.category + b.name, 'ar')).map((x) => ({ rawId: x.id, qty: 0, price: x.price }));
+    return formModal({
+      title: rec ? 'تعديل جرد' : 'جرد المخزون',
+      wide: true,
+      value: rec || { id: RB.uid(), date: today(), note: '', lines: all() },
+      onChange: (p, v) => {
+        const m = p.match(/^lines\.(\d+)\.rawId$/);
+        if (m) {
+          const raw = S.raw.find((x) => x.id === v.lines[+m[1]].rawId);
+          if (raw) v.lines[+m[1]].price = raw.price;
+        }
+      },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ الجرد', req: 1 }, { k: 'note', label: 'ملاحظة' }] },
+        {
+          k: 'lines',
+          type: 'lines',
+          label: 'الكميات الموجودة (بوحدة الشراء، ويمكن كسور مثل 1.5)',
+          tools: [{ id: 'all', label: 'كل المواد', run: (v, rows) => rows.splice(0, rows.length, ...all()) }],
+          newRow: () => ({ rawId: '', qty: 0, price: 0 }),
+          cols: [
+            { k: 'rawId', label: 'المادة', type: 'select', options: () => [['', '—']].concat(S.raw.map((x) => [x.id, x.name])), redraw: true, w: '12rem' },
+            { k: 'unit', label: 'الوحدة', calc: (row) => esc((S.raw.find((x) => x.id === row.rawId) || {}).buyUnit || '') },
+            { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
+            { k: 'price', label: 'السعر', type: 'num', num: 1 },
+            { k: 'value', label: 'القيمة', num: 1, calc: (row) => fmt(num(row.qty) * num(row.price)) },
+          ],
+          foot: (v) => `<div class="pv-grid"><div><span>قيمة المخزون</span>${money(RB.stockValue(v))}</div></div>`,
+        },
+      ],
+      onSave: (v) => {
+        v.lines = v.lines.filter((l) => l.rawId);
+        upsert('stockCounts', v);
+      },
+    });
+  };
+
+  // المكونات (مواد خام أو منتجات مجمّعة أو أصناف منيو)
+  function itemsField(kind, selfId, label) {
+    const kinds = kind === 'prod' ? [['raw', 'مادة خام'], ['comp', 'منتج مجمّع'], ['prod', 'صنف من المنيو']] : [['raw', 'مادة خام'], ['comp', 'منتج مجمّع']];
+    return {
+      k: 'items',
+      type: 'lines',
+      label,
+      addLabel: 'إضافة مكوّن',
+      newRow: () => ({ kind: 'raw', id: '', qty: '' }),
+      cols: [
+        { k: 'kind', label: 'النوع', type: 'select', options: () => kinds, redraw: true, w: '8.5rem' },
+        {
+          k: 'id',
+          label: 'المكوّن',
+          type: 'select',
+          redraw: true,
+          w: '13rem',
+          options: (row, v) => {
+            const list = row.kind === 'comp' ? S.composites : row.kind === 'prod' ? S.products : S.raw;
+            const ok = list.filter((x) => !(row.kind === kind && x.id === (v.id || selfId)) && !(row.kind !== 'raw' && RB.wouldCycle(S, kind, v.id || selfId, row.kind, x.id)));
+            return [['', '— اختر —']].concat(ok.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name]));
+          },
+        },
+        { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
+        { k: 'unit', label: 'الوحدة', calc: (row) => esc(row.id ? RB.itemUnit(S, row.kind, row.id) : '') },
+        { k: 'cost', label: 'التكلفة', num: 1, calc: (row) => (row.id ? fmt(costing().unit(row.kind, row.id) * num(row.qty)) : '') },
+      ],
+      help: kind === 'prod' ? 'أضف التغليف (علبة، كيس، مناديل) كمواد خام ليدخل في التكلفة. الوجبة المركّبة تضم أصنافاً من المنيو.' : 'الكمية بوحدة استخدام المكوّن.',
+    };
+  }
+  const withRec = (section, v) => Object.assign({}, S, { [section]: S[section].filter((x) => x.id !== v.id).concat([v]) });
+
+  FORMS.composites = (rec) =>
+    formModal({
+      title: rec ? 'تعديل منتج مجمّع' : 'منتج مجمّع جديد',
+      wide: true,
+      value: rec || { id: RB.uid(), name: '', yieldQty: 1, yieldUnit: 'حبة', items: [{ kind: 'raw', id: '', qty: '' }], note: '' },
+      fields: [
+        { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1, placeholder: 'مثال: صوص البرقر الخاص' }, { k: 'yieldQty', type: 'num', label: 'الكمية الناتجة من الوصفة', req: 1, min: 0 }, { k: 'yieldUnit', type: 'select', label: 'وحدتها', options: RB.UNITS, redraw: true }] },
+        itemsField('comp', rec && rec.id, 'المكونات'),
+        { k: 'note', label: 'ملاحظات' },
+      ],
+      preview: (v) => {
+        const tmp = withRec('composites', v);
+        const b = RB.breakdown(tmp, v, 'comp', RB.costing(tmp));
+        return `<div class="pv-grid"><div><span>تكلفة الوصفة كاملة</span>${money(b.total)}</div><div><span>تكلفة 1 ${esc(v.yieldUnit)}</span><b class="n">${b.perUnit.toFixed(4)}</b></div></div>`;
+      },
+      onSave: (v) => {
+        v.items = v.items.filter((i) => i.id && num(i.qty));
+        if (!(num(v.yieldQty) > 0)) return 'الكمية الناتجة لازم تكون أكبر من صفر.';
+        upsert('composites', v);
+      },
+    });
+
+  FORMS.products = (rec) =>
+    formModal({
+      title: rec ? 'تعديل صنف' : 'صنف جديد في المنيو',
+      wide: true,
+      value: rec ? Object.assign({ competitors: [] }, rec) : { id: RB.uid(), name: '', category: 'برقر', price: '', appPrice: '', active: true, items: [{ kind: 'raw', id: '', qty: '' }], competitors: [], note: '' },
+      fields: [
+        { type: 'row', fields: [{ k: 'name', label: 'اسم الصنف', req: 1 }, { k: 'category', type: 'select', label: 'القسم', options: RB.PRODUCT_CATS }] },
+        { type: 'row', fields: [{ k: 'price', type: 'money', label: 'سعر البيع في المحل (شامل الضريبة)', req: 1, min: 0 }, { k: 'appPrice', type: 'money', label: 'سعره في التطبيقات (شامل الضريبة)', min: 0, help: 'اتركه فارغاً إن كان نفس السعر' }] },
+        itemsField('prod', rec && rec.id, 'المكونات'),
+        {
+          k: 'competitors',
+          type: 'lines',
+          label: 'أسعار السوق المحلي (منافسون لصنف مشابه)',
+          addLabel: 'إضافة منافس',
+          newRow: () => ({ name: '', price: '' }),
+          cols: [
+            { k: 'name', label: 'المطعم' },
+            { k: 'price', label: 'السعر', type: 'num', num: 1 },
+          ],
+        },
+        { k: 'active', type: 'check', label: 'مفعّل في المنيو' },
+      ],
+      preview: (v) => {
+        const tmp = withRec('products', v);
+        const C = RB.costing(tmp);
+        return productAnalysisHTML(tmp, v, C, true);
+      },
+      onSave: (v) => {
+        v.items = v.items.filter((i) => i.id && num(i.qty));
+        v.competitors = (v.competitors || []).filter((c) => c.name || num(c.price));
+        upsert('products', v);
+      },
+    });
+
+  function productAnalysisHTML(St, p, C, short) {
+    const st = RB.productStats(St, p, C);
+    const target = num(St.settings.targetFoodCost);
+    let h = `<div class="pv-grid four"><div><span>التكلفة</span>${money(st.cost)}</div><div><span>السعر بدون الضريبة</span>${money(st.priceNet)}</div><div><span>تكلفة الطعام</span><b class="n ${st.foodCost > target + 3 ? 'neg' : ''}">${pct(st.foodCost)}</b><small>المستهدف ${pct(target, 0)}</small></div><div><span>ربح الحبة</span>${money(st.profit)}</div></div>`;
+    const tips = [];
+    if (st.suggested && st.price && st.suggested > st.price + 0.01) tips.push(`لتحقيق تكلفة طعام ${pct(target, 0)} يكون السعر ${fmt(st.suggested)} ${cur()}.`);
+    if (st.market) tips.push(`السوق: من ${fmt(st.market.min)} إلى ${fmt(st.market.max)} (المتوسط ${fmt(st.market.avg)}). سعرك ${st.vsMarket > 0 ? 'أعلى' : 'أقل'} بـ ${pct(Math.abs(st.vsMarket), 0)}.`);
+    if (st.avgApp) tips.push(`في التطبيقات بسعر ${fmt(st.appPrice)}: ربح الحبة ${fmt(st.avgApp.profit)} بعد العمولة. للحفاظ على نفس ربح المحل يلزم ${fmt(st.avgApp.keepPrice)}.`);
+    if (tips.length) h += `<ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>`;
+    if (short) return h;
+    if (st.apps.length) h += `<h4 class="sub-h">ربح الصنف في كل تطبيق</h4>` + table([{ h: 'التطبيق', f: (a) => esc(a.name) }, { h: 'العمولة', num: 1, f: (a) => pct(a.feePct, 1) }, { h: 'العمولة بالريال', num: 1, f: (a) => N(a.commission) }, { h: 'ربح الحبة', num: 1, f: (a) => N(a.profit) }, { h: 'الهامش', num: 1, f: (a) => pct(a.margin, 0) }, { h: 'السعر المكافئ لربح المحل', num: 1, f: (a) => N(a.keepPrice) }], st.apps);
+    return h;
+  }
+  function breakdownHTML(St, rec, kind, C, depth) {
+    const b = RB.breakdown(St, rec, kind, C);
+    return `<div class="tbl-wrap"><table class="tbl mini"><thead><tr><th>المكوّن</th><th class="num">الكمية</th><th class="num">تكلفة الوحدة</th><th class="num">التكلفة</th><th class="num">الحصة</th></tr></thead><tbody>${b.lines
+      .map((l) => {
+        const sub = l.kind !== 'raw' && (depth || 0) < 3 ? (l.kind === 'comp' ? St.composites : St.products).find((x) => x.id === l.id) : null;
+        return `<tr><td>${esc(l.name)} ${l.kind === 'comp' ? chip('مجمّع', 'accent') : l.kind === 'prod' ? chip('صنف', 'accent') : ''}${sub ? `<details><summary>مكوناته</summary>${breakdownHTML(St, sub, l.kind, C, (depth || 0) + 1)}</details>` : ''}</td><td class="num">${fmtQ(l.qty)} <span class="muted sm">${esc(l.unitName)}</span></td><td class="num">${l.unitCost.toFixed(4)}</td><td class="num">${N(l.cost)}</td><td class="num">${pct(l.share, 0)}</td></tr>`;
+      })
+      .join('')}<tr class="total"><td colspan="3">الإجمالي${kind === 'comp' ? ` (ينتج ${fmtQ(rec.yieldQty)} ${esc(rec.yieldUnit)})` : ''}</td><td class="num">${N(b.total)}</td><td></td></tr></tbody></table></div>`;
+  }
+
+  FORMS.sales = (rec) => {
+    const chs = S.settings.channels.filter((c) => c.active !== false || (rec && rec.channels && rec.channels[c.id]));
+    const base = { id: RB.uid(), date: today(), channels: {}, items: [], note: '' };
+    chs.forEach((c) => (base.channels[c.id] = { amount: '', orders: '' }));
+    const v0 = rec ? clone(rec) : base;
+    chs.forEach((c) => (v0.channels[c.id] = v0.channels[c.id] || { amount: '', orders: '' }));
+    const prodOpts = () => [['', '— اختر —']].concat(S.products.filter((p) => p.active !== false).map((p) => [p.id, p.name]));
+    return formModal({
+      title: rec ? 'تعديل إقفال يومي' : 'إقفال يومي',
+      wide: true,
+      value: v0,
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'اليوم', req: 1, redraw: true }, { k: 'note', label: 'ملاحظات' }] },
+        { type: 'html', html: (v) => (!rec && S.sales.some((s) => s.date === v.date) ? `<p class="note bad">يوجد إقفال مسجل لهذا اليوم. الحفظ يضيف إقفالاً ثانياً (مثلاً وردية مسائية).</p>` : '') },
+        {
+          type: 'html',
+          html: (v) =>
+            `<div class="field"><label>المبيعات حسب القناة (شاملة الضريبة)</label><div class="tbl-wrap"><table class="lines-tbl"><thead><tr><th>القناة</th><th class="num">المبلغ</th><th class="num">عدد الطلبات</th><th class="num">العمولة</th></tr></thead><tbody>${chs
+              .map((c) => {
+                const x = v.channels[c.id] || {};
+                return `<tr><td><b>${esc(c.name)}</b></td><td class="num"><input type="number" inputmode="decimal" step="any" data-type="num" data-path="channels.${c.id}.amount" value="${x.amount === undefined ? '' : esc(x.amount)}" aria-label="مبلغ ${esc(c.name)}"></td><td class="num"><input type="number" inputmode="numeric" step="1" data-type="num" data-path="channels.${c.id}.orders" value="${x.orders === undefined ? '' : esc(x.orders)}" aria-label="طلبات ${esc(c.name)}"></td><td class="num muted">${c.type === 'cash' ? '—' : pct(x.feePct !== undefined && x.feePct !== '' ? x.feePct : c.feePct, 1)}</td></tr>`;
+              })
+              .join('')}</tbody></table></div></div>`,
+        },
+        {
+          k: 'items',
+          type: 'lines',
+          label: 'الأصناف المباعة (اختياري — لتحليل المنيو والتكلفة النظرية)',
+          addLabel: 'إضافة صنف',
+          tools: [{ id: 'all', label: 'كل الأصناف', run: (v, rows) => S.products.filter((p) => p.active !== false && !rows.some((r) => r.productId === p.id)).forEach((p) => rows.push({ productId: p.id, qty: '' })) }],
+          newRow: () => ({ productId: '', qty: '' }),
+          cols: [
+            { k: 'productId', label: 'الصنف', type: 'select', options: prodOpts, redraw: true, w: '14rem' },
+            { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
+            { k: 'val', label: 'بسعر المحل', num: 1, calc: (row) => fmt(num((S.products.find((p) => p.id === row.productId) || {}).price) * num(row.qty)) },
+          ],
+          empty: 'من تقرير الأصناف في جهاز الكاشير: كم بعت من كل صنف.',
+        },
+      ],
+      preview: (v) => {
+        let gross = 0;
+        let vat = 0;
+        let fee = 0;
+        let orders = 0;
+        for (const id of Object.keys(v.channels)) {
+          const x = RB.saleChannelSplit(S, id, v.channels[id]);
+          gross += x.gross;
+          vat += x.outVat;
+          fee += x.fee + x.feeVat;
+          orders += x.orders;
+        }
+        const itemsVal = RB.sum(v.items || [], (row) => num((S.products.find((p) => p.id === row.productId) || {}).price) * num(row.qty));
+        return `<div class="pv-grid four"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
+      },
+      onSave: (v) => {
+        const out = {};
+        for (const id of Object.keys(v.channels)) {
+          const x = v.channels[id];
+          if (!num(x.amount) && !num(x.orders)) continue;
+          const c = RB.channelOf(S, id) || {};
+          out[id] = { amount: num(x.amount), orders: num(x.orders), feePct: x.feePct !== undefined && x.feePct !== '' ? num(x.feePct) : num(c.feePct), type: x.type || c.type };
+        }
+        if (!Object.keys(out).length) return 'أدخل مبيعات قناة واحدة على الأقل.';
+        v.channels = out;
+        v.items = (v.items || []).filter((i) => i.productId && num(i.qty));
+        upsert('sales', v);
+      },
+      done: 'تم حفظ الإقفال.',
+    });
+  };
+
+  FORMS.payouts = (rec, x) => {
+    const apps = S.settings.channels.filter((c) => c.type === 'app');
+    if (!apps.length) return toast('لا توجد تطبيقات توصيل في الإعدادات.', 'bad');
+    const recv = RB.appReceivables(S, today());
+    const ch0 = x || (recv.sort((a, b) => b.balance - a.balance)[0] || apps[0]).id;
+    return formModal({
+      title: rec ? 'تعديل تحويل' : 'تحويل من تطبيق توصيل',
+      value: rec || { id: RB.uid(), date: today(), channelId: ch0, amount: r2(Math.max((recv.find((a) => a.id === ch0) || {}).balance || 0, 0)) || '', deductions: 0, note: '' },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ وصول المبلغ للبنك', req: 1 }, { k: 'channelId', type: 'select', label: 'التطبيق', options: apps.map((c) => [c.id, c.name]), redraw: true }] },
+        { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ الواصل', req: 1, min: 0 }, { k: 'deductions', type: 'money', label: 'خصومات إضافية', min: 0, help: 'عروض، غرامات، مرتجعات خصمها التطبيق' }] },
+        { k: 'note', label: 'ملاحظة' },
+      ],
+      preview: (v) => {
+        const b = RB.appReceivables(S, v.date || today()).find((a) => a.id === v.channelId);
+        const own = rec ? num(rec.amount) + num(rec.deductions) : 0;
+        const bal = b ? b.balance + (rec && rec.channelId === v.channelId ? own : 0) : 0;
+        return `<p class="note">المستحق على التطبيق قبل هذا التحويل: <b class="n">${fmt(bal)}</b> ${cur()} · بعده: <b class="n">${fmt(bal - num(v.amount) - num(v.deductions))}</b></p>`;
+      },
+      onSave: (v) => upsert('payouts', v),
+    });
+  };
+
+  FORMS.transfers = (rec, x) =>
+    formModal({
+      title: rec ? 'تعديل تحويل' : x === 'bank' ? 'سحب من البنك إلى الصندوق' : 'إيداع نقدية الصندوق في البنك',
+      value: rec || { id: RB.uid(), date: today(), from: x === 'bank' ? 'bank' : 'cash', to: x === 'bank' ? 'cash' : 'bank', amount: x === 'bank' ? '' : Math.max(0, Math.floor((RB.balances(ledger(today()).entries, null, today())['1101'] || 0) / 100) * 100) || '', note: '' },
+      onChange: (p, v) => {
+        if (p === 'from') v.to = v.from === 'cash' ? 'bank' : 'cash';
+      },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'from', type: 'select', label: 'من', options: [['cash', RB.PAY_LABEL.cash], ['bank', RB.PAY_LABEL.bank]], redraw: true }] },
+        { k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 },
+        { k: 'note', label: 'ملاحظة' },
+      ],
+      preview: (v) => `<p class="note">إلى: <b>${RB.PAY_LABEL[v.to]}</b></p>`,
+      onSave: (v) => upsert('transfers', v),
+    });
+
+  FORMS.vatPayments = (rec, x) => {
+    const pers = RB.vatPeriodsBetween(S, RB.addDays(today(), -400), today()).filter((p) => p.to < today());
+    const per = pers.find((p) => p.label === x) || pers[pers.length - 1];
+    const d = per ? RB.vatDue(S, per, ledger(per.to)) : null;
+    const due = d ? r2(d.due - d.paid) : '';
+    return formModal({
+      title: rec ? 'تعديل سداد الضريبة' : 'سداد ضريبة القيمة المضافة',
+      value: rec || { id: RB.uid(), date: today(), period: per ? per.label : '', account: 'bank', amount: due > 0 ? due : '', note: '' },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: pers.map((p) => p.label).reverse() }] },
+        { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ المسدد', req: 1, help: 'استرداد من الهيئة؟ أدخله بالسالب' }, { k: 'account', type: 'select', label: 'من / إلى', options: payOptions(false, false) }] },
+        { k: 'note', label: 'ملاحظة' },
+      ],
+      onSave: (v) => upsert('vatPayments', v),
+    });
+  };
+
+  function channelForm(id) {
+    const c = id ? S.settings.channels.find((x) => x.id === id) : null;
+    formModal({
+      title: c ? 'تعديل قناة بيع' : 'قناة أو تطبيق جديد',
+      value: c ? clone(c) : { id: 'ch' + Date.now().toString(36), name: '', type: 'app', feePct: 20, active: true },
+      fields: [
+        { k: 'name', label: 'الاسم', req: 1, placeholder: 'اسم التطبيق' },
+        { type: 'row', fields: [{ k: 'type', type: 'select', label: 'النوع', options: Object.entries(RB.CHANNEL_TYPES), redraw: true }, { k: 'feePct', type: 'num', label: 'العمولة أو الرسوم %', min: 0, show: (v) => v.type !== 'cash', help: 'نسبة من قيمة الطلب شاملة الضريبة' }] },
+        { k: 'active', type: 'check', label: 'مفعّلة' },
+      ],
+      onSave: (v) => {
+        const i = S.settings.channels.findIndex((x) => x.id === v.id);
+        if (i >= 0) S.settings.channels[i] = v;
+        else S.settings.channels.push(v);
+        saveSettings();
+      },
+    });
+  }
+
+  function settingsForm(which) {
+    const st = S.settings;
+    const defs = {
+      general: [
+        { k: 'name', label: 'اسم المطعم', req: 1 },
+        { type: 'row', fields: [{ k: 'city', label: 'المدينة' }, { k: 'crNumber', label: 'رقم السجل التجاري' }] },
+        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح', help: 'يبدأ منه إهلاك الأصول، ويفصل مصاريف ما قبل الافتتاح' }, { k: 'currency', label: 'العملة' }] },
+        { type: 'row', fields: [{ k: 'targetFoodCost', type: 'num', label: 'مستهدف تكلفة الطعام %', min: 1, help: 'شائع في مطاعم البرقر بين 28% و35%' }, { k: 'priceRounding', type: 'num', label: 'تقريب السعر المقترح لأقرب', min: 0.25, help: '1 = لأقرب ريال' }] },
+      ],
+      vat: [
+        { k: 'vatRegistered', type: 'check', label: 'المطعم مسجل في ضريبة القيمة المضافة' },
+        { type: 'row', fields: [{ k: 'vatNumber', label: 'الرقم الضريبي' }, { k: 'vatRate', type: 'num', label: 'نسبة الضريبة %', min: 0 }] },
+        { k: 'vatPeriod', type: 'select', label: 'فترة الإقرار', options: [['quarterly', 'ربع سنوية'], ['monthly', 'شهرية']] },
+        { k: 'feeVat', type: 'check', label: 'عمولات التطبيقات ورسوم الشبكة عليها ضريبة قيمة مضافة' },
+      ],
+      labor: [
+        { type: 'section', label: 'نسب التأمينات الاجتماعية من الأجر الخاضع (الأساسي + السكن)' },
+        { type: 'row', fields: [{ k: 'gosi.saudiEr', type: 'num', label: 'السعودي — حصة المنشأة %' }, { k: 'gosi.saudiEe', type: 'num', label: 'السعودي — حصة الموظف %' }] },
+        { type: 'row', fields: [{ k: 'gosi.expatEr', type: 'num', label: 'غير السعودي — حصة المنشأة % (الأخطار المهنية)' }, { k: 'gosi.cap', type: 'num', label: 'الحد الأعلى للأجر الخاضع' }] },
+        { type: 'section', label: 'قيم افتراضية للعامل غير السعودي (تتعبأ عند إضافة موظف)' },
+        { type: 'row', fields: [{ k: 'labor.levyMonthly', type: 'num', label: 'المقابل المالي شهرياً' }, { k: 'labor.iqamaAnnual', type: 'num', label: 'رسوم الإقامة سنوياً' }] },
+        { type: 'row', fields: [{ k: 'labor.workPermitAnnual', type: 'num', label: 'رخصة العمل سنوياً' }, { k: 'labor.medicalAnnual', type: 'num', label: 'التأمين الطبي سنوياً' }] },
+      ],
+    };
+    formModal({
+      title: { general: 'بيانات المطعم', vat: 'ضريبة القيمة المضافة', labor: 'التأمينات ورسوم العمالة' }[which],
+      value: clone(st),
+      fields: defs[which],
+      onSave: (v) => {
+        S.settings = Object.assign(S.settings, v);
+        saveSettings();
+      },
+    });
+  }
+
+  // ═════════════ الأحداث ═════════════
+  const refCheck = {
+    raw: (id) => S.composites.some((c) => (c.items || []).some((i) => i.kind === 'raw' && i.id === id)) || S.products.some((p) => (p.items || []).some((i) => i.kind === 'raw' && i.id === id)),
+    composites: (id) => S.composites.some((c) => (c.items || []).some((i) => i.kind === 'comp' && i.id === id)) || S.products.some((p) => (p.items || []).some((i) => i.kind === 'comp' && i.id === id)),
+    products: (id) => S.products.some((p) => (p.items || []).some((i) => i.kind === 'prod' && i.id === id)),
+    partners: (id) => S.capital.some((c) => c.partnerId === id) || [...S.assets, ...S.expenses, ...S.purchases].some((x) => x.account === 'partner:' + id),
+  };
+  const refMsg = {
+    raw: 'هذه المادة مستخدمة في وصفات. احذفها من الوصفات أولاً.',
+    composites: 'هذا المنتج المجمّع مستخدم في منتجات أخرى. احذفه منها أولاً.',
+    products: 'هذا الصنف داخل في وجبة مركّبة. احذفه منها أولاً، أو اجعله غير مفعّل.',
+    partners: 'لهذا الشريك حركات رأس مال أو مدفوعات. احذفها أولاً.',
+  };
+
+  const ACT = {
+    go: (el) => go(el.dataset.v),
+    add: (el) => FORMS[el.dataset.s] && FORMS[el.dataset.s](null, el.dataset.x),
+    edit: (el) => {
+      const rec = find(el.dataset.s, el.dataset.id);
+      if (rec && FORMS[el.dataset.s]) FORMS[el.dataset.s](clone(rec));
+    },
+    dup: (el) => {
+      const rec = find(el.dataset.s, el.dataset.id);
+      if (!rec) return;
+      const c = clone(rec);
+      c.id = RB.uid();
+      if (c.date) c.date = today();
+      if (c.name) c.name = c.name + ' (نسخة)';
+      FORMS[el.dataset.s](c);
+    },
+    del: async (el) => {
+      const s = el.dataset.s;
+      const id = el.dataset.id;
+      if (refCheck[s] && refCheck[s](id)) return toast(refMsg[s], 'bad');
+      const rec = find(s, id);
+      if (s === 'products' && S.sales.some((x) => (x.items || []).some((i) => i.productId === id))) {
+        if (!(await confirmBox('هذا الصنف له مبيعات مسجلة، وحذفه يُسقطه من تحليل المنيو. الأفضل جعله «غير مفعّل». هل تحذفه رغم ذلك؟', { danger: true, ok: 'احذف' }))) return;
+      } else if (!(await confirmBox(`حذف «${esc((rec && (rec.name || rec.desc || rec.supplier)) || 'هذا السجل')}» نهائياً؟`, { danger: true, ok: 'احذف' }))) return;
+      remove(s, id);
+      render();
+      toast('تم الحذف.');
+    },
+    view: (el) => {
+      const s = el.dataset.s;
+      const rec = find(s, el.dataset.id);
+      if (!rec) return;
+      const C = costing();
+      if (s === 'composites') infoBox(rec.name, breakdownHTML(S, rec, 'comp', C), true);
+      else infoBox(rec.name, productAnalysisHTML(S, rec, C) + '<h4 class="sub-h">تفصيل التكلفة</h4>' + breakdownHTML(S, rec, 'prod', C), true);
+    },
+    empcost: (el) => {
+      const e = find('employees', el.dataset.id);
+      if (e) infoBox('التكلفة الحقيقية: ' + e.name, empCostHTML(e));
+    },
+    renew: (el) => {
+      const rec = find('expenses', el.dataset.id);
+      if (!rec) return;
+      const c = clone(rec);
+      c.id = RB.uid();
+      const end = RB.coverageEnd(rec.startDate || rec.date, rec.months);
+      c.startDate = RB.addDays(end, 1);
+      c.date = today();
+      FORMS.expenses(c);
+    },
+    tab: (el) => {
+      ui[el.dataset.tab] = el.dataset.v;
+      saveUI();
+      render();
+    },
+    filter: (el) => {
+      ui[el.dataset.f] = el.dataset.v;
+      saveUI();
+      render();
+    },
+    settings: (el) => settingsForm(el.dataset.v),
+    report: (el) => {
+      ui.report = el.dataset.v;
+      go('reports');
+    },
+    channel: (el) => channelForm(el.dataset.id),
+    delchannel: async (el) => {
+      const id = el.dataset.id;
+      if (S.sales.some((s) => s.channels && s.channels[id])) return toast('لهذه القناة مبيعات مسجلة. أوقفها بدلاً من حذفها.', 'bad');
+      if (!(await confirmBox('حذف قناة البيع؟', { danger: true, ok: 'احذف' }))) return;
+      S.settings.channels = S.settings.channels.filter((c) => c.id !== id);
+      saveSettings();
+      render();
+    },
+    menu: () => document.body.classList.toggle('nav-open'),
+    print: () => window.print(),
+    csv: (el) => exportCSV(el.dataset.v),
+    backup: () => saveFile(`نسخة-دفتر-المطعم-${today()}.json`, JSON.stringify(Object.assign({ app: 'restaurant-books', version: 1, exportedAt: new Date().toISOString() }, S), null, 1)),
+    copybackup: async () => {
+      const txt = JSON.stringify(Object.assign({ app: 'restaurant-books', version: 1 }, S));
+      try {
+        await navigator.clipboard.writeText(txt);
+        toast('نُسخت البيانات. الصقها في ملف نصي واحفظه.');
+      } catch (e) {
+        infoBox('انسخ النص يدوياً', `<textarea class="copy-area" readonly>${esc(txt)}</textarea>`);
+      }
+    },
+    start: () => startWizard(),
+    showdemo: async () => {
+      if (!(await confirmBox('عرض البيانات التجريبية مؤقتاً؟ بياناتك تبقى محفوظة كما هي، وتقدر ترجع لها من الإعدادات.'))) return;
+      APP.real = S;
+      S = RB.normalize(RB.demoState(today()));
+      APP.demo = true;
+      bump();
+      render();
+    },
+    leavedemo: () => {
+      if (!APP.real) return;
+      S = APP.real;
+      APP.real = null;
+      APP.demo = false;
+      bump();
+      render();
+    },
+    wipe: async () => {
+      if (!(await confirmBox('مسح كل بيانات المطعم نهائياً؟ صدّر نسخة احتياطية قبلها إن احتجت.', { danger: true, ok: 'امسح الكل' }))) return;
+      const fresh = RB.emptyState();
+      fresh.settings = Object.assign(RB.defaultSettings(), { name: S.settings.name, startedAt: new Date().toISOString() });
+      await replaceAll(fresh);
+      toast('تم مسح البيانات.');
+    },
+  };
+
+  function go(page) {
+    if (!PAGES[page]) page = 'dashboard';
+    ui.page = page;
+    saveUI();
+    try {
+      if (location.hash !== '#' + page) history.replaceState(null, '', '#' + page);
+    } catch (e) {
+      /* بعض الإطارات تمنع تعديل الرابط */
+    }
+    document.body.classList.remove('nav-open');
+    render();
+    const m = document.getElementById('main');
+    if (m) m.scrollTo ? m.scrollTo(0, 0) : null;
+    window.scrollTo(0, 0);
+  }
+
+  async function replaceAll(state) {
+    S = RB.normalize(state);
+    APP.demo = false;
+    APP.real = null;
+    bump();
+    render();
+    if (APP.backend.kind === 'cloud') {
+      const t = document.createElement('div');
+      t.className = 'toast sticky';
+      document.getElementById('toast').appendChild(t);
+      try {
+        await APP.backend.replaceAll(S, (done, total) => {
+          if (total) t.dataset.total = total;
+          t.textContent = `جاري الحفظ… ${done} من ${t.dataset.total || '?'}`;
+        });
+      } catch (e) {
+        toast('توقف الحفظ: ' + ((e && e.message) || (e && e.code) || ''), 'bad');
+      }
+      t.remove();
+    } else await APP.backend.replaceAll(S);
+  }
+
+  function startWizard() {
+    formModal({
+      title: 'ابدأ ببيانات مطعمك',
+      ok: 'ابدأ',
+      value: { name: '', openingDate: '', vatRegistered: true, p1: '', s1: 50, p2: '', s2: 50 },
+      fields: [
+        { type: 'html', html: () => '<p class="note">تبدأ بدفتر فارغ (قنوات البيع والتصنيفات جاهزة). البيانات التجريبية لن تُحفظ.</p>' },
+        { k: 'name', label: 'اسم المطعم', req: 1 },
+        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح (أو المتوقع)' }, { k: 'vatRegistered', type: 'check', label: 'مسجل في ضريبة القيمة المضافة' }] },
+        { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %' }] },
+        { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني' }, { k: 's2', type: 'num', label: 'نسبته %' }] },
+      ],
+      onSave: async (v) => {
+        const st = RB.emptyState();
+        Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, startedAt: new Date().toISOString() });
+        st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: num(v.s1), phone: '', note: '' });
+        if (v.p2 && v.p2.trim()) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: num(v.s2), phone: '', note: '' });
+        await replaceAll(st);
+        go('partners');
+        toast('جاهز. ابدأ بتسجيل رأس المال ثم الأصول.');
+      },
+    });
+  }
+
+  async function saveFile(name, data) {
+    if (window.claude && typeof window.claude.use === 'function') {
+      try {
+        const dl = await window.claude.use('downloads');
+        if (dl) {
+          await dl.save({ filename: name, data });
+          toast('تم حفظ الملف.');
+          return;
+        }
+      } catch (e) {
+        if (e && e.code === 'declined') return;
+        toast('تعذّر حفظ الملف هنا. استخدم «نسخ النسخة للحافظة».', 'bad');
+        return;
+      }
+    }
+    const blob = new Blob([data], { type: name.endsWith('.csv') ? 'text/csv;charset=utf-8' : 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 1500);
+  }
+
+  function exportCSV(what) {
+    const [from, to] = range();
+    let rows = [];
+    let name = what;
+    if (what === 'expenses') {
+      rows.push(['التاريخ', 'التصنيف', 'البيان', 'الجهة', 'قبل الضريبة', 'الضريبة', 'الإجمالي', 'الأشهر', 'الدفع من']);
+      S.expenses.filter((x) => inRange(x.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((x) => {
+        const v = RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings);
+        rows.push([x.date, RB.expenseCat(x.category).name, x.desc, x.entity, v.net, v.vat, v.gross, x.months, RB.srcLabel(x.account, S)]);
+      });
+      name = 'المصاريف';
+    } else if (what === 'purchases') {
+      rows.push(['التاريخ', 'المورد', 'رقم الفاتورة', 'التصنيف', 'الدفع', 'خاضعة', 'قبل الضريبة', 'الضريبة', 'الإجمالي']);
+      S.purchases.filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((p) => {
+        const v = RB.vatSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings);
+        rows.push([p.date, p.supplier, p.invoiceNo, RB.purchaseCat(p.category).name, RB.srcLabel(p.account, S), p.taxable ? 'نعم' : 'لا', v.net, v.vat, v.gross]);
+      });
+      name = 'المشتريات';
+    } else if (what === 'sales') {
+      const chs = S.settings.channels;
+      rows.push(['التاريخ', ...chs.map((c) => c.name), 'الطلبات', 'الإجمالي']);
+      S.sales.filter((s) => inRange(s.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((s) => rows.push([s.date, ...chs.map((c) => (s.channels[c.id] ? s.channels[c.id].amount : '')), RB.saleOrders(s), RB.saleTotal(s)]));
+      name = 'المبيعات';
+    } else if (what === 'statement') {
+      const acc = ui.cashAcc === '1102' ? '1102' : '1101';
+      const st = RB.accountStatement(S, acc, from, to, ledger(to));
+      rows.push(['التاريخ', 'البيان', 'داخل', 'خارج', 'الرصيد']);
+      rows.push([from, 'رصيد أول الفترة', '', '', st.opening]);
+      st.rows.forEach((r) => rows.push([r.date, r.desc, r.in, r.out, r.balance]));
+      name = acc === '1101' ? 'كشف-الصندوق' : 'كشف-البنك';
+    } else {
+      const L = ledger(to);
+      const rep = ui.report;
+      if (rep === 'journal') {
+        rows.push(['التاريخ', 'البيان', 'الحساب', 'مدين', 'دائن']);
+        L.entries.filter((e) => e.date >= from && e.date <= to).forEach((e) => e.lines.forEach((l) => rows.push([e.date, e.desc, RB.accInfo(l.a, S).name, l.v > 0 ? l.v : '', l.v < 0 ? -l.v : ''])));
+      } else if (rep === 'trial') {
+        const t = RB.trialBalance(S, from, to, L);
+        rows.push(['الرمز', 'الحساب', 'مدين', 'دائن']);
+        t.rows.forEach((r) => rows.push([r.code, r.name, r.dr, r.cr]));
+      } else if (rep === 'balance') {
+        const b = RB.balanceSheet(S, minD(to, today()), ledger(minD(to, today())));
+        rows.push(['القسم', 'البند', 'المبلغ']);
+        b.cur.forEach((x) => rows.push(['أصول متداولة', x.name, x.amount]));
+        b.fixed.forEach((x) => rows.push(['أصول ثابتة', x.name, x.amount]));
+        b.liab.forEach((x) => rows.push(['التزامات', x.name, x.amount]));
+        b.equity.forEach((x) => rows.push(['حقوق الشركاء', x.name, x.amount]));
+      } else if (rep === 'vat') {
+        const v = RB.vatReport(S, from, to, L);
+        rows.push(['البند', 'المبلغ الخاضع', 'الضريبة']);
+        rows.push(['المبيعات', v.sales.base, v.sales.vat]);
+        Object.keys(v.inputs).forEach((k) => rows.push(['مدخلات: ' + k, v.inputs[k].base, v.inputs[k].vat]));
+        rows.push(['الصافي', '', v.net]);
+      } else if (rep === 'menu') {
+        const m = RB.menuAnalysis(S, from, to, L);
+        rows.push(['الصنف', 'الكمية', 'ربح الحبة', 'إجمالي الربح', 'تكلفة الطعام %', 'التصنيف']);
+        m.rows.forEach((r) => rows.push([r.name, r.qty, r.profit, r.totalProfit, r.foodCost, RB.MENU_CLASS[r.cls].name]));
+      } else {
+        const inc = RB.incomeStatement(S, from, to, L);
+        rows.push(['القسم', 'البند', 'المبلغ']);
+        rows.push(['الإيرادات', 'المبيعات بدون الضريبة', inc.revenue]);
+        Object.keys(RB.GROUPS).forEach((g) => inc.groups[g].forEach((x) => rows.push([RB.GROUPS[g], x.name, x.amount])));
+        rows.push(['', 'صافي الربح', inc.net]);
+      }
+      name = (REPORTS.find((r) => r[0] === rep) || ['', 'تقرير'])[1];
+    }
+    saveFile(`${name}-${from}-${to}.csv`.replace(/\s+/g, '-'), RB.toCSV(rows));
+  }
+
+  function importFile(file) {
+    const fr = new FileReader();
+    fr.onload = async () => {
+      const data = safeJSON(fr.result);
+      if (!data || typeof data !== 'object' || (!data.settings && !RB.SECTIONS.some((k) => Array.isArray(data[k])))) return toast('الملف ليس نسخة احتياطية صالحة من دفتر المطعم.', 'bad');
+      const n = RB.SECTIONS.reduce((s, k) => s + (Array.isArray(data[k]) ? data[k].length : 0), 0);
+      if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${n} سجل؟ ستحل محل البيانات الحالية بالكامل.`, { danger: true, ok: 'استورد' }))) return;
+      data.settings = Object.assign({}, data.settings, { startedAt: (data.settings && data.settings.startedAt) || new Date().toISOString() });
+      await replaceAll(data);
+      toast('تم الاستيراد.');
+    };
+    fr.readAsText(file);
+  }
+
+  // ═════════════ الرسم ═════════════
+  function shellHTML() {
+    return `<div class="shell">
+      <aside class="side" id="side" aria-label="القائمة الرئيسية">
+        <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div><b>دفتر المطعم</b><small id="restName"></small></div></div>
+        <nav id="nav"></nav>
+        <div class="side-foot" id="saveStatus"></div>
+      </aside>
+      <div class="scrim" data-act="menu"></div>
+      <main class="main" id="main">
+        <header class="topbar">
+          <button type="button" class="icon-btn menu-btn" data-act="menu" aria-label="القائمة">☰</button>
+          <div class="crumb" id="crumb"></div>
+          <div class="period">
+            <label for="periodSel" class="vh">الفترة</label>
+            <select id="periodSel">${PERIODS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
+            <span class="custom-range" id="customRange"><input type="date" id="pFrom" aria-label="من تاريخ"><span>—</span><input type="date" id="pTo" aria-label="إلى تاريخ"></span>
+          </div>
+        </header>
+        <div id="banner"></div>
+        <div class="page" id="page"></div>
+      </main>
+    </div>
+    <div id="modals"></div><div id="toast" aria-live="polite"></div><div id="tip" role="tooltip" hidden></div>`;
+  }
+
+  function render() {
+    const page = document.getElementById('page');
+    if (!page) return;
+    for (const k of Object.keys(CHARTS)) delete CHARTS[k];
+    document.getElementById('restName').textContent = S.settings.name || '';
+    document.getElementById('nav').innerHTML = NAV.map(([g, items]) => `<div class="nav-g"><span>${g}</span>${items.map(([k, l]) => `<a href="#${k}" class="${ui.page === k ? 'on' : ''}" ${ui.page === k ? 'aria-current="page"' : ''}>${l}</a>`).join('')}</div>`).join('');
+    document.getElementById('crumb').textContent = PAGE_TITLES[ui.page] || '';
+    document.getElementById('periodSel').value = ui.period;
+    const cr = document.getElementById('customRange');
+    cr.hidden = ui.period !== 'custom';
+    const [a, b] = range();
+    document.getElementById('pFrom').value = a;
+    document.getElementById('pTo').value = b;
+    document.getElementById('banner').innerHTML = APP.demo
+      ? `<div class="banner"><div><b>بيانات تجريبية لمطعم برقر</b> — جرّب كل شيء بحرية؛ لا يُحفظ أي تعديل. الأرقام أمثلة توضيحية وليست أسعاراً أو رسوماً رسمية.</div><div class="btn-row">${btn('ابدأ ببيانات مطعمك', 'start', '', 'primary sm')}${APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'sm ghost') : ''}</div></div>`
+      : '';
+    try {
+      page.innerHTML = (PAGES[ui.page] || PAGES.dashboard)();
+    } catch (e) {
+      console.error(e);
+      page.innerHTML = `<div class="empty-box bad">حدث خطأ أثناء عرض الصفحة: ${esc(e.message)}</div>`;
+    }
+    updateSaveStatus();
+    afterRender(page);
+  }
+
+  function updateSaveStatus() {
+    const el = document.getElementById('saveStatus');
+    if (!el) return;
+    const kind = APP.backend ? APP.backend.kind : '';
+    el.innerHTML = APP.demo ? `<span class="dot warn"></span>وضع التجربة — لا يُحفظ` : kind === 'cloud' ? `<span class="dot good"></span>محفوظ ومشترك${APP.savedAt ? ' · ' + new Date(APP.savedAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : ''}` : kind === 'local' ? `<span class="dot good"></span>محفوظ في هذا المتصفح${APP.savedAt ? ' · ' + new Date(APP.savedAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : ''}` : '';
+  }
+
+  let rt = null;
+  function scheduleRender() {
+    clearTimeout(rt);
+    rt = setTimeout(render, 80);
+  }
+
+  function bindGlobal() {
+    document.addEventListener('click', (e) => {
+      const el = e.target.closest('[data-act]');
+      if (!el || el.closest('.dialog form')) return;
+      const fn = ACT[el.dataset.act];
+      if (fn) {
+        e.preventDefault();
+        fn(el, e);
+      }
+    });
+    document.addEventListener('change', (e) => {
+      const t = e.target;
+      if (t.id === 'periodSel') {
+        ui.period = t.value;
+        if (t.value === 'custom' && !ui.from) {
+          const [a, b] = range();
+          ui.from = a;
+          ui.to = b;
+        }
+        saveUI();
+        render();
+      } else if (t.id === 'pFrom' || t.id === 'pTo') {
+        ui[t.id === 'pFrom' ? 'from' : 'to'] = t.value;
+        saveUI();
+        render();
+      } else if (t.id === 'importFile' && t.files && t.files[0]) {
+        importFile(t.files[0]);
+        t.value = '';
+      }
+    });
+    window.addEventListener('hashchange', () => {
+      const p = location.hash.slice(1);
+      if (p && p !== ui.page && PAGES[p]) {
+        ui.page = p;
+        saveUI();
+        document.body.classList.remove('nav-open');
+        render();
+        window.scrollTo(0, 0);
+      }
+    });
+    let rz = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(rz);
+      rz = setTimeout(() => {
+        document.querySelectorAll('.chart').forEach((el) => CHARTS[el.id] && drawColumns(el, CHARTS[el.id]));
+      }, 120);
+    });
+    // تلميحات الرسوم البيانية
+    const tip = document.getElementById('tip');
+    const showTip = (el, x, y) => {
+      tip.textContent = el.getAttribute('data-tip');
+      tip.hidden = false;
+      const r = tip.getBoundingClientRect();
+      tip.style.left = Math.min(Math.max(8, x - r.width / 2), window.innerWidth - r.width - 8) + 'px';
+      tip.style.top = Math.max(8, y - r.height - 14) + 'px';
+    };
+    document.addEventListener('mousemove', (e) => {
+      const el = e.target.closest && e.target.closest('[data-tip]');
+      if (el) showTip(el, e.clientX, e.clientY);
+      else tip.hidden = true;
+    });
+    document.addEventListener('touchstart', (e) => {
+      const el = e.target.closest && e.target.closest('[data-tip]');
+      if (el && e.touches[0]) showTip(el, e.touches[0].clientX, e.touches[0].clientY);
+      else tip.hidden = true;
+    }, { passive: true });
+    const flush = () => APP.backend && APP.backend.flush && APP.backend.flush();
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flush());
+  }
+
+  function onRemote(section, data) {
+    if (APP.demo) {
+      if (APP.real) {
+        if (section === 'settings') APP.real.settings = RB.normalize({ settings: data }).settings;
+        else APP.real[section] = data;
+      }
+      return;
+    }
+    if (section === 'settings') {
+      if (JSON.stringify(data) === JSON.stringify(S.settings)) return;
+      S.settings = RB.normalize({ settings: data }).settings;
+    } else {
+      if (JSON.stringify(data) === JSON.stringify(S[section])) return;
+      S[section] = data.filter((x) => x && x.id);
+    }
+    bump();
+    scheduleRender();
+  }
+
+  async function boot() {
+    document.documentElement.lang = 'ar';
+    document.documentElement.dir = 'rtl';
+    const root = document.getElementById('app');
+    root.innerHTML = shellHTML();
+    bindGlobal();
+    const h = location.hash.slice(1);
+    if (h && PAGES[h]) ui.page = h;
+    document.getElementById('page').innerHTML = `<div class="loading"><span class="mark big" aria-hidden="true"><i></i><i></i><i></i><i></i></span><p>جاري فتح دفاتر المطعم…</p></div>`;
+    let backend = null;
+    if (window.claude && typeof window.claude.use === 'function') {
+      try {
+        const db = await window.claude.use('db');
+        if (db) backend = new CloudBackend(db);
+      } catch (e) {
+        backend = null;
+      }
+    }
+    APP.backend = backend || new LocalBackend();
+    let data = null;
+    try {
+      data = await APP.backend.load();
+    } catch (e) {
+      toast('تعذّر تحميل البيانات المحفوظة: ' + ((e && e.message) || (e && e.code) || ''), 'bad');
+    }
+    const real = data && ((data.settings && data.settings.startedAt) || !RB.isEmpty(RB.normalize(data)));
+    if (real) {
+      S = RB.normalize(data);
+      APP.demo = false;
+    } else {
+      S = RB.normalize(RB.demoState(today()));
+      APP.demo = true;
+    }
+    bump();
+    if (APP.backend.subscribe) APP.backend.subscribe(onRemote);
+    render();
+  }
+
+  window.RBApp = { get state() { return S; }, go, render };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
