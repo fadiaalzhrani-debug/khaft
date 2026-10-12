@@ -16,7 +16,8 @@ OC.modules = OC.modules || {};
     const queued = db.prints.filter(p => p.status === 'queued').length;
     const vAvail = db.vehicles.filter(v => v.status === 'available').length;
     const vMaint = db.vehicles.filter(v => v.status === 'maintenance').length;
-    const vDue = db.vehicles.filter(v => v.nextService && OC.util.daysBetween(today, v.nextService) <= 7).length;
+    const vAlerts = OC.modules.vehicles && OC.modules.vehicles.alerts ? OC.modules.vehicles.alerts : () => [];
+    const vDue = db.vehicles.filter(v => vAlerts(v).length).length;
     const wk = db.tasks.filter(x => x.year === cw.year && x.week === cw.week);
     const wkDone = wk.filter(x => x.done).length;
     const pct = wk.length ? Math.round(wkDone / wk.length * 100) : 0;
@@ -55,7 +56,7 @@ OC.modules = OC.modules || {};
         ${tile('inventory', 'box', t('inventory.title'), t('inventory.tag'), db.inventory.length, t('home.items'), (s.out ? { text: t('home.out', { n: s.out }), kind: 'crit' } : s.low ? { text: t('home.low', { n: s.low }), kind: 'warn' } : { text: t('home.allStocked') }))}
         ${tile('calendar', 'calendar', t('calendar.title'), t('calendar.tag'), s.todayEv.length, t('home.eventsToday'), s.upcoming ? { text: t('home.next7', { n: s.upcoming }) } : null)}
         ${tile('prints', 'cube', t('prints.title'), t('prints.tag'), s.queued, t('home.inQueue'), s.printing ? { text: t('home.printing', { n: s.printing }), kind: '' } : null)}
-        ${tile('vehicles', 'truck', t('vehicles.title'), t('vehicles.tag'), `${s.vAvail}/${db.vehicles.length}`, t('home.available'), s.vMaint ? { text: t('home.inMaint', { n: s.vMaint }), kind: 'warn' } : s.vDue ? { text: t('home.serviceDue', { n: s.vDue }), kind: 'warn' } : null)}
+        ${tile('vehicles', 'truck', t('vehicles.title'), t('vehicles.tag'), `${s.vAvail}/${db.vehicles.length}`, t('home.available'), s.vMaint ? { text: t('home.inMaint', { n: s.vMaint }), kind: 'warn' } : s.vDue ? { text: t('home.attention', { n: s.vDue }), kind: 'warn' } : null)}
         <button class="tile gauge-tile" data-nav="week" aria-label="${esc(t('week.title'))}">
           <div class="t-title">${esc(t('week.n', { n: s.cw.week }))}</div><div class="t-sub">${esc(t('week.completion'))}</div>
           ${OC.gauge(s.pct, { caption: t('kpi.tasksDone', { done: s.wkDone, total: s.wk.length }) })}

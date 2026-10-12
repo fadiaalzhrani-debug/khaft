@@ -3,6 +3,7 @@ window.OC = window.OC || {};
 (function (OC) {
   'use strict';
   const KEY = 'oneclick.v1';
+  const SEED = 2; // bump when sample data changes shape; migrate() refreshes untouched sample lists
 
   /* ---------- helpers ---------- */
   const pad = n => String(n).padStart(2, '0');
@@ -44,7 +45,7 @@ window.OC = window.OC || {};
     const monthStr = t.slice(0, 7);
     const dom = n => `${monthStr}-${pad(n)}`;
     return {
-      settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'Maintenance Team', owner: '' },
+      settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'Maintenance Team', owner: '', seed: SEED },
       team: [
         { id: uid(), name: 'Ahmed Al-Harbi', badge: '87163', role: 'Team Lead', shift: 'A', status: 'on', phone: '0550000001' },
         { id: uid(), name: 'Fahad Al-Otaibi', badge: '87201', role: 'Mechanical Tech', shift: 'A', status: 'on', phone: '0550000002' },
@@ -83,11 +84,15 @@ window.OC = window.OC || {};
         { id: uid(), item: 'Valve handle replica', requester: 'Omar Al-Ghamdi', material: 'Nylon', qty: 1, status: 'failed', progress: 40, due: addDays(t, -1), priority: 'high', notes: 'Warping – retry with brim' }
       ],
       vehicles: [
-        { id: uid(), name: 'Pickup 1', plate: 'KSA 4821', type: 'pickup', status: 'inuse', assignedTo: 'Fahad Al-Otaibi', mileage: 48210, nextService: addDays(t, 24) },
-        { id: uid(), name: 'Pickup 2', plate: 'KSA 4822', type: 'pickup', status: 'available', assignedTo: '', mileage: 61900, nextService: addDays(t, 6) },
-        { id: uid(), name: 'Crew van', plate: 'KSA 1190', type: 'van', status: 'available', assignedTo: '', mileage: 32040, nextService: addDays(t, 40) },
-        { id: uid(), name: 'Forklift FL-2', plate: 'FL-002', type: 'forklift', status: 'maintenance', assignedTo: '', mileage: 2210, nextService: addDays(t, -3) },
-        { id: uid(), name: 'Utility truck', plate: 'KSA 7731', type: 'truck', status: 'available', assignedTo: '', mileage: 88420, nextService: addDays(t, 12) }
+        { id: uid(), name: 'Nissan Patrol 1', plate: 'HSD 7421', type: 'suv', year: 2023, status: 'available', assignedTo: '', mileage: 38420, nextService: addDays(t, 18), nextServiceKm: 40000, registrationExpiry: addDays(t, 210), insuranceExpiry: addDays(t, 120), notes: '' },
+        { id: uid(), name: 'Nissan Patrol 2', plate: 'HSD 7422', type: 'suv', year: 2022, status: 'inuse', assignedTo: 'Ahmed Al-Harbi', mileage: 61350, nextService: addDays(t, 35), nextServiceKm: 65000, registrationExpiry: addDays(t, 10), insuranceExpiry: addDays(t, 95), notes: '' },
+        { id: uid(), name: 'Nissan Patrol 3', plate: 'HSD 7423', type: 'suv', year: 2021, status: 'maintenance', assignedTo: '', mileage: 92780, nextService: addDays(t, -2), nextServiceKm: 90000, registrationExpiry: addDays(t, 150), insuranceExpiry: addDays(t, 25), notes: 'Brake pads + AC compressor at the dealer' },
+        { id: uid(), name: 'RAM Single Cab 1', plate: 'RKA 3310', type: 'singlecab', year: 2023, status: 'available', assignedTo: '', mileage: 27900, nextService: addDays(t, 40), nextServiceKm: 30000, registrationExpiry: addDays(t, 300), insuranceExpiry: addDays(t, 200), notes: '' },
+        { id: uid(), name: 'RAM Single Cab 2', plate: 'RKA 3311', type: 'singlecab', year: 2022, status: 'inuse', assignedTo: 'Fahad Al-Otaibi', mileage: 54600, nextService: addDays(t, 12), nextServiceKm: 55000, registrationExpiry: addDays(t, 80), insuranceExpiry: addDays(t, 45), notes: '' },
+        { id: uid(), name: 'RAM Single Cab 3', plate: 'RKA 3312', type: 'singlecab', year: 2020, status: 'available', assignedTo: '', mileage: 118200, nextService: addDays(t, 60), nextServiceKm: 120000, registrationExpiry: addDays(t, -5), insuranceExpiry: addDays(t, 140), notes: 'Registration renewal in progress' },
+        { id: uid(), name: 'RAM Double Cab 1', plate: 'RKB 5120', type: 'doublecab', year: 2024, status: 'available', assignedTo: '', mileage: 12300, nextService: addDays(t, 85), nextServiceKm: 15000, registrationExpiry: addDays(t, 330), insuranceExpiry: addDays(t, 290), notes: '' },
+        { id: uid(), name: 'RAM Double Cab 2', plate: 'RKB 5121', type: 'doublecab', year: 2023, status: 'inuse', assignedTo: 'Sara Al-Zahrani', mileage: 44100, nextService: addDays(t, 9), nextServiceKm: 45000, registrationExpiry: addDays(t, 190), insuranceExpiry: addDays(t, 20), notes: '' },
+        { id: uid(), name: 'RAM Double Cab 3', plate: 'RKB 5122', type: 'doublecab', year: 2021, status: 'maintenance', assignedTo: '', mileage: 76500, nextService: addDays(t, 3), nextServiceKm: 80000, registrationExpiry: addDays(t, 60), insuranceExpiry: addDays(t, 60), notes: 'Tires + wheel alignment' }
       ],
       tasks: [
         { id: uid(), title: 'Complete PM work orders (12)', owner: 'Ahmed Al-Harbi', year: cw.year, week: cw.week, done: true, priority: 'high' },
@@ -107,8 +112,8 @@ window.OC = window.OC || {};
           issues: [{ id: uid(), text: 'P-204 vibration alarm – needs analysis', open: true }, { id: uid(), text: 'Workshop AC unit tripping', open: true }, { id: uid(), text: 'Replace missing fire extinguisher sign – Bay 2', open: false }],
           created: nowISO() },
         { id: uid(), date: addDays(t, -1), shift: 'day', from: 'Ahmed Al-Harbi', to: 'Khalid Al-Dossary',
-          summary: 'Completed 4 PM work orders. Forklift FL-2 sent for hydraulic repair. Awaiting PETG filament delivery.',
-          issues: [{ id: uid(), text: 'Forklift FL-2 out of service', open: true }],
+          summary: 'Completed 4 PM work orders. Nissan Patrol 3 sent to the dealer for brakes and AC. Awaiting PETG filament delivery.',
+          issues: [{ id: uid(), text: 'Nissan Patrol 3 out of service until the dealer confirms a date', open: true }],
           created: nowISO() }
       ],
       ideas: [
@@ -122,7 +127,7 @@ window.OC = window.OC || {};
   }
 
   function empty() {
-    return { settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'My Team', owner: '' },
+    return { settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'My Team', owner: '', seed: SEED },
       team: [], inventory: [], events: [], prints: [], vehicles: [], tasks: [], turnovers: [], ideas: [], votes: [] };
   }
 
@@ -132,6 +137,7 @@ window.OC = window.OC || {};
      inline styles, so imported backups are coerced into safe shapes here as well. */
   const SAFE_ID = /^[a-z0-9_-]{1,40}$/i;
   const NUMERIC = { inventory: ['qty', 'min'], prints: ['qty', 'progress'], vehicles: ['mileage'], tasks: ['week', 'year'], ideas: ['votes'] };
+  const OPTIONAL_NUMERIC = { vehicles: ['year', 'nextServiceKm'] };
   function normalize(data) {
     const base = empty();
     const out = Object.assign({}, base, data || {});
@@ -146,21 +152,37 @@ window.OC = window.OC || {};
       out[k] = out[k].filter(x => x && typeof x === 'object').map(x => {
         if (!SAFE_ID.test(String(x.id || ''))) x.id = uid();
         (NUMERIC[k] || []).forEach(f => { const n = Number(x[f]); x[f] = Number.isFinite(n) ? n : 0; });
+        (OPTIONAL_NUMERIC[k] || []).forEach(f => { if (x[f] === '' || x[f] == null) { x[f] = null; return; } const n = Number(x[f]); x[f] = Number.isFinite(n) ? n : null; });
         return x;
       });
     });
     out.tasks.forEach(x => { x.done = !!x.done; });
+    out.vehicles.forEach(v => {
+      if (v.photo != null && !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(String(v.photo))) delete v.photo;
+      if (v.color != null && !/^#[0-9a-f]{6}$/i.test(String(v.color))) delete v.color;
+    });
     out.turnovers.forEach(tv => {
       tv.issues = (Array.isArray(tv.issues) ? tv.issues : []).filter(i => i && typeof i === 'object')
         .map(i => { if (!SAFE_ID.test(String(i.id || ''))) i.id = uid(); return { id: i.id, text: String(i.text || ''), open: !!i.open }; });
     });
     return out;
   }
+  /* Sample lists that the user never touched are refreshed when the sample data changes. */
+  const OLD_SAMPLE_PLATES = 'FL-002|KSA 1190|KSA 4821|KSA 4822|KSA 7731';
+  function migrate(data) {
+    const seed = Number(data.settings.seed) || 1;
+    if (seed < 2) {
+      const plates = data.vehicles.map(v => String(v.plate)).sort().join('|');
+      if (plates === OLD_SAMPLE_PLATES) data.vehicles = sample().vehicles;
+    }
+    data.settings.seed = SEED;
+    return data;
+  }
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
       if (!raw) { const s = sample(); s._fresh = true; return s; }
-      return normalize(JSON.parse(raw));
+      return migrate(normalize(JSON.parse(raw)));
     } catch (e) { console.warn('OneClick: could not read saved data, starting with sample data.', e); return sample(); }
   }
   function save() {

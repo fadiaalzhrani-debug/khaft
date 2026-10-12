@@ -364,6 +364,26 @@ html[dir="rtl"] .kv span{text-transform:none;letter-spacing:0;font-size:.78rem}
 .kv b{font-weight:700}
 .vcard .foot{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
 
+/* vehicle illustration + 3D viewer */
+.vart-wrap{perspective:700px;margin:-6px -6px 2px}
+.vart{position:relative;border-radius:14px;overflow:hidden;aspect-ratio:320/150;cursor:pointer;transform-style:preserve-3d;
+  background:radial-gradient(90% 70% at 50% 100%,var(--accent-soft),transparent 72%);transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));transition:transform .6s var(--ease)}
+.vart.live{transition:transform .08s linear}
+.vart svg,.vart img{width:100%;height:100%;display:block;object-fit:cover}
+.vart svg{animation:floaty 5s ease-in-out infinite}
+.vart::after{content:"";position:absolute;inset:0;background:radial-gradient(220px 150px at var(--mx,50%) var(--my,30%),rgba(255,255,255,.16),transparent 60%);opacity:0;transition:opacity .3s;pointer-events:none}
+.vart:hover::after{opacity:1}
+.vart .v3d{position:absolute;top:10px;inset-inline-end:10px;font-size:.66rem;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:999px;background:rgba(5,15,10,.55);color:#d8ffe9;border:1px solid rgba(52,211,153,.35);backdrop-filter:blur(4px)}
+.vart:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+@keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media (prefers-reduced-motion:reduce){.vart svg{animation:none}.vart{transition:none}}
+.car3d{width:100%;aspect-ratio:16/10;display:block;border-radius:16px;border:1px solid var(--border);cursor:grab;touch-action:none;
+  background:radial-gradient(70% 60% at 50% 62%,rgba(52,211,153,.16),transparent 70%),linear-gradient(180deg,var(--surface),rgba(0,0,0,.12))}
+.car3d:active{cursor:grabbing}
+:root[data-theme="light"] .car3d{background:radial-gradient(70% 60% at 50% 62%,rgba(5,150,105,.14),transparent 70%),linear-gradient(180deg,#f7faf8,#e3ebe6)}
+.vcard .kv{grid-template-columns:1fr 1fr}
+.vcard .kv b{display:block;line-height:1.35}
+
 /* ---------- Tasks ---------- */
 .task{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--surface);border:1px solid var(--border);transition:all .18s}
 .task:hover{background:var(--surface-2)}
