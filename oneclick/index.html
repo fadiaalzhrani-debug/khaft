@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>OneClick · Team Dashboard</title>
+<meta name="description" content="OneClick — an interactive team operations dashboard: team, inventory, calendar, 3D prints, vehicles, weekly completion, shift turnover and innovation board." />
+<meta name="theme-color" content="#07110c" />
+<meta name="color-scheme" content="dark light" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2307110c'/%3E%3Ccircle cx='32' cy='32' r='17' fill='none' stroke='%2334d399' stroke-width='7'/%3E%3Ccircle cx='32' cy='32' r='5' fill='%2334d399'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Cairo:wght@500;600;700;800&display=swap" />
+<link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+<noscript><div style="padding:40px;font-family:sans-serif;text-align:center">OneClick needs JavaScript to run.</div></noscript>
+
+<!-- Animated 3D background: aurora blobs (CSS) + perspective-projected particle field & wireframe solids (canvas) -->
+<div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<canvas id="bg3d" aria-hidden="true"></canvas>
+
+<div id="app" class="app" aria-live="polite"></div>
+
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="assertive"></div>
+
+<script src="js/i18n.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/bg3d.js"></script>
+<script src="js/modules/home.js"></script>
+<script src="js/modules/team.js"></script>
+<script src="js/modules/inventory.js"></script>
+<script src="js/modules/calendar.js"></script>
+<script src="js/modules/prints.js"></script>
+<script src="js/modules/vehicles.js"></script>
+<script src="js/modules/week.js"></script>
+<script src="js/modules/turnover.js"></script>
+<script src="js/modules/ideas.js"></script>
+<script src="js/modules/settings.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
