@@ -79,13 +79,20 @@
     ['all', 'كل الفترات'],
     ['custom', 'فترة مخصصة'],
   ];
+  let boundsCache = null;
   function dataBounds() {
-    let lo = today();
-    let hi = today();
+    const t = today();
+    if (boundsCache && boundsCache.v === VER && boundsCache.t === t) return boundsCache.b.slice();
+    let lo = t;
+    let hi = t;
     for (const k of RB.SECTIONS) for (const r of S[k]) if (r.date) {
       if (r.date < lo) lo = r.date;
       if (r.date > hi) hi = r.date;
     }
+    // أول قيد قد يسبق أول تاريخ مسجل (مثل إيجار تبدأ تغطيته قبل تاريخ دفعه)
+    const first = ledger(hi).entries[0];
+    if (first && first.date < lo) lo = first.date;
+    boundsCache = { v: VER, t, b: [lo, hi] };
     return [lo, hi];
   }
   function range() {
@@ -114,12 +121,19 @@
         return [ym + '-01', RB.monthEnd(ym)];
     }
   }
+  // الفترة مقطوعة عند اليوم: للقوائم والأرصدة، فلا يُحمّل إهلاك أو مصروف لأشهر لم تأتِ بعد
+  function rangeToDate() {
+    const [from, to] = range();
+    return [from, minD(to, today())];
+  }
   const inRange = (d) => {
     const [a, b] = range();
     return d >= a && d <= b;
   };
   function periodLabel() {
     const [a, b] = range();
+    const t = today();
+    if (b > t && a <= t) return dtText(a) + ' — حتى ' + dtText(t);
     if (a.slice(0, 7) === b.slice(0, 7) && a.endsWith('-01') && b === RB.monthEnd(b.slice(0, 7))) return RB.monthName(a.slice(0, 7));
     return dtText(a) + ' — ' + dtText(b);
   }
@@ -548,6 +562,7 @@
           toast(res, 'bad');
           return;
         }
+        if (res === false) return; // ألغى المستخدم التأكيد: يبقى النموذج مفتوحاً
         m.close();
         render();
         if (o.done) toast(o.done);
@@ -612,9 +627,9 @@
     if (withPartners !== false) S.partners.forEach((p) => o.push(['partner:' + p.id, 'دفعها ' + p.name + ' من حسابه']));
     return o;
   };
-  const vatPreview = (amount, includesVat, taxable) => {
+  const vatPreview = (amount, includesVat, taxable, date) => {
     const v = RB.vatSplit(amount, includesVat, taxable, S.settings);
-    const reg = S.settings.vatRegistered;
+    const reg = RB.isVatReg(S.settings, date || today());
     return `<div class="pv-grid"><div><span>قبل الضريبة</span>${money(v.net)}</div><div><span>الضريبة ${taxable ? pct(S.settings.vatRate, 0) : '(غير خاضعة)'}</span>${money(v.vat)}</div><div><span>الإجمالي المدفوع</span>${money(v.gross)}</div></div>${taxable && !reg ? '<p class="note">المطعم غير مسجل في الضريبة، فتُحسب الضريبة ضمن التكلفة.</p>' : ''}`;
   };
 
@@ -689,9 +704,9 @@
   PAGES.dashboard = () => {
     const [from, to] = range();
     const asOf = minD(to, today());
-    const L = ledger(to);
-    const inc = RB.incomeStatement(S, from, to, L);
-    const sales = RB.salesByChannel(S, from, to);
+    const L = ledger(asOf);
+    const inc = RB.incomeStatement(S, from, asOf, L);
+    const sales = RB.salesByChannel(S, from, asOf);
     const bal = RB.balances(L.entries, null, asOf);
     const target = num(S.settings.targetFoodCost);
     const fcState = !inc.revenue ? '' : inc.ratios.foodCost > target + 3 ? 'warn' : 'good';
@@ -746,16 +761,17 @@
       const name = (r.rec.desc || RB.expenseCat(r.rec.category).name) + (r.rec.entity ? ' — ' + r.rec.entity : '') + empName(r.rec.employeeId, ' · ');
       out.push([r.status === 'expired' ? 'bad' : 'warn', r.status === 'expired' ? `انتهى: ${esc(name)} منذ ${-r.days} يوم` : `يحتاج تجديد: ${esc(name)} خلال ${r.days} يوم (${dtText(r.end)})`, btn('تجديد', 'renew', `data-id="${r.rec.id}"`, 'sm')]);
     }
-    // ضريبة الفترة المنتهية الأخيرة
+    // إقرارات الضريبة: كل فترة منتهية لم تُسدد وفات موعدها، وآخر فترة منتهية ما زال موعدها قائماً
     if (S.settings.vatRegistered) {
-      const per = RB.vatPeriodsBetween(S, RB.addDays(today(), -120), today()).filter((p) => p.to < today()).pop();
-      if (per) {
-        const v = RB.vatDue(S, per, ledger(per.to));
-        const deadline = RB.monthEnd(RB.ymAdd(per.to.slice(0, 7), 1));
-        const b = btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(per.label)}"`, 'sm');
-        if (!v.settled && deadline >= today()) out.push(['warn', `إقرار ضريبة ${per.label}: المستحق ${fmt(v.due - v.paid)} ${cur()} — آخر موعد ${dtText(deadline)}`, b]);
-        if (!v.settled && deadline < today()) out.push(['bad', `ضريبة ${per.label} (${fmt(v.due - v.paid)} ${cur()}) لم يُسجَّل سدادها وفات موعدها`, b]);
-        if (v.settled && v.credit > 0 && deadline >= today()) out.push(['warn', `إقرار ضريبة ${per.label}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(v.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار قبل ${dtText(deadline)}.`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm')]);
+      const t = today();
+      const ended = RB.vatReturns(S, t, ledger(t)).filter((p) => p.to < t);
+      const deadline = (p) => RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1));
+      const payBtn = (p) => btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(p.label)}"`, 'sm');
+      for (const p of ended) if (!p.settled && deadline(p) < t) out.push(['bad', `إقرار ${esc(p.label)}: المتبقي ${fmt(p.remaining)} ${cur()} — فات موعده`, payBtn(p)]);
+      const last = ended[ended.length - 1];
+      if (last && deadline(last) >= t) {
+        if (!last.settled) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: المستحق ${fmt(last.remaining)} ${cur()} — آخر موعد ${dtText(deadline(last))}`, payBtn(last)]);
+        else if (last.credit > 0) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(last.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار قبل ${dtText(deadline(last))}.`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm')]);
       }
     }
     const C = costing();
@@ -781,10 +797,9 @@
 
   // ─── الشركاء ورأس المال ───
   PAGES.partners = () => {
-    const [from, to] = range();
-    const L = ledger('9999-12-31');
-    const rep = RB.partnersReport(S, from, minD(to, today()), ledger(minD(to, today())));
-    const uses = RB.capitalUses(S, L);
+    const [from, asOf] = rangeToDate();
+    const uses = RB.capitalUses(S, ledger('9999-12-31'));
+    const rep = RB.partnersReport(S, from, asOf, ledger(asOf));
     let h = pageHead('الشركاء ورأس المال', 'رأس المال التأسيسي، مساهمة كل شريك، ونصيبه من الأرباح', btn('+ شريك', 'add', 'data-s="partners"') + btn('+ إيداع رأس مال', 'add', 'data-s="capital" data-x="contribution"', 'primary') + btn('+ سحب شريك', 'add', 'data-s="capital" data-x="withdrawal"'));
     h += card(
       'حصص الشركاء',
@@ -854,8 +869,8 @@
     });
     const catRows = Object.values(cats).sort((a, b) => b.cost - a.cost);
     const monthlyDep = RB.sum(catRows, (c) => c.monthly);
-    const sales = RB.salesByChannel(S, from, to);
-    const months = RB.monthsIn(from, minD(to, today()));
+    const sales = RB.salesByChannel(S, from, asOf);
+    const months = RB.monthsIn(from, asOf);
     const ordersPerMonth = sales.total.orders / months;
     let h = pageHead('الأصول والأثاث', 'معدات المطبخ والأثاث والأدوات والديكور، وتوزيع تكلفتها على أشهر التشغيل (الإهلاك)', btn('+ أصل جديد', 'add', 'data-s="assets"', 'primary'));
     h += `<div class="kpis small">
@@ -907,13 +922,14 @@
     const list = S.expenses.filter((x) => inRange(x.date) && (!ui.expCat || x.category === ui.expCat)).sort((a, b) => (a.date < b.date ? 1 : -1));
     const counts = {};
     S.expenses.filter((x) => inRange(x.date)).forEach((x) => (counts[x.category] = (counts[x.category] || 0) + 1));
-    // المدفوع مقابل المحمّل على الفترة لكل تصنيف
-    const b = RB.balances(ledger(to).entries, from, to);
+    // المدفوع مقابل المحمّل على الفترة (حتى اليوم) لكل تصنيف
+    const asOf = minD(to, today());
+    const b = RB.balances(ledger(asOf).entries, from, asOf);
     const catRows = RB.EXPENSE_CATS.map((c) => {
       const paid = RB.sum(S.expenses.filter((x) => x.category === c.id && inRange(x.date)), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
       return { c, paid, charged: b[c.acc] || 0 };
     }).filter((r) => r.paid || r.charged);
-    const months = RB.monthsIn(from, to);
+    const months = RB.monthsIn(from, asOf);
     let h = pageHead('المصاريف التشغيلية', 'إيجار المحل وسكن العمال والكهرباء والصيانة والتسويق وغيرها. المصروف المدفوع لعدة أشهر يُوزّع تلقائياً على أشهره.', btn('+ مصروف', 'add', 'data-s="expenses"', 'primary'));
     h += `<div class="quick">${['rent', 'housing', 'utilities', 'telecom', 'maintenance', 'marketing', 'cleaning'].map((k) => btn('+ ' + RB.expenseCat(k).name, 'add', `data-s="expenses" data-x="${k}"`, 'sm ghost')).join('')}</div>`;
     h += card(
@@ -1071,7 +1087,7 @@
     </div>`;
     h += `<div class="grid2">${card('حسب التصنيف', hbars(RB.PURCHASE_CATS.filter((c) => byCat[c.id]).map((c) => ({ label: c.name, v: byCat[c.id] }))))}${card(
       'الضريبة',
-      `<div class="pv-grid"><div><span>مشتريات خاضعة للضريبة</span>${money(taxable)}</div><div><span>مشتريات غير خاضعة</span>${money(exempt)}</div><div><span>ضريبة المدخلات</span>${money(vat)}</div></div><p class="note">${S.settings.vatRegistered ? 'ضريبة المدخلات تُخصم من ضريبة المبيعات في الإقرار.' : 'المطعم غير مسجل في الضريبة، فالضريبة المدفوعة جزء من التكلفة.'} غير الخاضعة مثل مشتريات من موردين غير مسجلين أو بدون فاتورة ضريبية.</p>`
+      `<div class="pv-grid"><div><span>مشتريات خاضعة للضريبة</span>${money(taxable)}</div><div><span>مشتريات غير خاضعة</span>${money(exempt)}</div><div><span>ضريبة المدخلات</span>${money(vat)}</div></div><p class="note">${RB.isVatReg(S.settings, today()) ? 'ضريبة المدخلات تُخصم من ضريبة المبيعات في الإقرار.' : 'المطعم غير مسجل في الضريبة، فالضريبة المدفوعة جزء من التكلفة.'} غير الخاضعة مثل مشتريات من موردين غير مسجلين أو بدون فاتورة ضريبية.</p>`
     )}</div>`;
     const counts = {};
     all.forEach((p) => (counts[p.category] = (counts[p.category] || 0) + 1));
@@ -1103,13 +1119,13 @@
       table(
         [
           { h: 'المورد', f: (r) => `<b>${esc(r.supplier)}</b>` },
-          { h: 'مشتريات آجلة', num: 1, f: (r) => N(r.purchases) },
+          { h: 'المستحق الآجل', num: 1, f: (r) => N(r.purchases) },
           { h: 'المسدد', num: 1, f: (r) => N(r.paid) },
           { h: 'الرصيد المستحق', num: 1, f: (r) => `<b>${N(r.balance)}</b>` },
-          { h: '', f: (r) => (r.balance > 0.005 ? btn('سداد', 'add', `data-s="supplierPayments" data-x="${esc(r.supplier)}"`, 'sm') : chip('مسدد', 'good')) },
+          { h: '', f: (r) => (r.balance > 0.005 ? btn('سداد', 'add', `data-s="supplierPayments" data-x="${esc(r.supplier)}"`, 'sm') : r.balance < -0.005 ? chip('دفعة زائدة', 'warn') : chip('مسدد', 'good')) },
         ],
         sb,
-        { empty: 'لا توجد مشتريات آجلة.' }
+        { empty: 'لا توجد مستحقات آجلة.' }
       ) +
         (S.supplierPayments.length
           ? `<h4 class="sub-h">دفعات السداد</h4>` +
@@ -1169,7 +1185,7 @@
         rows,
         { empty: 'ابدأ بإضافة المواد الخام: اللحم، الخبز، الجبن، الصوصات، البطاطس، علب التغليف…' }
       ),
-      { sub: S.settings.vatRegistered ? 'السعر بدون ضريبة لأن المطعم مسجل ويسترد ضريبة المدخلات. يتحدث السعر تلقائياً من آخر فاتورة مشتريات مرتبطة بالمادة.' : 'المطعم غير مسجل في الضريبة: التكلفة تشمل الضريبة للمواد الخاضعة.' }
+      { sub: RB.isVatReg(S.settings, today()) ? 'السعر بدون ضريبة لأن المطعم مسجل ويسترد ضريبة المدخلات. يتحدث السعر تلقائياً من آخر فاتورة مشتريات مرتبطة بالمادة.' : 'المطعم غير مسجل في الضريبة: التكلفة تشمل الضريبة للمواد الخاضعة.' }
     );
     return h;
   };
@@ -1313,12 +1329,11 @@
 
   // ─── الصندوق والبنك ───
   PAGES.cash = () => {
-    const [from, to] = range();
-    const asOf = minD(to, today());
-    const L = ledger(to);
+    const [from, asOf] = rangeToDate();
+    const L = ledger(asOf);
     const bal = RB.balances(L.entries, null, asOf);
     const acc = ui.cashAcc === '1102' ? '1102' : '1101';
-    const st = RB.accountStatement(S, acc, from, to, L);
+    const st = RB.accountStatement(S, acc, from, asOf, L);
     let h = pageHead('الصندوق والبنك', 'كل حركة تدخل أو تخرج من الكاشير والحساب البنكي، مع الرصيد بعد كل حركة', btn('سحب من البنك للصندوق', 'add', 'data-s="transfers" data-x="bank"') + btn('+ إيداع الكاش في البنك', 'add', 'data-s="transfers" data-x="cash"', 'primary'));
     h += `<div class="kpis small">
       ${kpi('الصندوق (الكاشير)', money(bal['1101'] || 0), 'حتى ' + dtText(asOf), (bal['1101'] || 0) < 0 ? 'bad' : '')}
@@ -1372,8 +1387,8 @@
     return list.map((x) => `<tr><td class="ind">${esc(x.name)}</td><td class="num">${N(x.amount)}</td><td class="num muted">${total ? pct((x.amount / total) * 100) : ''}</td></tr>`).join('') + (label ? `<tr class="sum"><td>${label}</td><td class="num">${N(RB.sum(list, (x) => x.amount))}</td><td class="num muted">${total ? pct((RB.sum(list, (x) => x.amount) / total) * 100) : ''}</td></tr>` : '');
   }
   REPORT.income = () => {
-    const [from, to] = range();
-    const inc = RB.incomeStatement(S, from, to, ledger(to));
+    const [from, asOf] = rangeToDate();
+    const inc = RB.incomeStatement(S, from, asOf, ledger(asOf));
     const rev = inc.revenue;
     const G = (g, label) => (inc.groups[g].length ? `<tr class="grp"><td colspan="3">${label}</td></tr>${lineRows(inc.groups[g], rev, 'إجمالي ' + label)}` : '');
     const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th><th class="num">المبلغ (${cur()})</th><th class="num">من المبيعات</th></tr></thead><tbody>
@@ -1389,8 +1404,7 @@
     return card('قائمة الدخل', body, { sub: `${periodLabel()} · المصاريف المدفوعة مقدماً محمّلة حسب أشهرها، والإهلاك شهرياً.` }) + card('مؤشرات المطعم', `<div class="ratios">${ratio('تكلفة المواد', R.foodCost, 'المستهدف ' + pct(S.settings.targetFoodCost, 0))}${ratio('تكلفة العمالة', R.labor, 'تشمل التأمينات والسكن والرسوم')}${ratio('التكلفة الأساسية', R.prime, 'المواد + العمالة')}${ratio('الإيجار', R.occupancy, 'من المبيعات')}${ratio('عمولات البيع', R.sell, 'التطبيقات والشبكة')}${ratio('صافي الهامش', R.netMargin, 'الربح ÷ المبيعات')}</div>`);
   };
   REPORT.balance = () => {
-    const [, to] = range();
-    const asOf = minD(to, today());
+    const [, asOf] = rangeToDate();
     const b = RB.balanceSheet(S, asOf, ledger(asOf));
     const rows = (list) => list.map((x) => `<tr><td class="ind">${esc(x.name)}</td><td class="num">${N(x.amount)}</td></tr>`).join('');
     const body = `<div class="grid2 tight"><div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>الأصول</th><th class="num">${cur()}</th></tr></thead><tbody>
@@ -1406,11 +1420,15 @@
   };
   REPORT.vat = () => {
     const [from, to] = range();
-    const L = ledger(to);
-    const pers = RB.vatPeriodsBetween(S, from, to);
-    const v = RB.vatReport(S, from, to, L);
+    const asOf = minD(to, today());
+    const L = ledger(asOf);
+    // كل الإقرارات من البداية (لترحيل الرصيد الدائن)، ويُعرض منها ما يقع في الفترة
+    const pers = RB.vatReturns(S, asOf, L).filter((p) => p.to >= from && p.from <= to);
+    const v = RB.vatReport(S, from, asOf, L);
+    const regFrom = S.settings.vatRegisteredFrom;
     let h = '';
     if (!S.settings.vatRegistered) h += `<p class="note">المطعم غير مسجل في ضريبة القيمة المضافة حسب الإعدادات، فلا تُحسب ضريبة على المبيعات.</p>`;
+    else if (regFrom && from < regFrom) h += `<p class="note">التسجيل في الضريبة ساري من ${dtText(regFrom)}؛ العمليات قبله بلا ضريبة مخرجات ولا مدخلات.</p>`;
     const inRows = Object.keys(v.inputs).map((k) => `<tr><td class="ind">${esc(k)}</td><td class="num">${N(v.inputs[k].base)}</td><td class="num">${N(v.inputs[k].vat)}</td></tr>`).join('');
     h += card(
       'ملخص الفترة',
@@ -1427,15 +1445,23 @@
       table(
         [
           { h: 'الفترة', f: (p) => `<b>${esc(p.label)}</b><div class="muted sm">${dtText(p.from)} — ${dtText(p.to)}</div>` },
-          { h: 'ضريبة المبيعات', num: 1, f: (p) => N(p.d.report.sales.vat) },
-          { h: 'ضريبة المدخلات', num: 1, f: (p) => N(p.d.report.inVat) },
-          { h: 'صافي الفترة', num: 1, f: (p) => N(p.d.net) },
-          { h: 'مرحّل من قبل', num: 1, f: (p) => (Math.abs(p.d.carried) < 0.005 ? '—' : `${N(p.d.carried)}<div class="muted sm">${p.d.carried < 0 ? 'رصيد دائن لك' : 'مستحق سابق'}</div>`) },
-          { h: 'المستحق للسداد', num: 1, f: (p) => `<b>${N(p.d.due)}</b>${p.d.credit ? `<div class="muted sm">رصيد دائن ${fmt(p.d.credit)}</div>` : ''}` },
+          { h: 'ضريبة المبيعات', num: 1, f: (p) => N(p.report.sales.vat) },
+          { h: 'ضريبة المدخلات', num: 1, f: (p) => N(p.report.inVat) },
+          { h: 'صافي الفترة', num: 1, f: (p) => N(p.net) },
+          { h: 'مرحّل من قبل', num: 1, f: (p) => (p.carried < -0.005 ? `${N(p.carried)}<div class="muted sm">رصيد دائن لك</div>` : '—') },
+          { h: 'المستحق للسداد', num: 1, f: (p) => `<b>${N(p.due)}</b>${p.credit ? `<div class="muted sm">رصيد دائن ${fmt(p.credit)}</div>` : ''}` },
           { h: 'آخر موعد', f: (p) => dt(RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1))) },
-          { h: 'السداد', f: (p) => (p.to >= today() ? chip('الفترة جارية', 'mute') : p.d.paid ? chip('مسدد ' + fmt(p.d.paid), p.d.settled ? 'good' : 'warn') : p.d.due > 0.01 ? btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(p.label)}"`, 'sm') : chip('لا يوجد مستحق', 'good')) },
+          {
+            h: 'السداد',
+            f: (p) => {
+              if (p.to >= today()) return chip('الفترة جارية', 'mute');
+              const b = btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(p.label)}"`, 'sm');
+              if (p.paid) return chip('مسدد ' + fmt(p.paid), p.settled ? 'good' : 'warn') + (p.settled ? '' : `<div class="muted sm">المتبقي ${fmt(p.remaining)}</div>${b}`);
+              return p.due > 0.01 ? b : chip('لا يوجد مستحق', 'good');
+            },
+          },
         ],
-        pers.map((p) => ({ ...p, d: RB.vatDue(S, p, ledger(p.to)) })),
+        pers,
         { empty: 'لا توجد فترات.' }
       ),
       { sub: 'آخر موعد لتقديم الإقرار والسداد: نهاية الشهر التالي للفترة. الرصيد الدائن (ضريبة مدخلات أكبر من المبيعات، مثل فترة التأسيس) يُرحّل ويُخصم من الفترات التالية، إلا إذا طلبت استرداده.' }
@@ -1443,8 +1469,8 @@
     return h;
   };
   REPORT.breakeven = () => {
-    const [from, to] = range();
-    const e = RB.breakEven(S, from, minD(to, today()), ledger(minD(to, today())));
+    const [from, asOf] = rangeToDate();
+    const e = RB.breakEven(S, from, asOf, ledger(asOf));
     const body = `<div class="pv-grid three"><div><span>المصاريف الثابتة شهرياً</span>${money(e.fixedMonthly)}</div><div><span>المصاريف المتغيرة</span><b class="n">${pct(e.varRatio * 100)}</b><small>المواد + العمولات من المبيعات</small></div><div><span>هامش المساهمة</span><b class="n">${pct((1 - e.varRatio) * 100)}</b><small>ما يبقى من كل ريال لتغطية الثابت</small></div></div>
       <div class="be-hero"><div><span>مبيعات التعادل الشهرية (شاملة الضريبة)</span><b class="n">${fmt(e.beGross)}</b> <small>${cur()}</small></div><div><span>يومياً</span><b class="n">${fmt(e.beDaily)}</b></div><div><span>طلبات يومياً تقريباً</span><b class="n">${e.avgTicket ? fmt0(e.beOrders / 30) : '—'}</b></div></div>
       <p class="note">${e.revenue ? (e.safety >= 0 ? `مبيعاتك أعلى من نقطة التعادل بنسبة ${pct(e.safety)} (هامش الأمان).` : `مبيعاتك أقل من نقطة التعادل بنسبة ${pct(-e.safety)}.`) : 'سجّل مبيعات ومصاريف لحساب نقطة التعادل.'}</p>`;
@@ -1457,8 +1483,8 @@
     return card('نقطة التعادل', body, { sub: `محسوبة من أرقام الفترة (${periodLabel()})` }) + card('المصاريف الثابتة الشهرية', hbars(parts, { total: e.fixedMonthly }));
   };
   REPORT.menu = () => {
-    const [from, to] = range();
-    const m = RB.menuAnalysis(S, from, to, ledger(to));
+    const [from, asOf] = rangeToDate();
+    const m = RB.menuAnalysis(S, from, asOf, ledger(asOf));
     if (!m.hasItems) return card('تحليل المنيو', `<div class="empty-box">لتحليل المنيو سجّل الكميات المباعة من كل صنف في الإقفال اليومي (قسم «الأصناف المباعة»).</div>`);
     const cls = (c) => chip(RB.MENU_CLASS[c].name, { star: 'good', plow: 'accent', puzzle: 'warn', dog: 'bad' }[c]);
     let h = card(
@@ -1499,11 +1525,12 @@
   REPORT.monthly = () => {
     const [from, to] = range();
     let a = from.slice(0, 7);
-    const b = to.slice(0, 7);
-    if (a === b) a = RB.ymAdd(b, -5);
+    // لا أعمدة لأشهر لم تأتِ بعد، والشهر الجاري حتى اليوم
+    const b = minD(to, today()).slice(0, 7);
+    if (a >= b) a = RB.ymAdd(b, -5);
     const months = [];
     for (let ym = a; ym <= b && months.length < 24; ym = RB.ymAdd(ym, 1)) months.push(ym);
-    const L = ledger(RB.monthEnd(b));
+    const L = ledger(minD(RB.monthEnd(b), today()));
     const incs = months.map((ym) => RB.incomeStatement(S, ym + '-01', RB.monthEnd(ym), L));
     const row = (label, f, cls) => `<tr class="${cls || ''}"><td>${label}</td>${incs.map((i) => `<td class="num">${f(i)}</td>`).join('')}</tr>`;
     const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th>${months.map((m) => `<th class="num">${RB.monthName(m)}</th>`).join('')}</tr></thead><tbody>
@@ -1517,8 +1544,8 @@
     return card('مقارنة الأشهر', body, { sub: a === from.slice(0, 7) ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: RB.MONTHS[+m.slice(5, 7) - 1], v: Math.max(incs[i].net, 0), tip: `${RB.monthName(m)}: ${fmt(incs[i].net)} ${S.settings.currency}` })), label: 'صافي الربح الشهري' }), { sub: 'الأشهر الخاسرة تظهر بدون عمود.' });
   };
   REPORT.trial = () => {
-    const [from, to] = range();
-    const t = RB.trialBalance(S, from, to, ledger(to));
+    const [from, asOf] = rangeToDate();
+    const t = RB.trialBalance(S, from, asOf, ledger(asOf));
     return card(
       'ميزان المراجعة (حركة الفترة)',
       table(
@@ -1534,8 +1561,8 @@
     );
   };
   REPORT.journal = () => {
-    const [from, to] = range();
-    const es = ledger(to).entries.filter((e) => e.date >= from && e.date <= to);
+    const [from, asOf] = rangeToDate();
+    const es = ledger(asOf).entries.filter((e) => e.date >= from && e.date <= asOf);
     const shown = es.slice(-300).reverse();
     const body = shown
       .map(
@@ -1554,7 +1581,7 @@
     let h = pageHead('الإعدادات والنسخ الاحتياطي', 'بيانات المطعم، الضريبة، نسب التأمينات، قنوات البيع، والنسخ الاحتياطي');
     h += `<div class="grid2">`;
     h += card('بيانات المطعم', kv('الاسم', esc(st.name)) + kv('المدينة', esc(st.city || '—')) + kv('السجل التجاري', esc(st.crNumber || '—')) + kv('تاريخ الافتتاح', st.openingDate ? dtText(st.openingDate) : '—') + kv('مستهدف تكلفة الطعام', pct(st.targetFoodCost, 0)) + kv('تقريب السعر المقترح', fmt(st.priceRounding) + ' ' + cur()), { actions: btn('تعديل', 'settings', 'data-v="general"', 'sm') });
-    h += card('ضريبة القيمة المضافة', kv('مسجل في الضريبة', st.vatRegistered ? 'نعم' : 'لا') + kv('الرقم الضريبي', esc(st.vatNumber || '—')) + kv('النسبة', pct(st.vatRate, 0)) + kv('فترة الإقرار', st.vatPeriod === 'monthly' ? 'شهرية' : 'ربع سنوية') + kv('ضريبة على العمولات والرسوم', st.feeVat ? 'نعم' : 'لا'), { actions: btn('تعديل', 'settings', 'data-v="vat"', 'sm') });
+    h += card('ضريبة القيمة المضافة', kv('مسجل في الضريبة', st.vatRegistered ? 'نعم' : 'لا') + (st.vatRegistered ? kv('سريان التسجيل', st.vatRegisteredFrom ? dtText(st.vatRegisteredFrom) : 'منذ البداية') : '') + kv('الرقم الضريبي', esc(st.vatNumber || '—')) + kv('النسبة', pct(st.vatRate, 0)) + kv('فترة الإقرار', st.vatPeriod === 'monthly' ? 'شهرية' : 'ربع سنوية') + kv('ضريبة على العمولات والرسوم', st.feeVat ? 'نعم' : 'لا'), { actions: btn('تعديل', 'settings', 'data-v="vat"', 'sm') });
     h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
     h += card(
       'الحفظ والنسخ الاحتياطي',
@@ -1632,9 +1659,12 @@
       ],
       preview: (v) => {
         const sch = RB.depSchedule(Object.assign({}, v, { date: v.date || today() }), S);
-        return vatPreview(v.amount, v.includesVat, v.taxable) + (sch.monthly ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>` : `<p class="note">لا يُستهلك هذا الأصل.</p>`);
+        return vatPreview(v.amount, v.includesVat, v.taxable, v.date) + (sch.monthly ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>` : `<p class="note">لا يُستهلك هذا الأصل.</p>`);
       },
-      onSave: (v) => upsert('assets', v),
+      onSave: (v) => {
+        if (v.account === 'payable' && !(v.supplier || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';
+        upsert('assets', v);
+      },
     });
 
   FORMS.expenses = (rec, x) => {
@@ -1671,10 +1701,11 @@
       ],
       preview: (v) => {
         const months = Math.max(1, Math.round(num(v.months) || 1));
-        const c = RB.costSplit(v.amount, v.includesVat, v.taxable, S.settings);
-        return vatPreview(v.amount, v.includesVat, v.taxable) + (months > 1 ? `<p class="note">يُوزّع على ${months} شهر: <b class="n">${fmt(c.cost / months)}</b> ${cur()} شهرياً، والتغطية حتى ${dtText(RB.coverageEnd(v.startDate || v.date || today(), months))}.</p>` : '');
+        const c = RB.costSplit(v.amount, v.includesVat, v.taxable, S.settings, v.date || today());
+        return vatPreview(v.amount, v.includesVat, v.taxable, v.date) + (months > 1 ? `<p class="note">يُوزّع على ${months} شهر: <b class="n">${fmt(c.cost / months)}</b> ${cur()} شهرياً، والتغطية حتى ${dtText(RB.coverageEnd(v.startDate || v.date || today(), months))}.</p>` : '');
       },
       onSave: (v) => {
+        if (v.account === 'payable' && !(v.entity || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';
         delete v.preset;
         upsert('expenses', v);
       },
@@ -1729,7 +1760,7 @@
         }
       },
       fields: [
-        { type: 'row', fields: [{ k: 'month', type: 'month', label: 'الشهر', req: 1, redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الصرف', req: 1 }, { k: 'account', type: 'select', label: 'صُرفت من', options: payOptions(false, false) }, { k: 'gosiAccount', type: 'select', label: 'التأمينات سُددت من', options: payOptions(false, false) }] },
+        { type: 'row', fields: [{ k: 'month', type: 'month', label: 'الشهر', req: 1, redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الصرف', req: 1, help: 'تُحمَّل التكلفة على الشهر المختار مهما كان تاريخ الصرف' }, { k: 'account', type: 'select', label: 'صُرفت من', options: payOptions(false, false) }, { k: 'gosiAccount', type: 'select', label: 'التأمينات سُددت من', options: payOptions(false, false) }] },
         {
           k: 'lines',
           type: 'lines',
@@ -1802,7 +1833,7 @@
             { k: 'price', label: 'سعر الوحدة', type: 'num', num: 1 },
             { k: 'total', label: 'المجموع', num: 1, calc: (row) => fmt(num(row.qty) * num(row.price)) },
           ],
-          foot: (v) => vatPreview(RB.purchaseTotal(v), v.includesVat, v.taxable),
+          foot: (v) => vatPreview(RB.purchaseTotal(v), v.includesVat, v.taxable, v.date),
           help: 'اربط السطر بالمادة الخام لتتحدث تكلفتها تلقائياً. الكمية بوحدة الشراء (كرتون، كيس…).',
         },
         { k: 'updatePrices', type: 'check', label: 'تحديث أسعار المواد الخام من هذه الفاتورة' },
@@ -2065,7 +2096,7 @@
         let fee = 0;
         let orders = 0;
         for (const id of Object.keys(v.channels)) {
-          const x = RB.saleChannelSplit(S, id, v.channels[id]);
+          const x = RB.saleChannelSplit(S, id, v.channels[id], v.date || today());
           gross += x.gross;
           vat += x.outVat;
           fee += x.fee + x.feeVat;
@@ -2080,7 +2111,8 @@
           const x = v.channels[id];
           if (!num(x.amount) && !num(x.orders)) continue;
           const c = RB.channelOf(S, id) || {};
-          out[id] = { amount: num(x.amount), orders: num(x.orders), feePct: x.feePct !== undefined && x.feePct !== '' ? num(x.feePct) : num(c.feePct), type: x.type || c.type };
+          // نسبة العمولة وضريبتها تُحفظ مع الإقفال، فتعديل الإعدادات لاحقاً لا يغيّر الأيام السابقة
+          out[id] = { amount: num(x.amount), orders: num(x.orders), feePct: x.feePct !== undefined && x.feePct !== '' ? num(x.feePct) : num(c.feePct), type: x.type || c.type, feeVat: x.feeVat !== undefined ? !!x.feeVat : !!S.settings.feeVat };
         }
         if (!Object.keys(out).length) return 'أدخل مبيعات قناة واحدة على الأقل.';
         v.channels = out;
@@ -2131,15 +2163,24 @@
     });
 
   FORMS.vatPayments = (rec, x) => {
-    const pers = RB.vatPeriodsBetween(S, RB.addDays(today(), -400), today()).filter((p) => p.to < today());
-    const per = pers.find((p) => p.label === x) || pers[pers.length - 1];
-    const d = per ? RB.vatDue(S, per, ledger(per.to)) : null;
-    const due = d ? r2(d.due - d.paid) : '';
+    const t = today();
+    // الفترات المنتهية مع المتبقي من كل إقرار (بعد خصم الرصيد الدائن وما سُدد)
+    let pers = RB.vatReturns(S, t, ledger(t)).filter((p) => p.to < t);
+    if (!pers.length) pers = RB.vatPeriodsBetween(S, RB.addDays(t, -400), t).filter((p) => p.to < t).map((p) => Object.assign({ remaining: 0 }, p));
+    const per = pers.find((p) => p.label === x) || pers.filter((p) => p.remaining > 0).pop() || pers[pers.length - 1];
+    const due = per ? r2(per.remaining) : 0;
+    const labels = pers.map((p) => p.label).reverse();
+    if (rec && rec.period && !labels.includes(rec.period)) labels.unshift(rec.period);
     return formModal({
       title: rec ? 'تعديل سداد الضريبة' : 'سداد ضريبة القيمة المضافة',
-      value: rec || { id: RB.uid(), date: today(), period: per ? per.label : '', account: 'bank', amount: due > 0 ? due : '', note: '' },
+      value: rec || { id: RB.uid(), date: t, period: per ? per.label : '', account: 'bank', amount: due > 0 ? due : '', note: '' },
+      onChange: (p, v) => {
+        if (p !== 'period' || rec) return;
+        const q = pers.find((z) => z.label === v.period);
+        v.amount = q && q.remaining > 0 ? r2(q.remaining) : '';
+      },
       fields: [
-        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: pers.map((p) => p.label).reverse() }] },
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: labels, redraw: true }] },
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ المسدد', req: 1, help: 'استرداد من الهيئة؟ أدخله بالسالب' }, { k: 'account', type: 'select', label: 'من / إلى', options: payOptions(false, false) }] },
         { k: 'note', label: 'ملاحظة' },
       ],
@@ -2175,8 +2216,16 @@
         { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح', help: 'يبدأ منه إهلاك الأصول، ويفصل مصاريف ما قبل الافتتاح' }, { k: 'currency', label: 'العملة' }] },
         { type: 'row', fields: [{ k: 'targetFoodCost', type: 'num', label: 'مستهدف تكلفة الطعام %', min: 1, help: 'شائع في مطاعم البرقر بين 28% و35%' }, { k: 'priceRounding', type: 'num', label: 'تقريب السعر المقترح لأقرب', min: 0.25, help: '1 = لأقرب ريال' }] },
       ],
-      vat: [
-        { k: 'vatRegistered', type: 'check', label: 'المطعم مسجل في ضريبة القيمة المضافة' },
+      vat: (v) => [
+        { k: 'vatRegistered', type: 'check', label: 'المطعم مسجل في ضريبة القيمة المضافة', redraw: true },
+        {
+          k: 'vatRegisteredFrom',
+          type: 'date',
+          label: 'تاريخ سريان التسجيل في الضريبة (من شهادة التسجيل)',
+          show: (x) => x.vatRegistered,
+          req: !st.vatRegistered && v.vatRegistered && hasVatData() ? 1 : 0,
+          help: 'اتركه فارغاً إن كان المطعم مسجلاً منذ البداية؛ العمليات قبله بلا ضريبة مخرجات ولا تُسترد ضريبة مشترياتها',
+        },
         { type: 'row', fields: [{ k: 'vatNumber', label: 'الرقم الضريبي' }, { k: 'vatRate', type: 'num', label: 'نسبة الضريبة %', min: 0 }] },
         { k: 'vatPeriod', type: 'select', label: 'فترة الإقرار', options: [['quarterly', 'ربع سنوية'], ['monthly', 'شهرية']] },
         { k: 'feeVat', type: 'check', label: 'عمولات التطبيقات ورسوم الشبكة عليها ضريبة قيمة مضافة' },
@@ -2194,11 +2243,26 @@
       title: { general: 'بيانات المطعم', vat: 'ضريبة القيمة المضافة', labor: 'التأمينات ورسوم العمالة' }[which],
       value: clone(st),
       fields: defs[which],
-      onSave: (v) => {
+      onChange: (p, v) => {
+        // تسجيل جديد ولدى المطعم عمليات سابقة: السريان من اليوم حتى لا تتغير الفترات الماضية
+        if (which === 'vat' && p === 'vatRegistered' && v.vatRegistered && !st.vatRegistered && hasVatData() && !v.vatRegisteredFrom) v.vatRegisteredFrom = today();
+      },
+      onSave: async (v) => {
+        if (which === 'vat' && vatHistoryChanges(st, v) && !(await confirmBox('تغيير التسجيل أو النسبة يعيد حساب الإيرادات والتكلفة وإقرارات الضريبة لكل الفترات السابقة. لتسجيل جديد استخدم تاريخ السريان بدل ذلك. متابعة؟', { danger: true }))) return false;
         S.settings = Object.assign(S.settings, v);
         saveSettings();
       },
     });
+  }
+  const hasVatData = () => S.sales.length > 0 || S.purchases.length > 0;
+  // هل يغيّر تعديل إعدادات الضريبة أرقام عمليات مسجلة سابقاً؟
+  function vatHistoryChanges(old, v) {
+    const dated = [...S.sales, ...S.purchases, ...S.expenses, ...S.assets, ...S.payouts].filter((r) => r.date);
+    if (!dated.length) return false;
+    if (num(v.vatRate) !== num(old.vatRate)) return true;
+    if (dated.some((r) => RB.isVatReg(old, r.date) !== RB.isVatReg(v, r.date))) return true;
+    // ضريبة العمولة: تؤثر فقط على الإقفالات القديمة التي لم تُحفظ معها
+    return !!v.feeVat !== !!old.feeVat && S.sales.some((s) => Object.keys(s.channels || {}).some((id) => s.channels[id] && s.channels[id].feeVat === undefined && RB.saleChannelSplit(S, id, s.channels[id], s.date).fee > 0));
   }
 
   // ═════════════ الأحداث ═════════════
@@ -2374,13 +2438,13 @@
       fields: [
         { type: 'html', html: () => '<p class="note">تبدأ بدفتر فارغ (قنوات البيع والتصنيفات جاهزة). البيانات التجريبية لن تُحفظ.</p>' },
         { k: 'name', label: 'اسم المطعم', req: 1 },
-        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح (أو المتوقع)' }, { k: 'vatRegistered', type: 'check', label: 'مسجل في ضريبة القيمة المضافة' }] },
+        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح (أو المتوقع)' }, { k: 'vatRegistered', type: 'check', label: 'مسجل في ضريبة القيمة المضافة', help: 'يُعتبر التسجيل سارياً من تاريخ الافتتاح، وتقدر تعدّل تاريخ السريان من الإعدادات.' }] },
         { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %' }] },
         { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني' }, { k: 's2', type: 'num', label: 'نسبته %' }] },
       ],
       onSave: async (v) => {
         const st = RB.emptyState();
-        Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, startedAt: new Date().toISOString() });
+        Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, vatRegisteredFrom: v.vatRegistered ? v.openingDate || '' : '', startedAt: new Date().toISOString() });
         st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: num(v.s1), phone: '', note: '' });
         if (v.p2 && v.p2.trim()) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: num(v.s2), phone: '', note: '' });
         await replaceAll(st);
@@ -2419,6 +2483,8 @@
 
   function exportCSV(what) {
     const [from, to] = range();
+    const asOf = minD(to, today());
+    let end = to;
     let rows = [];
     let name = what;
     if (what === 'expenses') {
@@ -2442,40 +2508,43 @@
       name = 'المبيعات';
     } else if (what === 'statement') {
       const acc = ui.cashAcc === '1102' ? '1102' : '1101';
-      const st = RB.accountStatement(S, acc, from, to, ledger(to));
+      const st = RB.accountStatement(S, acc, from, asOf, ledger(asOf));
       rows.push(['التاريخ', 'البيان', 'داخل', 'خارج', 'الرصيد']);
       rows.push([from, 'رصيد أول الفترة', '', '', st.opening]);
       st.rows.forEach((r) => rows.push([r.date, r.desc, r.in, r.out, r.balance]));
       name = acc === '1101' ? 'كشف-الصندوق' : 'كشف-البنك';
+      end = asOf;
     } else {
-      const L = ledger(to);
+      // التقارير مقطوعة عند اليوم مثل ما تعرضه الشاشة
+      const L = ledger(asOf);
       const rep = ui.report;
+      end = asOf;
       if (rep === 'journal') {
         rows.push(['التاريخ', 'البيان', 'الحساب', 'مدين', 'دائن']);
-        L.entries.filter((e) => e.date >= from && e.date <= to).forEach((e) => e.lines.forEach((l) => rows.push([e.date, e.desc, RB.accInfo(l.a, S).name, l.v > 0 ? l.v : '', l.v < 0 ? -l.v : ''])));
+        L.entries.filter((e) => e.date >= from && e.date <= asOf).forEach((e) => e.lines.forEach((l) => rows.push([e.date, e.desc, RB.accInfo(l.a, S).name, l.v > 0 ? l.v : '', l.v < 0 ? -l.v : ''])));
       } else if (rep === 'trial') {
-        const t = RB.trialBalance(S, from, to, L);
+        const t = RB.trialBalance(S, from, asOf, L);
         rows.push(['الرمز', 'الحساب', 'مدين', 'دائن']);
         t.rows.forEach((r) => rows.push([r.code, r.name, r.dr, r.cr]));
       } else if (rep === 'balance') {
-        const b = RB.balanceSheet(S, minD(to, today()), ledger(minD(to, today())));
+        const b = RB.balanceSheet(S, asOf, L);
         rows.push(['القسم', 'البند', 'المبلغ']);
         b.cur.forEach((x) => rows.push(['أصول متداولة', x.name, x.amount]));
         b.fixed.forEach((x) => rows.push(['أصول ثابتة', x.name, x.amount]));
         b.liab.forEach((x) => rows.push(['التزامات', x.name, x.amount]));
         b.equity.forEach((x) => rows.push(['حقوق الشركاء', x.name, x.amount]));
       } else if (rep === 'vat') {
-        const v = RB.vatReport(S, from, to, L);
+        const v = RB.vatReport(S, from, asOf, L);
         rows.push(['البند', 'المبلغ الخاضع', 'الضريبة']);
         rows.push(['المبيعات', v.sales.base, v.sales.vat]);
         Object.keys(v.inputs).forEach((k) => rows.push(['مدخلات: ' + k, v.inputs[k].base, v.inputs[k].vat]));
         rows.push(['الصافي', '', v.net]);
       } else if (rep === 'menu') {
-        const m = RB.menuAnalysis(S, from, to, L);
+        const m = RB.menuAnalysis(S, from, asOf, L);
         rows.push(['الصنف', 'الكمية', 'ربح الحبة', 'إجمالي الربح', 'تكلفة الطعام %', 'التصنيف']);
         m.rows.forEach((r) => rows.push([r.name, r.qty, r.profit, r.totalProfit, r.foodCost, RB.MENU_CLASS[r.cls].name]));
       } else {
-        const inc = RB.incomeStatement(S, from, to, L);
+        const inc = RB.incomeStatement(S, from, asOf, L);
         rows.push(['القسم', 'البند', 'المبلغ']);
         rows.push(['الإيرادات', 'المبيعات بدون الضريبة', inc.revenue]);
         Object.keys(RB.GROUPS).forEach((g) => inc.groups[g].forEach((x) => rows.push([RB.GROUPS[g], x.name, x.amount])));
@@ -2483,7 +2552,7 @@
       }
       name = (REPORTS.find((r) => r[0] === rep) || ['', 'تقرير'])[1];
     }
-    saveFile(`${name}-${from}-${to}.csv`.replace(/\s+/g, '-'), RB.toCSV(rows));
+    saveFile(`${name}-${from}-${end}.csv`.replace(/\s+/g, '-'), RB.toCSV(rows));
   }
 
   function importFile(file) {
