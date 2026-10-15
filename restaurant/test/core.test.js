@@ -2012,3 +2012,62 @@ test('نسبة الشريك: لا تكون سالبة ولا أكثر من 100،
   const rep = RB.partnersReport(S, '2026-01-01', '2026-12-31');
   assert.deepEqual(rep.rows.map((x) => RB.r2(x.share)), [0.6, 0.4, 0]);
 });
+
+test('دفتر واحد لكل نسخة من البيانات: كل تقرير يقطع الدفتر الكامل بتواريخه فتتطابق أرقامه مع الدفتر المقطوع (WP5)', () => {
+  const TODAY = '2026-10-14';
+  const S = RB.normalize(RB.demoState(TODAY));
+  const pid = S.partners[0].id;
+  // دفعها الشريك من حسابه بعد نهاية الفترة: لا تدخل في «منها دفعها مباشرة» ولا في مساهمته حتى تاريخها
+  S.expenses.push({ id: 'fx', date: '2026-12-15', category: 'maintenance', amount: 1000, includesVat: true, taxable: true, account: 'partner:' + pid, desc: 'دفعة لاحقة' });
+  const full = RB.buildLedger(S, '9999-12-31');
+  const to = '2026-10-14';
+  const cut = RB.partnersReport(S, '2026-10-01', to, RB.buildLedger(S, to));
+  assert.deepEqual(RB.partnersReport(S, '2026-10-01', to, full), cut);
+  const later = RB.partnersReport(S, '2026-10-01', '2026-12-31', full);
+  close(later.rows[0].direct - cut.rows[0].direct, 1000);
+  // باقي التقارير تقطع الدفتر بتواريخها أصلاً
+  const ranges = [['2026-10-01', '2026-10-31'], ['2026-01-01', '2026-12-31'], ['2026-09-01', '2026-09-30'], ['2026-07-01', '2026-09-30']];
+  for (const [from, end] of ranges) {
+    const asOf = end < TODAY ? end : TODAY;
+    const Lto = RB.buildLedger(S, end);
+    const La = RB.buildLedger(S, asOf);
+    assert.deepEqual(RB.incomeStatement(S, from, asOf, full), RB.incomeStatement(S, from, asOf, La), from + ' income');
+    assert.deepEqual(RB.balanceSheet(S, asOf, full), RB.balanceSheet(S, asOf, La), from + ' balance');
+    assert.deepEqual(RB.trialBalance(S, from, end, full), RB.trialBalance(S, from, end, Lto), from + ' trial');
+    assert.deepEqual(RB.vatReport(S, from, end, full), RB.vatReport(S, from, end, Lto), from + ' vat');
+    for (const acc of ['1101', '1102']) assert.deepEqual(RB.accountStatement(S, acc, from, asOf, full), RB.accountStatement(S, acc, from, asOf, La), from + ' ' + acc);
+    assert.deepEqual(RB.breakEven(S, from, asOf, full, TODAY), RB.breakEven(S, from, asOf, La, TODAY), from + ' breakEven');
+    assert.deepEqual(RB.partnersReport(S, from, asOf, full), RB.partnersReport(S, from, asOf, La), from + ' partners');
+    assert.deepEqual(RB.menuAnalysis(S, from, asOf, full), RB.menuAnalysis(S, from, asOf, La), from + ' menu');
+    assert.deepEqual(RB.balances(full.entries, null, asOf), RB.balances(La.entries, null, asOf), from + ' balances');
+  }
+  assert.deepEqual(RB.vatReturns(S, TODAY, full), RB.vatReturns(S, TODAY, RB.buildLedger(S, TODAY)));
+  assert.deepEqual(RB.capitalUses(S, full), RB.capitalUses(S));
+});
+
+test('خطوات البداية: دفتر جديد بعد المعالج كل خطواته مطلوبة، والمنتجات المجمّعة اختيارية (WP5)', () => {
+  // ما يكتبه معالج البداية: الإعدادات والشريكان فقط
+  const S = RB.emptyState();
+  Object.assign(S.settings, { name: 'مطعم', startedAt: '2026-10-15T00:00:00Z' });
+  S.partners = [{ id: 'p1', name: 'أ', share: 50 }, { id: 'p2', name: 'ب', share: 50 }];
+  let st = RB.setupSteps(S);
+  assert.deepEqual(st.steps.map((x) => x.id), ['settings', 'capital', 'assets', 'fixed', 'staff', 'raw', 'composites', 'products', 'sales']);
+  assert.equal(st.done, 0);
+  assert.equal(st.pending, true);
+  // حفظ الإعدادات يكمل الخطوة الأولى، وسحب الشريك ليس إيداعاً، والسجل المعيب لا يُعد
+  S.settings.reviewedAt = '2026-10-15T08:00:00Z';
+  S.capital.push({ id: 'w', date: '2026-10-01', partnerId: 'p1', type: 'withdrawal', amount: 10, account: 'bank' });
+  S.expenses.push({ id: 'r', date: 'x', _bad: ['date'], category: 'rent', amount: 100 });
+  st = RB.setupSteps(S);
+  assert.deepEqual(st.steps.filter((x) => x.done).map((x) => x.id), ['settings']);
+  // كل الخطوات المطلوبة مكتملة: لا شيء معلّق ولو لم توجد منتجات مجمّعة
+  const D = RB.normalize(RB.demoState('2026-10-14'));
+  D.settings.reviewedAt = '2026-10-15T08:00:00Z';
+  D.composites = [];
+  st = RB.setupSteps(D);
+  assert.equal(st.pending, false);
+  assert.deepEqual(st.steps.filter((x) => !x.done).map((x) => x.id), ['composites']);
+  // رسوم حكومية وحدها تكمل خطوة «الإيجار والسكن والرسوم الحكومية»
+  S.expenses.push({ id: 'g', date: '2026-10-02', category: 'gov', amount: 300 });
+  assert.ok(RB.setupSteps(S).steps.find((x) => x.id === 'fixed').done);
+});

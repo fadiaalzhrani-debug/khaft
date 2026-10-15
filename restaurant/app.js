@@ -113,13 +113,21 @@
       if (r.date > hi) hi = r.date;
     }
     // أول قيد قد يسبق أول تاريخ مسجل (مثل إيجار تبدأ تغطيته قبل تاريخ دفعه)
-    const first = ledger(hi).entries[0];
+    const first = ledger().entries[0];
     if (first && first.date < lo) lo = first.date;
     boundsCache = { v: VER, t, b: [lo, hi] };
     return [lo, hi];
   }
-  function range() {
+  // الفترة تُحسب مرة لكل (نسخة البيانات، الفترة المختارة، اليوم): inRange تُستدعى لكل سجل في القوائم الطويلة
+  let rangeCache = null;
+  function rangeRef() {
     const t = today();
+    const k = VER + '|' + ui.period + '|' + ui.from + '|' + ui.to + '|' + t;
+    if (!rangeCache || rangeCache.k !== k) rangeCache = { k, r: calcRange(t) };
+    return rangeCache.r;
+  }
+  const range = () => rangeRef().slice();
+  function calcRange(t) {
     const ym = t.slice(0, 7);
     switch (ui.period) {
       case 'prev': {
@@ -151,8 +159,8 @@
     return [from, minD(to, today())];
   }
   const inRange = (d) => {
-    const [a, b] = range();
-    return d >= a && d <= b;
+    const r = rangeRef();
+    return d >= r[0] && d <= r[1];
   };
   function periodLabel() {
     const [a, b] = range();
@@ -162,15 +170,12 @@
     return dtText(a) + ' — ' + dtText(b);
   }
 
-  // دفتر القيود محفوظ مؤقتاً حتى يتغير شيء
-  const ledgerCache = {};
-  function ledger(asOf) {
-    const k = VER + '|' + asOf;
-    if (!ledgerCache[k]) {
-      for (const key of Object.keys(ledgerCache)) delete ledgerCache[key];
-      ledgerCache[k] = RB.buildLedger(S, asOf);
-    }
-    return ledgerCache[k];
+  // دفتر قيود واحد لكل نسخة من البيانات، بكل القيود بلا قطع بتاريخ: كل تقرير يقطعه بتواريخه
+  // (الفترة، أو اليوم، أو نهاية الإقرار)، فلا يُعاد بناؤه مع تغيّر الفترة أو إعادة الرسم
+  let ledgerCache = null;
+  function ledger() {
+    if (!ledgerCache || ledgerCache.v !== VER) ledgerCache = { v: VER, L: RB.buildLedger(S, '9999-12-31') };
+    return ledgerCache.L;
   }
   let costCache = null;
   function costing() {
@@ -1210,6 +1215,13 @@
   }
   const money = (n) => `<span class="money">${N(n)} <small class="cur">${cur()}</small></span>`;
   const btn = (label, act, attrs, kind) => `<button type="button" class="btn ${kind || ''}" data-act="${act}" ${attrs || ''}>${label}</button>`;
+  // القوائم الطويلة (المشتريات، الإقفالات، المصاريف، الرسوم، التحويلات): يُرسم أحدث ui.rowLimit سطر فقط،
+  // والمجاميع والمؤشرات والفلاتر من القائمة كاملة. «عرض المزيد» يضيف 300، ويعود الحد عند تغيير الصفحة أو الفترة أو الفلتر
+  const ROWS = 300;
+  const rowLimit = () => (ui.rowLimit >= ROWS ? ui.rowLimit : ROWS);
+  const limitRows = (list) => list.slice(0, rowLimit());
+  const moreRows = (n) => (n > rowLimit() ? `<div class="more-rows"><p class="note">يظهر أحدث ${fmt0(rowLimit())} من ${fmt0(n)}</p>${btn('عرض المزيد', 'more', '', 'sm')}</div>` : '');
+  const resetRows = () => (ui.rowLimit = ROWS);
   // أقسام بلا نسخ (⧉): الشريك ونسبته لا يُنسخان
   const NO_DUP = ['partners'];
   const rowActs = (s, id, extra) =>
@@ -1360,6 +1372,18 @@
     wr.classList.toggle('cue-end', max > 1 && x < max - 1);
     wr.classList.toggle('cue-start', max > 1 && x > 1);
   }
+  // التبويب المختار ظاهر في شريط التبويبات الذي يتمرر جانبياً (الشاشات الواسعة): تمرير الشريط نفسه فقط،
+  // لا الصفحة (scrollIntoView كان سيرفع الصفحة إلى الشريط مع كل إعادة رسم بعد حفظ أو تحديث من الشريك)
+  function showActiveTabs(scope) {
+    (scope || document).querySelectorAll('.tabs').forEach((tl) => {
+      const on = tl.querySelector('.tab.on');
+      if (!on || tl.scrollWidth <= tl.clientWidth + 1) return;
+      const r = on.getBoundingClientRect();
+      const c = tl.getBoundingClientRect();
+      if (r.left < c.left) tl.scrollLeft -= c.left - r.left + 12;
+      else if (r.right > c.right) tl.scrollLeft += r.right - c.right + 12;
+    });
+  }
   function afterRender(scope) {
     (scope || document).querySelectorAll('.chart').forEach((el) => {
       const d = CHARTS[el.id];
@@ -1383,11 +1407,37 @@
   const hasOwn = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
   const isPage = (p) => hasOwn(PAGES, p);
 
+  // ─── خطوات البداية: دفتر جديد ما زالت فيه خطوة مطلوبة، حتى تكتمل أو تُخفى ───
+  // لكل خطوة زر يفتح نموذجها أو صفحتها (k: نوع الزر، باهت للمكتملة)
+  const SETUP_STEPS = {
+    settings: { t: 'راجع الإعدادات (الضريبة، التأمينات، عمولات التطبيقات)', note: 'قبل أول إقفال — العمولة تُحفظ مع كل إقفال', b: (k) => btn('الإعدادات', 'go', 'data-v="settings"', k) },
+    capital: { t: 'إيداع رأس المال', b: (k) => btn('+ إيداع رأس مال', 'add', 'data-s="capital" data-x="contribution"', k) },
+    assets: { t: 'الأصول والأثاث', b: (k) => btn('+ أصل', 'add', 'data-s="assets"', k) },
+    fixed: { t: 'الإيجار والسكن والرسوم الحكومية', b: (k) => btn('+ الإيجار', 'add', 'data-s="expenses" data-x="rent"', k) + btn('الرسوم الحكومية', 'go', 'data-v="gov"', 'sm ghost') },
+    staff: { t: 'العمال', b: (k) => btn('+ موظف', 'add', 'data-s="employees"', k) },
+    raw: { t: 'المواد الخام', b: (k) => btn('+ مادة خام', 'add', 'data-s="raw"', k) },
+    composites: { t: 'المنتجات المجمّعة (اختياري)', b: (k) => btn('+ منتج مجمّع', 'add', 'data-s="composites"', k) },
+    products: { t: 'أصناف المنيو', b: (k) => btn('+ صنف في المنيو', 'add', 'data-s="products"', k) },
+    sales: { t: 'أول إقفال يومي', b: (k) => btn('+ إقفال يومي', 'add', 'data-s="sales"', k) },
+  };
+  // لا تظهر في التجربة ولا للعرض فقط (لا يملك إضافة شيء)
+  const setupShown = () => !APP.demo && !APP.readOnly && !S.settings.setupDone && RB.setupSteps(S).pending;
+  function setupCard() {
+    const st = RB.setupSteps(S);
+    const li = st.steps
+      .map((x, i) => {
+        const d = SETUP_STEPS[x.id];
+        return `<li class="step ${x.done ? 'done' : ''}"><span class="step-n" aria-hidden="true">${x.done ? '✓' : i + 1}</span><span class="step-t"><b>${x.done ? '<span class="vh">تمت: </span>' : ''}${d.t}</b>${d.note ? `<small>${d.note}</small>` : ''}</span><span class="step-a">${d.b(x.done ? 'sm ghost' : 'sm')}</span></li>`;
+      })
+      .join('');
+    return card('ابدأ من هنا', `<ol class="steps" role="list">${li}</ol>`, { cls: 'setup', sub: `خطوات تجهيز دفتر المطعم بالترتيب · أنجزت ${st.done} من ${st.steps.length}`, actions: btn('إخفاء', 'setupdone', '', 'sm ghost') });
+  }
+
   // ─── لوحة المتابعة ───
   PAGES.dashboard = () => {
     const [from, to] = range();
     const asOf = minD(to, today());
-    const L = ledger(asOf);
+    const L = ledger();
     const inc = RB.incomeStatement(S, from, asOf, L);
     const sales = RB.salesByChannel(S, from, asOf);
     const bal = RB.balances(L.entries, null, asOf);
@@ -1395,12 +1445,17 @@
     const fcState = !inc.revenue ? '' : fcLevel(inc.ratios.foodCost, target);
     const primeState = !inc.revenue ? '' : inc.ratios.prime > 65 ? 'bad' : inc.ratios.prime > 60 ? 'warn' : 'good';
     const vatBal = -(bal['2102'] || 0);
+    const setup = setupShown();
+    // النسب من المبيعات بلا مبيعات: «—» لا «0%» (الدفتر الجديد قبل أول إقفال، أو فترة بلا مبيعات)
+    const noRev = good(S.sales).length ? 'لا مبيعات في هذه الفترة' : 'يظهر بعد أول إقفال';
+    const dash = '<span class="n">—</span>';
     let h = pageHead('لوحة المتابعة', `${esc(S.settings.name)} · ${periodLabel()}`, btn('+ إقفال يومي', 'add', 'data-s="sales"', 'primary') + btn('+ فاتورة مشتريات', 'add', 'data-s="purchases"') + btn('+ مصروف', 'add', 'data-s="expenses"'));
+    if (setup) h += setupCard();
     h += `<div class="kpis">
       ${kpi('المبيعات شاملة الضريبة', money(sales.total.gross), `${fmt0(sales.total.orders)} طلب · متوسط الفاتورة ${fmt(sales.total.avgTicket)}`)}
-      ${kpi('صافي الربح', money(inc.net), `هامش ${pct(inc.ratios.netMargin)} من المبيعات بدون الضريبة`, inc.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
-      ${kpi('تكلفة المواد', pct(inc.ratios.foodCost), `المستهدف ${pct(target, 0)} · ${fmt(inc.tot.cogs)} ${cur()}`, fcState)}
-      ${kpi('التكلفة الأساسية', pct(inc.ratios.prime), 'المواد + العمالة · الأفضل أقل من 60%', primeState)}
+      ${kpi('صافي الربح', money(inc.net), inc.revenue ? `هامش ${pct(inc.ratios.netMargin)} من المبيعات بدون الضريبة` : 'هامش الربح: ' + noRev, inc.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
+      ${kpi('تكلفة المواد', inc.revenue ? pct(inc.ratios.foodCost) : dash, inc.revenue ? `المستهدف ${pct(target, 0)} · ${fmt(inc.tot.cogs)} ${cur()}` : noRev, fcState)}
+      ${kpi('التكلفة الأساسية', inc.revenue ? pct(inc.ratios.prime) : dash, inc.revenue ? 'المواد + العمالة · الأفضل أقل من 60%' : noRev, primeState)}
     </div>`;
     h += `<div class="kpis small">
       ${kpi('الصندوق (الكاشير)', money(bal['1101'] || 0), 'حتى ' + dtText(asOf), (bal['1101'] || 0) < 0 ? 'bad' : '')}
@@ -1437,7 +1492,7 @@
     const gItems = Object.keys(RB.GROUPS).map((g) => ({ label: RB.GROUPS[g], v: inc.tot[g] })).filter((x) => x.v);
     h += `<div class="grid2">${card('المبيعات حسب القناة', hbars(chItems, { empty: 'لا توجد مبيعات.' }), { sub: typeLine })}${card('أين ذهبت الإيرادات؟', hbars(gItems, { total: inc.revenue, empty: 'لا توجد مصاريف في هذه الفترة.' }), { sub: `النسبة من المبيعات بدون الضريبة (${fmt(inc.revenue)} ${cur()})` })}</div>`;
     // التنبيهات
-    h += card('تنبيهات تحتاج متابعة', alertsHTML(asOf), { sub: 'تجديدات، ضريبة، أسعار، وأرصدة' });
+    h += card('تنبيهات تحتاج متابعة', alertsHTML(asOf, setup), { sub: 'تجديدات، ضريبة، أسعار، وأرصدة' });
     return h;
   };
 
@@ -1454,9 +1509,10 @@
     if (!isFinite(at)) return -1;
     return Date.now() - at > 14 * 86400000 ? Math.floor((Date.now() - at) / 86400000) : null;
   }
-  function alertsHTML(asOf) {
+  // setup: خطوات البداية ظاهرة فوق التنبيهات، فلا «كل شيء تمام» لدفتر لم يُجهَّز بعد
+  function alertsHTML(asOf, setup) {
     const out = [];
-    const bad = badRecords(asOf);
+    const bad = badRecords();
     if (bad.length) out.push(['bad', `سجلات تحتاج تصحيح: <span class="n">${bad.length}</span> — لا تدخل في الحسابات حتى تُصحَّح${fixList(bad, true)}`, '']);
     const bk = backupAge();
     if (bk !== null) out.push(['warn', `${bk < 0 ? 'لم تُؤخذ نسخة احتياطية بعد' : `آخر نسخة احتياطية قبل <span class="n">${bk}</span> يوم`} — مسح بيانات المتصفح يمسح الدفتر`, btn('صدّر الآن', 'backup', '', 'sm')]);
@@ -1468,7 +1524,7 @@
     // إقرارات الضريبة: كل فترة منتهية لم تُسدد وفات موعدها، وآخر فترة منتهية ما زال موعدها قائماً
     if (S.settings.vatRegistered) {
       const t = today();
-      const ended = RB.vatReturns(S, t, ledger(t)).filter((p) => p.to < t);
+      const ended = RB.vatReturns(S, t, ledger()).filter((p) => p.to < t);
       const deadline = (p) => RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1));
       const payBtn = (p) => btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(p.label)}"`, 'sm');
       for (const p of ended) if (!p.settled && deadline(p) < t) out.push(['bad', `إقرار ${esc(p.label)}: المتبقي ${fmt(p.remaining)} ${cur()} — فات موعده`, payBtn(p)]);
@@ -1502,7 +1558,7 @@
       const names = missC.concat(missP).map((r) => esc(r.name));
       out.push(['warn', `وصفات فيها مكوّن محذوف فتكلفتها ناقصة: ${names.slice(0, 4).join('، ')}${names.length > 4 ? '…' : ''} — افتحها واحذف السطر أو اختر مكوّناً آخر.`, btn(missP.length ? 'المنيو والتسعير' : 'المنتجات المجمّعة', 'go', `data-v="${missP.length ? 'products' : 'composites'}"`, 'sm')]);
     }
-    const bal = RB.balances(ledger(asOf).entries, null, asOf);
+    const bal = RB.balances(ledger().entries, null, asOf);
     if ((bal['1101'] || 0) < -0.5) out.push(['bad', 'رصيد الصندوق بالسالب: سجّلت مصروفات نقدية أكثر من الكاش الموجود. راجع الإقفالات والتحويلات.', btn('كشف الصندوق', 'go', 'data-v="cash"', 'sm')]);
     if ((bal['1102'] || 0) < -0.5) out.push(['bad', 'رصيد البنك بالسالب: تأكد من تسجيل إيداعات رأس المال والتحويلات.', btn('كشف البنك', 'go', 'data-v="cash"', 'sm')]);
     for (const a of RB.appReceivables(S, asOf)) {
@@ -1511,7 +1567,7 @@
     const shares = RB.sum(S.partners, (p) => num(p.share));
     if (S.partners.length && Math.abs(shares - 100) > 0.01) out.push(['warn', `مجموع نسب الشركاء ${fmt(shares)}% وليس 100%.`, btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
     out.push(...eosbAlerts(false));
-    if (!out.length) return `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
+    if (!out.length) return setup ? `<div class="empty-box">لا تنبيهات بعد — أكمل خطوات البداية أعلاه.</div>` : `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
     return alertsUL(out);
   }
   // ─── سجلات تحتاج تصحيح: تاريخ ناقص أو غير صالح (_bad)، أو فشل حسابها في الدفتر أو التكلفة ───
@@ -1524,7 +1580,7 @@
   const fieldName = (section, f) => (section === 'employees' && f === 'startDate' ? 'تاريخ المباشرة' : FIELD_NAME[f] || f);
   // سبب التعليم: الحقل ناقص أو قيمته الخام (معزولة الاتجاه فتظهر كما خُزّنت)
   const badWhy = (section, x) => (x._bad || []).map((f) => `${fieldName(section, f)} ${x[f] ? '«' + ltr(String(x[f])) + '» غير صالح' : 'ناقص'}`).join('، ');
-  function badRecords(asOf) {
+  function badRecords() {
     const out = [];
     const seen = new Set();
     const push = (section, rec, why) => {
@@ -1536,7 +1592,7 @@
     for (const k of RB.SECTIONS)
       for (const x of S[k])
         if (x._bad) push(k, x, badWhy(k, x));
-    for (const e of ledger(asOf || today()).errors.concat(costing().errors.filter((x) => x.section))) {
+    for (const e of ledger().errors.concat(costing().errors.filter((x) => x.section))) {
       const rec = e.id !== undefined && e.id !== '' && find(e.section, e.id);
       if (rec) push(e.section, rec, 'تعذّر حسابه');
     }
@@ -1623,9 +1679,9 @@
       .slice(0, 30)
       .map((b) => `<li><span>${withSection ? `<b>${esc(SECTION_NAME[b.section] || b.section)}</b>: ` : ''}${esc(recLabel(b.section, b.rec))} — ${esc(b.why)}</span><span class="al-a">${btn('تصحيح', 'edit', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm')}${btn('حذف', 'del', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm ghost')}</span></li>`)
       .join('')}</ul>${list.length > 30 ? `<p class="note">و${list.length - 30} سجل آخر.</p>` : ''}`;
-  // صندوق «بحاجة لتصحيح» في صفحة القسم (asOf: تاريخ دفتر الصفحة، فلا يُبنى دفتر آخر)
-  const fixCard = (section, asOf) => {
-    const list = badRecords(asOf).filter((b) => b.section === section);
+  // صندوق «بحاجة لتصحيح» في صفحة القسم
+  const fixCard = (section) => {
+    const list = badRecords().filter((b) => b.section === section);
     return list.length ? card('بحاجة لتصحيح', fixList(list, false), { cls: 'fix', sub: 'سجلات بتاريخ ناقص أو غير صالح: لا تدخل في الحسابات ولا في القوائم حتى تصححها أو تحذفها.' }) : '';
   };
   const alertsUL = (out) => `<ul class="alerts">${out.map(([k, t, a]) => `<li class="al ${k}"><span class="al-dot" aria-hidden="true"></span><span class="al-t">${t}</span>${a}</li>`).join('')}</ul>`;
@@ -1656,8 +1712,8 @@
   // ─── الشركاء ورأس المال ───
   PAGES.partners = () => {
     const [from, asOf] = rangeToDate();
-    const uses = RB.capitalUses(S, ledger('9999-12-31'));
-    const rep = RB.partnersReport(S, from, asOf, ledger(asOf));
+    const uses = RB.capitalUses(S, ledger());
+    const rep = RB.partnersReport(S, from, asOf, ledger());
     let h = pageHead('الشركاء ورأس المال', 'رأس المال التأسيسي، مساهمة كل شريك، ونصيبه من الأرباح', btn('+ شريك', 'add', 'data-s="partners"') + btn('+ إيداع رأس مال', 'add', 'data-s="capital" data-x="contribution"', 'primary') + btn('+ سحب شريك', 'add', 'data-s="capital" data-x="withdrawal"'));
     h += card(
       'حصص الشركاء',
@@ -1741,7 +1797,7 @@
       ${kpi('نصيب الطلب الواحد', money(ordersPerMonth ? monthlyDep / ordersPerMonth : 0), ordersPerMonth ? `على أساس ${fmt0(ordersPerMonth)} طلب شهرياً` : 'يظهر بعد تسجيل المبيعات')}
       ${kpi('القيمة الدفترية الحالية', money(RB.sum(catRows, (c) => c.book)), 'التكلفة − الإهلاك المتراكم')}
     </div>`;
-    h += fixCard('assets', asOf);
+    h += fixCard('assets');
     h += card(
       'حسب التصنيف',
       table(
@@ -1784,21 +1840,24 @@
   PAGES.expenses = () => {
     const [from, to] = range();
     const exps = good(S.expenses);
-    const list = exps.filter((x) => inRange(x.date) && (!ui.expCat || x.category === ui.expCat)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    // فلتر محفوظ لتصنيف لم يعد موجوداً لا يُخفي القائمة كلها
+    if (ui.expCat && !RB.EXPENSE_CATS.some((c) => c.id === ui.expCat)) ui.expCat = '';
+    const inPer = exps.filter((x) => inRange(x.date));
+    const list = inPer.filter((x) => !ui.expCat || x.category === ui.expCat).sort((a, b) => (a.date < b.date ? 1 : -1));
     const counts = {};
-    exps.filter((x) => inRange(x.date)).forEach((x) => (counts[x.category] = (counts[x.category] || 0) + 1));
+    inPer.forEach((x) => (counts[x.category] = (counts[x.category] || 0) + 1));
     // المدفوع مقابل المحمّل على الفترة (حتى اليوم) لكل تصنيف
     const asOf = minD(to, today());
-    const b = RB.balances(ledger(asOf).entries, from, asOf);
+    const b = RB.balances(ledger().entries, from, asOf);
     const catRows = RB.EXPENSE_CATS.map((c) => {
-      const paid = RB.sum(exps.filter((x) => x.category === c.id && inRange(x.date)), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
+      const paid = RB.sum(inPer.filter((x) => x.category === c.id), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
       return { c, paid, charged: b[c.acc] || 0 };
     }).filter((r) => r.paid || r.charged);
     // الإيجار والإهلاك يُحمّلان كاملين أول الشهر، فالشهر الجاري يُحسب شهراً كاملاً في المتوسط
     const months = RB.chargeMonths(from, asOf);
     let h = pageHead('المصاريف التشغيلية', 'إيجار المحل وسكن العمال والكهرباء والصيانة والتسويق وغيرها. المصروف المدفوع لعدة أشهر يُوزّع تلقائياً على أشهره.', btn('+ مصروف', 'add', 'data-s="expenses"', 'primary'));
     h += `<div class="quick">${['rent', 'housing', 'utilities', 'telecom', 'maintenance', 'marketing', 'cleaning'].map((k) => btn('+ ' + RB.expenseCat(k).name, 'add', `data-s="expenses" data-x="${k}"`, 'sm ghost')).join('')}</div>`;
-    h += fixCard('expenses', asOf);
+    h += fixCard('expenses');
     h += card(
       'ملخص الفترة',
       table(
@@ -1813,24 +1872,31 @@
       ),
       { sub: '«المدفوع» شامل الضريبة كما خرج من الحساب. «المحمّل» هو نصيب الفترة من المصروف بدون الضريبة المستردة (مثلاً: إيجار 6 أشهر يُحمّل سدسه كل شهر). الرواتب والمشتريات في صفحاتها.' }
     );
-    const filt = `<div class="chips">${[['', 'الكل']].concat(RB.EXPENSE_CATS.filter((c) => counts[c.id]).map((c) => [c.id, `${c.name} (${counts[c.id]})`])).map(([k, l]) => `<button type="button" class="fchip ${ui.expCat === k ? 'on' : ''}" data-act="filter" data-f="expCat" data-v="${k}">${esc(l)}</button>`).join('')}</div>`;
-    h += card('المدفوعات', filt + expensesTable(list), { actions: btn('تصدير CSV', 'csv', 'data-v="expenses"', 'sm ghost') });
+    h += card('المدفوعات', filterChips('expCat', RB.EXPENSE_CATS, counts) + expensesTable(list, ui.expCat ? `لا توجد مصاريف من تصنيف «${esc(RB.expenseCat(ui.expCat).name)}» في هذه الفترة — اختر «الكل».` : 'لا توجد مصاريف في هذه الفترة.'), { actions: btn('تصدير CSV', 'csv', 'data-v="expenses"', 'sm ghost') });
     return h;
   };
-  function expensesTable(list) {
-    return table(
-      [
-        { h: 'التاريخ', f: (x) => dt(x.date) },
-        { h: 'التصنيف', f: (x) => esc(RB.expenseCat(x.category).name) },
-        { h: 'البيان', f: (x) => `${esc(x.desc || '')}${x.entity ? `<div class="muted sm">${esc(x.entity)}${empName(x.employeeId, ' · ')}</div>` : empName(x.employeeId, '<div class="muted sm">') }` },
-        { h: 'المبلغ', num: 1, f: (x) => N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross) },
-        { h: 'الضريبة', num: 1, f: (x) => (x.taxable ? N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).vat) : chip('غير خاضع', 'mute')) },
-        { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${num(x.months)} شهر<div class="muted sm">حتى ${dtText(RB.coverageEnd(x.startDate || x.date, x.months))}</div>` : 'شهر واحد' + (x.startDate && x.startDate.slice(0, 7) !== x.date.slice(0, 7) ? `<div class="muted sm">${esc(RB.monthName(x.startDate.slice(0, 7)))}</div>` : '')) },
-        { h: 'الدفع من', f: (x) => `<span class="muted">${esc(RB.srcLabel(x.account, S))}</span>` },
-        { h: '', cls: 'acts', f: (x) => rowActs('expenses', x.id) },
-      ],
-      list,
-      { cards: 1, empty: 'لا توجد مصاريف بهذا التصنيف في الفترة المحددة.' }
+  // شارات فلتر التصنيف: التصنيفات التي لها سجلات في الفترة، والمختار يبقى ظاهراً ولو صار عدده صفراً
+  // (فلا يبقى فلتر مخفي يُفرغ القائمة). f: مفتاح الفلتر في ui
+  function filterChips(f, cats, counts) {
+    const items = [['', 'الكل']].concat(cats.filter((c) => counts[c.id] || c.id === ui[f]).map((c) => [c.id, `${c.name} (${counts[c.id] || 0})`]));
+    return `<div class="chips">${items.map(([k, l]) => `<button type="button" class="fchip ${ui[f] === k ? 'on' : ''}" data-act="filter" data-f="${f}" data-v="${esc(k)}" aria-pressed="${ui[f] === k}">${esc(l)}</button>`).join('')}</div>`;
+  }
+  function expensesTable(list, empty) {
+    return (
+      table(
+        [
+          { h: 'التاريخ', f: (x) => dt(x.date) },
+          { h: 'التصنيف', f: (x) => esc(RB.expenseCat(x.category).name) },
+          { h: 'البيان', f: (x) => `${esc(x.desc || '')}${x.entity ? `<div class="muted sm">${esc(x.entity)}${empName(x.employeeId, ' · ')}</div>` : empName(x.employeeId, '<div class="muted sm">') }` },
+          { h: 'المبلغ', num: 1, f: (x) => N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross) },
+          { h: 'الضريبة', num: 1, f: (x) => (x.taxable ? N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).vat) : chip('غير خاضع', 'mute')) },
+          { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${num(x.months)} شهر<div class="muted sm">حتى ${dtText(RB.coverageEnd(x.startDate || x.date, x.months))}</div>` : 'شهر واحد' + (x.startDate && x.startDate.slice(0, 7) !== x.date.slice(0, 7) ? `<div class="muted sm">${esc(RB.monthName(x.startDate.slice(0, 7)))}</div>` : '')) },
+          { h: 'الدفع من', f: (x) => `<span class="muted">${esc(RB.srcLabel(x.account, S))}</span>` },
+          { h: '', cls: 'acts', f: (x) => rowActs('expenses', x.id) },
+        ],
+        limitRows(list),
+        { cards: 1, empty: empty || 'لا توجد مصاريف بهذا التصنيف في الفترة المحددة.' }
+      ) + moreRows(list.length)
     );
   }
 
@@ -1878,7 +1944,7 @@
     const saudi = active.filter((e) => e.nationality === 'saudi').length;
     // مخصص نهاية الخدمة المتراكم حتى اليوم (رصيد الحساب 2201) ونصيب كل موظف منه
     const eosb = RB.eosbBalances(S, today());
-    const eosbTotal = -(RB.balances(ledger(today()).entries, null, today())['2201'] || 0);
+    const eosbTotal = -(RB.balances(ledger().entries, null, today())['2201'] || 0);
     let h = pageHead('العمال والرواتب', 'الرواتب والبدلات، التأمينات الاجتماعية، المقابل المالي والإقامات، والتكلفة الحقيقية لكل عامل', btn('+ موظف', 'add', 'data-s="employees"') + btn('+ مسير رواتب', 'add', 'data-s="payroll"', 'primary'));
     h += `<div class="kpis small five">
       ${kpi('عدد العمال النشطين', `<span class="n">${active.length}</span>`, `سعوديون ${saudi} · غير سعوديين ${active.length - saudi}${active.length ? ' · نسبة التوطين ' + pct((saudi / active.length) * 100, 0) : ''}`)}
@@ -1945,10 +2011,17 @@
   // ─── المشتريات ───
   PAGES.purchases = () => {
     const [, to] = range();
+    if (ui.purCat && !RB.PURCHASE_CATS.some((c) => c.id === ui.purCat)) ui.purCat = '';
     const all = good(S.purchases).filter((p) => inRange(p.date));
     const list = all.filter((p) => !ui.purCat || p.category === ui.purCat).sort((a, b) => (a.date < b.date ? 1 : -1));
-    // ضريبة المدخلات حسب تاريخ الفاتورة: قبل سريان التسجيل (أو بدونه) جزء من التكلفة لا تُخصم
-    const sp = (p) => RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings, p.date);
+    // ضريبة المدخلات حسب تاريخ الفاتورة: قبل سريان التسجيل (أو بدونه) جزء من التكلفة لا تُخصم.
+    // تُحسب مرة لكل فاتورة (المجاميع وخانات الجدول الثلاث)
+    const spMap = new Map();
+    const sp = (p) => {
+      let v = spMap.get(p);
+      if (!v) spMap.set(p, (v = RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings, p.date)));
+      return v;
+    };
     const byCat = {};
     const bySrc = {};
     let taxable = 0;
@@ -1983,7 +2056,7 @@
     )}</div>`;
     const counts = {};
     all.forEach((p) => (counts[p.category] = (counts[p.category] || 0) + 1));
-    const filt = `<div class="chips">${[['', 'الكل']].concat(RB.PURCHASE_CATS.filter((c) => counts[c.id]).map((c) => [c.id, `${c.name} (${counts[c.id]})`])).map(([k, l]) => `<button type="button" class="fchip ${ui.purCat === k ? 'on' : ''}" data-act="filter" data-f="purCat" data-v="${k}">${esc(l)}</button>`).join('')}</div>`;
+    const filt = filterChips('purCat', RB.PURCHASE_CATS, counts);
     h += card(
       'الفواتير',
       filt +
@@ -2001,9 +2074,10 @@
             { h: 'الإجمالي', num: 1, f: (p) => `<b>${N(sp(p).gross)}</b>` },
             { h: '', cls: 'acts', f: (p) => rowActs('purchases', p.id) },
           ],
-          list,
-          { cards: 1, empty: 'لا توجد فواتير في هذه الفترة.' }
-        ),
+          limitRows(list),
+          { cards: 1, empty: ui.purCat ? `لا توجد فواتير من تصنيف «${esc(RB.purchaseCat(ui.purCat).name)}» في هذه الفترة — اختر «الكل».` : 'لا توجد فواتير في هذه الفترة.' }
+        ) +
+        moreRows(list.length),
       { actions: btn('تصدير CSV', 'csv', 'data-v="purchases"', 'sm ghost') }
     );
     const sb = RB.supplierBalances(S, minD(to, today()));
@@ -2194,6 +2268,7 @@
         ),
         { sub: `حتى ${dtText(asOf)}. الرصيد = المبيعات − العمولة وضريبتها − ما حُوّل للبنك. إن حوّل التطبيق مبلغاً أقل سجّل الفرق في «خصومات» واختر نوعه: العرض أو المرتجع على الطلبات يخفض المبيعات وضريبتها، ورسوم الإعلان أو الخدمة بفاتورة ضريبية تُسترد ضريبتها، والغرامة أو التسوية بلا ضريبة.` }
       );
+      const pays = good(S.payouts).filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
       h += card(
         'التحويلات',
         table(
@@ -2205,8 +2280,8 @@
             { h: 'ملاحظات', f: (p) => esc(p.note || '') },
             { h: '', cls: 'acts', f: (p) => rowActs('payouts', p.id) },
           ],
-          good(S.payouts).filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? 1 : -1))
-        )
+          limitRows(pays)
+        ) + moreRows(pays.length)
       );
       return h;
     }
@@ -2223,14 +2298,14 @@
     if (compact) cols.push({ h: 'التطبيقات', num: 1, f: (s) => N(RB.sum(showApps, (c) => num(s.channels && s.channels[c.id] && s.channels[c.id].amount))) });
     cols.push({ h: 'الطلبات', num: 1, f: (s) => N0(RB.saleOrders(s)) });
     cols.push({ h: '', cls: 'acts', f: (s) => rowActs('sales', s.id) });
-    h += card('الإقفالات اليومية', table(cols, days, { cards: 1, empty: 'لا توجد إقفالات في هذه الفترة. اضغط «إقفال يومي» وأدخل مبيعات كل قناة.' }), { actions: btn('تصدير CSV', 'csv', 'data-v="sales"', 'sm ghost'), sub: 'المبالغ شاملة الضريبة.' });
+    h += card('الإقفالات اليومية', table(cols, limitRows(days), { cards: 1, empty: 'لا توجد إقفالات في هذه الفترة. اضغط «إقفال يومي» وأدخل مبيعات كل قناة.' }) + moreRows(days.length), { actions: btn('تصدير CSV', 'csv', 'data-v="sales"', 'sm ghost'), sub: 'المبالغ شاملة الضريبة.' });
     return h;
   };
 
   // ─── الصندوق والبنك ───
   PAGES.cash = () => {
     const [from, asOf] = rangeToDate();
-    const L = ledger(asOf);
+    const L = ledger();
     const bal = RB.balances(L.entries, null, asOf);
     const acc = ui.cashAcc === '1102' ? '1102' : '1101';
     const st = RB.accountStatement(S, acc, from, asOf, L);
@@ -2290,7 +2365,7 @@
   }
   REPORT.income = () => {
     const [from, asOf] = rangeToDate();
-    const inc = RB.incomeStatement(S, from, asOf, ledger(asOf));
+    const inc = RB.incomeStatement(S, from, asOf, ledger());
     const rev = inc.revenue;
     const G = (g, label) => (inc.groups[g].length ? `<tr class="grp"><td colspan="3">${label}</td></tr>${lineRows(inc.groups[g], rev, 'إجمالي ' + label)}` : '');
     const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th><th class="num">المبلغ (${cur()})</th><th class="num">من المبيعات</th></tr></thead><tbody>
@@ -2309,7 +2384,7 @@
   };
   REPORT.balance = () => {
     const [, asOf] = rangeToDate();
-    const b = RB.balanceSheet(S, asOf, ledger(asOf));
+    const b = RB.balanceSheet(S, asOf, ledger());
     const rows = (list) => list.map((x) => `<tr><td class="ind">${esc(x.name)}</td><td class="num">${N(x.amount)}</td></tr>`).join('');
     const body = `<div class="grid2 tight"><div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>الأصول</th><th class="num">${cur()}</th></tr></thead><tbody>
       <tr class="grp"><td colspan="2">أصول متداولة</td></tr>${rows(b.cur)}<tr class="sum"><td>إجمالي المتداولة</td><td class="num">${N(b.tCur)}</td></tr>
@@ -2325,11 +2400,11 @@
   REPORT.vat = () => {
     const [from, to] = range();
     const asOf = minD(to, today());
-    const L = ledger(asOf);
+    const L = ledger();
     // كل الإقرارات من البداية حتى اليوم (لترحيل الرصيد الدائن)، ويُعرض منها ما يلامس الفترة بكامل أرقامه
     // ولو انتهت الفترة المختارة في منتصف إقرار؛ «ملخص الفترة» وحده يتبع الفترة المختارة
     const t = today();
-    const all = RB.vatReturns(S, t, ledger(t));
+    const all = RB.vatReturns(S, t, ledger());
     const pers = all.filter((p) => p.to >= from && p.from <= to);
     // سداد لفترة قبل بداية الإقرارات: للعلم فقط، لا يُخصم من أي إقرار
     const pre = all.before || [];
@@ -2383,9 +2458,10 @@
     );
     return h;
   };
-  REPORT.breakeven = () => {
+  // نقطة التعادل للشاشة وملف CSV: الأرقام، وأساس الحساب (basis)، وتوضيح ما عُدّل من الفترة المختارة (adj)
+  function breakEvenView() {
     const [from, asOf] = rangeToDate();
-    const e = RB.breakEven(S, from, asOf, ledger(asOf), today());
+    const e = RB.breakEven(S, from, asOf, ledger(), today());
     // أساس الحساب: أشهر التشغيل الكاملة، مع توضيح ما عُدّل من الفترة المختارة
     const bA = e.basisFrom.slice(0, 7);
     const bB = e.basisTo.slice(0, 7);
@@ -2406,6 +2482,10 @@
       if (e.preOpen) adj.push(e.startBy === 'opening' ? 'الأشهر قبل الافتتاح مستبعدة.' : late ? 'الدفتر بدأ بعد الافتتاح، فالأشهر قبل أول شهر كامل من المبيعات المسجلة مستبعدة.' : 'الأشهر قبل أول شهر كامل من المبيعات مستبعدة.');
       if (e.cutStart) adj.push('الأيام من شهر غير مكتمل في بداية الفترة لم تدخل في الحساب.');
     }
+    return { e, basis, adj, from, asOf };
+  }
+  REPORT.breakeven = () => {
+    const { e, basis, adj } = breakEvenView();
     const body = `<div class="pv-grid"><div><span>المصاريف الثابتة شهرياً</span>${money(e.fixedMonthly)}</div><div><span>المصاريف المتغيرة</span><b class="n">${pct(e.varRatio * 100)}</b><small>المواد + العمولات من المبيعات</small></div><div><span>هامش المساهمة</span><b class="n">${pct((1 - e.varRatio) * 100)}</b><small>ما يبقى من كل ريال لتغطية الثابت</small></div></div>
       <div class="be-hero"><div><span>مبيعات التعادل الشهرية (شاملة الضريبة)</span><b><span class="n">${fmt(e.beGross)}</span> <small class="cur">${cur()}</small></b></div><div><span>يومياً</span><b><span class="n">${fmt(e.beDaily)}</span> <small class="cur">${cur()}</small></b></div><div><span>طلبات يومياً تقريباً</span><b class="n">${e.avgTicket ? fmt0(e.beDaily / e.avgTicket) : '—'}</b></div></div>
       <p class="note">${e.revenue ? (e.safety >= 0 ? `مبيعاتك أعلى من نقطة التعادل بنسبة ${pct(e.safety)} (هامش الأمان).` : `مبيعاتك أقل من نقطة التعادل بنسبة ${pct(-e.safety)}.`) : 'سجّل مبيعات ومصاريف لحساب نقطة التعادل.'}</p>
@@ -2420,7 +2500,7 @@
   };
   REPORT.menu = () => {
     const [from, asOf] = rangeToDate();
-    const m = RB.menuAnalysis(S, from, asOf, ledger(asOf));
+    const m = RB.menuAnalysis(S, from, asOf, ledger());
     if (!m.hasItems) return card('تحليل المنيو', `<div class="empty-box">لتحليل المنيو سجّل الكميات المباعة من كل صنف في الإقفال اليومي (قسم «الأصناف المباعة»).</div>`);
     const cls = (c) => chip(RB.MENU_CLASS[c].name, { star: 'good', plow: 'accent', puzzle: 'warn', dog: 'bad' }[c]);
     let h = card(
@@ -2458,16 +2538,22 @@
     );
     return h;
   };
-  REPORT.monthly = () => {
+  // أشهر «مقارنة الأشهر» وقائمة دخل كل منها، للشاشة وملف CSV: لا أعمدة لأشهر لم تأتِ بعد والشهر الجاري حتى اليوم،
+  // وفترة من شهر واحد تُعرض معها الأشهر الخمسة قبلها (حتى 24 شهراً)
+  function monthlyData() {
     const [from, to] = range();
     let a = from.slice(0, 7);
-    // لا أعمدة لأشهر لم تأتِ بعد، والشهر الجاري حتى اليوم
     const b = minD(to, today()).slice(0, 7);
     if (a >= b) a = RB.ymAdd(b, -5);
     const months = [];
     for (let ym = a; ym <= b && months.length < 24; ym = RB.ymAdd(ym, 1)) months.push(ym);
-    const L = ledger(minD(RB.monthEnd(b), today()));
-    const incs = months.map((ym) => RB.incomeStatement(S, ym + '-01', RB.monthEnd(ym), L));
+    const L = ledger();
+    const incs = months.map((ym) => RB.incomeStatement(S, ym + '-01', minD(RB.monthEnd(ym), today()), L));
+    const last = months[months.length - 1];
+    return { months, incs, from: months[0] + '-01', to: minD(RB.monthEnd(last), today()), own: a === from.slice(0, 7) };
+  }
+  REPORT.monthly = () => {
+    const { months, incs, own } = monthlyData();
     const years = months[0].slice(0, 4) !== months[months.length - 1].slice(0, 4);
     const row = (label, f, cls) => `<tr class="${cls || ''}"><td>${label}</td>${incs.map((i) => `<td class="num">${f(i)}</td>`).join('')}</tr>`;
     const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th>${months.map((m) => `<th class="num">${RB.monthName(m)}</th>`).join('')}</tr></thead><tbody>
@@ -2478,11 +2564,11 @@
       ${row('التكلفة الأساسية %', (i) => pct(i.ratios.prime))}
       ${row('صافي الهامش %', (i) => pct(i.ratios.netMargin))}
       </tbody></table></div>`;
-    return card('مقارنة الأشهر', body, { sub: a === from.slice(0, 7) ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: monthTick(m, years), name: RB.monthName(m), v: incs[i].net, tip: `${RB.monthName(m)}: ${fmt(incs[i].net)} ${S.settings.currency}` })), label: 'صافي الربح الشهري بعد الزكاة', col: 'الشهر', lossLabel: 'الأشهر الخاسرة' }));
+    return card('مقارنة الأشهر', body, { sub: own ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: monthTick(m, years), name: RB.monthName(m), v: incs[i].net, tip: `${RB.monthName(m)}: ${fmt(incs[i].net)} ${S.settings.currency}` })), label: 'صافي الربح الشهري بعد الزكاة', col: 'الشهر', lossLabel: 'الأشهر الخاسرة' }));
   };
   REPORT.trial = () => {
     const [from, asOf] = rangeToDate();
-    const t = RB.trialBalance(S, from, asOf, ledger(asOf));
+    const t = RB.trialBalance(S, from, asOf, ledger());
     return card(
       'ميزان المراجعة (حركة الفترة)',
       table(
@@ -2499,7 +2585,7 @@
   };
   REPORT.journal = () => {
     const [from, asOf] = rangeToDate();
-    const es = ledger(asOf).entries.filter((e) => e.date >= from && e.date <= asOf);
+    const es = ledger().entries.filter((e) => e.date >= from && e.date <= asOf);
     const shown = es.slice(-300).reverse();
     const body = shown
       .map(
@@ -3556,7 +3642,7 @@
     // رصيد الحساب في تاريخ التحويل قبله (بلا هذا التحويل إن كان محفوظاً)
     const balAt = (acc, v) => {
       const d = RB.isISODate(v.date) ? v.date : today();
-      let b = RB.balances(ledger(d).entries, null, d)[RB.srcAcc(acc)] || 0;
+      let b = RB.balances(ledger().entries, null, d)[RB.srcAcc(acc)] || 0;
       const old = S.transfers.find((t) => t.id === v.id);
       if (old && old.date <= d) {
         if (old.from === acc) b += num(old.amount);
@@ -3592,7 +3678,7 @@
     const isEdit = editing(rec, opts);
     const t = today();
     // الفترات المنتهية مع المتبقي من كل إقرار (بعد خصم الرصيد الدائن وما سُدد)
-    let pers = RB.vatReturns(S, t, ledger(t)).filter((p) => p.to < t);
+    let pers = RB.vatReturns(S, t, ledger()).filter((p) => p.to < t);
     if (!pers.length) pers = RB.vatPeriodsBetween(S, RB.addDays(t, -400), t).filter((p) => p.to < t).map((p) => Object.assign({ remaining: 0 }, p));
     const per = pers.find((p) => p.label === x) || pers.filter((p) => p.remaining > 0).pop() || pers[pers.length - 1];
     const due = per ? r2(per.remaining) : 0;
@@ -3631,6 +3717,8 @@
         const i = S.settings.channels.findIndex((x) => x.id === v.id);
         if (i >= 0) S.settings.channels[i] = v;
         else S.settings.channels.push(v);
+        // خطوة البداية «راجع الإعدادات» تكتمل بحفظ أي نموذج إعدادات أو قناة
+        S.settings.reviewedAt = new Date().toISOString();
         saveSettings();
       },
     });
@@ -3694,7 +3782,7 @@
         for (const f of flatFields(list)) if (f.k && (f.type === 'num' || f.type === 'money')) setPath(v, f.k, num(getPath(v, f.k)));
         const warn = which === 'vat' ? vatHistoryChanges(st, v) : '';
         if (warn && !(await confirmBox(warn + ' متابعة؟', { danger: true }))) return false;
-        S.settings = Object.assign(S.settings, v);
+        S.settings = Object.assign(S.settings, v, { reviewedAt: new Date().toISOString() });
         saveSettings();
       },
     });
@@ -3848,6 +3936,7 @@
     },
     tab: (el) => {
       ui[el.dataset.tab] = el.dataset.v;
+      resetRows();
       saveUI();
       render();
       const t = document.getElementById(tabId(el.dataset.tab, el.dataset.v));
@@ -3855,8 +3944,28 @@
     },
     filter: (el) => {
       ui[el.dataset.f] = el.dataset.v;
+      resetRows();
       saveUI();
       render();
+      // الشارة المختارة نفسها بعد إعادة الرسم (لا يضيع التركيز)
+      const c = document.querySelector(`.fchip[data-f="${CSS.escape(el.dataset.f)}"][data-v="${CSS.escape(el.dataset.v)}"]`);
+      if (c) c.focus();
+    },
+    // 300 سطر أخرى من القائمة الطويلة؛ التركيز يبقى على الزر، أو على عنوان البطاقة إن ظهرت كلها
+    more: (el) => {
+      const cards = [...document.querySelectorAll('#page .card')];
+      const i = cards.indexOf(el.closest('.card'));
+      ui.rowLimit = rowLimit() + ROWS;
+      saveUI();
+      render();
+      const b = document.querySelector('#page [data-act="more"]');
+      const c = document.querySelectorAll('#page .card')[i];
+      const h = c && c.querySelector('h2');
+      if (b) b.focus();
+      else if (h) {
+        h.tabIndex = -1;
+        h.focus({ preventScroll: true });
+      }
     },
     settings: (el) => settingsForm(el.dataset.v),
     report: (el) => {
@@ -3873,6 +3982,13 @@
       S.settings.channels = S.settings.channels.filter((c) => c.id !== id);
       saveSettings();
       render();
+    },
+    // «إخفاء» خطوات البداية (يُحفظ في الإعدادات، فتختفي عند الشريك كذلك)
+    setupdone: () => {
+      S.settings.setupDone = true;
+      saveSettings();
+      render();
+      focusPageTitle();
     },
     menu: () => setNav(!document.body.classList.contains('nav-open')),
     skip: () => focusPageTitle(),
@@ -3957,6 +4073,7 @@
   function go(page) {
     if (!isPage(page)) page = 'dashboard';
     ui.page = page;
+    resetRows();
     saveUI();
     try {
       if (location.hash !== '#' + page) history.replaceState(null, '', '#' + page);
@@ -4156,8 +4273,8 @@
         st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: s1, phone: '', note: '' });
         if (two) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: s2, phone: '', note: '' });
         const ok = await replaceAll(st);
-        go('partners');
-        if (ok) toast('جاهز. ابدأ بتسجيل رأس المال ثم الأصول.');
+        go('dashboard');
+        if (ok) toast('جاهز. اتبع خطوات «ابدأ من هنا» في لوحة المتابعة.');
       },
     });
   }
@@ -4282,23 +4399,26 @@
   function exportCSV(what) {
     const [from, to] = range();
     const asOf = minD(to, today());
+    let start = from;
     let end = to;
     let rows = [];
     let name = what;
+    // ما يصدَّر هو ما في الجدول: الفترة وفلتر التصنيف، واسم التصنيف في اسم الملف
+    const catSuffix = (k, cat) => (ui[k] ? '-' + cat(ui[k]).name : '');
     if (what === 'expenses') {
       rows.push(['التاريخ', 'التصنيف', 'البيان', 'الجهة', 'قبل الضريبة', 'الضريبة', 'الإجمالي', 'الأشهر', 'الدفع من']);
-      good(S.expenses).filter((x) => inRange(x.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((x) => {
+      good(S.expenses).filter((x) => inRange(x.date) && (!ui.expCat || x.category === ui.expCat)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((x) => {
         const v = RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings);
         rows.push([x.date, RB.expenseCat(x.category).name, x.desc, x.entity, v.net, v.vat, v.gross, x.months, RB.srcLabel(x.account, S)]);
       });
-      name = 'المصاريف';
+      name = 'المصاريف' + catSuffix('expCat', RB.expenseCat);
     } else if (what === 'purchases') {
       rows.push(['التاريخ', 'المورد', 'رقم الفاتورة', 'التصنيف', 'الدفع', 'خاضعة', 'قبل الضريبة', 'الضريبة', 'الإجمالي']);
-      good(S.purchases).filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((p) => {
+      good(S.purchases).filter((p) => inRange(p.date) && (!ui.purCat || p.category === ui.purCat)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((p) => {
         const v = RB.vatSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings);
         rows.push([p.date, p.supplier, p.invoiceNo, RB.purchaseCat(p.category).name, RB.srcLabel(p.account, S), p.taxable ? 'نعم' : 'لا', v.net, v.vat, v.gross]);
       });
-      name = 'المشتريات';
+      name = 'المشتريات' + catSuffix('purCat', RB.purchaseCat);
     } else if (what === 'sales') {
       const chs = S.settings.channels;
       rows.push(['التاريخ', ...chs.map((c) => c.name), 'الطلبات', 'الإجمالي']);
@@ -4306,15 +4426,15 @@
       name = 'المبيعات';
     } else if (what === 'statement') {
       const acc = ui.cashAcc === '1102' ? '1102' : '1101';
-      const st = RB.accountStatement(S, acc, from, asOf, ledger(asOf));
+      const st = RB.accountStatement(S, acc, from, asOf, ledger());
       rows.push(['التاريخ', 'البيان', 'داخل', 'خارج', 'الرصيد']);
       rows.push([from, 'رصيد أول الفترة', '', '', st.opening]);
       st.rows.forEach((r) => rows.push([r.date, r.desc, r.in, r.out, r.balance]));
       name = acc === '1101' ? 'كشف-الصندوق' : 'كشف-البنك';
       end = asOf;
     } else {
-      // التقارير مقطوعة عند اليوم مثل ما تعرضه الشاشة
-      const L = ledger(asOf);
+      // كل تبويب يصدّر ما يعرضه، مقطوعاً عند اليوم مثل الشاشة
+      const L = ledger();
       const rep = isReport(ui.report) ? ui.report : 'income';
       end = asOf;
       if (rep === 'journal') {
@@ -4324,35 +4444,105 @@
         const t = RB.trialBalance(S, from, asOf, L);
         rows.push(['الرمز', 'الحساب', 'مدين', 'دائن']);
         t.rows.forEach((r) => rows.push([r.code, r.name, r.dr, r.cr]));
+        rows.push(['', 'الإجمالي', t.dr, t.cr]);
       } else if (rep === 'balance') {
         const b = RB.balanceSheet(S, asOf, L);
         rows.push(['القسم', 'البند', 'المبلغ']);
         b.cur.forEach((x) => rows.push(['أصول متداولة', x.name, x.amount]));
+        rows.push(['أصول متداولة', 'إجمالي المتداولة', b.tCur]);
         b.fixed.forEach((x) => rows.push(['أصول ثابتة', x.name, x.amount]));
+        rows.push(['أصول ثابتة', 'صافي الأصول الثابتة', b.tFixed]);
+        rows.push(['', 'إجمالي الأصول', b.tAssets]);
         b.liab.forEach((x) => rows.push(['التزامات', x.name, x.amount]));
+        rows.push(['التزامات', 'إجمالي الالتزامات', b.tLiab]);
         b.equity.forEach((x) => rows.push(['حقوق الشركاء', x.name, x.amount]));
+        rows.push(['حقوق الشركاء', 'إجمالي حقوق الشركاء', b.tEq]);
+        rows.push(['', 'الالتزامات + حقوق الشركاء', r2(b.tLiab + b.tEq)]);
       } else if (rep === 'vat') {
+        // ملخص الفترة كما في الشاشة، ثم الإقرارات التي تلامس الفترة (من بداية الإقرارات حتى اليوم لترحيل الرصيد الدائن)
         const v = RB.vatReport(S, from, asOf, L);
         rows.push(['البند', 'المبلغ الخاضع', 'الضريبة']);
-        rows.push(['المبيعات', v.sales.base, v.sales.vat]);
+        rows.push(['المبيعات (كل القنوات)', v.sales.base, v.sales.vat]);
         Object.keys(v.inputs).forEach((k) => rows.push(['مدخلات: ' + k, v.inputs[k].base, v.inputs[k].vat]));
-        rows.push(['الصافي', '', v.net]);
+        rows.push(['إجمالي المدخلات', v.inBase, v.inVat]);
+        rows.push([v.net >= 0 ? 'صافي الضريبة المستحقة' : 'صافي الضريبة المستردة', '', Math.abs(v.net)]);
+        rows.push(['المسدد في الفترة', '', v.paid]);
+        const t = today();
+        const pers = RB.vatReturns(S, t, L).filter((p) => p.to >= from && p.from <= to);
+        if (pers.length) {
+          rows.push([]);
+          rows.push(['الإقرار', 'من', 'إلى', 'ضريبة المبيعات', 'ضريبة المدخلات', 'صافي الفترة', 'مرحّل من قبل', 'المستحق للسداد', 'المسدد', 'المسترد', 'المتبقي', 'آخر موعد', 'الحالة']);
+          pers.forEach((p) => rows.push([p.label, p.from, p.to, p.report.sales.vat, p.report.inVat, p.net, p.carried, p.due, p.paid, p.refund, p.remaining, RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1)), p.to >= t ? 'الفترة جارية' : p.settled ? 'مسدد' : 'غير مسدد']));
+        }
+      } else if (rep === 'breakeven') {
+        // الأساس نفسه الذي تعرضه الشاشة (أشهر التشغيل الكاملة)
+        const { e, basis, adj } = breakEvenView();
+        rows.push(['البند', 'القيمة']);
+        rows.push(['المصاريف الثابتة شهرياً', e.fixedMonthly]);
+        ['labor', 'occ', 'opex', 'dep'].forEach((g) => rows.push(['منها: ' + RB.GROUPS[g], e.fixedParts[g]]));
+        rows.push(['المصاريف المتغيرة % (المواد + العمولات من المبيعات)', e.varRatio * 100]);
+        rows.push(['هامش المساهمة %', (1 - e.varRatio) * 100]);
+        rows.push(['مبيعات التعادل الشهرية بدون الضريبة', e.beNet]);
+        rows.push(['مبيعات التعادل الشهرية شاملة الضريبة', e.beGross]);
+        rows.push(['مبيعات التعادل يومياً شاملة الضريبة', e.beDaily]);
+        rows.push(['طلبات يومياً تقريباً', e.avgTicket ? Math.round(e.beDaily / e.avgTicket) : '']);
+        rows.push(['متوسط الفاتورة', e.avgTicket]);
+        rows.push(['هامش الأمان %', e.revenue ? e.safety : '']);
+        rows.push(['أساس الحساب', basis]);
+        rows.push(['عدد الأشهر', e.months]);
+        rows.push(['من', e.basisFrom]);
+        rows.push(['إلى', e.basisTo]);
+        if (adj.length) rows.push(['ملاحظة', adj.join(' ')]);
+      } else if (rep === 'monthly') {
+        const md = monthlyData();
+        const G = Object.keys(RB.GROUPS).filter((g) => g !== 'zakat');
+        const row = (label, f) => rows.push([label, ...md.incs.map(f)]);
+        rows.push(['البند', ...md.months.map((m) => RB.monthName(m))]);
+        row('المبيعات بدون الضريبة', (i) => i.revenue);
+        G.forEach((g) => row(RB.GROUPS[g], (i) => i.tot[g]));
+        row('صافي الربح قبل الزكاة', (i) => i.netBeforeZakat);
+        row(RB.GROUPS.zakat, (i) => i.tot.zakat);
+        row('صافي الربح بعد الزكاة', (i) => i.net);
+        row('تكلفة المواد %', (i) => i.ratios.foodCost);
+        row('التكلفة الأساسية %', (i) => i.ratios.prime);
+        row('صافي الهامش %', (i) => i.ratios.netMargin);
+        start = md.from;
+        end = md.to;
       } else if (rep === 'menu') {
         const m = RB.menuAnalysis(S, from, asOf, L);
-        rows.push(['الصنف', 'الكمية', 'ربح الحبة', 'إجمالي الربح', 'تكلفة الطعام %', 'فئة المنيو', 'ماذا تفعل']);
-        m.rows.forEach((r) => rows.push([r.name, r.qty, r.profit, r.totalProfit, r.foodCost, RB.MENU_CLASS[r.cls].name, RB.MENU_CLASS[r.cls].tip]));
-      } else {
+        rows.push(['الصنف', 'الكمية', 'حصة المبيعات %', 'ربح الحبة', 'إجمالي الربح', 'تكلفة الطعام %', 'فئة المنيو', 'ماذا تفعل']);
+        m.rows.forEach((r) => rows.push([r.name, r.qty, r.mix, r.profit, r.totalProfit, r.foodCost, RB.MENU_CLASS[r.cls].name, RB.MENU_CLASS[r.cls].tip]));
+        if (m.hasItems) {
+          rows.push([]);
+          rows.push(['التكلفة النظرية (حسب الوصفات × المبيعات)', m.theoretical]);
+          rows.push(['التكلفة الفعلية (المشتريات ± الجرد)', m.actual]);
+          rows.push(['الفرق غير المفسَّر', m.variance]);
+          rows.push([]);
+          rows.push(['المادة', 'الكمية', 'الوحدة', 'بوحدة الشراء', 'وحدة الشراء', 'التكلفة']);
+          m.rawUsage.forEach((r) => rows.push([r.name, Math.round(r.qty), r.unit, +r.buyQty.toFixed(1), r.buyUnit, r.cost]));
+        }
+      } else if (rep === 'income') {
+        // كما في الشاشة: بنود كل مجموعة ثم إجماليها، ومجمل الربح بعد تكلفة المبيعات
         const inc = RB.incomeStatement(S, from, asOf, L);
         rows.push(['القسم', 'البند', 'المبلغ']);
         rows.push(['الإيرادات', 'المبيعات بدون الضريبة', inc.revenue]);
-        Object.keys(RB.GROUPS).filter((g) => g !== 'zakat').forEach((g) => inc.groups[g].forEach((x) => rows.push([RB.GROUPS[g], x.name, x.amount])));
+        Object.keys(RB.GROUPS)
+          .filter((g) => g !== 'zakat')
+          .forEach((g) => {
+            inc.groups[g].forEach((x) => rows.push([RB.GROUPS[g], x.name, x.amount]));
+            if (inc.groups[g].length) rows.push([RB.GROUPS[g], 'إجمالي ' + RB.GROUPS[g], inc.tot[g]]);
+            if (g === 'cogs') rows.push(['', 'مجمل الربح', inc.grossProfit]);
+          });
         rows.push(['', 'صافي الربح قبل الزكاة', inc.netBeforeZakat]);
         rows.push([RB.GROUPS.zakat, RB.GROUPS.zakat, inc.zakat]);
         rows.push(['', 'صافي الربح بعد الزكاة', inc.net]);
+      } else {
+        toast('هذا التقرير لا يدعم التصدير بعد', 'bad');
+        return;
       }
       name = (REPORTS.find((r) => r[0] === rep) || ['', 'تقرير'])[1];
     }
-    saveFile(`${name}-${from}-${end}.csv`.replace(/\s+/g, '-'), RB.toCSV(rows));
+    saveFile(`${name}-${start}-${end}.csv`.replace(/\s+/g, '-').replace(/[\\/:*?"<>|]/g, '-'), RB.toCSV(rows));
   }
 
   function importFile(file) {
@@ -4453,6 +4643,7 @@
     }
     updateSaveStatus();
     afterRender(page);
+    showActiveTabs(page);
   }
 
   // الأشرطة أعلى الصفحة: لا حفظ في المتصفح، انقطاع التحديث، حفظ لم يكتمل، عرض فقط، ووضع التجربة.
@@ -4538,6 +4729,7 @@
         // الفترة المخصصة تبدأ من الفترة المعروضة إن لم تُحدَّد من قبل
         const [a, b] = range();
         ui.period = t.value;
+        resetRows();
         if (t.value === 'custom' && !(RB.isISODate(ui.from) && RB.isISODate(ui.to))) {
           ui.from = a;
           ui.to = b;
@@ -4568,6 +4760,7 @@
             toast('عُدّل تاريخ «من» ليأتي قبل «إلى»');
           }
         }
+        resetRows();
         saveUI();
         render();
       } else if (t.id === 'importFile' && t.files && t.files[0]) {
@@ -4579,6 +4772,7 @@
       const p = location.hash.slice(1);
       if (p && p !== ui.page && isPage(p)) {
         ui.page = p;
+        resetRows();
         saveUI();
         setNav(false, { focus: false });
         render();
@@ -4701,6 +4895,8 @@
     if (!isPage(ui.page)) ui.page = 'dashboard';
     if (!isReport(ui.report)) ui.report = 'income';
     if (RB.isISODate(ui.from) && RB.isISODate(ui.to) && ui.from > ui.to) [ui.from, ui.to] = [ui.to, ui.from];
+    // القوائم الطويلة تبدأ بأحدث 300 سطر في كل زيارة
+    resetRows();
     if (JSON.stringify(ui) !== uiWas) saveUI();
     const h = location.hash.slice(1);
     if (h && isPage(h)) ui.page = h;

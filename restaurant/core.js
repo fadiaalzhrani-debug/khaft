@@ -1549,7 +1549,8 @@
     if (!pers.length) return out;
     let credit = 0;
     pers.forEach((q, i) => {
-      const report = RB.vatReport(S, q.from, q.to, L);
+      // الفترة الجارية حتى upTo فقط: الدفتر المعطى قد يمتد بعده (دفتر واحد لكل نسخة من البيانات)
+      const report = RB.vatReport(S, q.from, q.to < upTo ? q.to : upTo, L);
       const carried = credit ? -credit : 0;
       const x = r2(report.net - credit);
       const due = Math.max(0, x);
@@ -1711,6 +1712,26 @@
       .sort((a, b) => a.days - b.days);
   };
 
+  // خطوات البداية لدفتر جديد بالترتيب، وكل منها مكتملة إن سُجّل في قسمها شيء. مراجعة الإعدادات تكتمل بحفظ
+  // أي نموذج إعدادات أو قناة بيع (settings.reviewedAt). optional: لا تُبقي القائمة ظاهرة وحدها.
+  // pending: خطوة مطلوبة لم تكتمل بعد
+  RB.setupSteps = (S) => {
+    const has = (k, f) => good(S[k]).some(f || (() => true));
+    const fixed = (x) => x.category === 'rent' || x.category === 'housing' || RB.GOV_CATS.includes(x.category);
+    const steps = [
+      { id: 'settings', done: !!(S.settings && S.settings.reviewedAt) },
+      { id: 'capital', done: has('capital', (c) => c.type !== 'withdrawal') },
+      { id: 'assets', done: has('assets') },
+      { id: 'fixed', done: has('expenses', fixed) },
+      { id: 'staff', done: has('employees') },
+      { id: 'raw', done: has('raw') },
+      { id: 'composites', done: has('composites'), optional: true },
+      { id: 'products', done: has('products') },
+      { id: 'sales', done: has('sales') },
+    ];
+    return { steps, done: steps.filter((s) => s.done).length, pending: steps.some((s) => !s.optional && !s.done) };
+  };
+
   // الشركاء: المساهمات، المسحوبات، ونصيب الربح
   RB.partnersReport = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
@@ -1719,9 +1740,10 @@
     const bs = RB.balanceSheet(S, to, L);
     const totalShare = sum(S.partners || [], (p) => num(p.share));
     const totalCap = r2(sum(S.partners || [], (p) => -(all['cap:' + p.id] || 0)));
+    // الدفتر المعطى قد يمتد بعد «to» (دفتر واحد لكل نسخة من البيانات): ما دفعه الشريك بعده لا يدخل
     const direct = {};
     for (const e of L.entries) {
-      if (e.kind === 'capital') continue;
+      if (e.kind === 'capital' || e.kind === 'opening' || e.date > to) continue;
       for (const l of e.lines) if (l.a.startsWith('cap:') && l.v < 0) direct[l.a.slice(4)] = r2((direct[l.a.slice(4)] || 0) - l.v);
     }
     const rows = (S.partners || []).map((p) => {

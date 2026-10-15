@@ -404,6 +404,20 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .tabpanel { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .tabpanel:focus { outline: none; }
 .tabpanel:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: var(--r-sm); }
+/* القوائم الطويلة: يظهر أحدث 300 سطر و«عرض المزيد» يضيف غيرها */
+.more-rows { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 2px; }
+
+/* ─── خطوات البداية (دفتر جديد) ─── */
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.step { display: flex; align-items: center; gap: 12px; padding: 9px 2px; border-bottom: 1px solid var(--line-2); }
+.step:last-child { border-bottom: 0; }
+.step-n { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 0.85rem; border: 1.5px solid var(--line-strong); color: var(--ink-2); }
+.step.done .step-n { background: var(--good-soft); border-color: transparent; color: var(--good); }
+.step-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.step-t b { font-weight: 600; }
+.step.done .step-t b { color: var(--ink-2); }
+.step-t small { color: var(--muted); font-size: 0.8rem; }
+.step-a { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 
 /* ─── الأشرطة الأفقية ─── */
 .hbars { display: flex; flex-direction: column; gap: 9px; }
@@ -591,6 +605,10 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .banner { margin: 12px 16px 0; }
   .grid2 { grid-template-columns: minmax(0, 1fr); }
   .page-h h1 { font-size: 1.75rem; }
+  /* التبويبات (التقارير خاصة) تلتف أسطراً بشكل أزرار فتظهر كلها بلا تمرير جانبي */
+  .tabs { flex-wrap: wrap; overflow: visible; border-bottom: 0; gap: 6px; }
+  .tab { border: 1px solid var(--line); border-radius: 99px; padding: 6px 12px; margin: 0; }
+  .tab.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 }
 @media (max-width: 560px) {
   .kpi { padding: 12px; }
@@ -615,6 +633,10 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .al { flex-wrap: wrap; row-gap: 6px; }
   .al-t { flex-basis: calc(100% - 21px); }
   .al > .btn, .al-a { margin-inline-start: 21px; }
+  /* خطوة البداية: أزرارها تحت النص */
+  .step { flex-wrap: wrap; row-gap: 6px; }
+  .step-t { flex-basis: calc(100% - 40px); }
+  .step-a { margin-inline-start: 40px; justify-content: flex-start; }
   /* جداول السجلات (o.cards): كل سطر بطاقة من عمودين، عنوان كل خانة فوق قيمتها، وأزرار السطر بعرضها */
   .tbl.cards, .tbl.cards tbody, .tbl.cards tfoot { display: block; }
   .tbl.cards thead { display: none; }
@@ -637,6 +659,7 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .btn { min-height: 44px; }
   .btn.sm { min-height: 40px; padding: 6px 12px; }
   .fchip { min-height: 40px; padding: 8px 14px; }
+  .tab { min-height: 40px; }
   .nav-g a { padding-block: 11px; }
   .period select, .period input, .custom-range input { min-height: 44px; }
 }
