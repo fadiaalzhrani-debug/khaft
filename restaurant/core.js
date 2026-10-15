@@ -129,6 +129,13 @@
 
   RB.CHANNEL_TYPES = { cash: 'كاش (الصندوق)', card: 'شبكة (تُودع في البنك)', app: 'تطبيق توصيل' };
 
+  // أنواع خصومات تحويلات التطبيقات ومعالجتها الضريبية (السجل بلا نوع يُعامل «other»)
+  RB.DED_TYPES = {
+    sale: { name: 'عرض/خصم أو مرتجع على طلبات العملاء — يخفض المبيعات وضريبتها', short: 'عرض أو مرتجع' },
+    fee: { name: 'رسوم إعلان/خدمة من التطبيق بفاتورة ضريبية', short: 'رسوم بفاتورة ضريبية' },
+    other: { name: 'غرامة أو تسوية — بدون ضريبة', short: 'غرامة أو تسوية' },
+  };
+
   RB.PAY_LABEL = { cash: 'الصندوق (الكاشير)', bank: 'الحساب البنكي', payable: 'آجل على المورد' };
 
   RB.defaultSettings = () => ({
@@ -517,10 +524,13 @@
     function add(date, kind, ref, desc, lines) {
       if (!date || date > asOf) return;
       const ls = [];
+      // السطر: [الحساب، المبلغ، المبلغ الخاضع للضريبة (اختياري)، بيان السطر (اختياري)]
       for (const l of lines) {
         const v = r2(l[1]);
         if (Math.abs(v) < 0.005) continue;
-        ls.push({ a: l[0], v, base: l[2] !== undefined ? r2(l[2]) : undefined });
+        const o = { a: l[0], v, base: l[2] !== undefined ? r2(l[2]) : undefined };
+        if (l[3]) o.memo = l[3];
+        ls.push(o);
       }
       if (!ls.length) return;
       const diff = r2(sum(ls, (l) => l.v));
@@ -559,10 +569,13 @@
       const desc = cat.name + (x.desc ? ': ' + x.desc : '');
       const src = RB.srcAcc(x.account);
       const sched = RB.amortSchedule(x, S);
-      if (sched.months.length <= 1) {
+      const payYm = x.date.slice(0, 7);
+      if (sched.months.length === 1 && sched.months[0].ym === payYm) {
         add(x.date, 'expense', ref, desc, [[cat.acc, sp.cost], ['2102', sp.vat, sp.net], [src, -sp.gross]]);
       } else {
-        add(x.date, 'expense', ref, desc + ' (مدفوع مقدماً)', [['1105', sp.cost], ['2102', sp.vat, sp.net], [src, -sp.gross]]);
+        // تغطية في أشهر أخرى: مدفوع مقدماً (1105) ثم تحميل على أشهرها؛ التغطية السابقة للدفع تظهر «مصروفات مستحقة» حتى يُدفع
+        const late = sched.months[sched.months.length - 1].ym < payYm;
+        add(x.date, 'expense', ref, desc + (late ? ' (عن فترة سابقة)' : ' (مدفوع مقدماً)'), [['1105', sp.cost], ['2102', sp.vat, sp.net], [src, -sp.gross]]);
         for (const m of sched.months) add(m.date, 'amort', ref, 'تحميل شهري — ' + desc, [[cat.acc, m.amount], ['1105', -m.amount]]);
       }
     }
@@ -586,8 +599,8 @@
       const ym = pr.month || pr.date.slice(0, 7);
       const desc = 'رواتب ' + RB.monthName(ym);
       const pay = [
-        [RB.srcAcc(pr.account), -t.net],
-        [RB.srcAcc(pr.gosiAccount || pr.account), -(t.gosiEe + t.gosiEr)],
+        [RB.srcAcc(pr.account), -t.net, undefined, 'صافي الرواتب'],
+        [RB.srcAcc(pr.gosiAccount || pr.account), -(t.gosiEe + t.gosiEr), undefined, 'التأمينات الاجتماعية (حصة العامل والمنشأة)'],
       ];
       if (pr.date.slice(0, 7) === ym) {
         add(pr.date, 'payroll', ref, desc, [['5201', t.gross], ['5202', t.gosiEr], ...pay]);
@@ -618,12 +631,24 @@
       }
     }
 
-    // تحويلات التطبيقات للبنك
+    // تحويلات التطبيقات للبنك. خصومات التطبيق حسب نوعها (dedType):
+    // sale = عرض أو مرتجع على طلبات العملاء يخفض المبيعات وضريبتها، fee = رسوم بفاتورة ضريبية (ضريبة مدخلات)،
+    // other أو بدون نوع (السجلات القديمة) = غرامة أو تسوية بلا ضريبة
+    const payRate = num(set.vatRate) / 100;
     for (const p of S.payouts || []) {
       const amt = num(p.amount);
       const ded = num(p.deductions);
       const ch = RB.channelOf(S, p.channelId);
-      add(p.date, 'payout', { s: 'payouts', id: p.id }, 'تحويل من ' + (ch ? ch.name : 'تطبيق'), [['1102', amt], ['5403', ded], ['1103', -(amt + ded)]]);
+      const t = RB.DED_TYPES[p.dedType] ? p.dedType : 'other';
+      const on = RB.isVatReg(set, p.date) && (t === 'sale' || t === 'fee');
+      const dNet = on ? r2(ded / (1 + payRate)) : ded;
+      const dVat = r2(ded - dNet);
+      add(p.date, 'payout', { s: 'payouts', id: p.id }, 'تحويل من ' + (ch ? ch.name : 'تطبيق'), [
+        ['1102', amt],
+        ['5403', dNet],
+        ['2102', dVat, t === 'sale' ? -dNet : dNet],
+        ['1103', -(amt + ded)],
+      ]);
     }
 
     // التحويل بين الصندوق والبنك
@@ -635,7 +660,7 @@
     // الجرد: الفرق بين قيمة الجرد والجرد السابق
     let prevStock = 0;
     for (const c of (S.stockCounts || []).slice().sort((a, b) => (a.date < b.date ? -1 : 1))) {
-      const value = RB.stockValue(c);
+      const value = RB.stockValue(c, S);
       const delta = r2(value - prevStock);
       add(c.date, 'stock', { s: 'stockCounts', id: c.id }, 'جرد المخزون', [['1104', delta], ['5109', -delta]]);
       prevStock = value;
@@ -651,7 +676,15 @@
     return { entries, rounding: r2(rounding), asOf };
   };
 
-  RB.stockValue = (c) => r2(sum(c.lines || [], (l) => num(l.qty) * num(l.price)));
+  // سعر سطر الجرد للتقييم: الأسعار تُحفظ بدون ضريبة، وغير المسجل في الضريبة في تاريخ الجرد
+  // يقيّم المواد الخاضعة شاملة الضريبة لأنها جزء من تكلفتها (كما حُمّلت في المشتريات)
+  RB.stockLinePrice = (l, S, date) => {
+    const p = num(l.price);
+    if (!S || !S.settings || RB.isVatReg(S.settings, date)) return p;
+    const raw = (S.raw || []).find((x) => x.id === l.rawId);
+    return raw && raw.taxable ? p * (1 + num(S.settings.vatRate) / 100) : p;
+  };
+  RB.stockValue = (c, S) => r2(sum(c.lines || [], (l) => num(l.qty) * RB.stockLinePrice(l, S, c.date)));
 
   // جدول إهلاك الأصل: يبدأ من تاريخ الافتتاح إن كان الأصل اشتُري قبله
   RB.depSchedule = (a, S) => {
@@ -682,7 +715,9 @@
     const start = x.startDate || x.date;
     const out = { cost: sp.cost, months: [], end: RB.coverageEnd(start, months) };
     if (months === 1) {
-      out.months.push({ ym: x.date.slice(0, 7), date: x.date, amount: sp.cost });
+      // شهر واحد: يُحمّل على شهر بداية التغطية (فاتورة سبتمبر المدفوعة في أكتوبر تُحمّل على سبتمبر)
+      const sym = start.slice(0, 7);
+      out.months.push({ ym: sym, date: sym === x.date.slice(0, 7) ? x.date : start, amount: sp.cost });
       return out;
     }
     const monthly = r2(sp.cost / months);
@@ -710,7 +745,19 @@
   };
 
   // ───────────── التقارير ─────────────
-  RB.monthsIn = (from, to) => Math.max((RB.daysBetween(from, to) + 1) / 30.4375, 1 / 30.4375);
+  // عدد الأشهر في فترة: لكل شهر تقويمي تلمسه الفترة (الأيام المغطاة ÷ أيام ذلك الشهر)، فالشهر الكامل = 1 بالضبط
+  RB.monthsIn = (from, to) => {
+    let total = 0;
+    if (from && to && from <= to) {
+      for (let ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = RB.ymAdd(ym, 1)) {
+        const end = RB.monthEnd(ym);
+        const a = from > ym + '-01' ? from : ym + '-01';
+        const b = to < end ? to : end;
+        total += (RB.daysBetween(a, b) + 1) / +end.slice(8, 10);
+      }
+    }
+    return total > 0 ? total : 1 / 31;
+  };
 
   RB.incomeStatement = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
@@ -802,9 +849,11 @@
       for (const l of e.lines) {
         if (l.a !== acc) continue;
         if (from && e.date < from) opening = r2(opening + l.v);
-        else rows.push({ date: e.date, desc: e.desc, kind: e.kind, ref: e.ref, in: l.v > 0 ? l.v : 0, out: l.v < 0 ? -l.v : 0 });
+        else rows.push({ date: e.date, desc: l.memo ? e.desc + ' — ' + l.memo : e.desc, kind: e.kind, ref: e.ref, in: l.v > 0 ? l.v : 0, out: l.v < 0 ? -l.v : 0 });
       }
     }
+    // في اليوم الواحد: الداخل قبل الخارج، فلا يظهر رصيد سالب وهمي أثناء اليوم (الترتيب ثابت فيما عداه)
+    rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (b.in > 0) - (a.in > 0)));
     let bal = opening;
     rows.forEach((r) => {
       bal = r2(bal + r.in - r.out);
@@ -836,7 +885,7 @@
   RB.vatReport = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
     const out = { sales: { base: 0, vat: 0 }, inputs: {}, inBase: 0, inVat: 0, paid: 0 };
-    const labels = { purchase: 'المشتريات', expense: 'المصاريف التشغيلية', asset: 'الأصول والمعدات', sale: 'عمولات التطبيقات ورسوم الشبكة' };
+    const labels = { purchase: 'المشتريات', expense: 'المصاريف التشغيلية', asset: 'الأصول والمعدات', sale: 'عمولات التطبيقات ورسوم الشبكة', payout: 'عمولات التطبيقات ورسوم الشبكة' };
     for (const e of L.entries) {
       if (e.date < from || e.date > to) continue;
       for (const l of e.lines) {
@@ -845,7 +894,8 @@
           out.paid = r2(out.paid + l.v);
           continue;
         }
-        if (l.v < 0) {
+        // خصم العروض والمرتجعات من التطبيق (أساس سالب) يخفض ضريبة المبيعات وأساسها
+        if (l.v < 0 || (e.kind === 'payout' && (l.base || 0) < 0)) {
           out.sales.vat = r2(out.sales.vat - l.v);
           out.sales.base = r2(out.sales.base + (l.base || 0));
         } else {
@@ -1055,44 +1105,97 @@
     const contributions = r2(sum((S.capital || []).filter((c) => c.type !== 'withdrawal'), (c) => num(c.amount)));
     let direct = 0;
     for (const e of L.entries) for (const l of e.lines) if (l.a.startsWith('cap:') && l.v < 0 && e.kind !== 'capital') direct = r2(direct - l.v);
+    // الأصول التأسيسية فقط: المشتراة حتى الافتتاح وغير الآجلة. ما بعدها أو بالآجل يُعرض للعلم ولا يُخصم
     const assets = {};
+    const laterAssets = { amount: 0, count: 0 };
+    let vatRecoverable = 0;
     for (const a of S.assets || []) {
       const c = RB.assetCat(a.category);
       const sp = RB.costSplit(a.amount, a.includesVat, a.taxable, set, a.date);
+      if ((open && a.date > open) || a.account === 'payable') {
+        laterAssets.amount = r2(laterAssets.amount + sp.gross);
+        laterAssets.count++;
+        continue;
+      }
       assets[c.id] = assets[c.id] || { name: c.name, amount: 0, count: 0 };
       assets[c.id].amount = r2(assets[c.id].amount + sp.gross);
       assets[c.id].count++;
+      vatRecoverable += sp.vat;
     }
     const assetList = Object.values(assets).sort((a, b) => b.amount - a.amount);
     let preopen = { expenses: 0, purchases: 0, payroll: 0 };
     if (open) {
-      for (const x of S.expenses || []) if (x.date < open) preopen.expenses += RB.vatSplit(x.amount, x.includesVat, x.taxable, set).gross;
-      for (const p of S.purchases || []) if (p.date < open) preopen.purchases += RB.vatSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, set).gross;
+      for (const x of S.expenses || []) {
+        if (x.date >= open) continue;
+        const sp = RB.costSplit(x.amount, x.includesVat, x.taxable, set, x.date);
+        preopen.expenses += sp.gross;
+        vatRecoverable += sp.vat;
+      }
+      for (const p of S.purchases || []) {
+        if (p.date >= open) continue;
+        const sp = RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, set, p.date);
+        preopen.purchases += sp.gross;
+        vatRecoverable += sp.vat;
+      }
       for (const p of S.payroll || []) if (p.date < open) preopen.payroll += RB.payrollTotals(p).net + RB.payrollTotals(p).gosiEe + RB.payrollTotals(p).gosiEr;
     }
     preopen = { expenses: r2(preopen.expenses), purchases: r2(preopen.purchases), payroll: r2(preopen.payroll) };
     const sources = r2(contributions + direct);
+    // المصروف والمتبقي بالإجمالي المدفوع (نقدي)؛ ضريبة المدخلات المستردة معلومة فقط ولا تُضاف للمتبقي
     const used = r2(sum(assetList, (a) => a.amount) + preopen.expenses + preopen.purchases + preopen.payroll);
-    return { contributions, direct, sources, assets: assetList, assetsTotal: r2(sum(assetList, (a) => a.amount)), preopen, used, remaining: r2(sources - used), open };
+    return { contributions, direct, sources, assets: assetList, assetsTotal: r2(sum(assetList, (a) => a.amount)), preopen, used, remaining: r2(sources - used), open, laterAssets, vatRecoverable: r2(vatRecoverable) };
   };
 
-  // نقطة التعادل: كم يلزم من المبيعات شهرياً لتغطية المصاريف الثابتة
-  RB.breakEven = (S, from, to, L) => {
-    const inc = RB.incomeStatement(S, from, to, L);
-    const months = RB.monthsIn(from, to);
-    const rate = RB.isVatReg(S.settings, RB.todayISO()) ? num(S.settings.vatRate) / 100 : 0;
+  // نقطة التعادل: كم يلزم من المبيعات شهرياً لتغطية المصاريف الثابتة.
+  // تُحسب من أشهر التشغيل التقويمية الكاملة داخل الفترة؛ الشهر غير المكتمل والأشهر قبل الافتتاح لا تدخل.
+  // إن لم تضم الفترة شهراً كاملاً فآخر شهر كامل قبل نهايتها، وإن لم يوجد شهر تشغيل كامل بعد فتقدير من الأيام المتاحة.
+  RB.breakEven = (S, from, to, L, today) => {
+    today = today || RB.todayISO();
+    const set = S.settings;
+    // بداية التشغيل: تاريخ الافتتاح، وإلا أول يوم فيه مبيعات
+    let first = set.openingDate || '';
+    if (!first) for (const s of S.sales || []) if (s.date && RB.saleTotal(s) > 0 && (!first || s.date < first)) first = s.date;
+    const monthStart = (d) => (d.endsWith('-01') ? d : RB.ymAdd(d.slice(0, 7), 1) + '-01');
+    const firstFull = first ? monthStart(first) : '';
+    const end = to < today ? to : today;
+    const lastFull = end === RB.monthEnd(end.slice(0, 7)) ? end : RB.addDays(end.slice(0, 7) + '-01', -1);
+    let wFrom = monthStart(firstFull > from ? firstFull : from);
+    let wTo = lastFull;
+    let estimate = false;
+    let fallback = false;
+    if (wTo < wFrom) {
+      wFrom = lastFull.slice(0, 7) + '-01';
+      fallback = true;
+      if (firstFull && wFrom < firstFull) {
+        fallback = false;
+        estimate = true;
+        wFrom = first > from ? first : from;
+        if (wFrom > end) wFrom = from;
+        wTo = end;
+      }
+    }
+    const inc = RB.incomeStatement(S, wFrom, wTo, L || RB.buildLedger(S, wTo));
+    const months = RB.monthsIn(wFrom, wTo);
+    const days = Math.max(RB.daysBetween(wFrom, wTo) + 1, 1);
+    const rate = RB.isVatReg(set, today) ? num(set.vatRate) / 100 : 0;
     const variable = r2(inc.tot.cogs + inc.tot.sell);
     const varRatio = inc.revenue ? variable / inc.revenue : 0;
     const fixedMonthly = r2((inc.tot.labor + inc.tot.occ + inc.tot.opex + inc.tot.dep) / months);
-    const sales = RB.salesByChannel(S, from, to);
+    const sales = RB.salesByChannel(S, wFrom, wTo);
     const beNet = varRatio < 1 ? fixedMonthly / (1 - varRatio) : 0;
     const beGross = beNet * (1 + rate);
+    const beDaily = (beGross * months) / days;
     const avgMonthlyNet = inc.revenue / months;
     return {
       months, revenue: inc.revenue, variable, varRatio, fixedMonthly,
       fixedParts: { labor: inc.tot.labor / months, occ: inc.tot.occ / months, opex: inc.tot.opex / months, dep: inc.tot.dep / months },
-      beNet, beGross, beDaily: beGross / 30, beOrders: sales.total.avgTicket ? beGross / sales.total.avgTicket : 0,
+      beNet, beGross, beDaily, beOrders: sales.total.avgTicket ? beGross / sales.total.avgTicket : 0,
       avgTicket: sales.total.avgTicket, avgMonthlyNet, safety: avgMonthlyNet ? ((avgMonthlyNet - beNet) / avgMonthlyNet) * 100 : 0,
+      basisFrom: wFrom, basisTo: wTo, estimate, fallback,
+      // ما استُبعد من الفترة المختارة (للتوضيح في التقرير)
+      cutEnd: !estimate && !fallback && wTo < end,
+      cutStart: !estimate && !fallback && wFrom > from && !(firstFull && from < firstFull),
+      preOpen: !estimate && !fallback && !!firstFull && from < firstFull,
     };
   };
 

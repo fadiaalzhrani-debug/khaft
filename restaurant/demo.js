@@ -232,7 +232,7 @@
           const amt = r2(pending[k]);
           if (amt <= 0) continue;
           const ded = rnd() < 0.15 ? r2(between(40, 150)) : 0;
-          S.payouts.push({ id: id('o'), date: d, channelId: k, amount: r2(amt - ded), deductions: ded, note: ded ? 'خصم عرض ترويجي' : '' });
+          S.payouts.push({ id: id('o'), date: d, channelId: k, amount: r2(amt - ded), deductions: ded, dedType: 'sale', note: ded ? 'خصم عرض ترويجي' : '' });
           pending[k] = 0;
         }
       }

@@ -403,3 +403,276 @@ test('الرواتب تُحمّل على شهر الخدمة وإن صُرفت �
   S.payroll[0].date = '2026-09-30';
   assert.equal(RB.buildLedger(S, '2026-10-14').entries.filter((e) => e.kind === 'payroll').length, 1);
 });
+
+// ───────── دفعة التصحيحات المحاسبية (WP1، الجزء الثاني) ─────────
+
+test('مصروف الشهر الواحد يُحمّل على شهر بداية التغطية', () => {
+  const S = base();
+  S.expenses = [
+    { id: 'e1', date: '2026-10-12', category: 'utilities', desc: 'كهرباء سبتمبر', amount: 3000, includesVat: false, taxable: false, account: 'bank', months: 1, startDate: '2026-09-01' },
+    { id: 'e2', date: '2026-10-12', category: 'utilities', desc: 'كهرباء أغسطس وسبتمبر', amount: 6000, includesVat: false, taxable: false, account: 'bank', months: 2, startDate: '2026-08-01' },
+  ];
+  const t = '2026-10-14';
+  const L = RB.buildLedger(S, t);
+  for (const e of L.entries) close(RB.sum(e.lines, (l) => l.v), 0, 0.001);
+  const opex = (f, to) => RB.incomeStatement(S, f, to, L).tot.opex;
+  close(opex('2026-08-01', '2026-08-31'), 3000);
+  close(opex('2026-09-01', '2026-09-30'), 6000);
+  close(opex('2026-10-01', t), 0);
+  assert.deepEqual(RB.amortSchedule(S.expenses[0], S).months, [{ ym: '2026-09', date: '2026-09-01', amount: 3000 }]);
+  // قبل الدفع: مصروفات مستحقة في الالتزامات، والميزانية متوازنة
+  const sep = RB.balanceSheet(S, '2026-09-30', RB.buildLedger(S, '2026-09-30'));
+  close(sep.liab.find((x) => x.code === '1105').amount, 9000);
+  close(sep.check, 0);
+  close(RB.balanceSheet(S, t, L).check, 0);
+  close(RB.balances(L.entries, null, t)['1105'] || 0, 0);
+  // تغطية لاحقة: مدفوع في سبتمبر عن نوفمبر يُحمّل على نوفمبر
+  S.expenses = [{ id: 'e3', date: '2026-09-28', category: 'utilities', desc: 'نوفمبر', amount: 3000, taxable: false, account: 'bank', months: 1, startDate: '2026-11-01' }];
+  const L2 = RB.buildLedger(S, '2026-12-31');
+  close(RB.incomeStatement(S, '2026-09-01', '2026-09-30', L2).tot.opex, 0);
+  close(RB.incomeStatement(S, '2026-11-01', '2026-11-30', L2).tot.opex, 3000);
+  const oct = RB.balanceSheet(S, '2026-10-31', RB.buildLedger(S, '2026-10-31'));
+  close(oct.cur.find((x) => x.code === '1105').amount, 3000);
+  close(oct.check, 0);
+  // نفس الشهر: قيد مباشر واحد كما كان
+  S.expenses = [{ id: 'e4', date: '2026-09-12', category: 'utilities', desc: 'سبتمبر', amount: 3000, taxable: false, account: 'bank', months: 1, startDate: '2026-09-01' }];
+  const es = RB.buildLedger(S, t).entries;
+  assert.deepEqual(es.map((e) => e.kind), ['expense']);
+  // البيانات التجريبية: مصاريف الشهر الواحد لا تتغير (بلا تحميل منفصل)
+  const D = RB.demoState(t);
+  const one = new Set(D.expenses.filter((x) => Math.round(RB.num(x.months) || 1) === 1).map((x) => x.id));
+  assert.ok(one.size > 5);
+  assert.ok(!RB.buildLedger(D, t).entries.some((e) => e.kind === 'amort' && one.has(e.ref.id)));
+});
+
+test('عدد الأشهر في فترة: الشهر الكامل = 1 مهما كان عدد أيامه', () => {
+  close(RB.monthsIn('2026-02-01', '2026-02-28'), 1, 1e-9);
+  close(RB.monthsIn('2026-08-01', '2026-08-31'), 1, 1e-9);
+  close(RB.monthsIn('2026-07-01', '2026-09-30'), 3, 1e-9);
+  close(RB.monthsIn('2026-10-01', '2026-10-14'), 14 / 31, 1e-9);
+  close(RB.monthsIn('2026-01-15', '2026-02-28'), 17 / 31 + 1, 1e-9);
+  assert.ok(RB.monthsIn('2026-10-14', '2026-10-01') > 0);
+});
+
+test('نقطة التعادل من أشهر التشغيل الكاملة', () => {
+  // فبراير: إيجار 6,000 شهرياً = 6,000 (لا 6,522 بقسمة 28 يوماً على 30.44)
+  const S = base();
+  S.settings.openingDate = '2026-01-01';
+  S.expenses = [{ id: 'r', date: '2026-01-01', category: 'rent', desc: 'إيجار', amount: 36000, taxable: false, account: 'bank', months: 6, startDate: '2026-01-01' }];
+  S.sales = [{ id: 's', date: '2026-02-10', channels: { cash: { amount: 23000, orders: 500, type: 'cash' } } }];
+  const feb = RB.breakEven(S, '2026-02-01', '2026-02-28', null, '2026-10-14');
+  close(feb.fixedParts.occ, 6000);
+  close(feb.months, 1, 1e-9);
+  close(feb.beDaily, feb.beGross / 28, 1e-6);
+
+  const t = '2026-10-14';
+  const D = RB.demoState(t);
+  const L = RB.buildLedger(D, t);
+  const fixedOf = (f, to) => {
+    const i = RB.incomeStatement(D, f, to, L);
+    return i.tot.labor + i.tot.occ + i.tot.opex + i.tot.dep;
+  };
+  // «هذا الشهر» ينتهي منتصف الشهر: نفس الشهر الكامل السابق
+  const cur = RB.breakEven(D, '2026-10-01', t, L, t);
+  const prev = RB.breakEven(D, '2026-09-01', '2026-09-30', L, t);
+  assert.equal(cur.basisFrom, '2026-09-01');
+  assert.equal(cur.basisTo, '2026-09-30');
+  assert.equal(cur.fallback, true);
+  assert.equal(cur.estimate, false);
+  close(cur.fixedMonthly, prev.fixedMonthly);
+  close(cur.fixedMonthly, fixedOf('2026-09-01', '2026-09-30'));
+  close(cur.fixedParts.occ, RB.incomeStatement(D, '2026-09-01', '2026-09-30', L).tot.occ);
+  close(cur.beDaily, cur.beGross / 30, 1e-6);
+  // الطريقة القديمة (أيام أكتوبر ÷ 30.44) تضخّم الثابت لأن الإيجار والإهلاك يُحمّلان أول الشهر
+  assert.ok(fixedOf('2026-10-01', t) / (14 / 30.4375) > cur.fixedMonthly + 1000);
+  // «هذه السنة» والافتتاح 1 يوليو: القسمة على أشهر التشغيل فقط
+  assert.equal(D.settings.openingDate, '2026-07-01');
+  const year = RB.breakEven(D, '2026-01-01', t, L, t);
+  assert.equal(year.basisFrom, '2026-07-01');
+  assert.equal(year.basisTo, '2026-09-30');
+  close(year.months, 3, 1e-9);
+  assert.equal(year.preOpen, true);
+  assert.equal(year.cutEnd, true);
+  close(year.fixedMonthly, fixedOf('2026-07-01', '2026-09-30') / 3);
+  const inc = RB.incomeStatement(D, '2026-07-01', '2026-09-30', L);
+  close(year.avgMonthlyNet, inc.revenue / 3, 0.01);
+  close(year.beDaily, (year.beGross * 3) / 92, 1e-6);
+  // «آخر 3 أشهر» (أغسطس–أكتوبر): أغسطس وسبتمبر فقط
+  const m3 = RB.breakEven(D, '2026-08-01', t, L, t);
+  assert.deepEqual([m3.basisFrom, m3.basisTo, m3.fallback], ['2026-08-01', '2026-09-30', false]);
+  // لا يوجد شهر تشغيل كامل بعد: تقدير من الأيام المتاحة
+  const N = base();
+  N.settings.openingDate = '2026-10-01';
+  N.sales = [{ id: 's', date: '2026-10-02', channels: { cash: { amount: 11500, orders: 300, type: 'cash' } } }];
+  N.expenses = [{ id: 'x', date: '2026-10-01', category: 'utilities', desc: 'كهرباء', amount: 1000, taxable: false, account: 'bank', months: 1 }];
+  const est = RB.breakEven(N, '2026-10-01', t, null, t);
+  assert.equal(est.estimate, true);
+  assert.deepEqual([est.basisFrom, est.basisTo], ['2026-10-01', t]);
+  close(est.months, 14 / 31, 1e-9);
+  close(est.fixedMonthly, 1000 / (14 / 31));
+  close(est.beDaily, (est.beGross * est.months) / 14, 1e-6);
+  // بلا تاريخ افتتاح: بداية التشغيل أول يوم مبيعات (منتصف الشهر ← الشهر التالي أول شهر كامل)
+  N.settings.openingDate = '';
+  N.sales[0].date = '2026-08-15';
+  const ns = RB.breakEven(N, '2026-01-01', t, null, t);
+  assert.deepEqual([ns.basisFrom, ns.basisTo, ns.estimate], ['2026-09-01', '2026-09-30', false]);
+});
+
+function stockCase(reg, regFrom) {
+  const S = base();
+  S.settings.vatRegistered = reg;
+  if (regFrom) S.settings.vatRegisteredFrom = regFrom;
+  S.raw = [
+    { id: 'beef', name: 'لحم', price: 100, packQty: 10000, useUnit: 'جم', taxable: true, wastePct: 0 },
+    { id: 'veg', name: 'خس', price: 50, packQty: 5000, useUnit: 'جم', taxable: false, wastePct: 0 },
+  ];
+  S.purchases = [{ id: 'b1', date: '2026-09-05', supplier: 'مورد', category: 'food', account: 'bank', taxable: true, includesVat: false, lines: [{ rawId: 'beef', qty: 10, price: 100 }] }];
+  S.stockCounts = [{ id: 'k1', date: '2026-09-30', lines: [{ rawId: 'beef', qty: 10, price: 100 }] }];
+  const L = RB.buildLedger(S, '2026-09-30');
+  return { S, b: RB.balances(L.entries, null, '2026-09-30'), inc: RB.incomeStatement(S, '2026-09-01', '2026-09-30', L), L };
+}
+
+test('الجرد بتكلفة الشراء: شامل الضريبة للمواد الخاضعة إن لم يكن المطعم مسجلاً', () => {
+  const u = stockCase(false);
+  close((u.b['5101'] || 0) + (u.b['5109'] || 0), 0);
+  close(u.inc.tot.cogs, 0);
+  close(u.b['1104'], 1150);
+  const r = stockCase(true);
+  close((r.b['5101'] || 0) + (r.b['5109'] || 0), 0);
+  close(r.b['1104'], 1000);
+  // السعر المحفوظ يبقى بدون ضريبة، والمواد غير الخاضعة بلا زيادة
+  assert.equal(u.S.stockCounts[0].lines[0].price, 100);
+  const c = { date: '2026-09-30', lines: [{ rawId: 'beef', qty: 2, price: 100 }, { rawId: 'veg', qty: 2, price: 50 }] };
+  close(RB.stockValue(c, u.S), 330);
+  close(RB.stockValue(c, r.S), 300);
+  close(RB.stockValue(c), 300); // بدون بيانات المطعم = السعر المحفوظ
+  close(RB.stockLinePrice(c.lines[0], u.S, c.date), 115, 1e-9);
+  // تاريخ سريان التسجيل: الجرد قبله بالإجمالي، وبعده بالصافي
+  const f = stockCase(true, '2026-10-01');
+  close(f.b['1104'], 1150);
+  close(f.inc.tot.cogs, 0);
+  close(RB.balanceSheet(f.S, '2026-09-30', f.L).check, 0);
+});
+
+test('خصومات التحويل من التطبيق: معالجة الضريبة حسب النوع', () => {
+  const S = base();
+  S.sales = [{ id: 's1', date: '2026-05-01', channels: { jahez: { amount: 115, orders: 1, feePct: 0, type: 'app' } } }];
+  const run = (dedType) => {
+    S.payouts = [{ id: 'o1', date: '2026-05-04', channelId: 'jahez', amount: 92, deductions: 23, dedType }];
+    const L = RB.buildLedger(S, '2026-05-31');
+    for (const e of L.entries) close(RB.sum(e.lines, (l) => l.v), 0, 0.001);
+    return { v: RB.vatReport(S, '2026-05-01', '2026-05-31', L), b: RB.balances(L.entries, null, '2026-05-31') };
+  };
+  const none = run(undefined);
+  assert.equal(none.v.sales.vat, 15);
+  assert.equal(none.v.sales.base, 100);
+  assert.equal(none.v.inVat, 0);
+  close(none.b['5403'], 23);
+  assert.deepEqual(run('other').b, none.b);
+  // عرض أو مرتجع: ضريبة المبيعات تنقص 3 وأساسها 20
+  const sale = run('sale');
+  assert.equal(sale.v.sales.vat, 12);
+  assert.equal(sale.v.sales.base, 80);
+  assert.equal(sale.v.inVat, 0);
+  close(sale.b['5403'], 20);
+  close(sale.b['1103'] || 0, 0);
+  close(-sale.b['2102'], 12);
+  // رسوم بفاتورة ضريبية: ضريبة مدخلات 3
+  const fee = run('fee');
+  assert.equal(fee.v.sales.vat, 15);
+  assert.equal(fee.v.inVat, 3);
+  assert.deepEqual(fee.v.inputs['عمولات التطبيقات ورسوم الشبكة'], { base: 20, vat: 3 });
+  close(fee.b['5403'], 20);
+  // غير مسجل في تاريخ التحويل: الخصم كله مصروف بلا ضريبة
+  S.settings.vatRegisteredFrom = '2026-06-01';
+  const pre = run('sale');
+  close(pre.b['5403'], 23);
+  assert.equal(pre.v.sales.vat, 0);
+  // البيانات التجريبية: خصومات العروض تخفض ضريبة المبيعات بمقدار ضريبتها
+  const t = '2026-10-14';
+  const D = RB.demoState(t);
+  const ded = D.payouts.filter((p) => RB.num(p.deductions) > 0);
+  assert.ok(ded.length > 0 && ded.every((p) => p.dedType === 'sale'));
+  const withType = RB.vatReport(D, '2000-01-01', t, RB.buildLedger(D, t));
+  D.payouts.forEach((p) => delete p.dedType);
+  const plain = RB.vatReport(D, '2000-01-01', t, RB.buildLedger(D, t));
+  const expected = RB.sum(ded, (p) => RB.num(p.deductions) - RB.r2(RB.num(p.deductions) / 1.15));
+  close(plain.sales.vat - withType.sales.vat, expected, 0.05);
+});
+
+test('أين ذهب رأس المال التأسيسي: الأصول التأسيسية فقط، والضريبة المستردة للعلم', () => {
+  const t = '2026-10-14';
+  const S = RB.demoState(t);
+  const cu = RB.capitalUses(S);
+  // المتبقي = الصندوق + البنك − الموردين في اليوم السابق للافتتاح
+  const pre = RB.addDays(S.settings.openingDate, -1);
+  const b = RB.balances(RB.buildLedger(S, t).entries, null, pre);
+  close(cu.remaining, (b['1101'] || 0) + (b['1102'] || 0) + (b['2101'] || 0));
+  // ضريبة المدخلات قبل الافتتاح = رصيد حساب الضريبة المسترد، ولا تُضاف للمتبقي
+  assert.ok(cu.vatRecoverable > 0);
+  close(cu.vatRecoverable, b['2102']);
+  assert.deepEqual(cu.laterAssets, { amount: 0, count: 0 });
+  // أصل بعد الافتتاح من البنك: لا يغيّر المتبقي ويظهر في الملاحظة
+  S.assets.push({ id: 'late', date: '2026-10-01', name: 'فريزر إضافي', category: 'kitchen', amount: 8000, includesVat: false, taxable: true, account: 'bank', lifeMonths: 60, salvage: 0 });
+  const cu2 = RB.capitalUses(S);
+  close(cu2.remaining, cu.remaining);
+  close(cu2.used, cu.used);
+  assert.deepEqual(cu2.laterAssets, { amount: 9200, count: 1 });
+  close(cu2.vatRecoverable, cu.vatRecoverable);
+  // أصل تأسيسي بالآجل: خارج «المصروف على التأسيس»
+  S.assets.push({ id: 'owed', date: RB.addDays(pre, -5), name: 'ثلاجة بالآجل', category: 'kitchen', amount: 5000, includesVat: false, taxable: true, account: 'payable', supplier: 'شركة المعدات', lifeMonths: 60, salvage: 0 });
+  const cu3 = RB.capitalUses(S);
+  close(cu3.used, cu.used);
+  assert.deepEqual(cu3.laterAssets, { amount: 9200 + 5750, count: 2 });
+  // غير مسجل: لا ضريبة مستردة
+  S.settings.vatRegistered = false;
+  assert.equal(RB.capitalUses(S).vatRecoverable, 0);
+});
+
+test('كشف الصندوق والبنك: الداخل قبل الخارج في اليوم نفسه، وسطور الرواتب لها بيان', () => {
+  const S = base();
+  S.capital = [{ id: 'c', date: '2026-05-01', partnerId: 'p1', type: 'contribution', account: 'cash', amount: 100 }];
+  S.expenses = [{ id: 'x', date: '2026-05-02', category: 'maintenance', desc: 'صيانة', amount: 650, taxable: false, account: 'cash', months: 1 }];
+  S.sales = [{ id: 's', date: '2026-05-02', channels: { cash: { amount: 700, orders: 10, type: 'cash' } } }];
+  for (const from of [null, '2026-05-02']) {
+    const st = RB.accountStatement(S, '1101', from, '2026-05-31');
+    const floor = Math.min(st.opening, st.closing);
+    assert.ok(st.rows.every((r) => r.balance >= floor - 0.001), JSON.stringify(st.rows));
+    close(st.closing, 150);
+    const day = st.rows.filter((r) => r.date === '2026-05-02');
+    assert.deepEqual(day.map((r) => r.kind), ['sale', 'expense']);
+  }
+  // رواتب من البنك: سطران ببيانين مختلفين
+  const sa = { id: 'e1', nationality: 'saudi', basic: 4000, housing: 1000, transport: 500 };
+  S.capital.push({ id: 'c2', date: '2026-05-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 10000 });
+  S.payroll = [{ id: 'w', month: '2026-05', date: '2026-05-31', account: 'bank', gosiAccount: 'bank', lines: [RB.payrollLine(sa, S)] }];
+  const L = RB.buildLedger(S, '2026-05-31');
+  const bank = RB.accountStatement(S, '1102', '2026-05-31', '2026-05-31', L).rows;
+  assert.equal(bank.length, 2);
+  assert.notEqual(bank[0].desc, bank[1].desc);
+  assert.ok(bank[0].desc.endsWith('صافي الرواتب'));
+  close(bank[0].out, 5012.5);
+  assert.ok(bank[1].desc.includes('التأمينات الاجتماعية'));
+  close(bank[1].out, 1075);
+  // السطور بلا بيان لا تحمل الحقل
+  assert.ok(L.entries.filter((e) => e.kind !== 'payroll').every((e) => e.lines.every((l) => !('memo' in l))));
+  // البيانات التجريبية: في كل يوم لا ينزل الرصيد الجاري عن أقل رصيدي أول اليوم وآخره، ومسير سبتمبر سطران في كشف البنك
+  const t = '2026-10-14';
+  const D = RB.demoState(t);
+  const DL = RB.buildLedger(D, t);
+  for (const acc of ['1101', '1102']) {
+    const st = RB.accountStatement(D, acc, null, t, DL);
+    let open = st.opening;
+    const byDay = {};
+    st.rows.forEach((r) => (byDay[r.date] = byDay[r.date] || []).push(r));
+    for (const d of Object.keys(byDay).sort()) {
+      const rows = byDay[d];
+      const floor = Math.min(open, rows[rows.length - 1].balance);
+      assert.ok(rows.every((r) => r.balance >= floor - 0.001), acc + ' ' + d);
+      open = rows[rows.length - 1].balance;
+    }
+  }
+  const sep = RB.accountStatement(D, '1102', '2026-09-30', '2026-09-30', DL).rows.filter((r) => r.kind === 'payroll');
+  assert.equal(sep.length, 2);
+  assert.notEqual(sep[0].desc, sep[1].desc);
+});
