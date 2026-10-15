@@ -1029,6 +1029,98 @@ test('مخصص نهاية الخدمة يُستحق مع كل مسير، وال�
   close(RB.sum(Object.values(RB.eosbBalances(D, t))), dbs.liab.find((x) => x.code === '2201').amount);
 });
 
+test('ترك العمل: ما بقي من مخصص نهاية الخدمة بعد صرف المكافأة يُرد إلى المصروف', () => {
+  const S = base();
+  S.capital = [{ id: 'c', date: '2026-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  S.employees = [{ id: 'e1', name: 'سالم', nationality: 'expat', basic: 2500, housing: 0, transport: 0, otherAllow: 500, startDate: '2026-01-10' }];
+  const run = (ym, extra, date) => ({ id: 'w' + ym, month: ym, date: date || RB.monthEnd(ym), account: 'bank', gosiAccount: 'bank', lines: [Object.assign(RB.payrollLine(S.employees[0], S, ym), extra)] });
+  S.payroll = [run('2026-03'), run('2026-04'), run('2026-05')];
+  const check = (asOf) => {
+    const L = RB.buildLedger(S, asOf);
+    for (const e of L.entries) close(RB.sum(e.lines, (x) => x.v), 0, 0.001);
+    const tb = RB.trialBalance(S, null, asOf, L);
+    close(tb.dr, tb.cr);
+    const bs = RB.balanceSheet(S, asOf, L);
+    close(bs.check, 0);
+    close(RB.incomeStatement(S, '2000-01-01', asOf, L).net, bs.retained);
+    return { b: RB.balances(L.entries, null, asOf), L, rel: L.entries.filter((e) => e.kind === 'eosb' && e.ref.s === 'employees') };
+  };
+  // على رأس العمل: المخصص قائم (375)
+  close(check('2026-12-31').b['2201'], -375);
+  // استقال بعد أشهر (لا مكافأة — المادة 85): يُرد المخصص كله في تاريخ ترك العمل
+  S.employees[0].endDate = '2026-05-31';
+  let { b, rel } = check('2026-12-31');
+  close(b['2201'] || 0, 0);
+  close(b['5203'] || 0, 0);
+  assert.deepEqual(rel.map((e) => e.date), ['2026-05-31']);
+  assert.deepEqual(RB.eosbBalances(S, '2026-12-31'), { e1: 0 });
+  // قبل تاريخ ترك العمل يبقى المخصص
+  close(check('2026-05-30').b['2201'], -250);
+  // تاريخ ترك العمل في المستقبل: لا رد حتى يحين
+  S.employees[0].endDate = '2026-12-31';
+  close(check('2026-10-15').b['2201'], -375);
+  S.employees[0].endDate = '2026-05-31';
+  // صُرف له 100 فقط في مسيره الأخير: يُخصم من المخصص ويُرد الباقي 275 في تاريخ الصرف، فلا يبقى في 2201 شيء
+  S.payroll[2].lines[0].eosbPaid = 100;
+  ({ b, rel } = check('2026-12-31'));
+  close(b['2201'] || 0, 0);
+  close(b['5203'], 100);
+  assert.equal(rel.length, 1);
+  assert.equal(rel[0].date, '2026-05-31');
+  close(rel[0].lines.find((x) => x.a === '2201').v, 275);
+  close(rel[0].lines.find((x) => x.a === '5203').v, -275);
+  // المتاح للصرف قبل رد الباقي = المتراكم بعد استحقاق المسير الأخير
+  S.payroll[2].lines[0].eosbPaid = 0;
+  assert.deepEqual(RB.eosbBalances(S, '2026-05-31', { release: false }), { e1: 375 });
+  assert.deepEqual(RB.eosbBalances(S, '2026-05-31'), { e1: 0 });
+  // مسير التسوية بعد ترك العمل (سطر مرتبط بالموظف بلا راتب): يُصرف من المخصص كاملاً، ويتأخر الرد إلى تاريخ الصرف
+  S.payroll.push({ id: 'wfinal', month: '2026-06', date: '2026-06-10', account: 'bank', gosiAccount: 'bank', lines: [{ employeeId: 'e1', name: 'سالم', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 300 }] });
+  ({ b, rel } = check('2026-12-31'));
+  close(b['2201'] || 0, 0);
+  close(b['5203'], 300);
+  assert.deepEqual(rel.map((e) => e.date), ['2026-06-10']);
+  close(rel[0].lines.find((x) => x.a === '2201').v, 75);
+  // بين ترك العمل وصرف المكافأة يبقى المخصص قائماً
+  close(check('2026-06-05').b['2201'], -375);
+  // المكافأة تساوي المخصص أو تزيد عليه: لا رد، والزيادة مصروف
+  S.payroll[3].lines[0].eosbPaid = 400;
+  ({ b, rel } = check('2026-12-31'));
+  assert.equal(rel.length, 0);
+  close(b['2201'] || 0, 0);
+  close(b['5203'], 400);
+  // بلا تاريخ ترك العمل لا رد (متوقف مؤقتاً مثلاً)
+  S.payroll.pop();
+  delete S.employees[0].endDate;
+  S.employees[0].active = false;
+  close(check('2026-12-31').b['2201'], -375);
+});
+
+test('مكافأة من ترك العمل في مسير لاحق مرتبطة به: تُخصم من مخصصه ولا تُحمَّل مرتين', () => {
+  const t = '2026-10-15';
+  const D = RB.demoState(t);
+  const bal = () => RB.balances(RB.buildLedger(D, '2026-10-31').entries, null, '2026-10-31');
+  const b0 = bal();
+  const prov = RB.eosbBalances(D, '2026-10-31').e3;
+  assert.ok(prov > 0);
+  const e3 = D.employees.find((e) => e.id === 'e3');
+  e3.active = false;
+  e3.endDate = '2026-09-30';
+  // المسير التالي لا يعبّئه، لكن يُضاف له سطر مرتبط به (بلا راتب) لصرف مكافأته
+  assert.ok(!D.employees.filter((e) => RB.isEmployeeActive(e, '2026-10')).some((e) => e.id === 'e3'));
+  D.payroll.push({ id: 'prX', month: '2026-10', date: '2026-10-15', account: 'bank', gosiAccount: 'bank', lines: [{ employeeId: 'e3', name: e3.name, basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov }] });
+  let b = bal();
+  close(b['5203'], b0['5203']);
+  close(b['2201'], b0['2201'] + prov);
+  assert.equal(RB.eosbBalances(D, '2026-10-31').e3, 0);
+  // صرف أقل من المخصص: الباقي يُرد، فالمصروف = المدفوع فقط
+  D.payroll[D.payroll.length - 1].lines[0].eosbPaid = 100;
+  b = bal();
+  close(b['5203'], b0['5203'] - prov + 100);
+  close(b['2201'], b0['2201'] + prov);
+  const bs = RB.balanceSheet(D, '2026-10-31', RB.buildLedger(D, '2026-10-31'));
+  close(bs.check, 0);
+});
+
 test('الزكاة بند مستقل بعد صافي الربح وتُحمَّل على السنة التي تخصها', () => {
   const S = base();
   S.settings.openingDate = '2025-01-01';

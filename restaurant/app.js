@@ -447,7 +447,7 @@
   }
   function linesHTML(f, val) {
     const rows = getPath(val, f.k) || [];
-    const head = f.cols.map((c) => `<th class="${c.num ? 'num' : ''}" ${c.w ? `style="width:${c.w}"` : ''}>${esc(c.label)}</th>`).join('');
+    const head = f.cols.map((c) => `<th class="${c.num ? 'num' : ''} ${c.cls || ''}" ${c.w ? `style="width:${c.w}"` : ''}>${esc(c.label)}</th>`).join('');
     const body = rows
       .map((r, i) => {
         const cells = f.cols
@@ -461,7 +461,10 @@
             else if (c.type === 'num') h = `<input type="number" inputmode="decimal" step="any" data-type="num" data-path="${p}" value="${r[c.k] === undefined || r[c.k] === null ? '' : esc(r[c.k])}" ${aria}>`;
             else if (c.type === 'static') h = `<span>${esc(c.text ? c.text(r, val) : r[c.k])}</span>`;
             else h = `<input type="text" data-path="${p}" value="${esc(r[c.k])}" ${aria}>`;
-            return `<td class="${c.num ? 'num' : ''}">${h}</td>`;
+            // extra: عناصر إضافية في الخلية تُرسم مع النموذج؛ hint: سطر توضيح يتحدث مع كل إدخال
+            if (c.extra) h += c.extra(r, i, val);
+            if (c.hint) h += `<small class="lhint" data-hint="${f.k}|${i}|${c.k}">${c.hint(r, val)}</small>`;
+            return `<td class="${c.num ? 'num' : ''} ${c.cls || ''}">${h}</td>`;
           })
           .join('');
         return `<tr>${cells}<td class="act"><button type="button" class="icon-btn" data-lact="del" data-lk="${f.k}" data-i="${i}" aria-label="حذف السطر ${i + 1}">✕</button></td></tr>`;
@@ -501,8 +504,20 @@
           const row = (getPath(val, f.k) || [])[+i];
           if (c && row) el.innerHTML = c.calc(row, val);
         });
+        m.body.querySelectorAll(`[data-hint^="${f.k}|"]`).forEach((el) => {
+          const [, i, ck] = el.dataset.hint.split('|');
+          const c = f.cols.find((x) => x.k === ck);
+          const row = (getPath(val, f.k) || [])[+i];
+          if (c && c.hint && row) el.innerHTML = c.hint(row, val);
+        });
         const ft = m.body.querySelector(`[data-lfoot="${f.k}"]`);
         if (ft && f.foot) ft.innerHTML = f.foot(val);
+      }
+      // مربعات الاختيار المشتقة (get) تتبع الحقول التي تُشتق منها ما لم يحددها المستخدم صراحة
+      for (const f of flatFields(fields())) {
+        if (f.type !== 'check' || !f.get) continue;
+        const el = m.body.querySelector(`input[type="checkbox"][data-path="${f.k}"]`);
+        if (el) el.checked = !!f.get(val);
       }
       const pv = m.body.querySelector('.form-preview');
       if (pv && o.preview) pv.innerHTML = o.preview(val);
@@ -1070,11 +1085,12 @@
         [
           { h: 'الاسم', f: (e) => `<b>${esc(e.name)}</b><div class="muted sm">${esc(e.job || '')}</div>` },
           { h: 'الجنسية', f: (e) => (e.nationality === 'saudi' ? chip('سعودي', 'accent') : chip('غير سعودي', 'mute')) },
-          { h: 'الراتب والبدلات', num: 1, f: (e) => N(costs[e.id].salary) },
-          { h: 'تأمينات المنشأة', num: 1, f: (e) => N(costs[e.id].gosi.er) },
-          { h: 'المقابل المالي والإقامة', num: 1, f: (e) => N(RB.sum(costs[e.id].items.filter((i) => i.k === 'levy' || i.k === 'iqama'), (i) => i.v)) },
-          { h: 'التكلفة الشهرية الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
-          { h: 'مخصص نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
+          // العناوين الطويلة على سطرين ليتسع الجدول لأزرار السطر على شاشة 1280
+          { h: 'الراتب<br>والبدلات', num: 1, f: (e) => N(costs[e.id].salary) },
+          { h: 'تأمينات<br>المنشأة', num: 1, f: (e) => N(costs[e.id].gosi.er) },
+          { h: 'المقابل المالي<br>والإقامة', num: 1, f: (e) => N(RB.sum(costs[e.id].items.filter((i) => i.k === 'levy' || i.k === 'iqama'), (i) => i.v)) },
+          { h: 'التكلفة الشهرية<br>الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
+          { h: 'مخصص<br>نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
           { h: 'الحالة', f: (e) => (RB.isEmployeeActive(e, ym) ? chip('على رأس العمل', 'good') : chip('متوقف', 'mute')) },
           { h: '', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${e.id}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
@@ -1873,7 +1889,8 @@
         { k: 'active', type: 'check', label: 'على رأس العمل' },
         { k: 'note', type: 'textarea', label: 'ملاحظات' },
       ],
-      preview: (v) => empCostHTML(v),
+      // المتوقف بلا تاريخ ترك العمل يبقى مخصصه قائماً: التسوية تتم بتاريخ ترك العمل
+      preview: (v) => empCostHTML(v) + (v.active === false && !v.endDate ? '<p class="note bad">حدّد «تاريخ ترك العمل» إن ترك العمل: به يُسوّى مخصص نهاية الخدمة (يُرد إلى المصروف ما بقي منه بعد صرف مكافأته).</p>' : ''),
       onSave: (v) => upsert('employees', v),
     });
   };
@@ -1898,6 +1915,22 @@
     const base = { id: RB.uid(), month: ym, date: RB.monthEnd(ym) <= today() ? RB.monthEnd(ym) : today(), account: 'bank', gosiAccount: 'bank', lines: [], note: '' };
     if (!rec) fill(base);
     const nCol = (k, label) => ({ k, label, type: 'num', num: 1 });
+    const empOf = (id) => (id ? S.employees.find((e) => e.id === id) : null);
+    // الموظف في السطر: كل الموظفين (ومنهم من ترك العمل لصرف مكافأته)، أو عامل غير مسجل باسم حر
+    const empOpts = (r, v) => {
+      const on = (e) => RB.isEmployeeActive(e, v.month);
+      const list = S.employees.filter(on).concat(S.employees.filter((e) => !on(e)));
+      const o = [['', '— عامل غير مسجل —']].concat(list.map((e) => [e.id, e.name + (on(e) ? '' : ' — متوقف')]));
+      if (r.employeeId && !empOf(r.employeeId)) o.push([r.employeeId, (r.name || 'موظف') + ' — محذوف']);
+      return o;
+    };
+    // مخصص الموظف المتاح للصرف في هذا المسير: مع استحقاق هذا المسير، وقبل صرفه ورد الباقي عند ترك العمل
+    const provAt = (v) => {
+      const draft = Object.assign({}, v, { lines: (v.lines || []).map((l) => Object.assign({}, l, { eosbPaid: 0 })) });
+      return RB.eosbBalances(Object.assign({}, S, { payroll: S.payroll.filter((p) => p.id !== v.id).concat([draft]) }), v.date, { release: false });
+    };
+    // من ترك العمل حتى تاريخ الصرف: يُرد ما بقي من مخصصه بعد هذا الصرف
+    const leftBy = (e, d) => e && /^\d{4}-\d{2}-\d{2}$/.test(e.endDate || '') && e.endDate <= d;
     return formModal({
       title: rec ? 'تعديل مسير رواتب' : 'مسير رواتب',
       wide: true,
@@ -1906,6 +1939,15 @@
         if (p === 'month' && !rec) {
           fill(v);
           v.date = RB.monthEnd(v.month) <= today() ? RB.monthEnd(v.month) : today();
+        }
+        const m = p.match(/^lines\.(\d+)\.employeeId$/);
+        const row = m && v.lines[+m[1]];
+        const e = row && empOf(row.employeeId);
+        if (e) {
+          // على رأس العمل في الشهر: راتبه وتأميناته من بياناته؛ من ترك العمل: سطر تسوية بلا راتب
+          const pl = RB.isEmployeeActive(e, v.month) ? RB.payrollLine(e, S, v.month) : { basic: 0, housing: 0, allowances: 0, gosiEe: 0, gosiEr: 0 };
+          row.name = e.name;
+          for (const k of ['basic', 'housing', 'allowances', 'gosiEe', 'gosiEr']) row[k] = pl[k];
         }
       },
       fields: [
@@ -1918,7 +1960,15 @@
           tools: [{ id: 'fill', label: 'تعبئة من بيانات الموظفين', run: (v, rows) => rows.splice(0, rows.length, ...S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S, v.month))) }],
           newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 0 }),
           cols: [
-            { k: 'name', label: 'الموظف', w: '9rem' },
+            {
+              k: 'employeeId',
+              label: 'الموظف',
+              type: 'select',
+              options: empOpts,
+              redraw: true,
+              cls: 'emp',
+              extra: (r, i) => (r.employeeId ? '' : `<input type="text" class="sub" data-path="lines.${i}.name" value="${esc(r.name || '')}" placeholder="اسم العامل" aria-label="اسم العامل ${i + 1}">`),
+            },
             nCol('basic', 'الأساسي'),
             nCol('housing', 'السكن'),
             nCol('allowances', 'بدلات'),
@@ -1926,13 +1976,35 @@
             nCol('deductions', 'خصومات وغياب'),
             nCol('gosiEe', 'تأمينات الموظف'),
             nCol('gosiEr', 'تأمينات المنشأة'),
-            nCol('eosbPaid', 'مكافأة نهاية الخدمة المصروفة'),
+            Object.assign(nCol('eosbPaid', 'مكافأة نهاية الخدمة المصروفة'), {
+              cls: 'wrap',
+              hint: (r, v) => {
+                if (!r.employeeId) return '';
+                const b = provAt(v)[r.employeeId] || 0;
+                return b > 0 || num(r.eosbPaid) > 0 ? `مخصصه <span class="n">${fmt(b)}</span>` : '';
+              },
+            }),
             { k: 'net', label: 'الصافي', num: 1, calc: (r) => fmt(RB.payrollLineGross(r) - num(r.gosiEe)) },
           ],
-          help: '«مكافأة نهاية الخدمة المصروفة» تُكتب عند انتهاء خدمة الموظف فقط: تُخصم من مخصصه المتراكم، ولا تدخل في إجمالي الرواتب ولا في التأمينات.',
+          help: '«مكافأة نهاية الخدمة المصروفة» تُكتب عند انتهاء خدمة الموظف فقط: تُخصم من مخصصه المتراكم (يظهر تحتها)، ولا تدخل في إجمالي الرواتب ولا في التأمينات. لموظف ترك العمل: «إضافة موظف» ثم اختره من القائمة.',
           foot: (v) => {
             const t = RB.payrollTotals(v);
-            return `<div class="pv-grid four"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}`;
+            // تسوية من ترك العمل: ما بقي من مخصصه بعد المصروف له يُرد إلى المصروف
+            let prov = null;
+            const settle = (v.lines || [])
+              .map((l) => {
+                const e = empOf(l.employeeId);
+                if (!e) return '';
+                if (e.active === false && !e.endDate) return `<li>${esc(e.name)} متوقف بلا تاريخ ترك العمل: حدّده في بياناته ليُسوّى مخصص نهاية الخدمة.</li>`;
+                if (!leftBy(e, v.date)) return '';
+                prov = prov || provAt(v);
+                const b = prov[e.id] || 0;
+                const p = Math.max(0, num(l.eosbPaid));
+                const rest = RB.r2(b - p);
+                return `<li>${esc(e.name)} ترك العمل في ${dtText(e.endDate)}: مخصصه <span class="n">${fmt(b)}</span>${p ? `، يُصرف منه <span class="n">${fmt(Math.min(p, b))}</span>` : ''}${rest > 0 ? `، ويُرد الباقي <span class="n">${fmt(rest)}</span> إلى المصروف (المكافأة المستحقة أقل من المخصص، كالاستقالة).` : rest < 0 ? `، والزيادة <span class="n">${fmt(-rest)}</span> مصروف في تاريخ الصرف.` : '.'}</li>`;
+              })
+              .join('');
+            return `<div class="pv-grid four"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}${settle ? `<ul class="note settle">${settle}</ul>` : ''}`;
           },
         },
         { k: 'note', label: 'ملاحظات' },
@@ -1943,6 +2015,10 @@
         '<p class="note">اشتراكات التأمينات الاجتماعية تُسدَّد قبل يوم 15 من الشهر التالي.</p>',
       onSave: (v) => {
         if (!v.lines.length) return 'المسير فارغ.';
+        // السطر المكرر لموظف يضاعف استحقاق مخصصه
+        const ids = v.lines.map((l) => l.employeeId).filter(Boolean);
+        const dup = ids.find((id, i) => ids.indexOf(id) !== i);
+        if (dup) return 'الموظف مكرر في المسير: ' + ((empOf(dup) || {}).name || '') + '. اجمع ما له في سطر واحد.';
         upsert('payroll', v);
       },
     });

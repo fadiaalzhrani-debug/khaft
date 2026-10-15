@@ -439,6 +439,11 @@ input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .lines-tbl td.act { width: 36px; }
 .lines-tbl .calc { display: inline-block; min-width: 60px; color: var(--ink-2); }
 .lines-tbl .empty { color: var(--muted); text-align: center; padding: 10px; }
+.lines-tbl input.sub { margin-top: 4px; }
+.lines-tbl td.emp select, .lines-tbl td.emp input { min-width: 8.5rem; }
+.lines-tbl th.wrap { white-space: normal; }
+.lines-tbl .lhint { display: block; margin-top: 2px; font-size: 0.72rem; white-space: nowrap; }
+.lines-tbl .lhint:empty { display: none; }
 .add-line { align-self: flex-start; }
 .form-preview { background: var(--surface-2); border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
 .form-preview:empty { display: none; }
@@ -451,6 +456,7 @@ input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .lines-foot .pv-grid { background: var(--surface-2); padding: 10px 12px; border-radius: var(--r-sm); }
 .note { margin: 0; color: var(--ink-2); font-size: 0.84rem; }
 .note.bad { color: var(--bad); }
+ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; gap: 2px; }
 .tips { margin: 0; padding-inline-start: 18px; font-size: 0.86rem; color: var(--ink-2); display: flex; flex-direction: column; gap: 2px; }
 .ratios { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
 .ratios > div { display: flex; flex-direction: column; background: var(--surface-2); border-radius: var(--r-sm); padding: 10px 12px; min-width: 0; }

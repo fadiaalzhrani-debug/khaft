@@ -454,10 +454,15 @@
 
   // مخصص نهاية الخدمة من المسيرات بترتيب تاريخ الاستحقاق: لكل مسير استحقاق (لكل موظف له سطر من أجره:
   // الأساسي + السكن + البدلات، بلا إضافي ولا خصومات) في تاريخ استحقاق الرواتب، ثم صرف المكافأة
-  // (eosbPaid) في تاريخ الصرف: من المخصص المتراكم للموظف، وما زاد عليه مصروف في حينه
+  // (eosbPaid) في تاريخ الصرف: من المخصص المتراكم للموظف، وما زاد عليه مصروف في حينه.
+  // وعند ترك العمل (تاريخ ترك العمل): ما بقي من مخصص الموظف بعد آخر حركة له يُرد إلى المصروف (release)
   RB.eosbEvents = (S) => {
     const emps = byId(S.employees);
     const accrued = {};
+    const last = {}; // تاريخ آخر حركة مخصص لكل موظف
+    const seen = (id, d) => {
+      if (!last[id] || d > last[id]) last[id] = d;
+    };
     const out = [];
     const runs = (S.payroll || [])
       .filter((pr) => pr && pr.date)
@@ -474,27 +479,44 @@
         const amount = RB.eosbMonthly(num(l.basic) + num(l.housing) + num(l.allowances), e.startDate, RB.monthEnd(ym));
         if (!(amount > 0)) continue;
         accrued[l.employeeId] = r2((accrued[l.employeeId] || 0) + amount);
+        seen(l.employeeId, date);
         lines.push({ employeeId: l.employeeId, amount });
       }
       if (lines.length) out.push({ kind: 'accrual', pr, ym, date, lines, total: r2(sum(lines, (x) => x.amount)) });
       for (const l of pr.lines || []) {
+        const id = (l && l.employeeId) || '';
+        // سطر موظف في مسير بعد تركه العمل (تسوية نهائية ولو بلا مكافأة) يؤخّر رد الباقي إلى تاريخ صرفه
+        if (id) seen(id, pr.date);
         const paid = r2(num(l && l.eosbPaid));
         if (!(paid > 0)) continue;
-        const id = l.employeeId || '';
         const fromProv = id ? r2(Math.min(paid, Math.max(0, accrued[id] || 0))) : 0;
         if (id) accrued[id] = r2((accrued[id] || 0) - fromProv);
         out.push({ kind: 'payout', pr, ym, date: pr.date, employeeId: id, name: l.name || (emps[id] || {}).name || '', paid, fromProv, excess: r2(paid - fromProv) });
       }
     }
+    // ترك العمل: المكافأة الفعلية قد تقل عن المخصص (الاستقالة قبل سنتين لا شيء لها، ومن سنتين إلى عشر بنصيب منقوص —
+    // المادة 85)، فيُرد الباقي من مخصص الموظف إلى المصروف في تاريخ ترك العمل، أو في تاريخ آخر حركة له إن كانت بعده
+    // (مسير التسوية النهائية). إن صُرفت له مكافأة بعد ذلك يتأخر الرد إلى تاريخ صرفها، فلا يبقى مخصص لمن ترك العمل
+    for (const id of Object.keys(accrued)) {
+      const e = emps[id];
+      const rem = accrued[id];
+      if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(e.endDate || '') || !(rem > 0)) continue;
+      const date = e.endDate > (last[id] || '') ? e.endDate : last[id];
+      out.push({ kind: 'release', date, employeeId: id, name: e.name || '', amount: rem });
+    }
     return out;
   };
-  // المخصص المتراكم لكل موظف حتى تاريخ (مجموعها = رصيد حساب 2201)
-  RB.eosbBalances = (S, asOf) => {
+  // المخصص المتراكم لكل موظف حتى تاريخ (مجموعها = رصيد حساب 2201).
+  // o.release === false: قبل رد الباقي عند ترك العمل (المتاح للصرف في مسير التسوية)
+  RB.eosbBalances = (S, asOf, o) => {
     const out = {};
+    const rel = !(o && o.release === false);
     for (const ev of RB.eosbEvents(S)) {
       if (asOf && ev.date > asOf) continue;
       if (ev.kind === 'accrual') for (const l of ev.lines) out[l.employeeId] = r2((out[l.employeeId] || 0) + l.amount);
-      else if (ev.employeeId) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.fromProv);
+      else if (ev.kind === 'release') {
+        if (rel) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.amount);
+      } else if (ev.employeeId) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.fromProv);
     }
     return out;
   };
@@ -762,6 +784,11 @@
     }
     // مخصص مكافأة نهاية الخدمة: يُستحق مع كل مسير في تاريخ استحقاق الرواتب، والمكافأة المصروفة تُخصم من المخصص
     for (const ev of RB.eosbEvents(S)) {
+      if (ev.kind === 'release') {
+        // رد ما بقي من مخصص من ترك العمل إلى المصروف
+        add(ev.date, 'eosb', { s: 'employees', id: ev.employeeId }, 'رد مخصص نهاية الخدمة غير المصروف — ترك العمل' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.amount], ['5203', -ev.amount]]);
+        continue;
+      }
       const ref = { s: 'payroll', id: ev.pr.id };
       if (ev.kind === 'accrual') add(ev.date, 'eosb', ref, 'مخصص نهاية الخدمة — ' + RB.monthName(ev.ym), [['5203', ev.total], ['2201', -ev.total]]);
       else add(ev.date, 'eosb', ref, 'صرف مكافأة نهاية الخدمة' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.fromProv], ['5203', ev.excess], [RB.srcAcc(ev.pr.account), -ev.paid]]);
