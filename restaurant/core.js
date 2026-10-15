@@ -371,6 +371,46 @@
     return out;
   };
 
+  // سجل ما فشل حفظه في البيانات المشتركة ولم يُحفظ بعده، لكل مستند (المسار ← {section, id, rec}؛ rec = null للحذف)،
+  // ومنه تُعرض الشاشة فوق اللقطات (withUnsaved). كل كتابة تحل محل المستند كله أو تحذفه، ولها رقم بترتيب بدايتها:
+  // ما يبقى للمستند هو دائماً آخر ما أراده المستخدم — كتابة جديدة لمستند فشل حفظه تحل محل نسخته الفاشلة من لحظة
+  // بدايتها (فلقطتها الفورية أثناء الحفظ تُعرض بها لا بالقديمة، والحذف لا يُعيد السجل)، ونجاح كتابة أو فشلها بعد أن
+  // بدأت للمستند نفسه كتابة أحدث لا يُعتدّ به (الأحدث هي التي تقرر). start يرجع رقم الكتابة، وok وfail يرجعان
+  // false إن لم تكن آخر كتابة للمستند
+  RB.unsavedWrites = () => {
+    const bad = new Map();
+    const last = new Map();
+    let seq = 0;
+    const settle = (path, n) => {
+      if (last.get(path) !== n) return false;
+      last.delete(path);
+      return true;
+    };
+    return {
+      start(path, keep) {
+        last.set(path, ++seq);
+        if (isObj(keep) && bad.has(path)) bad.set(path, keep);
+        return seq;
+      },
+      ok(path, n) {
+        if (!settle(path, n)) return false;
+        bad.delete(path);
+        return true;
+      },
+      fail(path, n, keep) {
+        if (!settle(path, n)) return false;
+        if (isObj(keep)) bad.set(path, keep);
+        return true;
+      },
+      has: (path) => bad.has(path),
+      get size() {
+        return bad.size;
+      },
+      values: () => [...bad.values()],
+      clear: () => bad.clear(),
+    };
+  };
+
   // علامة config/replace كما تُعرض لمن يفتح البيانات المشتركة: '' (لا علامة، أو كتبتها هذه الصفحة sid)،
   // running (جهاز آخر يستورد أو يمسح الآن: العلامة تتجدد كل 30 ثانية أثناء العملية فتُعد جارية ما دامت أحدث من
   // 5 دقائق، مع تسامح في فرق الساعة بين الجهازين)، stale (توقفت أو فشلت: البيانات قد تكون ناقصة)
@@ -1770,6 +1810,15 @@
       return { date: dates[i] > from ? dates[i] : from, balance: bal, since, sinceBalance };
     }
     return null;
+  };
+
+  // تنبيه الرصيد السالب في لوحة المتابعة: now إن كان بالسالب في نهاية asOf، وsince بداية هذا السالب الجاري (لا أول
+  // سالب سابق في الفترة عاد بعده الرصيد موجباً)؛ وإلا فأول سالب في نهاية يوم من آخر days يوماً. null إن لم يكن
+  RB.negativeAlert = (L, acc, asOf, days) => {
+    const cur = RB.firstNegative(L, acc, asOf, asOf);
+    if (cur) return { now: true, since: cur.since, balance: cur.balance, sinceBalance: cur.sinceBalance };
+    const n = RB.firstNegative(L, acc, RB.addDays(asOf, -days), asOf);
+    return n && { now: false, since: n.since, balance: n.balance, sinceBalance: n.sinceBalance };
   };
 
   // كشف حساب (الصندوق أو البنك أو غيرهما)

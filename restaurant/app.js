@@ -332,8 +332,9 @@
       this.q = {};
       this.subs = {};
       // حفظ فشل ولم ينجح بعده (المسار ← {section, id, rec}؛ rec = null للحذف): الحالة لا تعود «محفوظ» قبل أن يُحفظ
-      // كل منها، وما في الشاشة يبقى كما أدخله المستخدم (لقطة البيانات المشتركة لا تمحوه) فتشمله النسخة الاحتياطية
-      this.bad = new Map();
+      // كل منها، وما في الشاشة يبقى كما أدخله المستخدم (لقطة البيانات المشتركة لا تمحوه) فتشمله النسخة الاحتياطية.
+      // إعادة حفظه أو حذفه تحل محله من بدايتها، فلا تُعيد لقطتها أثناء الحفظ القيمة القديمة إلى الشاشة
+      this.bad = RB.unsavedWrites();
     }
     async load() {
       // الإعدادات وكل المجموعات معاً لا واحدة بعد الأخرى (فتح أسرع). ولكل قراءة إعادة محاولة عند الانقطاع المؤقت
@@ -425,19 +426,20 @@
     write(path, fn, section, keep) {
       APP.save.pending++;
       updateSaveStatus();
+      const n = this.bad.start(path, keep);
       return this.chain(path, fn)
         .then(() => {
-          this.bad.delete(path);
+          this.bad.ok(path, n);
           if (!this.bad.size) APP.save.failed = null;
           APP.savedAt = Date.now();
         })
-        .catch((e) => this.failed(e, section, path, keep))
+        .catch((e) => this.failed(e, section, path, keep, n))
         .finally(() => {
           APP.save.pending--;
           updateSaveStatus();
         });
     }
-    failed(e, section, path, keep) {
+    failed(e, section, path, keep, n) {
       const code = e && e.code;
       // رفض الكتابة لمن لم تحدد المنصة صلاحيته: عرض فقط بقية الزيارة، ويُعاد القسم من البيانات المشتركة (لا يبقى سجل وهمي)
       if (code === 'invalid_argument' && APP.canWrite !== true) {
@@ -447,13 +449,14 @@
         this.resync(section);
         return;
       }
-      if (path && keep) this.bad.set(path, keep);
+      // تلتها كتابة أحدث للمستند نفسه (تعديل أو حذف بعدها): تلك هي التي تقرر ما يُحفظ وما يُنبَّه له
+      if (!this.bad.fail(path, n, keep)) return;
       APP.save.failed = failCode(code || (e instanceof TypeError ? 'invalid_id' : 'error'));
       toast(dbErrMsg(e), 'bad');
     }
     // لقطة من البيانات المشتركة ومعها ما فشل حفظه من هذه الصفحة (كما في الشاشة)
     overlay(section, data) {
-      return this.bad.size ? RB.withUnsaved(section, data, [...this.bad.values()]) : data;
+      return this.bad.size ? RB.withUnsaved(section, data, this.bad.values()) : data;
     }
     async resync(section) {
       try {
@@ -1647,19 +1650,19 @@
       const names = missC.concat(missP).map((r) => esc(r.name));
       out.push(['warn', `وصفات فيها مكوّن محذوف فتكلفتها ناقصة: ${names.slice(0, 4).join('، ')}${names.length > 4 ? '…' : ''} — افتحها واحذف السطر أو اختر مكوّناً آخر.`, btn(missP.length ? 'المنيو والتسعير' : 'المنتجات المجمّعة', 'go', `data-v="${missP.length ? 'products' : 'composites'}"`, 'sm')]);
     }
-    // رصيد الصندوق أو البنك بالسالب: في نهاية الفترة، أو في نهاية يوم سابق من آخر 60 يوماً (خرج منه في الدفتر أكثر
-    // مما دخل حتى ذلك اليوم)، بأول يوم صار فيه بالسالب، والزر يفتح كشفه من ذلك الشهر
-    const bal = RB.balances(ledger().entries, null, asOf);
+    // رصيد الصندوق أو البنك بالسالب: في نهاية الفترة منذ بداية هذا السالب (لا أول سالب سابق عاد بعده الرصيد موجباً)،
+    // أو في نهاية يوم سابق من آخر 60 يوماً (خرج منه في الدفتر أكثر مما دخل حتى ذلك اليوم) بأول يوم صار فيه بالسالب،
+    // والزر يفتح كشفه من شهر ذلك اليوم
     const NEG = {
       1101: ['الصندوق', 'سجّلت مصروفات نقدية أو إيداعات في البنك أكثر من الكاش الموجود. راجع الإقفالات والتحويلات.', 'كشف الصندوق'],
       1102: ['البنك', 'تأكد من تسجيل إيداعات رأس المال والتحويلات.', 'كشف البنك'],
     };
     for (const acc of ['1101', '1102']) {
-      const n = RB.firstNegative(ledger(), acc, RB.addDays(asOf, -60), asOf);
+      const n = RB.negativeAlert(ledger(), acc, asOf, 60);
       if (!n) continue;
       const [name, why, label] = NEG[acc];
       const go2 = btn(label, 'stmt', `data-v="${acc}" data-d="${esc(n.since)}"`, 'sm');
-      if ((bal[acc] || 0) < -0.5) out.push(['bad', `رصيد ${name} بالسالب منذ نهاية ${dtText(n.since)}: ${why}`, go2]);
+      if (n.now) out.push(['bad', `رصيد ${name} بالسالب منذ نهاية ${dtText(n.since)}: ${why}`, go2]);
       else out.push(['warn', `رصيد ${name} كان بالسالب في نهاية ${dtText(n.since)} (${fmt(n.sinceBalance)} ${cur()}): خرج منه في الدفتر أكثر مما دخل حتى ذلك اليوم. غالباً سُجّل مصروف أو تحويل بتاريخ أبكر من الإقفال أو الإيداع الذي يغطيه، أو نقص إقفال أو تحويل — صحّح التاريخ أو سجّل الناقص.`, go2]);
     }
     // جرد الصندوق الذي تغيّر الدفتر بعده: فرقه المسجل لم يعد يجعل الصندوق = المعدود

@@ -2776,3 +2776,82 @@ test('ما فشل حفظه في البيانات المشتركة يبقى في 
   assert.equal(failedNew.rec.amount, 777);
   assert.equal(RB.withUnsaved('capital', snap, []), snap);
 });
+
+test('إعادة حفظ ما فشل حفظه أو حذفه: ما يُعرض فوق اللقطة هو آخر ما أراده المستخدم من بداية الحفظ، وكتابة تلتها أحدث لا يُعتدّ بنتيجتها (المتبقيات 2)', () => {
+  const rec = (amount) => ({ section: 'capital', id: 'c9', rec: { id: 'c9', amount } });
+  const P = 'capital/c9';
+  const u = RB.unsavedWrites();
+  const shown = (snap) => RB.withUnsaved('capital', snap, u.values());
+  // حفظ عادي لا يدخل السجل ما لم يفشل
+  let n = u.start(P, rec(777));
+  assert.equal(u.size, 0);
+  assert.equal(u.fail(P, n, rec(777)), true);
+  assert.deepEqual(shown([]), [{ id: 'c9', amount: 777 }]);
+  // إعادة الحفظ بـ 778: لقطتها الفورية (فيها 778) تُعرض بـ 778 لا بالقديمة أثناء الحفظ، ثم يزول بنجاحه
+  n = u.start(P, rec(778));
+  assert.equal(u.size, 1);
+  assert.deepEqual(shown([{ id: 'c9', amount: 778 }]), [{ id: 'c9', amount: 778 }]);
+  assert.equal(u.ok(P, n), true);
+  assert.equal(u.size, 0);
+  assert.deepEqual(shown([{ id: 'c9', amount: 778 }]), [{ id: 'c9', amount: 778 }]);
+  // سجل جديد فشل حفظه ثم حُذف: لا يعود إلى الشاشة أثناء الحذف ولا بعده
+  n = u.start(P, rec(555));
+  u.fail(P, n, rec(555));
+  n = u.start(P, { section: 'capital', id: 'c9', rec: null });
+  assert.deepEqual(shown([]), []);
+  assert.deepEqual(shown([{ id: 'c1', amount: 1 }]), [{ id: 'c1', amount: 1 }]);
+  assert.equal(u.ok(P, n), true);
+  assert.equal(u.size, 0);
+  // كتابة أحدث بدأت قبل أن يفشل ما قبلها: فشل القديمة لا يُعيد قيمتها، والأحدث تقرر
+  const a = u.start(P, rec(1));
+  const b = u.start(P, rec(2));
+  assert.equal(u.fail(P, a, rec(1)), false);
+  assert.equal(u.size, 0);
+  assert.equal(u.ok(P, b), true);
+  assert.equal(u.size, 0);
+  const c = u.start(P, rec(3));
+  const d = u.start(P, rec(4));
+  u.fail(P, c, rec(3));
+  assert.equal(u.fail(P, d, rec(4)), true);
+  assert.deepEqual(shown([]), [{ id: 'c9', amount: 4 }]);
+  // والمستند فاشل الحفظ: كتابتان بعده، نجاح الأولى لا يُزيله والمعروض الأحدث حتى تنتهي الثانية
+  const e = u.start(P, rec(5));
+  const f = u.start(P, rec(6));
+  assert.equal(u.ok(P, e), false);
+  assert.deepEqual(shown([{ id: 'c9', amount: 5 }]), [{ id: 'c9', amount: 6 }]);
+  assert.equal(u.ok(P, f), true);
+  assert.equal(u.size, 0);
+  // رقم كتابة انتهت لا يطابق كتابة بدأت بعدها للمستند نفسه، ومستند آخر لا يتأثر
+  const g = u.start(P, rec(7));
+  u.ok(P, g);
+  const h = u.start(P, rec(8));
+  assert.equal(u.ok(P, g), false);
+  assert.equal(u.fail(P, h, rec(8)), true);
+  const o = u.start('capital/c1', { section: 'capital', id: 'c1', rec: { id: 'c1', amount: 9 } });
+  u.ok('capital/c1', o);
+  assert.equal(u.has(P), true);
+  assert.equal(u.has('capital/c1'), false);
+  u.clear();
+  assert.equal(u.size, 0);
+});
+
+test('تنبيه الرصيد السالب: الجاري منذ بداية هذا السالب لا أول سالب سابق في الفترة عاد بعده موجباً (المتبقيات 2)', () => {
+  const S = RB.emptyState();
+  Object.assign(S.settings, { vatRegistered: false, openingDate: '2026-01-01' });
+  S.partners = [{ id: 'p1', name: 'أ', share: 100 }];
+  S.settings.opening = { date: '2026-09-01', cash: 100, bank: 5000, inventory: 0, vatCredit: 0, apps: {}, payables: [], eosb: [] };
+  const ex = (id, date, amount) => S.expenses.push({ id, date, category: 'utilities', desc: 'x', amount, includesVat: true, taxable: true, account: 'cash', months: 1 });
+  ex('x1', '2026-09-10', 300); // −200
+  S.transfers.push({ id: 't1', date: '2026-09-20', from: 'bank', to: 'cash', amount: 1000 }); // +800
+  ex('x2', '2026-10-10', 1000); // −200 حتى اليوم
+  const L = RB.buildLedger(S, '9999-12-31');
+  // بالسالب اليوم منذ 10 أكتوبر، لا منذ 10 سبتمبر (عاد موجباً من 20 سبتمبر)
+  assert.deepEqual(RB.negativeAlert(L, '1101', '2026-10-15', 60), { now: true, since: '2026-10-10', balance: -200, sinceBalance: -200 });
+  // سالب جارٍ بدأ قبل الفترة: من بدايته
+  assert.deepEqual(RB.negativeAlert(L, '1101', '2027-02-01', 60), { now: true, since: '2026-10-10', balance: -200, sinceBalance: -200 });
+  assert.deepEqual(RB.negativeAlert(L, '1101', '2026-09-15', 60), { now: true, since: '2026-09-10', balance: -200, sinceBalance: -200 });
+  // موجب اليوم: أول سالب سابق في الفترة، أو لا شيء إن كان قبلها
+  assert.deepEqual(RB.negativeAlert(L, '1101', '2026-10-05', 60), { now: false, since: '2026-09-10', balance: -200, sinceBalance: -200 });
+  assert.equal(RB.negativeAlert(L, '1101', '2026-10-05', 10), null);
+  assert.equal(RB.negativeAlert(L, '1102', '2026-10-15', 60), null);
+});
