@@ -360,6 +360,63 @@ test('إقرارات الضريبة: تغيير فترة الإقرار لا ي�
   assert.equal(RB.vatLabelRange('سداد ضريبة'), null);
 });
 
+test('إقرارات الضريبة: سداد لفترة قبل بداية الإقرارات للعلم فقط ولا يُخصم من أول إقرار', () => {
+  // مطعم قائم بدأ دفتره في أكتوبر 2026: مبيعات نقدية أكتوبر–ديسمبر، ضريبة الربع الرابع 13,800
+  const mk = () => {
+    const S = base();
+    S.settings.openingDate = '2024-03-01';
+    S.sales = [];
+    for (const ym of ['2026-10', '2026-11', '2026-12'])
+      for (let d = 1; d <= +RB.monthEnd(ym).slice(8); d++) S.sales.push({ id: ym + d, date: ym + '-' + String(d).padStart(2, '0'), channels: { cash: { amount: 1150, orders: 30, type: 'cash' } } });
+    return S;
+  };
+  const T = '2027-01-10';
+  // (ب) سداد الربع الثاني بتاريخ قبل الدفتر: لا يُنشئ إقراراً للربع الثالث ولا يُخصم من الرابع
+  const B = mk();
+  B.vatPayments = [{ id: 'v', date: '2026-07-25', period: 'الربع الثاني 2026', account: 'bank', amount: 9000 }];
+  const rb = RB.vatReturns(B, T);
+  assert.deepEqual(rb.map((r) => r.key), ['2026-Q4', '2027-Q1']);
+  close(rb[0].net, 13800);
+  assert.deepEqual([rb[0].due, rb[0].paid, rb[0].remaining, rb[0].settled], [rb[0].net, 0, rb[0].net, false]);
+  assert.deepEqual(rb.before.map((x) => [x.id, x.period, x.amount]), [['v', 'الربع الثاني 2026', 9000]]);
+  close(RB.vatDue(B, rb[0]).remaining, 13800);
+  // (أ) سداد ضريبة الربع الثالث (قبل الدفتر) بتاريخ داخل الدفتر: كذلك للعلم فقط
+  const A = mk();
+  A.vatPayments = [{ id: 'q3', date: '2026-10-20', period: 'الربع الثالث 2026', account: 'bank', amount: 9000 }];
+  const ra = RB.vatReturns(A, T);
+  close(ra[0].remaining, 13800);
+  assert.equal(ra[0].paid, 0);
+  assert.deepEqual(ra.before.map((x) => x.id), ['q3']);
+  // يدخل في رصيد حساب الضريبة (لا رصيد افتتاحي للضريبة في الدفتر)
+  close(RB.vatBalanceAt(A, T), 13800 - 9000);
+  // اسم فترة غير معروف: بتاريخ قبل بداية الإقرارات للعلم، وبتاريخ داخل أول إقرار يُنسب له
+  const U = mk();
+  U.vatPayments = [
+    { id: 'old', date: '2026-09-02', period: 'دفعة قديمة', account: 'bank', amount: 500 },
+    { id: 'early', date: '2026-10-05', period: 'دفعة مقدمة', account: 'bank', amount: 100 },
+  ];
+  const ru = RB.vatReturns(U, T);
+  assert.deepEqual(ru.before.map((x) => x.id), ['old']);
+  assert.equal(ru[0].paid, 100);
+  // نقل تاريخ سريان التسجيل لاحقاً بعد السداد: سداد الربع الثاني يصبح للعلم، والثالث يبقى لفترته
+  const R = vatTwoQuarters();
+  const [q2, q3] = RB.vatPeriodsBetween(R, '2026-04-01', '2026-09-30');
+  R.vatPayments = [
+    { id: 'v2', date: '2026-07-20', period: q2.label, account: 'bank', amount: 1500 },
+    { id: 'v3', date: '2026-10-20', period: q3.label, account: 'bank', amount: 1500 },
+  ];
+  R.settings.vatRegisteredFrom = '2026-07-01';
+  const rr = RB.vatReturns(R, '2026-10-31');
+  assert.deepEqual(rr.map((r) => [r.key, r.due, r.paid, r.credit, r.settled]), [['2026-Q3', 1500, 1500, 0, true], ['2026-Q4', 0, 0, 0, true]]);
+  assert.deepEqual(rr.before.map((x) => x.id), ['v2']);
+  // لا عمليات فيها ضريبة بعد: لا إقرارات، والسداد للعلم
+  const E = base();
+  E.vatPayments = [{ id: 'e', date: '2026-07-25', period: 'الربع الثاني 2026', account: 'bank', amount: 9000 }];
+  const re = RB.vatReturns(E, '2026-10-10');
+  assert.equal(re.length, 0);
+  assert.deepEqual(re.before.map((x) => x.id), ['e']);
+});
+
 test('إقرارات البيانات التجريبية: المستحق والرصيد الدائن كما في رصيد حساب الضريبة', () => {
   for (const today of ['2026-10-14', '2027-02-17', '2026-12-31']) {
     const S = RB.demoState(today);
@@ -613,6 +670,58 @@ test('نقطة التعادل من أشهر التشغيل الكاملة', () =
   N.sales[0].date = '2026-10-02';
   const nb = RB.breakEven(N, '2026-05-01', '2026-05-31', null, t);
   assert.deepEqual([nb.basisFrom, nb.basisTo, nb.estimate, nb.beforeOpen], ['2026-10-01', t, true, true]);
+});
+
+test('نقطة التعادل لمطعم قائم بدأ دفتره بعد افتتاحه: من أول مبيعات مسجلة لا من تاريخ الافتتاح', () => {
+  // افتُتح في 2024، والدفتر من 1 أكتوبر 2026: إيجار 6,000 أول كل شهر ومبيعات نقدية يومية
+  const mk = (T) => {
+    const S = base();
+    S.settings.openingDate = '2024-03-01';
+    // أصل قديم بتاريخه الفعلي لا يجعل الدفتر «يغطي» الافتتاح
+    S.assets = [{ id: 'a', date: '2024-02-15', name: 'شواية', category: 'kitchen', amount: 12000, includesVat: true, taxable: true, account: 'bank', lifeMonths: 60 }];
+    S.expenses = [];
+    S.sales = [];
+    for (const ym of ['2026-10', '2026-11', '2026-12']) {
+      if (ym + '-01' > T) break;
+      S.expenses.push({ id: 'r' + ym, date: ym + '-01', category: 'rent', desc: 'إيجار', amount: 6000, taxable: false, account: 'bank', months: 1 });
+      for (let d = 1; d <= 28; d++) {
+        const dt = ym + '-' + String(d).padStart(2, '0');
+        if (dt <= T) S.sales.push({ id: 's' + dt, date: dt, channels: { cash: { amount: 1150, orders: 40, type: 'cash' } } });
+      }
+    }
+    return S;
+  };
+  // «هذا الشهر» في 14 أكتوبر: تقدير من 1 أكتوبر حتى اليوم، لا سبتمبر الفارغ
+  let T = '2026-10-14';
+  const m = RB.breakEven(mk(T), '2026-10-01', T, null, T);
+  assert.deepEqual([m.estimate, m.fallback, m.basisFrom, m.basisTo, m.start, m.startBy], [true, false, '2026-10-01', T, '2026-10-01', 'sales']);
+  assert.ok(m.revenue > 0 && m.fixedParts.occ > 0 && m.beGross > 0);
+  // «هذه السنة» في 10 ديسمبر: أكتوبر ونوفمبر فقط (لا 11 شهراً من يناير)
+  T = '2026-12-10';
+  const S = mk(T);
+  const y = RB.breakEven(S, '2026-01-01', T, null, T);
+  assert.deepEqual([y.basisFrom, y.basisTo, y.estimate, y.preOpen, y.cutEnd], ['2026-10-01', '2026-11-30', false, true, true]);
+  close(y.months, 2, 1e-9);
+  close(y.fixedParts.occ, 6000);
+  const dep = RB.incomeStatement(S, '2026-10-01', '2026-11-30').tot.dep / 2;
+  close(y.fixedMonthly, 6000 + dep);
+  close(y.beGross, (6000 + dep) * 1.15);
+  close(y.avgMonthlyNet, (56 * 1000) / 2);
+  // «الشهر الماضي» كامل كما هو
+  const nov = RB.breakEven(S, '2026-11-01', '2026-11-30', null, T);
+  close(nov.fixedMonthly, y.fixedMonthly);
+  // الفترة كلها قبل الدفتر (2025): من أول شهر تشغيل كامل في الدفتر
+  const y25 = RB.breakEven(S, '2025-01-01', '2025-12-31', null, T);
+  assert.deepEqual([y25.beforeOpen, y25.basisFrom, y25.basisTo], [true, '2026-10-01', '2026-10-31']);
+  // الدفتر يغطي الافتتاح (مصروف في شهر الافتتاح) فيبقى تاريخ الافتتاح ولو جاءت أول مبيعات في شهر لاحق
+  const C = mk(T);
+  C.settings.openingDate = '2026-09-01';
+  C.expenses.push({ id: 'x', date: '2026-09-01', category: 'rent', desc: 'إيجار سبتمبر', amount: 6000, taxable: false, account: 'bank', months: 1 });
+  const c = RB.breakEven(C, '2026-01-01', T, null, T);
+  assert.deepEqual([c.start, c.startBy, c.basisFrom], ['2026-09-01', 'opening', '2026-09-01']);
+  // بلا تاريخ افتتاح: أول يوم مبيعات كما كان
+  C.settings.openingDate = '';
+  assert.deepEqual([RB.breakEven(C, '2026-01-01', T, null, T).startBy, RB.breakEven(C, '2026-01-01', T, null, T).basisFrom], ['sales', '2026-10-01']);
 });
 
 function stockCase(reg, regFrom) {

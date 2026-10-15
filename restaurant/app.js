@@ -1439,7 +1439,15 @@
     // كل الإقرارات من البداية حتى اليوم (لترحيل الرصيد الدائن)، ويُعرض منها ما يلامس الفترة بكامل أرقامه
     // ولو انتهت الفترة المختارة في منتصف إقرار؛ «ملخص الفترة» وحده يتبع الفترة المختارة
     const t = today();
-    const pers = RB.vatReturns(S, t, ledger(t)).filter((p) => p.to >= from && p.from <= to);
+    const all = RB.vatReturns(S, t, ledger(t));
+    const pers = all.filter((p) => p.to >= from && p.from <= to);
+    // سداد لفترة قبل بداية الإقرارات: للعلم فقط، لا يُخصم من أي إقرار
+    const pre = all.before || [];
+    const preNote = pre.length
+      ? `<p class="note">${pre.length > 1 ? 'مدفوعات لفترات' : 'سداد لفترة'} قبل بداية الإقرارات في الدفتر: ${pre
+          .map((x) => `${esc(x.period || 'بدون فترة')} ${x.amount < 0 ? 'استرداد ' : ''}<b class="n">${fmt(Math.abs(x.amount))}</b> ${cur()}${x.date ? ` (${dtText(x.date)})` : ''}`)
+          .join('، ')}. ${pre.length > 1 ? 'لا تُخصم من أي إقرار هنا لأن ضريبة تلك الفترات ليست مسجلة في الدفتر، لكنها تدخل' : 'لا يُخصم من أي إقرار هنا لأن ضريبة تلك الفترة ليست مسجلة في الدفتر، لكنه يدخل'} في رصيد حساب الضريبة بالميزانية.</p>`
+      : '';
     const v = RB.vatReport(S, from, asOf, L);
     const regFrom = S.settings.vatRegisteredFrom;
     let h = '';
@@ -1480,7 +1488,7 @@
         ],
         pers,
         { empty: 'لا توجد فترات.' }
-      ),
+      ) + preNote,
       { sub: 'آخر موعد لتقديم الإقرار والسداد: نهاية الشهر التالي للفترة. الرصيد الدائن (ضريبة مدخلات أكبر من المبيعات، مثل فترة التأسيس) يُرحّل ويُخصم من الفترات التالية، إلا إذا طلبت استرداده.' }
     );
     return h;
@@ -1494,16 +1502,18 @@
     const nM = Math.round(e.months);
     const basis = e.estimate ? `${dtText(e.basisFrom)} — ${dtText(e.basisTo)}` : bA === bB ? RB.monthName(bA) : `${RB.monthName(bA)} — ${RB.monthName(bB)} (${nM === 2 ? 'شهران' : nM <= 10 ? nM + ' أشهر' : nM + ' شهراً'})`;
     const adj = [];
+    // الدفتر بدأ بعد الافتتاح (مطعم قائم): بداية التشغيل في الحساب أول يوم مبيعات مسجل
+    const late = e.startBy === 'sales' && !!S.settings.openingDate;
     if (e.beforeOpen) {
-      const op = S.settings.openingDate ? 'الافتتاح' : 'أول يوم مبيعات';
+      const op = e.startBy === 'opening' ? 'الافتتاح' : late ? 'أول مبيعات مسجلة في الدفتر' : 'أول يوم مبيعات';
       if (!e.estimate) adj.push(`الفترة المختارة قبل ${op}، فالحساب من أول شهر تشغيل كامل (${RB.monthName(bA)}).`);
       else if (e.basisFrom > asOf) adj.push(`الفترة المختارة قبل ${op}، ولا يوجد شهر تشغيل كامل بعد، فالأرقام تقديرية من أيام التشغيل حتى اليوم.`);
       else adj.push(`الفترة المختارة قبل ${op} ولم يبدأ التشغيل بعد، فالأرقام تقديرية من مصاريف ما قبل الافتتاح ولا تمثّل التشغيل الفعلي.`);
-    } else if (e.estimate) adj.push('لا يوجد شهر تشغيل كامل بعد، فالأرقام تقديرية من الأيام المتاحة وقد لا تشمل كل المصاريف الشهرية.');
+    } else if (e.estimate) adj.push(late ? 'الدفتر بدأ بعد الافتتاح ولا يضم شهر تشغيل كاملاً بعد، فالأرقام تقديرية من الأيام المسجلة وقد لا تشمل كل المصاريف الشهرية.' : 'لا يوجد شهر تشغيل كامل بعد، فالأرقام تقديرية من الأيام المتاحة وقد لا تشمل كل المصاريف الشهرية.');
     else if (e.fallback) adj.push(asOf === today() ? `الشهر الجاري لم يكتمل بعد، فالحساب من آخر شهر كامل (${RB.monthName(bA)}).` : `الفترة المختارة لا تضم شهراً كاملاً، فالحساب من آخر شهر كامل قبل نهايتها (${RB.monthName(bA)}).`);
     else {
       if (e.cutEnd) adj.push(asOf === today() ? 'الشهر الجاري لم يكتمل بعد، فلم يدخل في الحساب.' : 'الأيام من شهر غير مكتمل في نهاية الفترة لم تدخل في الحساب.');
-      if (e.preOpen) adj.push(S.settings.openingDate ? 'الأشهر قبل الافتتاح مستبعدة.' : 'الأشهر قبل أول شهر كامل من المبيعات مستبعدة.');
+      if (e.preOpen) adj.push(e.startBy === 'opening' ? 'الأشهر قبل الافتتاح مستبعدة.' : late ? 'الدفتر بدأ بعد الافتتاح، فالأشهر قبل أول شهر كامل من المبيعات المسجلة مستبعدة.' : 'الأشهر قبل أول شهر كامل من المبيعات مستبعدة.');
       if (e.cutStart) adj.push('الأيام من شهر غير مكتمل في بداية الفترة لم تدخل في الحساب.');
     }
     const body = `<div class="pv-grid three"><div><span>المصاريف الثابتة شهرياً</span>${money(e.fixedMonthly)}</div><div><span>المصاريف المتغيرة</span><b class="n">${pct(e.varRatio * 100)}</b><small>المواد + العمولات من المبيعات</small></div><div><span>هامش المساهمة</span><b class="n">${pct((1 - e.varRatio) * 100)}</b><small>ما يبقى من كل ريال لتغطية الثابت</small></div></div>
@@ -1902,9 +1912,21 @@
 
   FORMS.supplierPayments = (rec, x) => {
     const bal = RB.supplierBalances(S, today());
+    // المبلغ المقترح = المستحق على المورد المختار (إن كان له رصيد)
+    const owed = (name) => {
+      const b = bal.find((z) => z.supplier === String(name || '').trim());
+      return b && b.balance > 0.005 ? r2(b.balance) : '';
+    };
+    const sup = x || (bal.find((b) => b.balance > 0.005) || {}).supplier || '';
+    let auto = owed(sup);
     return formModal({
       title: rec ? 'تعديل سداد مورد' : 'سداد مورد',
-      value: rec || { id: RB.uid(), date: today(), supplier: x || (bal.find((b) => b.balance > 0) || {}).supplier || '', account: 'bank', amount: x ? (bal.find((b) => b.supplier === x) || {}).balance || '' : '', note: '' },
+      value: rec || { id: RB.uid(), date: today(), supplier: sup, account: 'bank', amount: auto, note: '' },
+      // تغيير المورد يغيّر المبلغ المقترح، ما لم يكتب المستخدم مبلغاً بنفسه
+      onChange: (p, v) => {
+        if (p !== 'supplier' || rec) return;
+        if (v.amount === '' || v.amount === auto) v.amount = auto = owed(v.supplier);
+      },
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'supplier', label: 'المورد', req: 1, list: () => bal.map((b) => b.supplier), redraw: true }] },
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'من', options: payOptions(false) }] },

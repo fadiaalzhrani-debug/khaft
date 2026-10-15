@@ -938,23 +938,26 @@
   // السداد يُنسب لفترته (period) مهما كان تاريخه، والمبلغ السالب استرداد من الهيئة.
   // سداد باسم فترة غير موجودة الآن (تغيّرت فترة الإقرار أو تاريخ السريان) يُنسب للفترات التي يغطيها مداه،
   // ويملأ مستحقها بالترتيب والباقي على آخرها؛ وما لا يُعرف مداه يُنسب لآخر فترة انتهت قبل تاريخ السداد.
+  // سداد لفترة قبل بداية الإقرارات (قبل بدء الدفتر، أو قبل تاريخ سريان نُقل لاحقاً) لا يُخصم من أي إقرار،
+  // لأن ضريبة تلك الفترة ليست في الدفتر؛ يُعاد في out.before للعلم فقط.
   RB.vatReturns = (S, upTo, L) => {
     L = L || RB.buildLedger(S, upTo);
+    // بداية الإقرارات: أول عملية فيها ضريبة؛ قيد السداد وحده لا يبدأها (سداد قبل أول عملية هو لفترة قبل الدفتر)
     let start = '';
     for (const e of L.entries) {
       if (e.date > upTo) break;
-      if (e.lines.some((l) => l.a === '2102')) {
+      if (e.kind !== 'vatpay' && e.lines.some((l) => l.a === '2102')) {
         start = e.date;
         break;
       }
     }
-    if (!start) return [];
     const regFrom = S.settings.vatRegisteredFrom;
-    if (regFrom && regFrom > start) start = regFrom;
-    const pers = RB.vatPeriodsBetween(S, start, upTo);
-    if (!pers.length) return [];
+    if (start && regFrom && regFrom > start) start = regFrom;
+    const pers = start ? RB.vatPeriodsBetween(S, start, upTo) : [];
+    const firstFrom = pers.length ? pers[0].from : '';
     const own = pers.map(() => []);
     const loose = [];
+    const before = [];
     for (const x of S.vatPayments || []) {
       const amt = num(x.amount);
       if (!amt) continue;
@@ -968,14 +971,20 @@
       if (rg) {
         if (rg.from > upTo) continue; // فترة لم تأتِ بعد في هذا العرض
         idx = pers.map((q, j) => (q.to >= rg.from && q.from <= rg.to ? j : -1)).filter((j) => j >= 0);
-        if (!idx.length) idx = [0]; // فترة قبل بداية الإقرارات الحالية: تُحسب لصالح المطعم من أول إقرار
       } else {
         const j = pers.map((q) => q.to < (x.date || '')).lastIndexOf(true);
-        idx = [Math.max(0, j)];
+        // اسم غير معروف بتاريخ داخل أول إقرار: يُنسب له؛ وبتاريخ قبل بداية الإقرارات: لفترة قبل الدفتر
+        idx = j >= 0 ? [j] : firstFrom && (x.date || '') >= firstFrom ? [0] : [];
+      }
+      if (!idx.length) {
+        before.push({ id: x.id, date: x.date || '', period: x.period || '', amount: amt });
+        continue;
       }
       loose.push({ idx, left: amt });
     }
     const out = [];
+    out.before = before;
+    if (!pers.length) return out;
     let credit = 0;
     pers.forEach((q, i) => {
       const report = RB.vatReport(S, q.from, q.to, L);
@@ -1217,9 +1226,16 @@
   RB.breakEven = (S, from, to, L, today) => {
     today = today || RB.todayISO();
     const set = S.settings;
-    // بداية التشغيل: تاريخ الافتتاح، وإلا أول يوم فيه مبيعات
-    let first = set.openingDate || '';
-    if (!first) for (const s of S.sales || []) if (s.date && RB.saleTotal(s) > 0 && (!first || s.date < first)) first = s.date;
+    // بداية التشغيل في الدفتر: تاريخ الافتتاح إن كان الدفتر يغطيه (فيه مبيعات أو مصاريف أو مشتريات أو رواتب
+    // حتى نهاية شهر الافتتاح)، وإلا فالدفتر بدأ بعد الافتتاح (مطعم قائم) فمن أول يوم مبيعات؛ وبلا تاريخ افتتاح كذلك.
+    // الأصول ورأس المال لا تُعد هنا لأن المطعم القائم قد يسجلها بتواريخها القديمة.
+    let firstSale = '';
+    for (const s of S.sales || []) if (s.date && RB.saleTotal(s) > 0 && (!firstSale || s.date < firstSale)) firstSale = s.date;
+    const open = set.openingDate || '';
+    const openEnd = open ? RB.monthEnd(open.slice(0, 7)) : '';
+    const covered = !!open && ['sales', 'expenses', 'purchases', 'payroll'].some((k) => (S[k] || []).some((x) => x.date && x.date <= openEnd));
+    const bySales = !!firstSale && !covered && firstSale > open;
+    const first = bySales ? firstSale : open;
     const monthStart = (d) => (d.endsWith('-01') ? d : RB.ymAdd(d.slice(0, 7), 1) + '-01');
     const firstFull = first ? monthStart(first) : '';
     const end = to < today ? to : today;
@@ -1277,6 +1293,8 @@
       beNet, beGross, beDaily, beOrders: sales.total.avgTicket ? beGross / sales.total.avgTicket : 0,
       avgTicket: sales.total.avgTicket, avgMonthlyNet, safety: avgMonthlyNet ? ((avgMonthlyNet - beNet) / avgMonthlyNet) * 100 : 0,
       basisFrom: wFrom, basisTo: wTo, estimate, fallback, beforeOpen,
+      // بداية التشغيل المعتمدة ومصدرها: 'opening' تاريخ الافتتاح، 'sales' أول يوم مبيعات مسجل
+      start: first, startBy: bySales ? 'sales' : first ? 'opening' : '',
       // ما استُبعد من الفترة المختارة (للتوضيح في التقرير)
       cutEnd: !estimate && !fallback && !beforeOpen && wTo < end,
       cutStart: !estimate && !fallback && !beforeOpen && wFrom > from && !(firstFull && from < firstFull),

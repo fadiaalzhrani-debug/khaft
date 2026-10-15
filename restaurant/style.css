@@ -104,6 +104,8 @@
 }
 
 * { box-sizing: border-box; }
+/* السمة hidden تخفي العنصر دائماً، حتى لو أعطته قاعدة أخرى display (مثل .form-preview) */
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
@@ -437,6 +439,7 @@ input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .lines-tbl .empty { color: var(--muted); text-align: center; padding: 10px; }
 .add-line { align-self: flex-start; }
 .form-preview { background: var(--surface-2); border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.form-preview:empty { display: none; }
 .pv-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .pv-grid.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .pv-grid > div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
