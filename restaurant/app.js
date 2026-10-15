@@ -1181,15 +1181,23 @@
   }
 
   // ─── جداول وأقسام ───
+  // عنوان العمود نصاً عادياً لسمة data-label (العنوان HTML مهرَّب أصلاً: يُفك ثم يُهرَّب للسمة)
+  const UNESC = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'" };
+  const plainLabel = (h) => esc(String(h || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/&(amp|lt|gt|quot|#39);/g, (m, k) => UNESC[k]).replace(/\s+/g, ' ').trim());
+  // cols: { h: العنوان, f: الخانة, num, cls } — عمود أزرار السطر يُمرَّر بـ cls: 'acts' فيثبت على حافة الجدول.
+  // o.cards: جدول سجلات يتحول على الجوال إلى بطاقات (عنوان كل خانة فوقها من data-label)
   function table(cols, rows, o) {
     o = o || {};
     if (!rows.length) return `<div class="empty-box">${o.empty || 'لا توجد بيانات في هذه الفترة.'}</div>`;
-    const head = cols.map((c) => `<th class="${c.num ? 'num' : ''} ${c.cls || ''}">${c.h}</th>`).join('');
+    const cc = (c) => `${c && c.num ? 'num' : ''} ${(c && c.cls) || ''}`;
+    const lab = cols.map((c) => plainLabel(c.h));
+    const la = (i) => (lab[i] ? ` data-label="${lab[i]}"` : '');
+    const head = cols.map((c) => `<th class="${cc(c)}">${c.h}</th>`).join('');
     const body = rows
-      .map((r) => `<tr ${o.rowCls ? `class="${o.rowCls(r)}"` : ''}>${cols.map((c) => `<td class="${c.num ? 'num' : ''} ${c.cls || ''}">${c.f(r)}</td>`).join('')}</tr>`)
+      .map((r) => `<tr ${o.rowCls ? `class="${o.rowCls(r)}"` : ''}>${cols.map((c, i) => `<td class="${cc(c)}"${la(i)}>${c.f(r)}</td>`).join('')}</tr>`)
       .join('');
-    const foot = o.foot ? `<tfoot><tr>${o.foot.map((x, i) => `<td class="${cols[i] && cols[i].num ? 'num' : ''}">${x}</td>`).join('')}</tr></tfoot>` : '';
-    return `<div class="tbl-wrap"><table class="tbl ${o.cls || ''}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table></div>`;
+    const foot = o.foot ? `<tfoot><tr>${o.foot.map((x, i) => `<td class="${cc(cols[i])}"${la(i)}>${x}</td>`).join('')}</tr></tfoot>` : '';
+    return `<div class="tbl-wrap"><table class="tbl ${o.cls || ''} ${o.cards ? 'cards' : ''}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table></div>`;
   }
   function card(title, body, o) {
     o = o || {};
@@ -1281,11 +1289,20 @@
     });
     el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" dir="ltr">${g}<line x1="${pl}" x2="${W - pr}" y1="${y0}" y2="${y0}" class="base"/>${bars}${labels}</svg>`;
   }
+  // إشارة التمرير للجدول العريض: cue-end إن بقيت أعمدة إلى اليسار (نهاية السطر)، وcue-start إن مُرِّر عن بدايته.
+  // scrollLeft في RTL من 0 (البداية يميناً) نحو السالب
+  function scrollCue(wr) {
+    const max = wr.scrollWidth - wr.clientWidth;
+    const x = Math.abs(wr.scrollLeft);
+    wr.classList.toggle('cue-end', max > 1 && x < max - 1);
+    wr.classList.toggle('cue-start', max > 1 && x > 1);
+  }
   function afterRender(scope) {
     (scope || document).querySelectorAll('.chart').forEach((el) => {
       const d = CHARTS[el.id];
       if (d) drawColumns(el, d);
     });
+    (scope || document).querySelectorAll('.tbl-wrap').forEach(scrollCue);
   }
 
   // ═════════════ الصفحات ═════════════
@@ -1583,10 +1600,10 @@
           { h: 'المسحوبات', num: 1, f: (r) => N(r.drawings) },
           { h: 'نصيبه من ربح الفترة', num: 1, f: (r) => N(r.profitPeriod) },
           { h: 'رصيد حقوقه', num: 1, f: (r) => N(r.equity) },
-          { h: '', f: (r) => rowActs('partners', r.id) },
+          { h: '', cls: 'acts', f: (r) => rowActs('partners', r.id) },
         ],
         rep.rows,
-        { empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
+        { cards: 1, empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
       ),
       { sub: `ربح الفترة يوزّع حسب النسب (${periodLabel()}). «رصيد حقوقه» = مساهمته − مسحوباته + نصيبه من الأرباح المتراكمة.` }
     );
@@ -1596,7 +1613,7 @@
     if (uses.preopen.payroll) useItems.push({ label: 'رواتب قبل الافتتاح', v: uses.preopen.payroll });
     h += `<div class="grid2">${card(
       'أين ذهب رأس المال التأسيسي؟',
-      `<div class="pv-grid three"><div><span>إجمالي رأس المال</span>${money(uses.sources)}</div><div><span>المصروف على التأسيس</span>${money(uses.used)}</div><div><span>المتبقي كرأس مال عامل</span>${money(uses.remaining)}</div></div>` +
+      `<div class="pv-grid"><div><span>إجمالي رأس المال</span>${money(uses.sources)}</div><div><span>المصروف على التأسيس</span>${money(uses.used)}</div><div><span>المتبقي كرأس مال عامل</span>${money(uses.remaining)}</div></div>` +
         (uses.vatRecoverable > 0.005 ? `<p class="note">منها ضريبة مدخلات تُسترد بخصمها من ضريبة المبيعات: <b class="n">${fmt(uses.vatRecoverable)}</b> ${cur()}</p>` : '') +
         (uses.owedAtOpen > 0.005 ? `<p class="note">منها مستحق للموردين بالآجل لم يُسدد حتى الافتتاح: <b class="n">${fmt(uses.owedAtOpen)}</b> ${cur()} (مخصوم من المتبقي)</p>` : '') +
         (uses.laterAssets.count > 0 ? `<p class="note">أصول اشتُريت بعد الافتتاح (غير محسوبة من رأس المال التأسيسي): <b class="n">${fmt(uses.laterAssets.amount)}</b> ${cur()}</p>` : '') +
@@ -1611,10 +1628,10 @@
           { h: 'النوع', f: (r) => (r.type === 'withdrawal' ? chip('سحب', 'warn') : chip('إيداع', 'good')) },
           { h: 'الحساب', f: (r) => esc(RB.srcLabel(r.account, S)) },
           { h: 'المبلغ', num: 1, f: (r) => N(r.amount) },
-          { h: '', f: (r) => rowActs('capital', r.id) },
+          { h: '', cls: 'acts', f: (r) => rowActs('capital', r.id) },
         ],
         good(S.capital).sort((a, b) => (a.date < b.date ? 1 : -1)),
-        { empty: 'لا توجد إيداعات بعد.' }
+        { cards: 1, empty: 'لا توجد إيداعات بعد.' }
       ),
       { sub: `المدفوع مباشرة من حساب شريك (أصل أو مصروف) يُضاف تلقائياً لرأس ماله: ${fmt(uses.direct)} ${cur()}` }
     )}</div>`;
@@ -1681,9 +1698,10 @@
           { h: 'المتراكم', num: 1, f: (r) => N(r.accum) },
           { h: 'القيمة الدفترية', num: 1, f: (r) => N(r.book) },
           { h: 'الدفع من', f: (r) => `<span class="muted">${esc(RB.srcLabel(r.a.account, S))}</span>` },
-          { h: '', f: (r) => rowActs('assets', r.a.id) },
+          { h: '', cls: 'acts', f: (r) => rowActs('assets', r.a.id) },
         ],
-        rows.sort((a, b) => (a.a.date < b.a.date ? 1 : -1))
+        rows.sort((a, b) => (a.a.date < b.a.date ? 1 : -1)),
+        { cards: 1 }
       ),
       { sub: `الإهلاك المتراكم حتى ${dtText(asOf)}. الأصول المشتراة قبل الافتتاح يبدأ إهلاكها من تاريخ الافتتاح.` }
     );
@@ -1737,10 +1755,10 @@
         { h: 'الضريبة', num: 1, f: (x) => (x.taxable ? N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).vat) : chip('غير خاضع', 'mute')) },
         { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${num(x.months)} شهر<div class="muted sm">حتى ${dtText(RB.coverageEnd(x.startDate || x.date, x.months))}</div>` : 'شهر واحد' + (x.startDate && x.startDate.slice(0, 7) !== x.date.slice(0, 7) ? `<div class="muted sm">${esc(RB.monthName(x.startDate.slice(0, 7)))}</div>` : '')) },
         { h: 'الدفع من', f: (x) => `<span class="muted">${esc(RB.srcLabel(x.account, S))}</span>` },
-        { h: '', f: (x) => rowActs('expenses', x.id) },
+        { h: '', cls: 'acts', f: (x) => rowActs('expenses', x.id) },
       ],
       list,
-      { empty: 'لا توجد مصاريف بهذا التصنيف في الفترة المحددة.' }
+      { cards: 1, empty: 'لا توجد مصاريف بهذا التصنيف في الفترة المحددة.' }
     );
   }
 
@@ -1767,7 +1785,7 @@
           { h: 'آخر دفعة', f: (r) => dt(r.rec.date) },
           { h: 'المبلغ', num: 1, f: (r) => N(RB.vatSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings).gross) },
           { h: 'ينتهي في', f: (r) => dt(r.end) },
-          { h: '', f: (r) => renewActs(r) },
+          { h: '', cls: 'acts', f: (r) => renewActs(r) },
         ],
         rn,
         { empty: 'لا توجد رسوم أو اشتراكات مسجلة. أضف السجل التجاري ورخصة البلدية وشهادة السلامة ورسوم العمالة.', rowCls: (r) => r.status }
@@ -1814,10 +1832,10 @@
             { h: 'الصافي المصروف', num: 1, f: (p) => { const t = RB.payrollTotals(p); return N(t.net + t.eosbPaid) + (t.eosbPaid ? `<div class="muted sm">منه نهاية الخدمة<br>${N(t.eosbPaid)}</div>` : ''); } },
             { h: 'التكلفة على المطعم', num: 1, f: (p) => N(RB.payrollTotals(p).cost) },
             { h: 'من', f: (p) => `<span class="muted">${esc(RB.srcLabel(p.account, S))}</span>` },
-            { h: '', f: (p) => rowActs('payroll', p.id) },
+            { h: '', cls: 'acts', f: (p) => rowActs('payroll', p.id) },
           ],
           runs,
-          { empty: 'لا توجد مسيرات رواتب. اضغط «مسير رواتب» ليتعبأ تلقائياً من بيانات الموظفين.' }
+          { cards: 1, empty: 'لا توجد مسيرات رواتب. اضغط «مسير رواتب» ليتعبأ تلقائياً من بيانات الموظفين.' }
         ),
         { sub: 'التكلفة على المطعم = إجمالي الرواتب + حصة المنشأة في التأمينات. حصة الموظف تُخصم من راتبه وتُورّد مع حصة المنشأة. «الصافي المصروف» يشمل مكافأة نهاية الخدمة المصروفة، وهي من مخصصها المتراكم فلا تدخل في التكلفة.' }
       );
@@ -1842,10 +1860,10 @@
           { h: 'التكلفة الشهرية<br>الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
           { h: 'مخصص<br>نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
           { h: 'الحالة', f: (e) => { const st = RB.employeeStatus(e, ym); return st === 'active' ? chip('على رأس العمل', 'good') : chip(EMP_STATUS[st], st === 'future' ? 'accent' : 'mute'); } },
-          { h: '', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${esc(e.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
+          { h: '', cls: 'acts', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${esc(e.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
         emps,
-        { empty: 'أضف العمال مع رواتبهم لحساب التأمينات والمقابل المالي والتكلفة الحقيقية.' }
+        { cards: 1, empty: 'أضف العمال مع رواتبهم لحساب التأمينات والمقابل المالي والتكلفة الحقيقية.' }
       ),
       { sub: 'المقابل المالي ورسوم الإقامة تُسجَّل كدفعات فعلية في «الرسوم الحكومية» عند السداد؛ هنا تقدير شهري لتكلفة العامل.' }
     );
@@ -1909,10 +1927,10 @@
             { h: 'قبل الضريبة', num: 1, f: (p) => N(sp(p).net) },
             { h: 'الضريبة', num: 1, f: (p) => N(sp(p).vat) },
             { h: 'الإجمالي', num: 1, f: (p) => `<b>${N(sp(p).gross)}</b>` },
-            { h: '', f: (p) => rowActs('purchases', p.id) },
+            { h: '', cls: 'acts', f: (p) => rowActs('purchases', p.id) },
           ],
           list,
-          { empty: 'لا توجد فواتير في هذه الفترة.' }
+          { cards: 1, empty: 'لا توجد فواتير في هذه الفترة.' }
         ),
       { actions: btn('تصدير CSV', 'csv', 'data-v="purchases"', 'sm ghost') }
     );
@@ -1925,7 +1943,7 @@
           { h: 'المستحق الآجل', num: 1, f: (r) => N(r.purchases) },
           { h: 'المسدد', num: 1, f: (r) => N(r.paid) },
           { h: 'الرصيد المستحق', num: 1, f: (r) => `<b>${N(r.balance)}</b>` },
-          { h: '', f: (r) => (r.balance > 0.005 ? btn('سداد', 'add', `data-s="supplierPayments" data-x="${esc(r.supplier)}"`, 'sm') : r.balance < -0.005 ? chip('دفعة زائدة', 'warn') : chip('مسدد', 'good')) },
+          { h: '', cls: 'acts', f: (r) => (r.balance > 0.005 ? btn('سداد', 'add', `data-s="supplierPayments" data-x="${esc(r.supplier)}"`, 'sm') : r.balance < -0.005 ? chip('دفعة زائدة', 'warn') : chip('مسدد', 'good')) },
         ],
         sb,
         { empty: 'لا توجد مستحقات آجلة.' }
@@ -1938,7 +1956,7 @@
                 { h: 'المورد', f: (p) => esc(p.supplier) },
                 { h: 'من', f: (p) => esc(RB.srcLabel(p.account, S)) },
                 { h: 'المبلغ', num: 1, f: (p) => N(p.amount) },
-                { h: '', f: (p) => rowActs('supplierPayments', p.id) },
+                { h: '', cls: 'acts', f: (p) => rowActs('supplierPayments', p.id) },
               ],
               good(S.supplierPayments).sort((a, b) => (a.date < b.date ? 1 : -1))
             )
@@ -1962,7 +1980,7 @@
             { h: 'عدد الأصناف', num: 1, f: (c) => (c.lines || []).filter((l) => num(l.qty)).length },
             { h: 'قيمة المخزون', num: 1, f: (c) => `<b>${N(RB.stockValue(c, S))}</b>` },
             { h: 'ملاحظات', f: (c) => esc(c.note || '') },
-            { h: '', f: (c) => rowActs('stockCounts', c.id) },
+            { h: '', cls: 'acts', f: (c) => rowActs('stockCounts', c.id) },
           ],
           good(S.stockCounts).sort((a, b) => (a.date < b.date ? 1 : -1)),
           { empty: 'سجّل جرد آخر الشهر لتصبح تكلفة المواد دقيقة: تكلفة المواد = المشتريات − الزيادة في المخزون.' }
@@ -1983,7 +2001,7 @@
           { h: 'الضريبة', f: (r) => (r.taxable ? chip('خاضعة', 'good') : chip('غير خاضعة', 'mute')) },
           { h: 'تكلفة وحدة الاستخدام', num: 1, f: (r) => `<b class="n">${(C.raw[r.id] || 0).toFixed(4)}</b><div class="muted sm">لكل 1 ${esc(r.useUnit)}</div>` },
           { h: 'تستخدم في', num: 1, f: (r) => usedIn(r.id) || '—' },
-          { h: '', f: (r) => rowActs('raw', r.id) },
+          { h: '', cls: 'acts', f: (r) => rowActs('raw', r.id) },
         ],
         rows,
         { empty: 'ابدأ بإضافة المواد الخام: اللحم، الخبز، الجبن، الصوصات، البطاطس، علب التغليف…' }
@@ -2007,7 +2025,7 @@
           { h: 'تكلفة الدفعة', num: 1, f: (c) => N((C.comp[c.id] || 0) * (num(c.yieldQty) || 1)) },
           { h: 'تكلفة الوحدة', num: 1, f: (c) => `<b class="n">${(C.comp[c.id] || 0).toFixed(4)}</b><div class="muted sm">لكل 1 ${esc(c.yieldUnit)}</div>` },
           { h: 'يستخدم في', num: 1, f: (c) => usedIn(c.id) || '—' },
-          { h: '', f: (c) => rowActs('composites', c.id, `<button type="button" class="icon-btn" data-act="view" data-s="composites" data-id="${esc(c.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
+          { h: '', cls: 'acts', f: (c) => rowActs('composites', c.id, `<button type="button" class="icon-btn" data-act="view" data-s="composites" data-id="${esc(c.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
         S.composites.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')),
         { empty: 'أضف أول منتج مجمّع، مثل «قطعة لحم 120 جم» = لحم مفروم + ملح + بهارات.' }
@@ -2045,10 +2063,10 @@
           { h: 'متوسط السوق', num: 1, f: (r) => (r.st.market ? `${N(r.st.market.avg)}<div class="sm">${r.st.vsMarket > 5 ? chip('أغلى ' + pct(r.st.vsMarket, 0), 'warn') : r.st.vsMarket < -5 ? chip('أرخص ' + pct(-r.st.vsMarket, 0), 'accent') : chip('مماثل', 'good')}</div>` : '<span class="muted">—</span>') },
           { h: 'سعر التطبيقات', num: 1, f: (r) => N(r.st.appPrice) },
           { h: 'ربحه في التطبيقات', num: 1, f: (r) => (r.st.avgApp ? `${N(r.st.avgApp.profit)}<div class="muted sm">هامش ${pct(r.st.avgApp.margin, 0)}</div>` : '—') },
-          { h: '', f: (r) => rowActs('products', r.p.id, `<button type="button" class="icon-btn" data-act="view" data-s="products" data-id="${esc(r.p.id)}" aria-label="تحليل الصنف" title="تحليل الصنف">ⓘ</button>`) },
+          { h: '', cls: 'acts', f: (r) => rowActs('products', r.p.id, `<button type="button" class="icon-btn" data-act="view" data-s="products" data-id="${esc(r.p.id)}" aria-label="تحليل الصنف" title="تحليل الصنف">ⓘ</button>`) },
         ],
         rows,
-        { empty: 'أضف أصناف المنيو وحدّد مكونات كل صنف (مواد خام أو منتجات مجمّعة) وسعر البيع.', rowCls: (r) => (r.p.active === false ? 'off' : '') }
+        { cards: 1, empty: 'أضف أصناف المنيو وحدّد مكونات كل صنف (مواد خام أو منتجات مجمّعة) وسعر البيع.', rowCls: (r) => (r.p.active === false ? 'off' : '') }
       ),
       { sub: `${RB.isVatReg(S.settings, today()) ? `الأسعار شاملة ضريبة ${pct(S.settings.vatRate, 0)}. تكلفة الطعام = التكلفة ÷ السعر بدون الضريبة.` : 'المطعم غير مسجل في الضريبة: الأسعار بدون ضريبة وتكلفة الطعام = التكلفة ÷ السعر.'} السعر المقترح يحقق المستهدف (${pct(target, 0)}) مقرّباً لأعلى. ربح التطبيقات بعد خصم متوسط العمولة.` }
     );
@@ -2093,7 +2111,7 @@
             { h: 'التطبيق', f: (a) => `<b>${esc(a.name)}</b>` },
             { h: 'الرصيد المستحق', num: 1, f: (a) => N(a.balance) },
             { h: 'آخر تحويل', f: (a) => (a.lastPayout ? dt(a.lastPayout) : '—') },
-            { h: '', f: (a) => btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${esc(a.id)}"`, 'sm') },
+            { h: '', cls: 'acts', f: (a) => btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${esc(a.id)}"`, 'sm') },
           ],
           RB.appReceivables(S, asOf),
           { empty: 'لا توجد مبيعات تطبيقات.' }
@@ -2109,7 +2127,7 @@
             { h: 'المبلغ المحوّل', num: 1, f: (p) => N(p.amount) },
             { h: 'خصومات', num: 1, f: (p) => N(p.deductions) + (num(p.deductions) ? `<div class="muted sm">${esc((RB.DED_TYPES[p.dedType] || RB.DED_TYPES.other).short)}</div>` : '') },
             { h: 'ملاحظات', f: (p) => esc(p.note || '') },
-            { h: '', f: (p) => rowActs('payouts', p.id) },
+            { h: '', cls: 'acts', f: (p) => rowActs('payouts', p.id) },
           ],
           good(S.payouts).filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? 1 : -1))
         )
@@ -2120,13 +2138,16 @@
     const chs = S.settings.channels.filter((c) => c.active !== false || days.some((s) => s.channels && s.channels[c.id]));
     const showApps = chs.filter((c) => c.type === 'app');
     const compact = showApps.length > 3;
-    const cols = [{ h: 'اليوم', f: (s) => `${dt(s.date)}<div class="muted sm">${['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][RB.weekday(s.date)]}</div>` }];
+    // الإجمالي بعد اليوم مباشرة: يبقى ظاهراً دون تمرير، وفي بطاقة الجوال يأتي في سطرها الأول
+    const cols = [
+      { h: 'اليوم', f: (s) => `${dt(s.date)}<div class="muted sm">${['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'][RB.weekday(s.date)]}</div>` },
+      { h: 'الإجمالي', num: 1, f: (s) => `<b>${N(RB.saleTotal(s))}</b>` },
+    ];
     chs.filter((c) => c.type !== 'app' || !compact).forEach((c) => cols.push({ h: esc(c.name), num: 1, f: (s) => (s.channels && s.channels[c.id] ? N(s.channels[c.id].amount) : '—') }));
     if (compact) cols.push({ h: 'التطبيقات', num: 1, f: (s) => N(RB.sum(showApps, (c) => num(s.channels && s.channels[c.id] && s.channels[c.id].amount))) });
     cols.push({ h: 'الطلبات', num: 1, f: (s) => N0(RB.saleOrders(s)) });
-    cols.push({ h: 'الإجمالي', num: 1, f: (s) => `<b>${N(RB.saleTotal(s))}</b>` });
-    cols.push({ h: '', f: (s) => rowActs('sales', s.id) });
-    h += card('الإقفالات اليومية', table(cols, days, { empty: 'لا توجد إقفالات في هذه الفترة. اضغط «إقفال يومي» وأدخل مبيعات كل قناة.' }), { actions: btn('تصدير CSV', 'csv', 'data-v="sales"', 'sm ghost'), sub: 'المبالغ شاملة الضريبة.' });
+    cols.push({ h: '', cls: 'acts', f: (s) => rowActs('sales', s.id) });
+    h += card('الإقفالات اليومية', table(cols, days, { cards: 1, empty: 'لا توجد إقفالات في هذه الفترة. اضغط «إقفال يومي» وأدخل مبيعات كل قناة.' }), { actions: btn('تصدير CSV', 'csv', 'data-v="sales"', 'sm ghost'), sub: 'المبالغ شاملة الضريبة.' });
     return h;
   };
 
@@ -2148,7 +2169,7 @@
     const rows = st.rows.slice().reverse();
     h += card(
       RB.ACC[acc].name,
-      `<div class="pv-grid four"><div><span>رصيد أول الفترة</span>${money(st.opening)}</div><div><span>الداخل</span>${money(st.totIn)}</div><div><span>الخارج</span>${money(st.totOut)}</div><div><span>رصيد آخر الفترة</span>${money(st.closing)}</div></div>` +
+      `<div class="pv-grid"><div><span>رصيد أول الفترة</span>${money(st.opening)}</div><div><span>الداخل</span>${money(st.totIn)}</div><div><span>الخارج</span>${money(st.totOut)}</div><div><span>رصيد آخر الفترة</span>${money(st.closing)}</div></div>` +
         table(
           [
             { h: 'التاريخ', f: (r) => dt(r.date) },
@@ -2156,10 +2177,10 @@
             { h: 'داخل', num: 1, f: (r) => (r.in ? N(r.in, 'pos') : '') },
             { h: 'خارج', num: 1, f: (r) => (r.out ? N(r.out) : '') },
             { h: 'الرصيد', num: 1, f: (r) => N(r.balance) },
-            { h: '', f: (r) => (r.ref && r.ref.s ? `<button type="button" class="icon-btn" data-act="edit" data-s="${esc(r.ref.s)}" data-id="${esc(r.ref.id)}" aria-label="فتح العملية" title="فتح العملية">↗</button>` : '') },
+            { h: '', cls: 'acts', f: (r) => (r.ref && r.ref.s ? `<button type="button" class="icon-btn" data-act="edit" data-s="${esc(r.ref.s)}" data-id="${esc(r.ref.id)}" aria-label="فتح العملية" title="فتح العملية">↗</button>` : '') },
           ],
           rows.slice(0, 400),
-          { empty: 'لا توجد حركات في هذه الفترة.' }
+          { cards: 1, empty: 'لا توجد حركات في هذه الفترة.' }
         ) +
         (rows.length > 400 ? `<p class="note">يظهر آخر 400 حركة. صدّر الكشف كاملاً بصيغة CSV.</p>` : ''),
       { actions: btn('تصدير CSV', 'csv', `data-v="statement"`, 'sm ghost'), sub: periodLabel() }
@@ -2309,8 +2330,8 @@
       if (e.preOpen) adj.push(e.startBy === 'opening' ? 'الأشهر قبل الافتتاح مستبعدة.' : late ? 'الدفتر بدأ بعد الافتتاح، فالأشهر قبل أول شهر كامل من المبيعات المسجلة مستبعدة.' : 'الأشهر قبل أول شهر كامل من المبيعات مستبعدة.');
       if (e.cutStart) adj.push('الأيام من شهر غير مكتمل في بداية الفترة لم تدخل في الحساب.');
     }
-    const body = `<div class="pv-grid three"><div><span>المصاريف الثابتة شهرياً</span>${money(e.fixedMonthly)}</div><div><span>المصاريف المتغيرة</span><b class="n">${pct(e.varRatio * 100)}</b><small>المواد + العمولات من المبيعات</small></div><div><span>هامش المساهمة</span><b class="n">${pct((1 - e.varRatio) * 100)}</b><small>ما يبقى من كل ريال لتغطية الثابت</small></div></div>
-      <div class="be-hero"><div><span>مبيعات التعادل الشهرية (شاملة الضريبة)</span><b class="n">${fmt(e.beGross)}</b> <small>${cur()}</small></div><div><span>يومياً</span><b class="n">${fmt(e.beDaily)}</b></div><div><span>طلبات يومياً تقريباً</span><b class="n">${e.avgTicket ? fmt0(e.beDaily / e.avgTicket) : '—'}</b></div></div>
+    const body = `<div class="pv-grid"><div><span>المصاريف الثابتة شهرياً</span>${money(e.fixedMonthly)}</div><div><span>المصاريف المتغيرة</span><b class="n">${pct(e.varRatio * 100)}</b><small>المواد + العمولات من المبيعات</small></div><div><span>هامش المساهمة</span><b class="n">${pct((1 - e.varRatio) * 100)}</b><small>ما يبقى من كل ريال لتغطية الثابت</small></div></div>
+      <div class="be-hero"><div><span>مبيعات التعادل الشهرية (شاملة الضريبة)</span><b><span class="n">${fmt(e.beGross)}</span> <small class="cur">${cur()}</small></b></div><div><span>يومياً</span><b><span class="n">${fmt(e.beDaily)}</span> <small class="cur">${cur()}</small></b></div><div><span>طلبات يومياً تقريباً</span><b class="n">${e.avgTicket ? fmt0(e.beDaily / e.avgTicket) : '—'}</b></div></div>
       <p class="note">${e.revenue ? (e.safety >= 0 ? `مبيعاتك أعلى من نقطة التعادل بنسبة ${pct(e.safety)} (هامش الأمان).` : `مبيعاتك أقل من نقطة التعادل بنسبة ${pct(-e.safety)}.`) : 'سجّل مبيعات ومصاريف لحساب نقطة التعادل.'}</p>
       ${adj.length ? `<p class="note">${esc(adj.join(' '))}</p>` : ''}`;
     const parts = [
@@ -2344,7 +2365,7 @@
     );
     h += card(
       'التكلفة النظرية مقابل الفعلية',
-      `<div class="pv-grid three"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق غير المفسَّر</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">الهدر المتوقع محسوب أصلاً في التكلفة النظرية عبر «نسبة الهدر %» لكل مادة؛ الفرق المتبقي من هدر غير مسجل، وجبات العمال، حصص أكبر، أو نقص/سرقة. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة.</p>`
+      `<div class="pv-grid"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق غير المفسَّر</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">الهدر المتوقع محسوب أصلاً في التكلفة النظرية عبر «نسبة الهدر %» لكل مادة؛ الفرق المتبقي من هدر غير مسجل، وجبات العمال، حصص أكبر، أو نقص/سرقة. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة.</p>`
     );
     h += card(
       'الاستهلاك النظري للمواد الخام',
@@ -2437,7 +2458,7 @@
           { h: 'النوع', f: (c) => esc(RB.CHANNEL_TYPES[c.type] || c.type) },
           { h: 'العمولة / الرسوم', num: 1, f: (c) => (c.type === 'cash' ? '—' : pct(c.feePct, 2)) },
           { h: 'الحالة', f: (c) => (c.active === false ? chip('موقوفة', 'mute') : chip('مفعّلة', 'good')) },
-          { h: '', f: (c) => `<div class="row-acts"><button type="button" class="icon-btn" data-act="channel" data-id="${esc(c.id)}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn danger" data-act="delchannel" data-id="${esc(c.id)}" aria-label="حذف" title="حذف">✕</button></div>` },
+          { h: '', cls: 'acts', f: (c) => `<div class="row-acts"><button type="button" class="icon-btn" data-act="channel" data-id="${esc(c.id)}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn danger" data-act="delchannel" data-id="${esc(c.id)}" aria-label="حذف" title="حذف">✕</button></div>` },
         ],
         st.channels
       ),
@@ -2911,7 +2932,7 @@
                 return `<li>${head}، يُصرف منه <span class="n">${fmt(Math.min(p, b))}</span>${rest > 0 ? `، ويُرد الباقي <span class="n">${fmt(rest)}</span> إلى المصروف (المكافأة المستحقة أقل من المخصص، كالاستقالة).` : rest < 0 ? `، والزيادة <span class="n">${fmt(-rest)}</span> مصروف في تاريخ الصرف.` : '.'}</li>`;
               })
               .join('');
-            return `<div class="pv-grid four"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}${settle ? `<ul class="note settle">${settle}</ul>` : ''}`;
+            return `<div class="pv-grid"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}${settle ? `<ul class="note settle">${settle}</ul>` : ''}`;
           },
         },
         { k: 'note', label: 'ملاحظات' },
@@ -3278,7 +3299,7 @@
   function productAnalysisHTML(St, p, C, short) {
     const st = RB.productStats(St, p, C);
     const target = num(St.settings.targetFoodCost);
-    let h = `<div class="pv-grid four"><div><span>التكلفة</span>${money(st.cost)}</div><div><span>${RB.isVatReg(St.settings, today()) ? 'السعر بدون الضريبة' : 'سعر البيع (غير مسجل في الضريبة)'}</span>${money(st.priceNet)}</div><div><span>تكلفة الطعام</span><b class="n ${st.foodCost > target + 3 ? 'neg' : ''}">${pct(st.foodCost)}</b><small>المستهدف ${pct(target, 0)}</small></div><div><span>ربح الحبة</span>${money(st.profit)}</div></div>`;
+    let h = `<div class="pv-grid"><div><span>التكلفة</span>${money(st.cost)}</div><div><span>${RB.isVatReg(St.settings, today()) ? 'السعر بدون الضريبة' : 'سعر البيع (غير مسجل في الضريبة)'}</span>${money(st.priceNet)}</div><div><span>تكلفة الطعام</span><b class="n ${st.foodCost > target + 3 ? 'neg' : ''}">${pct(st.foodCost)}</b><small>المستهدف ${pct(target, 0)}</small></div><div><span>ربح الحبة</span>${money(st.profit)}</div></div>`;
     const tips = [];
     if (st.suggested && st.price && st.suggested > st.price + 0.01) tips.push(`لتحقيق تكلفة طعام ${pct(target, 0)} يكون السعر ${fmt(st.suggested)} ${cur()}.`);
     if (st.market) tips.push(`السوق: من ${fmt(st.market.min)} إلى ${fmt(st.market.max)} (المتوسط ${fmt(st.market.avg)}). سعرك ${st.vsMarket > 0 ? 'أعلى' : 'أقل'} بـ ${pct(Math.abs(st.vsMarket), 0)}.`);
@@ -3366,7 +3387,7 @@
         }
         const itemsVal = RB.sum(v.items || [], (row) => num((S.products.find((p) => p.id === row.productId) || {}).price) * num(row.qty));
         const twice = !isEdit && S.sales.some((s) => s.date === v.date && s.id !== v.id) ? `<p class="note bad">يوجد إقفال مسجل لهذا اليوم. الحفظ يضيف إقفالاً ثانياً (مثلاً وردية مسائية).</p>` : '';
-        return `${twice}<div class="pv-grid four"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
+        return `${twice}<div class="pv-grid"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
       },
       onSave: (v) => {
         if (Object.keys(v.channels).some((id) => num(v.channels[id].amount) < 0 || num(v.channels[id].orders) < 0)) return 'المبالغ والطلبات لا تكون سالبة';
@@ -4461,8 +4482,18 @@
       clearTimeout(rz);
       rz = setTimeout(() => {
         document.querySelectorAll('.chart').forEach((el) => CHARTS[el.id] && drawColumns(el, CHARTS[el.id]));
+        document.querySelectorAll('.tbl-wrap').forEach(scrollCue);
       }, 120);
     });
+    // التمرير لا ينتشر للأعلى: يُلتقط في مرحلة النزول لتحديث إشارة تمرير الجدول
+    document.addEventListener(
+      'scroll',
+      (e) => {
+        const t = e.target;
+        if (t && t.classList && t.classList.contains('tbl-wrap')) scrollCue(t);
+      },
+      true
+    );
     // تلميحات الرسوم البيانية
     const tip = document.getElementById('tip');
     const showTip = (el, x, y) => {
