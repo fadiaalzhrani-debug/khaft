@@ -89,6 +89,8 @@
   const shortId = (id) => (id.length > 24 ? id.slice(0, 24) + '…' : id);
   const hasBooks = (st) => !!st && ((RB.isObj(st.settings) && !!st.settings.startedAt) || countRecs(st) > 0);
   const chip = (t, k) => `<span class="chip ${k || ''}">${t}</span>`;
+  // مستوى تكلفة الطعام مقابل المستهدف، واحد في كل مكان: ضمنه، أعلى بـ3 نقاط أو أقل، أو أعلى بأكثر من 3 نقاط
+  const fcLevel = (fc, t) => (fc <= t ? 'good' : fc <= t + 3 ? 'warn' : 'bad');
 
   // ═════════════ الفترة ═════════════
   const PERIODS = [
@@ -624,7 +626,7 @@
     const wrap = document.createElement('div');
     wrap.className = 'overlay';
     const tid = 'dlg-t-' + ++DLG;
-    wrap.innerHTML = `<div class="dialog ${o.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${tid}"><header class="dlg-h"><h3 id="${tid}">${esc(o.title)}</h3><button type="button" class="icon-btn" data-close aria-label="إغلاق">✕</button></header><div class="dlg-b"></div><footer class="dlg-f"></footer></div>`;
+    wrap.innerHTML = `<div class="dialog ${o.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${tid}"><header class="dlg-h"><h2 id="${tid}">${esc(o.title)}</h2><button type="button" class="icon-btn" data-close aria-label="إغلاق">✕</button></header><div class="dlg-b"></div><footer class="dlg-f"></footer></div>`;
     for (const w of root.children) w.inert = true;
     const shell = document.querySelector('.shell');
     if (shell) shell.inert = true;
@@ -743,7 +745,7 @@
     if (f.show && !f.show(val) && !f.live) return '';
     if (f.type === 'row') return `<div class="frow">${f.fields.map((x) => fieldHTML(x, val)).join('')}</div>`;
     if (f.type === 'html') return `<div class="fhtml">${f.html(val)}</div>`;
-    if (f.type === 'section') return `<h4 class="fsec">${esc(f.label)}</h4>`;
+    if (f.type === 'section') return `<h3 class="fsec">${esc(f.label)}</h3>`;
     if (f.type === 'lines') return linesHTML(f, val);
     // get: القيمة المعروضة حين تُشتق من حقول أخرى ما لم يحددها المستخدم
     const v = f.get ? f.get(val) : getPath(val, f.k);
@@ -1201,7 +1203,7 @@
   }
   function card(title, body, o) {
     o = o || {};
-    return `<section class="card ${o.cls || ''}">${title ? `<div class="card-h"><div><h3>${title}</h3>${o.sub ? `<p class="sub">${o.sub}</p>` : ''}</div>${o.actions ? `<div class="card-a">${o.actions}</div>` : ''}</div>` : ''}<div class="card-b">${body}</div></section>`;
+    return `<section class="card ${o.cls || ''}">${title ? `<div class="card-h"><div><h2>${title}</h2>${o.sub ? `<p class="sub">${o.sub}</p>` : ''}</div>${o.actions ? `<div class="card-a">${o.actions}</div>` : ''}</div>` : ''}<div class="card-b">${body}</div></section>`;
   }
   function kpi(label, value, sub, state) {
     return `<div class="kpi ${state || ''}"><div class="kpi-l">${label}</div><div class="kpi-v">${value}</div>${sub ? `<div class="kpi-s">${sub}</div>` : ''}</div>`;
@@ -1223,8 +1225,34 @@
       )
       .join('')}</div>`;
   }
+  // التبويبات: المختار وحده يصله Tab والأسهم تنقل بينها (bindGlobal). كل ما بعدها في الصفحة لوحة التبويب
+  // المختار (wrapTabPanel بعد الرسم). قيمة محفوظة لا تطابق تبويباً تعني الأول، كما تعرضه الصفحات
+  const tabId = (id, k) => `tab-${id}-${k}`;
   function tabs(id, items, active) {
-    return `<div class="tabs" role="tablist">${items.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === active}" class="tab ${k === active ? 'on' : ''}" data-act="tab" data-tab="${id}" data-v="${k}">${l}</button>`).join('')}</div>`;
+    if (!items.some(([k]) => k === active)) active = items[0][0];
+    return `<div class="tabs" role="tablist" data-panel="tp-${esc(id)}">${items
+      .map(([k, l]) => `<button type="button" role="tab" id="${esc(tabId(id, k))}" aria-controls="tp-${esc(id)}" aria-selected="${k === active}" tabindex="${k === active ? 0 : -1}" class="tab ${k === active ? 'on' : ''}" data-act="tab" data-tab="${esc(id)}" data-v="${esc(k)}">${l}</button>`)
+      .join('')}</div>`;
+  }
+  function wrapTabPanel(page) {
+    const tl = page.querySelector(':scope > .tabs[role="tablist"]');
+    if (!tl || !tl.nextSibling) return;
+    const panel = document.createElement('div');
+    panel.className = 'tabpanel';
+    panel.id = tl.dataset.panel;
+    panel.setAttribute('role', 'tabpanel');
+    panel.tabIndex = 0;
+    const on = tl.querySelector('[role="tab"][aria-selected="true"]');
+    if (on) panel.setAttribute('aria-labelledby', on.id);
+    while (tl.nextSibling) panel.appendChild(tl.nextSibling);
+    tl.after(panel);
+  }
+  // بعد التنقل إلى صفحة: التركيز على عنوانها، فيبدأ منه قارئ الشاشة ولوحة المفاتيح (لا بعد كل إعادة رسم)
+  function focusPageTitle() {
+    const h = document.querySelector('#page h1');
+    if (!h) return;
+    h.tabIndex = -1;
+    h.focus({ preventScroll: true });
   }
   function pageHead(title, sub, actions) {
     return `<div class="page-h"><div><h1>${title}</h1>${sub ? `<p class="sub">${sub}</p>` : ''}</div>${actions ? `<div class="page-a">${actions}</div>` : ''}</div>`;
@@ -1244,50 +1272,85 @@
   // ═════════════ الرسوم البيانية ═════════════
   const CHARTS = {};
   let chartN = 0;
+  // الرسم صورة لقارئ الشاشة: وصفها العنوان والإجمالي وأعلى نقطة وآخرها (وعدد الأشهر الخاسرة)،
+  // وجدول مخفي بصرياً بكل النقاط. data.points: {label على المحور، name الاسم الكامل، v، tip}، data.col عنوان عمود النقاط
   function chartSlot(data) {
     const id = 'chart' + ++chartN;
     CHARTS[id] = data;
-    return `<div class="chart" id="${id}" role="img" aria-label="${esc(data.label || '')}"></div>`;
+    const pts = data.points || [];
+    const label = data.label || '';
+    const cu = S.settings.currency || 'ر.س';
+    const nm = (p) => String(p.name || p.label);
+    const amt = (v) => fmt(v) + ' ' + cu;
+    let aria = label;
+    if (pts.length) {
+      const hi = pts.reduce((a, p) => (p.v > a.v ? p : a));
+      // آخر نقطة جاءت (أشهر السنة الباقية في الرسم أصفار لم تأتِ بعد)
+      const last = pts.filter((p) => !p.future).pop() || pts[pts.length - 1];
+      aria += ` — الإجمالي ${amt(RB.sum(pts, (p) => p.v))}، الأعلى ${nm(hi)}: ${amt(hi.v)}، الأخير ${nm(last)}: ${amt(last.v)}`;
+      const loss = pts.filter((p) => p.v < 0).length;
+      if (loss && data.lossLabel) aria += `، ${data.lossLabel}: ${loss}`;
+    }
+    const rows = pts.map((p) => `<tr><th scope="row">${esc(nm(p))}</th><td>${fmt(p.v)}</td></tr>`).join('');
+    return `<div class="chart" id="${id}" role="img" aria-label="${esc(aria)}"></div><div class="vh"><table><caption>${esc(label)}</caption><thead><tr><th scope="col">${esc(data.col || 'الفترة')}</th><th scope="col">المبلغ (${esc(cu)})</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   }
+  // اسم الشهر كاملاً على المحور، ومعه السنة برقمين إن امتدت الفترة على أكثر من سنة (معزولاً من اليمين لليسار
+  // فيُقرأ «سبتمبر 25» لا «25 سبتمبر» داخل الرسم ذي الاتجاه من اليسار لليمين)
+  const monthTick = (ym, years) => (years ? '\u2067' + RB.MONTHS[+ym.slice(5, 7) - 1] + ' ' + ym.slice(2, 4) + '\u2069' : RB.MONTHS[+ym.slice(5, 7) - 1]);
   function niceMax(v) {
     if (v <= 0) return 1;
     const p = Math.pow(10, Math.floor(Math.log10(v)));
     for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p;
     return 10 * p;
   }
+  // الأعمدة من خط الصفر: الموجبة لأعلى، والسالبة (الأشهر الخاسرة) لأسفل باللون الأحمر.
+  // المحور من أصغر قيمة إلى أكبرها، وخطوط الشبكة بخطوة واحدة على جانبي الصفر
   function drawColumns(el, d) {
     const W = Math.max(el.clientWidth, 260);
     const H = d.h || 210;
-    const pl = 52;
     const pr = 8;
     const pt = 14;
     const pb = 26;
     const pts = d.points;
-    const max = niceMax(Math.max(...pts.map((p) => p.v), 0));
+    const vals = pts.map((p) => Number(p.v) || 0);
+    const top = Math.max(0, ...vals);
+    const bot = Math.min(0, ...vals);
+    const step = niceMax(Math.max(top, -bot)) / 4;
+    const hi = top > 0 ? Math.ceil(top / step - 1e-9) * step : bot < 0 ? 0 : step * 4;
+    const lo = bot < 0 ? -Math.ceil(-bot / step - 1e-9) * step : 0;
+    const ticks = [];
+    for (let i = 0, k = Math.round((hi - lo) / step); i <= k; i++) ticks.push(lo + i * step);
+    // هامش أرقام المحور بقدر أطولها (السالبة أطول)
+    const pl = Math.max(52, 14 + 7 * Math.max(...ticks.map((v) => fmt0(v).length)));
     const n = pts.length || 1;
     const band = (W - pl - pr) / n;
     const bw = Math.max(Math.min(24, band - 2), 1.5);
-    const y = (v) => pt + (1 - v / max) * (H - pt - pb);
+    const y = (v) => pt + ((hi - v) / (hi - lo)) * (H - pt - pb);
     const y0 = y(0);
     let g = '';
-    for (let i = 0; i <= 4; i++) {
-      const v = (max / 4) * i;
+    for (const v of ticks) {
       const yy = y(v);
       g += `<line x1="${pl}" x2="${W - pr}" y1="${yy}" y2="${yy}" class="grid"/><text x="${pl - 8}" y="${yy + 4}" text-anchor="end" class="ax">${fmt0(v)}</text>`;
     }
-    const every = Math.max(1, Math.ceil(n / Math.floor((W - pl) / 44)));
+    // تسمية كل عدد من الأعمدة بقدر ما يتسع لأطول تسمية
+    const lw = Math.max(44, ...pts.map((p) => String(p.label).length * 7 + 8));
+    const every = Math.max(1, Math.ceil(n / Math.max(1, Math.floor((W - pl - pr) / lw))));
     let bars = '';
     let labels = '';
     pts.forEach((p, i) => {
       const x = pl + i * band + (band - bw) / 2;
-      const yy = y(Math.max(p.v, 0));
-      const h = y0 - yy;
+      const v = vals[i];
+      const yy = y(v);
+      const h = Math.abs(yy - y0);
       const r = Math.min(4, bw / 2, h);
-      if (h > 0.3) bars += `<path class="bar ${p.hl ? 'hl' : ''}" d="M${x},${y0} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${y0} Z"/>`;
+      if (h > 0.3) {
+        if (v > 0) bars += `<path class="bar ${p.hl ? 'hl' : ''}" d="M${x},${y0} V${yy + r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy + r} V${y0} Z"/>`;
+        else bars += `<path class="bar neg" d="M${x},${y0} V${yy - r} Q${x},${yy} ${x + r},${yy} H${x + bw - r} Q${x + bw},${yy} ${x + bw},${yy - r} V${y0} Z"/>`;
+      }
       bars += `<rect class="hit" x="${pl + i * band}" y="${pt}" width="${band}" height="${H - pt - pb}" data-tip="${esc(p.tip)}"/>`;
       if (i % every === 0) labels += `<text x="${x + bw / 2}" y="${H - 8}" text-anchor="middle" class="ax">${esc(p.label)}</text>`;
     });
-    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" dir="ltr">${g}<line x1="${pl}" x2="${W - pr}" y1="${y0}" y2="${y0}" class="base"/>${bars}${labels}</svg>`;
+    el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" dir="ltr" aria-hidden="true">${g}<line x1="${pl}" x2="${W - pr}" y1="${y0}" y2="${y0}" class="base"/>${bars}${labels}</svg>`;
   }
   // إشارة التمرير للجدول العريض: cue-end إن بقيت أعمدة إلى اليسار (نهاية السطر)، وcue-start إن مُرِّر عن بدايته.
   // scrollLeft في RTL من 0 (البداية يميناً) نحو السالب
@@ -1329,7 +1392,7 @@
     const sales = RB.salesByChannel(S, from, asOf);
     const bal = RB.balances(L.entries, null, asOf);
     const target = num(S.settings.targetFoodCost);
-    const fcState = !inc.revenue ? '' : inc.ratios.foodCost > target + 3 ? 'warn' : 'good';
+    const fcState = !inc.revenue ? '' : fcLevel(inc.ratios.foodCost, target);
     const primeState = !inc.revenue ? '' : inc.ratios.prime > 65 ? 'bad' : inc.ratios.prime > 60 ? 'warn' : 'good';
     const vatBal = -(bal['2102'] || 0);
     let h = pageHead('لوحة المتابعة', `${esc(S.settings.name)} · ${periodLabel()}`, btn('+ إقفال يومي', 'add', 'data-s="sales"', 'primary') + btn('+ فاتورة مشتريات', 'add', 'data-s="purchases"') + btn('+ مصروف', 'add', 'data-s="expenses"'));
@@ -1349,17 +1412,21 @@
     const days = RB.daysBetween(from, to) + 1;
     let pts = [];
     if (days <= 93) {
-      for (let d = from; d <= to; d = RB.addDays(d, 1)) {
+      // هذا الشهر: المحور حتى اليوم، بلا أيام لم تأتِ بعد
+      const end = ui.period === 'month' ? minD(to, today()) : to;
+      for (let d = from; d <= end; d = RB.addDays(d, 1)) {
         const v = sales.days[d] || 0;
-        pts.push({ label: String(+d.slice(8, 10)), v, tip: `${dtText(d)}: ${fmt(v)} ${S.settings.currency}`, hl: d === today() });
+        pts.push({ label: String(+d.slice(8, 10)), name: dtText(d), v, tip: `${dtText(d)}: ${fmt(v)} ${S.settings.currency}`, hl: d === today(), future: d > today() });
       }
     } else {
       const m = {};
       for (const d of Object.keys(sales.days)) m[d.slice(0, 7)] = (m[d.slice(0, 7)] || 0) + sales.days[d];
-      for (let ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = RB.ymAdd(ym, 1)) pts.push({ label: RB.MONTHS[+ym.slice(5, 7) - 1].slice(0, 3), v: m[ym] || 0, tip: `${RB.monthName(ym)}: ${fmt(m[ym] || 0)} ${S.settings.currency}` });
+      const years = from.slice(0, 4) !== to.slice(0, 4);
+      for (let ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = RB.ymAdd(ym, 1)) pts.push({ label: monthTick(ym, years), name: RB.monthName(ym), v: m[ym] || 0, tip: `${RB.monthName(ym)}: ${fmt(m[ym] || 0)} ${S.settings.currency}`, future: ym > today().slice(0, 7) });
     }
     const best = Object.entries(sales.days).sort((a, b) => b[1] - a[1])[0];
-    h += card(days <= 93 ? 'المبيعات اليومية' : 'المبيعات الشهرية', sales.total.gross ? chartSlot({ points: pts, label: 'المبيعات اليومية شاملة الضريبة' }) : `<div class="empty-box">لا توجد مبيعات مسجلة في هذه الفترة. سجّل أول إقفال يومي من زر «إقفال يومي».</div>`, {
+    const chartLabel = days <= 93 ? 'المبيعات اليومية شاملة الضريبة' : 'المبيعات الشهرية شاملة الضريبة';
+    h += card(days <= 93 ? 'المبيعات اليومية' : 'المبيعات الشهرية', sales.total.gross ? chartSlot({ points: pts, label: chartLabel, col: days <= 93 ? 'اليوم' : 'الشهر' }) : `<div class="empty-box">لا توجد مبيعات مسجلة في هذه الفترة. سجّل أول إقفال يومي من زر «إقفال يومي».</div>`, {
       sub: best ? `شاملة الضريبة · أعلى يوم ${dtText(best[0])} بمبلغ ${fmt(best[1])} ${cur()}` : 'شاملة الضريبة',
     });
     // القنوات وتوزيع المصاريف
@@ -1419,8 +1486,13 @@
     }
     const C = costing();
     const target = num(S.settings.targetFoodCost);
-    const high = S.products.filter((p) => p.active !== false && num(p.price) > 0 && RB.productStats(S, p, C).foodCost > target + 5);
-    if (high.length) out.push(['warn', `${high.length} من أصناف المنيو تكلفتها أعلى من المستهدف بأكثر من 5 نقاط: ${high.slice(0, 4).map((p) => esc(p.name)).join('، ')}${high.length > 4 ? '…' : ''}`, btn('راجع التسعير', 'go', 'data-v="products"', 'sm')]);
+    // نفس الأصناف التي شارتها حمراء في «المنيو والتسعير»
+    const high = S.products.filter((p) => {
+      if (p.active === false) return false;
+      const st = RB.productStats(S, p, C);
+      return st.price > 0 && fcLevel(st.foodCost, target) === 'bad';
+    });
+    if (high.length) out.push(['warn', `${high.length} من أصناف المنيو تكلفتها أعلى من المستهدف بأكثر من 3 نقاط: ${high.slice(0, 4).map((p) => esc(p.name)).join('، ')}${high.length > 4 ? '…' : ''}`, btn('راجع التسعير', 'go', 'data-v="products"', 'sm')]);
     if (C.errors.some((e) => e.path)) out.push(['bad', 'يوجد تداخل دائري في وصفة: منتج يحتوي نفسه. افتح المنتجات المجمّعة وصحّح المكونات.', '']);
     // وصفة فيها مكوّن محذوف (بيانات قديمة): تكلفته لا تدخل، فتكلفة الوصفة ناقصة
     const miss = (list) => good(list).filter((r) => RB.recipeItems(S, r.items).bad);
@@ -1949,7 +2021,7 @@
         { empty: 'لا توجد مستحقات آجلة.' }
       ) +
         (good(S.supplierPayments).length
-          ? `<h4 class="sub-h">دفعات السداد</h4>` +
+          ? `<h3 class="sub-h">دفعات السداد</h3>` +
             table(
               [
                 { h: 'التاريخ', f: (p) => dt(p.date) },
@@ -2042,14 +2114,18 @@
     const rows = S.products.map((p) => ({ p, st: RB.productStats(S, p, C) })).sort((a, b) => (a.p.category || '').localeCompare(b.p.category || '', 'ar') || a.p.name.localeCompare(b.p.name, 'ar'));
     const act = rows.filter((r) => r.p.active !== false && r.st.price > 0);
     const avgFc = act.length ? RB.sum(act, (r) => r.st.foodCost) / act.length : 0;
+    // أعلى من المستهدف، ومنها ما يزيد عليه بأكثر من 3 نقاط (شارته حمراء ويظهر في التنبيهات)
+    const above = act.filter((r) => fcLevel(r.st.foodCost, target) !== 'good').length;
+    const far = act.filter((r) => fcLevel(r.st.foodCost, target) === 'bad').length;
     let h = pageHead('المنيو والتسعير', 'تكلفة كل صنف وسعر بيعه، ومقارنته بأسعار السوق المحلي وبصافي ربحه في تطبيقات التوصيل', btn('+ صنف في المنيو', 'add', 'data-s="products"', 'primary'));
     h += `<div class="kpis small">
       ${kpi('أصناف المنيو', `<span class="n">${act.length}</span>`, `${rows.length - act.length} غير مفعّل`)}
-      ${kpi('متوسط تكلفة الطعام', pct(avgFc), `المستهدف ${pct(target, 0)}`, avgFc > target + 3 ? 'warn' : 'good')}
-      ${kpi('أعلى من المستهدف', `<span class="n">${act.filter((r) => r.st.foodCost > target + 3).length}</span>`, 'صنف يحتاج مراجعة سعر أو مكونات', act.some((r) => r.st.foodCost > target + 3) ? 'warn' : 'good')}
+      ${kpi('متوسط تكلفة الطعام', pct(avgFc), `المستهدف ${pct(target, 0)}`, act.length ? fcLevel(avgFc, target) : '')}
+      ${kpi('أعلى من المستهدف', `<span class="n">${above}</span>`, above ? `منها ${far} بفارق أكثر من 3 نقاط` : 'كل الأصناف ضمن المستهدف', far ? 'bad' : above ? 'warn' : act.length ? 'good' : '')}
       ${kpi('متوسط عمولة التطبيقات', pct(RB.appChannels(S).length ? RB.sum(RB.appChannels(S), (c) => num(c.feePct)) / RB.appChannels(S).length : 0), 'تعدّلها من الإعدادات')}
     </div>`;
-    const fcChip = (fc) => (fc > target + 3 ? chip(pct(fc), 'bad') : fc > target ? chip(pct(fc), 'warn') : chip(pct(fc), 'good'));
+    // الصنف غير المفعّل لا يدخل في المؤشرات ولا التنبيهات: شارته باهتة
+    const fcChip = (r) => chip(pct(r.st.foodCost), r.p.active === false ? 'mute' : fcLevel(r.st.foodCost, target));
     h += card(
       'الأصناف',
       table(
@@ -2057,7 +2133,7 @@
           { h: 'الصنف', f: (r) => `<b>${esc(r.p.name)}</b>${r.p.active === false ? ' ' + chip('غير مفعّل', 'mute') : ''}<div class="muted sm">${esc(r.p.category || '')}${(r.p.items || []).some((i) => i.kind === 'prod') ? ' · وجبة مركّبة' : ''}</div>` },
           { h: 'التكلفة', num: 1, f: (r) => N(r.st.cost) },
           { h: 'سعر البيع', num: 1, f: (r) => `<b>${N(r.st.price)}</b>` },
-          { h: 'تكلفة الطعام', num: 1, f: (r) => (r.st.price ? fcChip(r.st.foodCost) : '—') },
+          { h: 'تكلفة الطعام', num: 1, f: (r) => (r.st.price ? fcChip(r) : '—') },
           { h: 'ربح الحبة', num: 1, f: (r) => N(r.st.profit) },
           { h: 'السعر المقترح', num: 1, f: (r) => (r.st.suggested ? `${N(r.st.suggested)}${r.st.suggested > r.st.price + 0.01 ? '<div class="muted sm">لتحقيق المستهدف</div>' : ''}` : '—') },
           { h: 'متوسط السوق', num: 1, f: (r) => (r.st.market ? `${N(r.st.market.avg)}<div class="sm">${r.st.vsMarket > 5 ? chip('أغلى ' + pct(r.st.vsMarket, 0), 'warn') : r.st.vsMarket < -5 ? chip('أرخص ' + pct(-r.st.vsMarket, 0), 'accent') : chip('مماثل', 'good')}</div>` : '<span class="muted">—</span>') },
@@ -2392,6 +2468,7 @@
     for (let ym = a; ym <= b && months.length < 24; ym = RB.ymAdd(ym, 1)) months.push(ym);
     const L = ledger(minD(RB.monthEnd(b), today()));
     const incs = months.map((ym) => RB.incomeStatement(S, ym + '-01', RB.monthEnd(ym), L));
+    const years = months[0].slice(0, 4) !== months[months.length - 1].slice(0, 4);
     const row = (label, f, cls) => `<tr class="${cls || ''}"><td>${label}</td>${incs.map((i) => `<td class="num">${f(i)}</td>`).join('')}</tr>`;
     const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th>${months.map((m) => `<th class="num">${RB.monthName(m)}</th>`).join('')}</tr></thead><tbody>
       ${row('المبيعات بدون الضريبة', (i) => N(i.revenue))}
@@ -2401,7 +2478,7 @@
       ${row('التكلفة الأساسية %', (i) => pct(i.ratios.prime))}
       ${row('صافي الهامش %', (i) => pct(i.ratios.netMargin))}
       </tbody></table></div>`;
-    return card('مقارنة الأشهر', body, { sub: a === from.slice(0, 7) ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: RB.MONTHS[+m.slice(5, 7) - 1], v: Math.max(incs[i].net, 0), tip: `${RB.monthName(m)}: ${fmt(incs[i].net)} ${S.settings.currency}` })), label: 'صافي الربح الشهري' }), { sub: 'الأشهر الخاسرة تظهر بدون عمود.' });
+    return card('مقارنة الأشهر', body, { sub: a === from.slice(0, 7) ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: monthTick(m, years), name: RB.monthName(m), v: incs[i].net, tip: `${RB.monthName(m)}: ${fmt(incs[i].net)} ${S.settings.currency}` })), label: 'صافي الربح الشهري بعد الزكاة', col: 'الشهر', lossLabel: 'الأشهر الخاسرة' }));
   };
   REPORT.trial = () => {
     const [from, asOf] = rangeToDate();
@@ -2446,7 +2523,7 @@
     h += card(
       'الحفظ والنسخ الاحتياطي',
       `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}${backend === 'local' && !APP.demo ? `<br>آخر نسخة احتياطية من هذا المتصفح: ${lastBackupText()}` : ''}</p>
-      <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}<label class="btn ghost file-btn">استيراد نسخة<input type="file" accept=".json,application/json" id="importFile" hidden></label></div>
+      <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}${btn('استيراد نسخة', 'import', '', 'ghost')}<input type="file" accept=".json,application/json" id="importFile" hidden></div>
       <div class="btn-row">${APP.demo ? (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary') : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary')) : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + btn('مسح كل البيانات', 'wipe', '', 'danger ghost')}</div>`
     );
     h += `</div>`;
@@ -3299,14 +3376,14 @@
   function productAnalysisHTML(St, p, C, short) {
     const st = RB.productStats(St, p, C);
     const target = num(St.settings.targetFoodCost);
-    let h = `<div class="pv-grid"><div><span>التكلفة</span>${money(st.cost)}</div><div><span>${RB.isVatReg(St.settings, today()) ? 'السعر بدون الضريبة' : 'سعر البيع (غير مسجل في الضريبة)'}</span>${money(st.priceNet)}</div><div><span>تكلفة الطعام</span><b class="n ${st.foodCost > target + 3 ? 'neg' : ''}">${pct(st.foodCost)}</b><small>المستهدف ${pct(target, 0)}</small></div><div><span>ربح الحبة</span>${money(st.profit)}</div></div>`;
+    let h = `<div class="pv-grid"><div><span>التكلفة</span>${money(st.cost)}</div><div><span>${RB.isVatReg(St.settings, today()) ? 'السعر بدون الضريبة' : 'سعر البيع (غير مسجل في الضريبة)'}</span>${money(st.priceNet)}</div><div><span>تكلفة الطعام</span><b class="n ${{ bad: 'neg', warn: 'warn' }[fcLevel(st.foodCost, target)] || ''}">${pct(st.foodCost)}</b><small>المستهدف ${pct(target, 0)}</small></div><div><span>ربح الحبة</span>${money(st.profit)}</div></div>`;
     const tips = [];
     if (st.suggested && st.price && st.suggested > st.price + 0.01) tips.push(`لتحقيق تكلفة طعام ${pct(target, 0)} يكون السعر ${fmt(st.suggested)} ${cur()}.`);
     if (st.market) tips.push(`السوق: من ${fmt(st.market.min)} إلى ${fmt(st.market.max)} (المتوسط ${fmt(st.market.avg)}). سعرك ${st.vsMarket > 0 ? 'أعلى' : 'أقل'} بـ ${pct(Math.abs(st.vsMarket), 0)}.`);
     if (st.avgApp) tips.push(`في التطبيقات بسعر ${fmt(st.appPrice)}: ربح الحبة ${fmt(st.avgApp.profit)} بعد العمولة. للحفاظ على نفس ربح المحل يلزم ${fmt(st.avgApp.keepPrice)}.`);
     if (tips.length) h += `<ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>`;
     if (short) return h;
-    if (st.apps.length) h += `<h4 class="sub-h">ربح الصنف في كل تطبيق</h4>` + table([{ h: 'التطبيق', f: (a) => esc(a.name) }, { h: 'العمولة', num: 1, f: (a) => pct(a.feePct, 1) }, { h: 'العمولة بالريال', num: 1, f: (a) => N(a.commission) }, { h: 'ربح الحبة', num: 1, f: (a) => N(a.profit) }, { h: 'الهامش', num: 1, f: (a) => pct(a.margin, 0) }, { h: 'السعر المكافئ لربح المحل', num: 1, f: (a) => N(a.keepPrice) }], st.apps);
+    if (st.apps.length) h += `<h3 class="sub-h">ربح الصنف في كل تطبيق</h3>` + table([{ h: 'التطبيق', f: (a) => esc(a.name) }, { h: 'العمولة', num: 1, f: (a) => pct(a.feePct, 1) }, { h: 'العمولة بالريال', num: 1, f: (a) => N(a.commission) }, { h: 'ربح الحبة', num: 1, f: (a) => N(a.profit) }, { h: 'الهامش', num: 1, f: (a) => pct(a.margin, 0) }, { h: 'السعر المكافئ لربح المحل', num: 1, f: (a) => N(a.keepPrice) }], st.apps);
     return h;
   }
   function breakdownHTML(St, rec, kind, C, depth) {
@@ -3741,7 +3818,7 @@
       if (!rec) return;
       const C = costing();
       if (s === 'composites') infoBox(rec.name, breakdownHTML(S, rec, 'comp', C), true);
-      else infoBox(rec.name, productAnalysisHTML(S, rec, C) + '<h4 class="sub-h">تفصيل التكلفة</h4>' + breakdownHTML(S, rec, 'prod', C), true);
+      else infoBox(rec.name, productAnalysisHTML(S, rec, C) + '<h3 class="sub-h">تفصيل التكلفة</h3>' + breakdownHTML(S, rec, 'prod', C), true);
     },
     empcost: (el) => {
       const e = find('employees', el.dataset.id);
@@ -3773,6 +3850,8 @@
       ui[el.dataset.tab] = el.dataset.v;
       saveUI();
       render();
+      const t = document.getElementById(tabId(el.dataset.tab, el.dataset.v));
+      if (t) t.focus();
     },
     filter: (el) => {
       ui[el.dataset.f] = el.dataset.v;
@@ -3795,7 +3874,16 @@
       saveSettings();
       render();
     },
-    menu: () => document.body.classList.toggle('nav-open'),
+    menu: () => setNav(!document.body.classList.contains('nav-open')),
+    skip: () => focusPageTitle(),
+    // زر حقيقي يصله Tab ويفتح اختيار الملف (حقل الملف نفسه مخفي)
+    import: () => {
+      const i = document.getElementById('importFile');
+      if (i) {
+        i.value = '';
+        i.click();
+      }
+    },
     print: () => window.print(),
     csv: (el) => exportCSV(el.dataset.v),
     // أثناء عرض التجربة فوق دفتر محفوظ تُصدَّر البيانات الحقيقية، وملف التجربة وحدها يُعلَّم بأنه تجريبي
@@ -3875,11 +3963,28 @@
     } catch (e) {
       /* بعض الإطارات تمنع تعديل الرابط */
     }
-    document.body.classList.remove('nav-open');
+    setNav(false, { focus: false });
     render();
     const m = document.getElementById('main');
     if (m) m.scrollTo ? m.scrollTo(0, 0) : null;
     window.scrollTo(0, 0);
+    focusPageTitle();
+  }
+
+  // درج القائمة على الشاشات الصغيرة: ☰ يفتحه وينقل التركيز إلى رابط الصفحة الحالية، والإغلاق يعيده إلى ☰.
+  // o.focus=false: إغلاق بلا نقل التركيز (التنقل، تكبير النافذة)
+  function setNav(open, o) {
+    const focus = !o || o.focus !== false;
+    open = !!open;
+    const was = document.body.classList.contains('nav-open');
+    document.body.classList.toggle('nav-open', open);
+    const b = document.querySelector('.menu-btn');
+    if (b) b.setAttribute('aria-expanded', String(open));
+    if (!focus || was === open) return;
+    if (open) {
+      const a = document.querySelector('#nav a.on') || document.querySelector('#nav a');
+      if (a) a.focus();
+    } else if (b) b.focus();
   }
 
   // استبدال الدفتر كله (البداية، الاستيراد، المسح، إكمال الحفظ). يرجع true فقط إن حُفظ كاملاً.
@@ -4296,6 +4401,7 @@
   // ═════════════ الرسم ═════════════
   function shellHTML() {
     return `<div class="shell">
+      <a class="skip" href="#page" data-act="skip">تخطَّ إلى المحتوى</a>
       <aside class="side" id="side" aria-label="القائمة الرئيسية">
         <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div><b>دفتر المطعم</b><small id="restName"></small></div></div>
         <nav id="nav"></nav>
@@ -4304,7 +4410,7 @@
       <div class="scrim" data-act="menu"></div>
       <main class="main" id="main" tabindex="-1">
         <header class="topbar">
-          <button type="button" class="icon-btn menu-btn" data-act="menu" aria-label="القائمة">☰</button>
+          <button type="button" class="icon-btn menu-btn" data-act="menu" aria-label="القائمة" aria-controls="side" aria-expanded="false">☰</button>
           <div class="crumb" id="crumb"></div>
           <div class="period">
             <label for="periodSel" class="vh">الفترة</label>
@@ -4327,6 +4433,7 @@
     document.getElementById('restName').textContent = S.settings.name || '';
     document.getElementById('nav').innerHTML = NAV.map(([g, items]) => `<div class="nav-g"><span>${g}</span>${items.map(([k, l]) => `<a href="#${k}" class="${ui.page === k ? 'on' : ''}" ${ui.page === k ? 'aria-current="page"' : ''}>${l}</a>`).join('')}</div>`).join('');
     document.getElementById('crumb').textContent = PAGE_TITLES[ui.page] || '';
+    document.title = (PAGE_TITLES[ui.page] || '') + ' · ' + (S.settings.name || 'دفتر المطعم');
     document.getElementById('periodSel').value = ui.period;
     const cr = document.getElementById('customRange');
     cr.hidden = ui.period !== 'custom';
@@ -4339,6 +4446,7 @@
     updateBanner();
     try {
       page.innerHTML = PAGES[ui.page]();
+      wrapTabPanel(page);
     } catch (e) {
       console.error(e);
       page.innerHTML = `<div class="empty-box bad">حدث خطأ أثناء عرض الصفحة: ${esc(e.message)}</div>`;
@@ -4472,13 +4580,35 @@
       if (p && p !== ui.page && isPage(p)) {
         ui.page = p;
         saveUI();
-        document.body.classList.remove('nav-open');
+        setNav(false, { focus: false });
         render();
         window.scrollTo(0, 0);
+        focusPageTitle();
       }
+    });
+    document.addEventListener('keydown', (e) => {
+      // Escape يغلق درج القائمة إن لم تكن نافذة مفتوحة (النافذة تُغلق أولاً)
+      if (e.key === 'Escape' && document.body.classList.contains('nav-open') && !document.getElementById('modals').children.length) {
+        setNav(false);
+        return;
+      }
+      // التبويبات: السهم الأيسر للتالي والأيمن للسابق (من اليمين لليسار)، Home وEnd للأول والأخير؛ التبويب يُختار مع التركيز
+      const t = e.target;
+      const tl = t && t.getAttribute && t.getAttribute('role') === 'tab' && !e.altKey && !e.ctrlKey && !e.metaKey && t.closest('[role="tablist"]');
+      if (!tl) return;
+      const list = [...tl.querySelectorAll('[role="tab"]')];
+      const i = list.indexOf(t);
+      const j = { ArrowLeft: i + 1, ArrowRight: i - 1, Home: 0, End: list.length - 1 }[e.key];
+      if (j === undefined) return;
+      e.preventDefault();
+      const next = list[(j + list.length) % list.length];
+      if (next === t) return;
+      next.click();
     });
     let rz = null;
     window.addEventListener('resize', () => {
+      // اتسعت الشاشة فظهر الشريط الجانبي ثابتاً: لا درج مفتوح بعدها
+      if (document.body.classList.contains('nav-open') && !matchMedia('(max-width: 900px)').matches) setNav(false, { focus: false });
       clearTimeout(rz);
       rz = setTimeout(() => {
         document.querySelectorAll('.chart').forEach((el) => CHARTS[el.id] && drawColumns(el, CHARTS[el.id]));

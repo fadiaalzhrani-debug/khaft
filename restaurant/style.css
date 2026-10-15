@@ -135,6 +135,22 @@ a { color: inherit; }
 /* الشريط الجانبي داكن في الوضعين: إطار التركيز بلون الشعار يُقرأ عليه */
 .side :focus-visible { outline-color: var(--accent); }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* رابط التخطي: أول ما يصله Tab، مخفي حتى يُركَّز عليه */
+.skip {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  inset-inline-start: 8px;
+  z-index: 200;
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--shadow-lg);
+  transform: translateY(calc(-100% - 24px));
+}
+.skip:focus { transform: none; }
 .n { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .n.neg { color: var(--bad); }
 .n.pos { color: var(--good); }
@@ -213,7 +229,6 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
   backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line-2);
 }
-.menu-btn { display: none; }
 .crumb { font-weight: 600; color: var(--ink-2); font-size: 0.92rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .period { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .period select, .period input { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 10px; min-height: 36px; }
@@ -241,12 +256,14 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
 .banner.info { background: var(--surface-2); border-color: var(--line); }
 
 /* ─── عرض فقط: لا أزرار تعديل لمن لا يملك صلاحية تعديل البيانات المشتركة ─── */
-body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-act='del'], [data-act='renew'], [data-act='stopRenew'], [data-act='start'], [data-act='wipe'], [data-act='settings'], [data-act='channel'], [data-act='delchannel'], [data-act='resumereplace'], .file-btn) { display: none !important; }
+body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-act='del'], [data-act='renew'], [data-act='stopRenew'], [data-act='start'], [data-act='wipe'], [data-act='settings'], [data-act='channel'], [data-act='delchannel'], [data-act='resumereplace'], [data-act='import']) { display: none !important; }
 
 /* ─── رؤوس الصفحات ─── */
 .page-h { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
 .page-h > div:first-child { min-width: 0; flex: 1 1 360px; }
 .page-h h1 { font-family: var(--font-display); font-weight: 400; font-size: 2.1rem; line-height: 1.15; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+/* العنوان يُركَّز بعد التنقل (tabindex=-1): الإطار للوحة المفاتيح فقط */
+.page-h h1:focus:not(:focus-visible) { outline: none; }
 .sub { color: var(--muted); margin: 4px 0 0; font-size: 0.9rem; max-width: 75ch; }
 .page-a, .btn-row, .quick { display: flex; gap: 8px; flex-wrap: wrap; }
 .quick { margin-top: -6px; }
@@ -276,7 +293,6 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 .btn.danger:not(.ghost) { background: var(--bad); color: var(--on-bad); border-color: var(--bad); }
 .btn.sm { min-height: 30px; padding: 3px 10px; font-size: 0.85rem; }
-.file-btn { position: relative; }
 .icon-btn {
   width: 32px;
   height: 32px;
@@ -291,6 +307,8 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
   flex: none;
 }
 .icon-btn:hover { background: var(--surface-2); border-color: var(--line); color: var(--ink); }
+/* زر القائمة ☰ للشاشات الصغيرة فقط (الشريط الجانبي ظاهر دائماً على الشاشات الواسعة) */
+.icon-btn.menu-btn { display: none; }
 .icon-btn.danger:hover { color: var(--bad); }
 .row-acts { display: flex; gap: 2px; justify-content: flex-end; }
 
@@ -321,7 +339,7 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 /* ─── البطاقات والجداول ─── */
 .card { background: var(--surface); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
 .card-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 14px 18px 0; flex-wrap: wrap; }
-.card-h h3 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.card-h h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
 .card-h .sub { font-size: 0.82rem; }
 .card-a { display: flex; gap: 6px; flex-wrap: wrap; }
 .card-b { padding: 12px 18px 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -382,6 +400,10 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
 .tab { background: none; border: 0; padding: 9px 14px; cursor: pointer; color: var(--muted); font-weight: 600; border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; }
 .tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+/* لوحة التبويب المختار: كل ما بعد شريط التبويبات في الصفحة */
+.tabpanel { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.tabpanel:focus { outline: none; }
+.tabpanel:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; border-radius: var(--r-sm); }
 
 /* ─── الأشرطة الأفقية ─── */
 .hbars { display: flex; flex-direction: column; gap: 9px; }
@@ -396,10 +418,12 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .chart { width: 100%; min-height: 210px; }
 .chart svg { display: block; font-family: var(--font-body); direction: ltr; }
 .chart .grid { stroke: var(--grid); stroke-width: 1; }
-.chart .base { stroke: var(--line); stroke-width: 1; }
+/* خط الصفر أوضح من الشبكة: تحته الأشهر الخاسرة */
+.chart .base { stroke: var(--line-strong); stroke-width: 1; }
 .chart .ax { fill: var(--muted); font-size: 12px; }
 .chart .bar { fill: var(--series); }
 .chart .bar.hl { fill: var(--accent); }
+.chart .bar.neg { fill: var(--bad); }
 .chart .hit { fill: transparent; cursor: default; }
 .chart .hit:hover { fill: color-mix(in srgb, var(--ink) 5%, transparent); }
 #tip { position: fixed; z-index: 100; pointer-events: none; background: var(--ink); color: var(--surface); padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; box-shadow: var(--shadow); max-width: 280px; }
@@ -445,7 +469,7 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 }
 .dialog.wide { width: min(980px, 100%); }
 .dlg-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line-2); }
-.dlg-h h3 { margin: 0; font-size: 1.1rem; }
+.dlg-h h2 { margin: 0; font-size: 1.1rem; }
 .dlg-b { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
 .dlg-f { display: flex; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line-2); flex-wrap: wrap; }
 /* تلميح الحفظ بلوحة المفاتيح: لا يلزم على شاشات اللمس */
@@ -518,6 +542,7 @@ input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .pv-grid > div > b, .pv-grid > div > .money { font-weight: 600; font-size: 1.02rem; color: var(--ink); }
 .pv-grid > div > small { color: var(--muted); font-size: 0.8rem; }
 .pv-grid .n.neg { color: var(--bad); }
+.pv-grid .n.warn { color: var(--warn); }
 .lines-foot .pv-grid { background: var(--surface-2); padding: 10px 12px; border-radius: var(--r-sm); }
 .note { margin: 0; color: var(--ink-2); font-size: 0.84rem; }
 .note.bad { color: var(--bad); }
@@ -556,10 +581,11 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
 }
 @media (max-width: 900px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
-  .side { position: fixed; inset-block: 0; inset-inline-start: 0; width: min(290px, 86vw); height: auto; z-index: 60; transform: translateX(100%); transition: transform 0.2s ease-out; padding-top: calc(18px + env(safe-area-inset-top, 0px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
-  body.nav-open .side { transform: none; box-shadow: var(--shadow-lg); }
+  /* الدرج المغلق مخفي (visibility) فلا يصل Tab إلى روابطه خارج الشاشة؛ يختفي بعد انتهاء حركة الإغلاق */
+  .side { position: fixed; inset-block: 0; inset-inline-start: 0; width: min(290px, 86vw); height: auto; z-index: 60; transform: translateX(100%); visibility: hidden; transition: transform 0.2s ease-out, visibility 0s linear 0.2s; padding-top: calc(18px + env(safe-area-inset-top, 0px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+  body.nav-open .side { transform: none; visibility: visible; transition: transform 0.2s ease-out; box-shadow: var(--shadow-lg); }
   body.nav-open .scrim { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; }
-  .menu-btn { display: inline-grid; }
+  .icon-btn.menu-btn { display: inline-grid; }
   .topbar { padding: 8px 16px; }
   .page { padding: 16px 16px 48px; }
   .banner { margin: 12px 16px 0; }
@@ -604,11 +630,21 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .tbl.cards tfoot td:first-child { grid-column: 1 / -1; }
   .tbl.cards tfoot td:first-child::before { content: none; }
 }
+/* شاشات اللمس: أهداف لمس 44px تقريباً، ومسافة بين أزرار السطر (التعديل والنسخ والحذف) */
+@media (pointer: coarse) {
+  .icon-btn { width: 44px; height: 44px; }
+  .row-acts { gap: 8px; }
+  .btn { min-height: 44px; }
+  .btn.sm { min-height: 40px; padding: 6px 12px; }
+  .fchip { min-height: 40px; padding: 8px 14px; }
+  .nav-g a { padding-block: 11px; }
+  .period select, .period input, .custom-range input { min-height: 44px; }
+}
 @media (prefers-reduced-motion: reduce) { .side { transition: none; } }
 
 /* ─── الطباعة ─── */
 @media print {
-  .side, .topbar, .banner, .page-a, .card-a, .tabs, .row-acts, .btn, .scrim, #toast { display: none !important; }
+  .side, .topbar, .banner, .page-a, .card-a, .tabs, .row-acts, .btn, .scrim, .skip, #toast { display: none !important; }
   .shell { display: block; }
   body { background: #fff; color: #000; font-size: 12px; }
   .card { box-shadow: none; border: 0; }
