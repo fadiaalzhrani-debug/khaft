@@ -63,20 +63,12 @@ svg.ic{width:1.1em;height:1.1em;flex-shrink:0}
 .aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
   background:radial-gradient(1200px 700px at 110% -10%, rgba(34,197,94,.22), transparent 60%),
              radial-gradient(900px 600px at -10% 110%, rgba(16,185,129,.14), transparent 60%), var(--bg)}
-.aurora i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;mix-blend-mode:screen;will-change:transform}
-.aurora i:nth-child(1){width:60vmax;height:60vmax;left:-15vmax;top:-20vmax;background:radial-gradient(circle,#22c55e 0%,transparent 60%);animation:drift1 38s var(--ease) infinite alternate}
-.aurora i:nth-child(2){width:50vmax;height:50vmax;right:-15vmax;top:10vmax;background:radial-gradient(circle,#0ea5a3 0%,transparent 60%);animation:drift2 46s var(--ease) infinite alternate}
-.aurora i:nth-child(3){width:45vmax;height:45vmax;left:20vmax;bottom:-25vmax;background:radial-gradient(circle,#84cc16 0%,transparent 62%);animation:drift3 52s var(--ease) infinite alternate;opacity:.35}
+.aurora i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;mix-blend-mode:screen}
+.aurora i:nth-child(1){width:60vmax;height:60vmax;left:-15vmax;top:-20vmax;background:radial-gradient(circle,#22c55e 0%,transparent 60%)}
+.aurora i:nth-child(2){width:50vmax;height:50vmax;right:-15vmax;top:10vmax;background:radial-gradient(circle,#0ea5a3 0%,transparent 60%)}
+.aurora i:nth-child(3){width:45vmax;height:45vmax;left:20vmax;bottom:-25vmax;background:radial-gradient(circle,#84cc16 0%,transparent 62%);opacity:.32}
 :root[data-theme="light"] .aurora i{mix-blend-mode:multiply;opacity:.22}
 :root[data-theme="light"] .aurora i:nth-child(3){opacity:.14}
-@keyframes drift1{to{transform:translate(18vw,14vh) scale(1.15)}}
-@keyframes drift2{to{transform:translate(-16vw,22vh) scale(.9)}}
-@keyframes drift3{to{transform:translate(12vw,-14vh) scale(1.1)}}
-#bg3d{position:fixed;inset:0;z-index:0;width:100%;height:100%;pointer-events:none;opacity:.9}
-:root[data-theme="light"] #bg3d{opacity:.7}
-body[data-bg="minimal"] .aurora i{animation:none}
-body[data-bg="minimal"] #bg3d{display:none}
-@media (prefers-reduced-motion:reduce){.aurora i{animation:none}}
 
 /* ---------- App shell ---------- */
 .app{position:relative;z-index:1;display:grid;grid-template-columns:var(--sidebar) minmax(0,1fr);min-height:100vh}
@@ -487,7 +479,7 @@ html[dir="rtl"] .idea .meta .select{padding:4px 10px 4px 30px}
   .clock{display:none}
 }
 @media (min-width:601px){.cal-cell .dots{display:none}}
-@media print{.aurora,#bg3d,.sidebar,.topbar,.btn,.acts{display:none !important}.app{display:block}.view{padding:0}.card,.table-wrap{backdrop-filter:none;background:#fff;border-color:#ddd}body{background:#fff;color:#000}}
+@media print{.aurora,.sidebar,.topbar,.btn,.acts{display:none !important}.app{display:block}.view{padding:0}.card,.table-wrap{backdrop-filter:none;background:#fff;border-color:#ddd}body{background:#fff;color:#000}}
 
 /* ============================================================
    v3 · Excel import, large inventory, training matrix, year planner

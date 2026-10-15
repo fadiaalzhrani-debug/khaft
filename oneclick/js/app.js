@@ -69,7 +69,6 @@ window.OC = window.OC || {};
     document.documentElement.dir = s.lang === 'ar' ? 'rtl' : 'ltr';
     document.documentElement.dataset.theme = s.theme === 'light' ? 'light' : 'dark';
     document.querySelector('meta[name=theme-color]').setAttribute('content', s.theme === 'light' ? '#edf4ef' : '#07110c');
-    if (OC.bg) { OC.bg.setTheme(s.theme); OC.bg.setMode(s.bg === 'minimal' ? 'minimal' : '3d'); }
     const team = app.querySelector('[data-team]'); if (team) team.textContent = s.teamName || '';
   };
 

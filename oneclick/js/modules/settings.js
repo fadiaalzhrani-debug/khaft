@@ -26,7 +26,6 @@ OC.modules = OC.modules || {};
           ${setting(t('settings.teamName'), t('settings.teamNameHint'), `<input class="input" style="min-width:220px" data-change="teamName" value="${esc(s.teamName || '')}" aria-label="${esc(t('settings.teamName'))}"/>`)}
           ${setting(t('settings.lang'), t('settings.langHint'), OC.seg('lang', [{ value: 'en', label: 'English' }, { value: 'ar', label: 'العربية' }], s.lang))}
           ${setting(t('settings.theme'), t('settings.themeHint'), OC.seg('theme', [{ value: 'dark', label: t('settings.dark') }, { value: 'light', label: t('settings.light') }], s.theme))}
-          ${setting(t('settings.bg'), t('settings.bgHint'), OC.seg('bg', [{ value: '3d', label: t('settings.bg3d') }, { value: 'minimal', label: t('settings.bgMin') }], s.bg || '3d'))}
           ${setting(t('settings.firstDay'), t('settings.firstDayHint'), OC.seg('firstDay', [{ value: '0', label: t('settings.sunday') }, { value: '1', label: t('settings.monday') }], String(s.firstDay || 0)))}
         </div>
         <div class="card pad"><h3>${I('calendar')}${esc(t('cal.rules'))}</h3>
@@ -56,7 +55,6 @@ OC.modules = OC.modules || {};
       teamName: (d, el) => { OC.db.settings.teamName = el.value.trim(); OC.save(); OC.applySettings(); },
       lang: d => { OC.db.settings.lang = d.v; OC.save(); OC.applySettings(); OC.render(); },
       theme: d => { OC.db.settings.theme = d.v; OC.save(); OC.applySettings(); OC.refresh(); },
-      bg: d => { OC.db.settings.bg = d.v; OC.save(); OC.applySettings(); OC.refresh(); },
       firstDay: d => { OC.db.settings.firstDay = Number(d.v); OC.save(); OC.refresh(); },
       maxOff: (d, el) => { const n = Math.round(Number(el.value)); if (n >= 1 && n <= 99) { OC.db.settings.maxOff = n; OC.save(); OC.toast(t('saved')); } else el.value = OC.db.settings.maxOff; },
       annualDays: (d, el) => { const n = Math.round(Number(el.value)); if (n >= 0 && n <= 365) { OC.db.settings.annualDays = n; OC.save(); OC.toast(t('saved')); } else el.value = OC.db.settings.annualDays; },
