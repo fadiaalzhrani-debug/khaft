@@ -2098,7 +2098,7 @@
           { h: 'البيان', f: (x) => `${esc(x.desc || '')}${x.entity ? `<div class="muted sm">${esc(x.entity)}${empName(x.employeeId, ' · ')}</div>` : empName(x.employeeId, '<div class="muted sm">') }` },
           { h: 'المبلغ', num: 1, f: (x) => N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross) },
           { h: 'الضريبة', num: 1, f: (x) => (x.taxable ? N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).vat) : chip('غير خاضع', 'mute')) },
-          { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${num(x.months)} شهر<div class="muted sm">حتى ${dtText(RB.coverageEnd(x.startDate || x.date, x.months))}</div>` : 'شهر واحد' + (x.startDate && x.startDate.slice(0, 7) !== x.date.slice(0, 7) ? `<div class="muted sm">${esc(RB.monthName(x.startDate.slice(0, 7)))}</div>` : '')) },
+          { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${num(x.months)} شهر<div class="muted sm">حتى ${dtText(RB.expenseCoverageEnd(x))}</div>` : 'شهر واحد' + (x.startDate && x.startDate.slice(0, 7) !== x.date.slice(0, 7) ? `<div class="muted sm">${esc(RB.monthName(x.startDate.slice(0, 7)))}</div>` : '')) },
           { h: 'الدفع من', f: (x) => `<span class="muted">${esc(RB.srcLabel(x.account, S))}</span>` },
           { h: '', cls: 'acts', f: (x) => rowActs('expenses', x.id) },
         ],
@@ -3239,7 +3239,7 @@
         const c = RB.costSplit(v.amount, v.includesVat, v.taxable, S.settings, v.date || today());
         const sym = (v.startDate || v.date || today()).slice(0, 7);
         const one = months === 1 && sym !== (v.date || today()).slice(0, 7) ? `<p class="note">يُحمَّل على شهر ${esc(RB.monthName(sym))}.</p>` : '';
-        return vatPreview(v.amount, v.includesVat, v.taxable, v.date) + one + (months > 1 ? `<p class="note">يُوزّع على ${months} شهر: <b class="n">${fmt(c.cost / months)}</b> ${cur()} شهرياً، والتغطية حتى ${dtText(RB.coverageEnd(v.startDate || v.date || today(), months))}.</p>` : '') + overdrawNote('expenses', v);
+        return vatPreview(v.amount, v.includesVat, v.taxable, v.date) + one + (months > 1 ? `<p class="note">يُوزّع على ${months} شهر: <b class="n">${fmt(c.cost / months)}</b> ${cur()} شهرياً، والتغطية حتى ${dtText(RB.expenseCoverageEnd({ category: v.category, startDate: v.startDate || v.date || today(), months }))}.</p>` : '') + overdrawNote('expenses', v);
       },
       onSave: (v) => {
         if (v.account === 'payable' && !(v.entity || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';

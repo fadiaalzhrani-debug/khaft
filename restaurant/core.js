@@ -1572,12 +1572,21 @@
     return out;
   };
 
-  // جدول تحميل المصروف المدفوع مقدماً على الأشهر
+  // نهاية تغطية المصروف: الإيجار والاشتراك والرسوم بالأيام من بدايتها (من 15 يوليو لـ 6 أشهر: حتى 14 يناير)،
+  // والزكاة سنة مالية تُوزَّع على أشهرها التقويمية فتنتهي آخر شهرها الأخير (الأولى من افتتاح 15 يوليو: حتى 31 ديسمبر)
+  RB.expenseCoverageEnd = (x) => {
+    const start = (x && (x.startDate || x.date)) || RB.todayISO();
+    const months = Math.max(1, Math.round(num(x && x.months) || 1));
+    return x && x.category === 'zakat' ? RB.monthEnd(RB.ymAdd(start.slice(0, 7), months - 1)) : RB.coverageEnd(start, months);
+  };
+
+  // جدول تحميل المصروف المدفوع مقدماً على الأشهر. أول شهر بتاريخ بداية التغطية إن بدأت أثناءه (كالإهلاك)،
+  // فلا يقع تحميل قبلها (الزكاة الأولى من افتتاح 15 يوليو لا تُحمَّل في 1 يوليو)
   RB.amortSchedule = (x, S) => {
     const sp = RB.costSplit(x.amount, x.includesVat, x.taxable, S.settings, x.date);
     const months = Math.max(1, Math.round(num(x.months) || 1));
     const start = x.startDate || x.date;
-    const out = { cost: sp.cost, months: [], end: RB.coverageEnd(start, months) };
+    const out = { cost: sp.cost, months: [], end: RB.expenseCoverageEnd(Object.assign({}, x, { startDate: start, months })) };
     if (months === 1) {
       // شهر واحد: يُحمّل على شهر بداية التغطية (فاتورة سبتمبر المدفوعة في أكتوبر تُحمّل على سبتمبر)
       const sym = start.slice(0, 7);
@@ -1588,7 +1597,7 @@
     let acc = 0;
     for (let i = 0; i < months; i++) {
       const ym = RB.ymAdd(start.slice(0, 7), i);
-      let date = ym + '-01';
+      let date = i === 0 ? start : ym + '-01';
       if (ym === x.date.slice(0, 7) && x.date > date) date = x.date;
       const amount = i === months - 1 ? r2(sp.cost - acc) : monthly;
       acc = r2(acc + amount);

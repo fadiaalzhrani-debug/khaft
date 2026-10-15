@@ -2590,6 +2590,41 @@ test('الزكاة الأولى من الافتتاح: لا يُحمَّل من�
   assert.equal(L.entries[0].date, '2026-06-01');
   close(RB.incomeStatement(S, '2026-01-01', '2026-06-30', L).zakat, 0);
   close(RB.incomeStatement(S, '2026-07-01', '2026-12-31', L).zakat, 6000);
+  assert.equal(sch.end, '2026-12-31');
+});
+
+test('الزكاة الأولى من افتتاح أثناء الشهر: تغطيتها حتى آخر السنة وأول تحميل يوم الافتتاح لا قبله (المتبقيات)', () => {
+  const S = base();
+  S.settings.vatRegistered = false;
+  S.settings.openingDate = '2025-07-15';
+  S.capital = [{ id: 'c', date: '2025-07-15', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  const cov = RB.zakatCoverage(S.settings, '2026-03-10');
+  assert.deepEqual(cov, { startDate: '2025-07-15', months: 6 });
+  const z = Object.assign({ id: 'z', date: '2026-03-10', category: 'zakat', desc: 'زكاة 2025', amount: 6000, includesVat: false, taxable: false, account: 'bank' }, cov);
+  S.expenses = [z];
+  // نهاية التغطية: آخر السنة المالية 2025، لا 14 يناير 2026 (كما في معاينة النموذج وقائمة المصاريف)
+  assert.equal(RB.expenseCoverageEnd(z), '2025-12-31');
+  const sch = RB.amortSchedule(z, S);
+  assert.equal(sch.end, '2025-12-31');
+  assert.deepEqual(sch.months.map((m) => m.ym + '@' + m.date), ['2025-07@2025-07-15', '2025-08@2025-08-01', '2025-09@2025-09-01', '2025-10@2025-10-01', '2025-11@2025-11-01', '2025-12@2025-12-01']);
+  close(RB.sum(sch.months, (m) => m.amount), 6000);
+  // لا تحميل قبل الافتتاح، وفترة تبدأ يوم الافتتاح تشمل حصة يوليو
+  const L = RB.buildLedger(S, '2026-12-31');
+  assert.ok(!L.entries.some((e) => e.kind === 'amort' && e.date < '2025-07-15'));
+  close(RB.incomeStatement(S, '2025-07-15', '2025-12-31', L).zakat, 6000);
+  close(RB.incomeStatement(S, '2025-07-15', '2025-07-31', L).zakat, 1000);
+  close(RB.balanceSheet(S, '2026-12-31', L).check, 0);
+  // الزكاة من أول الشهر أو السنة كاملة: النهاية نفسها كما كانت
+  assert.equal(RB.expenseCoverageEnd({ category: 'zakat', date: '2026-04-20', startDate: '2025-01-01', months: 12 }), '2025-12-31');
+  assert.equal(RB.expenseCoverageEnd({ category: 'zakat', date: '2026-04-20', startDate: '2025-07-01', months: 6 }), '2025-12-31');
+  // غير الزكاة: التغطية بالأيام من بدايتها كما هي، وأول تحميل بتاريخ بدايتها إن بدأت أثناء الشهر
+  const rent = { id: 'r', date: '2026-07-20', category: 'rent', desc: 'إيجار', amount: 12000, includesVat: false, taxable: false, account: 'bank', months: 6, startDate: '2026-08-15' };
+  assert.equal(RB.expenseCoverageEnd(rent), '2027-02-14');
+  const rs = RB.amortSchedule(rent, S);
+  assert.equal(rs.end, '2027-02-14');
+  assert.deepEqual(rs.months.slice(0, 2).map((m) => m.date), ['2026-08-15', '2026-09-01']);
+  // الدفع بعد بداية التغطية في شهرها: أول تحميل بتاريخ الدفع كما كان
+  assert.equal(RB.amortSchedule(Object.assign({}, rent, { date: '2026-08-20' }), S).months[0].date, '2026-08-20');
 });
 
 test('جرد الدرج يصير قديماً بحركة نقدية بتاريخه أو قبله سُجّلت بعده، وإعادة حفظه تصححه (المتبقيات)', () => {
