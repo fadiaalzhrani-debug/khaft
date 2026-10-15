@@ -12,12 +12,15 @@
   let S = RB.emptyState();
   let VER = 0;
   // save: حالة الحفظ الفعلية (pending عمليات لم تُؤكَّد بعد، failed رمز آخر فشل). readOnly: عرض فقط بلا صلاحية تعديل.
-  // syncLost: انقطع التحديث المباشر. replacing: استيراد أو مسح جارٍ في البيانات المشتركة
+  // syncLost: انقطع التحديث المباشر. replacing: استيراد أو مسح جارٍ في البيانات المشتركة من هذه الصفحة.
+  // replaceFailed: لم يكتمل ذلك (state: الدفتر المطلوب حفظه). replaceMarker: علامة config/replace كما في البيانات المشتركة
   const APP = {
     mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false,
     save: { pending: 0, failed: null }, canWrite: null, readOnly: false, syncLost: false, noStorage: false,
-    replacing: false, replaceFailed: null, replaceStale: false, adopting: false, loadFailed: false,
+    replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false,
   };
+  // معرّف هذه الزيارة: يميّز علامة الاستيراد التي كتبتها هذه الصفحة عن علامة جهاز آخر
+  const SID = Math.random().toString(36).slice(2, 10);
   const UI_KEY = 'rb-restaurant-ui';
   const ui = Object.assign(
     { page: 'dashboard', period: 'month', from: '', to: '', expCat: '', purCat: '', cashAcc: '1101', report: 'income', salesTab: 'days', staffTab: 'emp', rawTab: 'list' },
@@ -68,15 +71,18 @@
   const N = (n, cls) => `<span class="n ${cls || ''} ${r2(n) < 0 ? 'neg' : ''}">${fmt(n)}</span>`;
   const N0 = (n) => `<span class="n">${fmt0(n)}</span>`;
   const cur = () => esc(S.settings.currency || 'ر.س');
+  // قيمة خام (تاريخ غير صالح، شهر…) داخل نص عربي: تُعزل باتجاه من اليسار لليمين (LRI…PDI)، وإلا قلب
+  // ترتيب الاتجاهات أجزاءها فظهر «2026-13-45» كأنه «45-13-2026». تصلح للنص والسمات معاً
+  const ltr = (s) => '\u2066' + s + '\u2069';
   // التاريخ غير الصالح (بيانات منقولة أو معيبة) يُعرض كما هو
   const dt = (iso) => {
     if (!iso) return '';
-    if (!RB.isISODate(iso)) return esc(iso);
+    if (!RB.isISODate(iso)) return ltr(esc(iso));
     const y = iso.slice(0, 4);
     const s = +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1];
     return `<span class="dt">${s}${y !== today().slice(0, 4) ? ' ' + y : ''}</span>`;
   };
-  const dtText = (iso) => (!iso ? '' : !RB.isISODate(iso) ? esc(iso) : +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4));
+  const dtText = (iso) => (!iso ? '' : !RB.isISODate(iso) ? ltr(esc(iso)) : +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4));
   const good = RB.good;
   // عدد السجلات في دفتر، وهل فيه بيانات حقيقية (بدأه أحد أو فيه سجلات)
   const countRecs = (st) => RB.SECTIONS.reduce((n, k) => n + (st && Array.isArray(st[k]) ? st[k].length : 0), 0);
@@ -335,6 +341,8 @@
         this.listen(key);
       };
       add('settings', () => this.db.doc('config/settings'), (s) => s.exists && cb('settings', clone(s.data())));
+      // علامة الاستيراد أو المسح: يظهر أن جهازاً آخر يستورد الآن، ويختفي التنبيه حين ينتهي
+      add('replace', () => this.db.doc('config/replace'), (s) => cb('replace', s.exists ? clone(s.data()) : null));
       for (const k of RB.SECTIONS) add(k, () => this.db.collection(k), (snap) => cb(k, snap.docs.map(docRec)));
     }
     listen(key) {
@@ -451,35 +459,45 @@
       const body = clone(settings);
       return this.write('config/settings', () => this.db.doc('config/settings').set(body), 'settings');
     }
-    // استبدال الدفتر المشترك كله: علامة config/replace أثناء العملية، ثم كتابة كل السجلات، ثم حذف القديمة،
-    // ثم الإعدادات أخيراً. أي فشل يوقف الباقي، والإعادة آمنة (تكتب نفس الشيء). يرجع {ok, failed, code}
-    async replaceAll(state, progress) {
+    // علامة config/replace: تُكتب عند البدء وتتجدد كل 30 ثانية ما دامت العملية جارية (فيعرف الجهاز الآخر
+    // أنها جارية لا متوقفة)، وتصير failed إن توقفت، وتُحذف عند الاكتمال. كتاباتها متتالية لا تتداخل
+    mark(status) {
+      return this.chain('config/replace', () => this.db.doc('config/replace').set({ status, at: new Date().toISOString(), by: SID }));
+    }
+    // استبدال الدفتر المشترك كله: العلامة أثناء العملية، ثم كتابة كل السجلات، ثم حذف القديمة،
+    // ثم الإعدادات أخيراً. أي فشل يوقف الباقي، والإعادة آمنة (تكتب نفس الشيء). يرجع {ok, failed, code, before}
+    // before: المستندات التي كانت موجودة حين بدأت العملية أول مرة وما كتبته العملية. عند إكمال عملية فشلت
+    // يُمرَّر prev = before، فلا يُحذف إلا منها: ما أضافه الشريك بعد الفشل يبقى
+    async replaceAll(state, progress, prev) {
       const bad = RB.badIds(state);
-      if (bad.length) return { ok: false, failed: countRecs(state) + 1, code: 'invalid_id', badIds: bad };
-      const fail = (e) => ({ ok: false, failed: countRecs(state) + 1, code: (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error') });
-      const sets = [];
-      const dels = [];
+      if (bad.length) return { ok: false, failed: countRecs(state) + 1, code: 'invalid_id', badIds: bad, before: prev };
+      let marked = false;
+      const fail = (e) => {
+        if (marked) this.mark('failed').catch(() => {});
+        return { ok: false, failed: countRecs(state) + 1, code: (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error'), before: prev };
+      };
+      let plan;
       try {
-        await this.retry(() => this.db.doc('config/replace').set({ status: 'running', at: new Date().toISOString() }));
+        await this.mark('running');
+        marked = true;
         // السجلات القديمة لكل المجموعات تُقرأ معاً
         const snaps = await Promise.all(RB.SECTIONS.map((k) => this.retry(() => this.db.collection(k).get())));
-        RB.SECTIONS.forEach((k, i) => {
-          const snap = snaps[i];
-          const keep = new Set(state[k].map((r) => r.id));
-          snap.docs.forEach((d) => {
-            if (!keep.has(d.id)) dels.push([k + '/' + d.id, () => this.db.collection(k).doc(d.id).delete()]);
-          });
-          state[k].forEach((r) => {
-            const body = clone(r);
-            sets.push([k + '/' + r.id, () => this.db.collection(k).doc(r.id).set(body)]);
-          });
-        });
+        const existing = {};
+        RB.SECTIONS.forEach((k, i) => (existing[k] = snaps[i].docs.map((d) => d.id)));
+        plan = RB.replacePlan(state, existing, prev);
       } catch (e) {
         return fail(e);
       }
+      const before = plan.known;
+      const sets = plan.sets.map(([k, r]) => {
+        const body = clone(r);
+        return [k + '/' + r.id, () => this.db.collection(k).doc(r.id).set(body)];
+      });
+      const dels = plan.dels.map(([k, id]) => [k + '/' + id, () => this.db.collection(k).doc(id).delete()]);
       const st = clone(state.settings);
       const total = sets.length + dels.length + 1;
       const run = { done: 0, failed: false, code: null };
+      let beat = Date.now();
       if (progress) progress(0, total);
       const phase = async (jobs) => {
         const worker = async () => {
@@ -489,6 +507,10 @@
               await this.chain(path, fn);
               run.done++;
               if (progress) progress(run.done);
+              if (Date.now() - beat > 30000) {
+                beat = Date.now();
+                this.mark('running').catch(() => {});
+              }
             } catch (e) {
               run.failed = true;
               run.code = (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error');
@@ -500,9 +522,12 @@
       await phase(sets);
       if (!run.failed) await phase(dels);
       if (!run.failed) await phase([['config/settings', () => this.db.doc('config/settings').set(st)]]);
-      if (run.failed) return { ok: false, failed: total - run.done, code: run.code };
+      if (run.failed) {
+        this.mark('failed').catch(() => {});
+        return { ok: false, failed: total - run.done, code: run.code, before };
+      }
       try {
-        await this.retry(() => this.db.doc('config/replace').delete());
+        await this.chain('config/replace', () => this.db.doc('config/replace').delete());
       } catch (e) {
         /* تبقى العلامة فيظهر تنبيه في الزيارة القادمة */
       }
@@ -546,6 +571,8 @@
     // العلامة تُحسب من جديد: السجل المصحح يخرج من «سجلات تحتاج تصحيح»
     delete rec._bad;
     rec = RB.sanitizeRecord(section, rec) || rec;
+    // حقل معيب ليس في النموذج (بيانات منقولة): حُفظ لكنه باقٍ في «سجلات تحتاج تصحيح»
+    if (rec._bad) toast('حُفظ، لكن السجل ما زال يحتاج تصحيح: ' + badWhy(section, rec), 'bad');
     const arr = S[section];
     const i = arr.findIndex((x) => String(x.id) === String(rec.id));
     if (i >= 0) arr[i] = rec;
@@ -645,6 +672,10 @@
     return el.value;
   }
   let FID = 0;
+  // حقل التاريخ أو الشهر: فارغ أو قيمة صحيحة. المتصفح لا يعرض القيمة غير الصالحة (سجل منقول أو معيب) فيبدو
+  // الحقل فارغاً وهي باقية، فتُرفض عند الحفظ ويُذكر ما خُزّن
+  const isDateField = (f) => f.type === 'date' || f.type === 'month';
+  const dateOK = (f, v) => v === '' || v === undefined || v === null || (f.type === 'month' ? RB.isISOMonth(v) : RB.isISODate(v));
   function optionsHTML(opts, v) {
     return opts.map((o) => {
       const [val, label] = Array.isArray(o) ? o : [o, o];
@@ -682,7 +713,9 @@
       default:
         inp = `<input id="${id}" type="${f.type || 'text'}" data-path="${f.k}" value="${esc(v)}" ${f.list ? `list="${id}l"` : ''} ${f.req ? 'required' : ''} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ''} ${rd}>${f.list ? `<datalist id="${id}l">${f.list(val).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>` : ''}`;
     }
-    return `<div class="field ${f.cls || ''}" data-k="${f.k}">${lab}${inp}${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+    const badDate = isDateField(f) && !dateOK(f, v);
+    const note = badDate ? `<small class="bad-note">القيمة المحفوظة «${ltr(esc(v))}» غير صالحة — اختر ${f.type === 'month' ? 'الشهر' : 'التاريخ'} الصحيح.</small>` : '';
+    return `<div class="field ${f.cls || ''}${badDate ? ' invalid' : ''}" data-k="${f.k}">${lab}${inp}${note}${f.help ? `<small>${f.help}</small>` : ''}</div>`;
   }
   function linesHTML(f, val) {
     const rows = getPath(val, f.k) || [];
@@ -811,17 +844,20 @@
     async function submit() {
       if (saving) return;
       let bad = null;
+      let msg = '';
       for (const f of flatFields(fields())) {
-        if (!f.req || (f.show && !f.show(val))) continue;
+        if (!f.k || (f.show && !f.show(val))) continue;
         const v = getPath(val, f.k);
-        if (v === '' || v === undefined || v === null || (typeof v === 'string' && !v.trim())) {
+        const empty = v === '' || v === undefined || v === null || (typeof v === 'string' && !v.trim());
+        const m1 = f.req && empty ? 'أكمل الحقل: ' : isDateField(f) && !dateOK(f, v) ? (f.type === 'month' ? 'أدخل شهراً صحيحاً: ' : 'أدخل تاريخاً صحيحاً: ') : '';
+        if (m1) {
           const fe = m.body.querySelector(`.field[data-k="${f.k}"]`);
           if (fe) fe.classList.add('invalid');
-          bad = bad || f;
+          if (!bad) [bad, msg] = [f, m1];
         }
       }
       if (bad) {
-        toast('أكمل الحقل: ' + bad.label, 'bad');
+        toast(msg + bad.label, 'bad');
         const fe = m.body.querySelector(`.field[data-k="${bad.k}"] input, .field[data-k="${bad.k}"] select`);
         if (fe) fe.focus();
         return;
@@ -1095,6 +1131,9 @@
     sales: 'إقفال يومي', payouts: 'تحويل تطبيق', transfers: 'تحويل بين الصندوق والبنك', stockCounts: 'جرد', vatPayments: 'سداد ضريبة',
   };
   const FIELD_NAME = { date: 'التاريخ', startDate: 'بداية التغطية', endDate: 'تاريخ ترك العمل', month: 'الشهر' };
+  const fieldName = (section, f) => (section === 'employees' && f === 'startDate' ? 'تاريخ المباشرة' : FIELD_NAME[f] || f);
+  // سبب التعليم: الحقل ناقص أو قيمته الخام (معزولة الاتجاه فتظهر كما خُزّنت)
+  const badWhy = (section, x) => (x._bad || []).map((f) => `${fieldName(section, f)} ${x[f] ? '«' + ltr(String(x[f])) + '» غير صالح' : 'ناقص'}`).join('، ');
   function badRecords(asOf) {
     const out = [];
     const seen = new Set();
@@ -1106,22 +1145,93 @@
     };
     for (const k of RB.SECTIONS)
       for (const x of S[k])
-        if (x._bad) push(k, x, x._bad.map((f) => `${k === 'employees' && f === 'startDate' ? 'تاريخ المباشرة' : FIELD_NAME[f] || f} ${x[f] ? '«' + x[f] + '» غير صالح' : 'ناقص'}`).join('، '));
+        if (x._bad) push(k, x, badWhy(k, x));
     for (const e of ledger(asOf || today()).errors.concat(costing().errors.filter((x) => x.section))) {
       const rec = e.id !== undefined && e.id !== '' && find(e.section, e.id);
       if (rec) push(e.section, rec, 'تعذّر حسابه');
     }
     return out;
   }
-  const recLabel = (x) => {
-    const t = x.name || x.desc || x.supplier || x.entity || x.note || '';
-    return t + (num(x.amount) ? (t ? ' · ' : '') + fmt(x.amount) : '');
-  };
+  // وصف يميّز السجل للمستخدم: حسب نوعه (المسير بشهره وصافيه، الجرد بعدد أصنافه وقيمته، التحويل باتجاهه…)،
+  // والمعرّف الداخلي آخر حل. السجل المعيب قد يفشل حسابه فلا يوقف ذلك القائمة
+  const ACC_SHORT = { cash: 'الصندوق', bank: 'البنك' };
+  function recLabel(section, x) {
+    const parts = [];
+    const add = (t) => t && parts.push(String(t));
+    const amt = () => num(x.amount) && add(fmt(x.amount));
+    try {
+      switch (section) {
+        case 'payroll': {
+          const t = RB.payrollTotals(x);
+          add(RB.isISOMonth(x.month) ? 'رواتب ' + RB.monthName(x.month) : '');
+          add(t.count ? t.count + ' موظف' : 'بلا موظفين');
+          add(t.count ? 'الصافي ' + fmt(t.net) : '');
+          add(x.note);
+          break;
+        }
+        case 'stockCounts': {
+          const n = (x.lines || []).length;
+          add(n ? n + ' صنف' : 'بلا أصناف');
+          add(n ? 'القيمة ' + fmt(RB.stockValue(x, S)) : '');
+          add(x.note);
+          break;
+        }
+        case 'transfers':
+          add(ACC_SHORT[x.from] && ACC_SHORT[x.to] ? `من ${ACC_SHORT[x.from]} إلى ${ACC_SHORT[x.to]}` : '');
+          amt();
+          add(x.note);
+          break;
+        case 'sales': {
+          const t = RB.saleTotal(x);
+          add(t ? 'مبيعات ' + fmt(t) : '');
+          add(x.note);
+          break;
+        }
+        case 'payouts': {
+          const c = S.settings.channels.find((ch) => ch.id === x.channelId);
+          add(c && c.name);
+          amt();
+          break;
+        }
+        case 'capital': {
+          const p = S.partners.find((y) => y.id === x.partnerId);
+          add(p && p.name);
+          add(x.type === 'withdrawal' ? 'سحب' : x.type === 'contribution' ? 'إيداع' : '');
+          amt();
+          add(x.note);
+          break;
+        }
+        case 'vatPayments':
+          add(x.period);
+          amt();
+          break;
+        case 'purchases': {
+          add(x.supplier);
+          add(x.invoiceNo ? 'فاتورة ' + x.invoiceNo : '');
+          const t = RB.purchaseTotal(x);
+          add(t ? fmt(t) : '');
+          break;
+        }
+        case 'expenses':
+          add(x.desc || (x.category && RB.expenseCat(x.category).name));
+          amt();
+          break;
+        default:
+          add(x.name || x.desc || x.supplier || x.entity || x.note);
+          amt();
+      }
+      // التاريخ الصالح يميّز السجل أيضاً (غير الصالح يظهر في سبب التعليم)
+      if (RB.DATED.includes(section) && RB.isISODate(x.date)) add(dtText(x.date));
+    } catch (e) {
+      /* يُكتفى بما جُمع */
+    }
+    return parts.join(' · ') || 'بلا وصف (المعرّف ' + ltr(String(x.id)) + ')';
+  }
   // قائمة السجلات مع «تصحيح» و«حذف» لكل منها (withSection: يُذكر نوع السجل)
   const fixList = (list, withSection) =>
     `<ul class="fix-list">${list
       .slice(0, 30)
-      .map((b) => `<li><span>${withSection ? `<b>${esc(SECTION_NAME[b.section] || b.section)}</b>: ` : ''}${esc(recLabel(b.rec) || b.rec.id)} — ${esc(b.why)}</span><span class="al-a">${btn('تصحيح', 'edit', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm')}${btn('حذف', 'del', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm ghost')}</span></li>`)
+      .map((b) => `<li><span>${withSection ? `<b>${esc(SECTION_NAME[b.section] || b.section)}</b>: ` : ''}${esc(recLabel(b.section, b.rec))} — ${esc(b.why)}</span><span class="al-a">${btn('تصحيح', 'edit', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm')}${btn('حذف', 'del', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm ghost')}</span></li>`)
       .join('')}</ul>${list.length > 30 ? `<p class="note">و${list.length - 30} سجل آخر.</p>` : ''}`;
   // صندوق «بحاجة لتصحيح» في صفحة القسم (asOf: تاريخ دفتر الصفحة، فلا يُبنى دفتر آخر)
   const fixCard = (section, asOf) => {
@@ -3067,12 +3177,15 @@
       if (await replaceAll(fresh)) toast('تم مسح البيانات.');
     },
     reload: () => location.reload(),
-    // إكمال استيراد أو مسح لم يكتمل في البيانات المشتركة: إعادة كتابة ما في الشاشة (آمنة إن تكررت)
+    // إكمال استيراد أو مسح لم يكتمل في البيانات المشتركة: إعادة كتابة الدفتر المطلوب (آمنة إن تكررت).
+    // الدفتر المطلوب هو ما كان يُحفظ مع تعديلات المستخدم بعده، لا خليط البيانات المشتركة ولا التجربة المعروضة
     resumereplace: async () => {
-      if (await replaceAll(S)) toast('اكتمل الحفظ في البيانات المشتركة.');
+      const f = APP.replaceFailed;
+      if (!f || APP.replacing) return;
+      if (await replaceAll(f.state, f.before)) toast('اكتمل الحفظ في البيانات المشتركة.');
     },
     dismissreplace: async () => {
-      APP.replaceStale = false;
+      APP.replaceMarker = null;
       updateBanner();
       try {
         await APP.backend.db.doc('config/replace').delete();
@@ -3098,8 +3211,9 @@
     window.scrollTo(0, 0);
   }
 
-  // استبدال الدفتر كله (البداية، الاستيراد، المسح، إكمال الحفظ). يرجع true فقط إن حُفظ كاملاً
-  async function replaceAll(state) {
+  // استبدال الدفتر كله (البداية، الاستيراد، المسح، إكمال الحفظ). يرجع true فقط إن حُفظ كاملاً.
+  // before: عند إكمال عملية فشلت، المستندات التي كانت قبلها (لا يُحذف غيرها)
+  async function replaceAll(state, before) {
     if (APP.readOnly) {
       toast(RO_MSG, 'bad');
       return false;
@@ -3119,19 +3233,23 @@
     document.getElementById('toast').appendChild(t);
     let res;
     try {
-      res = await APP.backend.replaceAll(S, (done, total) => {
-        if (total) t.dataset.total = total;
-        t.textContent = `جاري الحفظ… ${done} من ${t.dataset.total || '?'}`;
-      });
+      res = await APP.backend.replaceAll(
+        S,
+        (done, total) => {
+          if (total) t.dataset.total = total;
+          t.textContent = `جاري الحفظ… ${done} من ${t.dataset.total || '?'}`;
+        },
+        before
+      );
     } catch (e) {
-      res = { ok: false, failed: countRecs(S) + 1, code: (e && e.code) || 'error' };
+      res = { ok: false, failed: countRecs(S) + 1, code: (e && e.code) || 'error', before };
     }
     t.remove();
     APP.replacing = false;
     APP.save.pending--;
     if (res.ok) {
       APP.replaceFailed = null;
-      APP.replaceStale = false;
+      APP.replaceMarker = null;
       APP.save.failed = null;
       try {
         const d = await APP.backend.load();
@@ -3144,8 +3262,9 @@
       return true;
     }
     if (res.code === 'invalid_argument' && APP.canWrite !== true) {
-      // لا صلاحية تعديل: لا شيء كُتب، فيُعاد الدفتر المشترك كما هو
+      // لا صلاحية تعديل: لا شيء كُتب، فيُعاد الدفتر المشترك كما هو (ولا إكمال لعرض فقط)
       APP.readOnly = true;
+      APP.replaceFailed = null;
       APP.save.failed = 'invalid_argument';
       toast('ليست لديك صلاحية تعديل هذه البيانات.', 'bad');
       try {
@@ -3155,7 +3274,9 @@
       }
       return false;
     }
-    APP.replaceFailed = { n: res.failed };
+    // الدفتر المطلوب يبقى كما هو حتى يُحفظ كاملاً: لقطات البيانات المشتركة (خليط القديم وما كُتب) لا تُطبَّق عليه،
+    // وهو نفسه الدفتر في الشاشة فتدخل فيه تعديلات المستخدم بعد الفشل. «أكمل الحفظ» يكتبه هو
+    APP.replaceFailed = { n: res.failed, state: S, before: res.before };
     APP.save.failed = failCode(res.code);
     toast(res.code === 'invalid_id' ? 'معرّف سجل غير صالح: ' + (res.badIds || []).slice(0, 5).map(shortId).join('، ') : dbErrMsg(res), 'bad');
     render();
@@ -3538,6 +3659,18 @@
   // الأشرطة أعلى الصفحة: لا حفظ في المتصفح، انقطاع التحديث، حفظ لم يكتمل، عرض فقط، ووضع التجربة.
   // تُرسم فقط إن تغيرت (لا تُعاد قراءتها لقارئ الشاشة مع كل تنقل)
   let lastBanner = null;
+  // علامة config/replace (RB.replaceMarkerState): جهاز آخر يستورد الآن، أو عملية سابقة لم تكتمل.
+  // علامة هذه الصفحة لا تُعرض هنا (فشلها له شريط «أكمل الحفظ»)
+  let markerTimer = null;
+  function markerState() {
+    const m = APP.replaceMarker;
+    clearTimeout(markerTimer);
+    if (APP.replacing || APP.replaceFailed) return '';
+    const st = RB.replaceMarkerState(m, Date.now(), SID);
+    // إن لم تتجدد العلامة (توقفت العملية في الجهاز الآخر) يتحول التنبيه إلى «لم يكتمل»
+    if (st === 'running') markerTimer = setTimeout(updateBanner, RB.REPLACE_LIVE_MS - (Date.now() - Date.parse(m.at)) + 1000);
+    return st;
+  }
   function updateBanner() {
     const el = document.getElementById('banner');
     if (!el) return;
@@ -3546,7 +3679,9 @@
     if (APP.noStorage) h += bar('bad', '<b>هذا المتصفح لا يسمح بالحفظ (وضع خاص أو تخزين محظور) — لن تُحفظ بياناتك</b>', '');
     if (APP.syncLost) h += bar('bad', 'انقطع التحديث المباشر للبيانات المشتركة، وقد لا تكون تعديلات شريكك الأخيرة ظاهرة. أعد تحميل الصفحة قبل أن تعدّل.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
     if (APP.replaceFailed) h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (<span class="n">${APP.replaceFailed.n}</span> سجل) — البيانات في الشاشة غير محفوظة بالكامل</b>`, btn('أكمل الحفظ', 'resumereplace', '', 'sm primary'));
-    if (APP.replaceStale && !APP.replaceFailed) h += bar('warn', 'استيراد/مسح سابق لم يكتمل — أعد العملية', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
+    const mk = markerState();
+    if (mk === 'running') h += bar('warn', '<b>يجري الآن استيراد أو مسح للبيانات المشتركة من جهاز آخر</b> — انتظر حتى ينتهي قبل أن تعدّل.', '');
+    if (mk === 'stale') h += bar('warn', 'استيراد/مسح سابق لم يكتمل — أعد العملية', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
     if (APP.readOnly && !APP.demo) h += bar('info', RO_MSG, '');
     if (APP.demo)
       h += bar(
@@ -3566,11 +3701,13 @@
     const el = document.getElementById('saveStatus');
     if (!el) return;
     const kind = APP.backend ? APP.backend.kind : '';
-    const f = APP.save.failed;
+    // استيراد أو مسح لم يكتمل: الدفتر غير محفوظ كاملاً ولو نجح حفظ تعديل بعده
+    const f = APP.save.failed || (APP.replaceFailed && !APP.replacing ? 'replace' : null);
     const at = APP.savedAt ? ' · ' + TIMEF.format(new Date(APP.savedAt)) : '';
     const dot = (k) => `<span class="dot ${k}" aria-hidden="true"></span>`;
     let h = '';
     if (APP.demo) h = `${dot('warn')}وضع التجربة — لا يُحفظ`;
+    else if (f === 'replace') h = `${dot('bad')}<span class="ss-t">لم يكتمل الحفظ في البيانات المشتركة</span>`;
     else if (f && f !== 'invalid_argument') h = `${dot('bad')}<span class="ss-t">لم يُحفظ آخر تعديل — صدّر نسخة احتياطية</span>${btn('تصدير', 'backup', '', 'sm ghost')}`;
     else if (APP.syncLost) h = `${dot('bad')}غير متزامن`;
     else if (APP.readOnly || f === 'invalid_argument') h = `${dot(f ? 'bad' : 'warn')}عرض فقط — لا تملك صلاحية التعديل`;
@@ -3680,7 +3817,8 @@
     // تعديل لم يُؤكَّد حفظه أو فشل حفظه: تنبيه قبل مغادرة الصفحة
     window.addEventListener('beforeunload', (e) => {
       const f = APP.save.failed;
-      if (APP.demo || !(APP.save.pending > 0 || (f && f !== 'invalid_argument'))) return;
+      // استيراد لم يكتمل يُنبَّه له حتى أثناء عرض التجربة (الدفتر المطلوب لم يُحفظ كاملاً)
+      if (!APP.replaceFailed && (APP.demo || !(APP.save.pending > 0 || (f && f !== 'invalid_argument')))) return;
       e.preventDefault();
       e.returnValue = '';
     });
@@ -3689,8 +3827,14 @@
 
   // بيانات وصلت من الخارج (شريك في البيانات المشتركة أو نافذة أخرى). يرجع true إن تغيّر شيء
   function onRemote(section, data) {
-    // أثناء الاستيراد أو المسح تصل لقطات جزئية: تُتجاهل، ويُطابق الدفتر بعد الانتهاء
-    if (APP.replacing) return false;
+    if (section === 'replace') {
+      APP.replaceMarker = RB.isObj(data) ? data : null;
+      updateBanner();
+      return false;
+    }
+    // أثناء الاستيراد أو المسح تصل لقطات جزئية، وبعد فشله تحمل خليط القديم وما كُتب: تُتجاهل حتى يكتمل الحفظ،
+    // ثم يُطابق الدفتر مع البيانات المشتركة
+    if (APP.replacing || APP.replaceFailed) return false;
     if (section === 'settings') {
       if (!RB.isObj(data)) return false;
       data = RB.normalize({ settings: data }).settings;
@@ -3769,12 +3913,12 @@
         APP.save.failed = 'local';
       }
     }
-    // علامة استيراد أو مسح بدأ ولم ينتهِ: تُقرأ مع الدفتر في الوقت نفسه
-    const stale = backend
+    // علامة استيراد أو مسح بدأ ولم ينتهِ: تُقرأ مع الدفتر في الوقت نفسه (ثم يتابعها المستمع)
+    const marker = backend
       ? Promise.resolve()
           .then(() => backend.retry(() => backend.db.doc('config/replace').get()))
-          .then((r) => !!(r && r.exists), () => false)
-      : Promise.resolve(false);
+          .then((r) => (r && r.exists ? clone(r.data()) : null), () => null)
+      : Promise.resolve(null);
     let data = null;
     try {
       data = await APP.backend.load();
@@ -3782,7 +3926,7 @@
       APP.loadFailed = true;
       toast('تعذّر تحميل البيانات المحفوظة. أعد تحميل الصفحة قبل أن تبدأ.', 'bad');
     }
-    APP.replaceStale = await stale;
+    APP.replaceMarker = RB.isObj(await marker) ? await marker : null;
     if (hasBooks(data)) {
       S = RB.normalize(data);
       APP.demo = false;

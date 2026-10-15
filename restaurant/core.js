@@ -318,6 +318,39 @@
     return out;
   };
 
+  // خطة استبدال الدفتر المشترك (استيراد، مسح، بداية): كتابة كل سجلات الهدف، وحذف ما ليس فيه.
+  // existing: {قسم: [معرّفات المستندات الموجودة الآن]}. prev (عند إكمال عملية فشلت): المستندات المعروفة من
+  // المحاولات السابقة (ما كان قبلها وما كتبته)؛ لا يُحذف غيرها، فما أضافه الشريك بعد الفشل يبقى.
+  // يرجع {sets: [[قسم، سجل]], dels: [[قسم، معرّف]], known} وknown هو prev للإكمال التالي
+  RB.replacePlan = (state, existing, prev) => {
+    const known = new Set(prev || []);
+    const sets = [];
+    const dels = [];
+    for (const k of RB.SECTIONS) {
+      const recs = Array.isArray(state[k]) ? state[k] : [];
+      const keep = new Set(recs.map((r) => r.id));
+      for (const id of (existing && existing[k]) || []) {
+        const p = k + '/' + id;
+        if (!prev) known.add(p);
+        if (!keep.has(id) && known.has(p)) dels.push([k, id]);
+      }
+      for (const r of recs) {
+        sets.push([k, r]);
+        known.add(k + '/' + r.id);
+      }
+    }
+    return { sets, dels, known };
+  };
+  // علامة config/replace كما تُعرض لمن يفتح البيانات المشتركة: '' (لا علامة، أو كتبتها هذه الصفحة sid)،
+  // running (جهاز آخر يستورد أو يمسح الآن: العلامة تتجدد كل 30 ثانية أثناء العملية فتُعد جارية ما دامت أحدث من
+  // 5 دقائق، مع تسامح في فرق الساعة بين الجهازين)، stale (توقفت أو فشلت: البيانات قد تكون ناقصة)
+  RB.REPLACE_LIVE_MS = 5 * 60 * 1000;
+  RB.replaceMarkerState = (m, now, sid) => {
+    if (!isObj(m) || (sid && m.by === sid)) return '';
+    const age = now - Date.parse(m.at);
+    return m.status === 'running' && Math.abs(age) < RB.REPLACE_LIVE_MS ? 'running' : 'stale';
+  };
+
   // يكمل أي حقول ناقصة (نسخ احتياطية قديمة أو بيانات منقوصة)، ويصلح شكل الإعدادات والسجلات:
   // الإعدادات كائن (بلا مفاتيح رقمية دخيلة)، قنوات البيع بمعرّف نصي، والمعرّف المكرر في القسم يُعطى معرّفاً جديداً
   RB.normalize = (src) => {

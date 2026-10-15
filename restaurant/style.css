@@ -438,6 +438,9 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 input[type='number'] { direction: ltr; text-align: end; font-variant-numeric: tabular-nums; }
 input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .field.invalid input, .field.invalid select { border-color: var(--bad); }
+/* قيمة تاريخ محفوظة غير صالحة: تُذكر تحت الحقل حتى يُختار تاريخ صحيح */
+.field small.bad-note { color: var(--bad); font-weight: 600; }
+.field:not(.invalid) .bad-note { display: none; }
 .field.check { justify-content: flex-end; min-height: 38px; }
 .checkl { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; padding-top: 6px; }
 .checkl input { width: 18px; height: 18px; accent-color: var(--accent); }

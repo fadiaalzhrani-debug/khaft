@@ -1657,3 +1657,72 @@ test('معرّفات الملف المستورد: يُرفض ما يكسر ال�
   assert.deepEqual(Object.keys(s.channels), ['cash']);
   assert.equal({}.amount, undefined);
 });
+
+// قاعدة بيانات مشتركة في الذاكرة لتجربة خطة الاستبدال: تنفيذ الخطة مع فشل بعد عدد من العمليات
+function runPlan(db, plan, failAfter) {
+  let n = 0;
+  for (const [k, r] of plan.sets) {
+    if (failAfter !== undefined && n++ >= failAfter) return false;
+    db.set(k + '/' + r.id, Object.assign({}, r));
+  }
+  for (const [k, id] of plan.dels) {
+    if (failAfter !== undefined && n++ >= failAfter) return false;
+    db.delete(k + '/' + id);
+  }
+  return true;
+}
+const idsOf = (db) => {
+  const out = {};
+  for (const p of db.keys()) {
+    const [k, id] = p.split('/');
+    (out[k] = out[k] || []).push(id);
+  }
+  return out;
+};
+
+test('استيراد مشترك لم يكتمل ثم أُكمل: لا يبقى سجل قديم، وما أضافه الشريك بعد الفشل يبقى (مراجعة WP3)', () => {
+  const old = RB.normalize(RB.demoState('2026-07-14'));
+  RB.SECTIONS.forEach((k) => old[k].forEach((r) => (r.id = 'old' + r.id)));
+  const target = RB.normalize(RB.demoState('2026-10-14'));
+  const db = new Map();
+  RB.SECTIONS.forEach((k) => old[k].forEach((r) => db.set(k + '/' + r.id, r)));
+  const nOld = db.size;
+  // المحاولة الأولى: كل الكتابات قبل أي حذف، وتتوقف في المنتصف
+  const p1 = RB.replacePlan(target, idsOf(db));
+  assert.equal(p1.dels.length, nOld);
+  assert.equal(p1.sets.length, RB.SECTIONS.reduce((n, k) => n + target[k].length, 0));
+  assert.equal(runPlan(db, p1, 300), false);
+  assert.equal(db.size, nOld + 300); // خليط القديم وما كُتب
+  // بعد الفشل: الشريك يضيف مصروفاً، والمستخدم يضيف سجلاً إلى الدفتر المطلوب (في الشاشة)
+  db.set('expenses/partnerX', { id: 'partnerX' });
+  target.expenses.push({ id: 'mine1', date: '2026-10-12', category: 'utilities', amount: 5, months: 1, account: 'cash' });
+  db.set('expenses/mine1', target.expenses[target.expenses.length - 1]);
+  // الإكمال: يكتب الدفتر المطلوب نفسه، ويحذف القديم فقط
+  const p2 = RB.replacePlan(target, idsOf(db), p1.known);
+  assert.ok(!p2.dels.some(([k, id]) => id === 'partnerX'));
+  assert.equal(runPlan(db, p2, 120), false); // يفشل مرة أخرى في المنتصف
+  const p3 = RB.replacePlan(target, idsOf(db), p2.known);
+  assert.equal(runPlan(db, p3), true);
+  const left = [...db.keys()];
+  assert.deepEqual(left.filter((p) => p.split('/')[1].startsWith('old')), []);
+  assert.ok(db.has('expenses/partnerX'));
+  for (const k of RB.SECTIONS) for (const r of target[k]) assert.ok(db.has(k + '/' + r.id), k + '/' + r.id);
+  assert.equal(db.size, p1.sets.length + 2);
+  // بلا prev (استيراد جديد): كل ما ليس في الهدف يُحذف، ومنه سجل الشريك
+  const p4 = RB.replacePlan(RB.emptyState(), idsOf(db));
+  assert.equal(p4.dels.length, db.size);
+});
+
+test('علامة الاستيراد المشترك: جارٍ من جهاز آخر، أو سابق لم يكتمل، وعلامة الصفحة نفسها لا تُعرض', () => {
+  const now = Date.parse('2026-10-15T10:00:00Z');
+  const at = (ms) => new Date(now - ms).toISOString();
+  const st = RB.replaceMarkerState;
+  assert.equal(st(null, now, 's1'), '');
+  assert.equal(st({ status: 'running', at: at(0), by: 's1' }, now, 's1'), '');
+  assert.equal(st({ status: 'running', at: at(30000), by: 's2' }, now, 's1'), 'running');
+  assert.equal(st({ status: 'running', at: at(0) }, now, 's1'), 'running'); // علامة قديمة الشكل بلا by
+  assert.equal(st({ status: 'running', at: at(-120000), by: 's2' }, now, 's1'), 'running'); // ساعة الجهاز الآخر متقدمة
+  assert.equal(st({ status: 'running', at: at(RB.REPLACE_LIVE_MS + 1000), by: 's2' }, now, 's1'), 'stale');
+  assert.equal(st({ status: 'failed', at: at(1000), by: 's2' }, now, 's1'), 'stale');
+  assert.equal(st({ status: 'running', at: 'أمس' }, now, 's1'), 'stale');
+});
