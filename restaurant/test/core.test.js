@@ -2627,6 +2627,34 @@ test('الزكاة الأولى من افتتاح أثناء الشهر: تغط�
   assert.equal(RB.amortSchedule(Object.assign({}, rent, { date: '2026-08-20' }), S).months[0].date, '2026-08-20');
 });
 
+test('زكاة تُدفع في سنة الافتتاح نفسها: لا تبدأ تغطيتها قبل الافتتاح ولا تمتد «كل الفترات» إلى سنة قبله (المتبقيات 3)', () => {
+  const set = { openingDate: '2026-07-01' };
+  // السنة السابقة لسنة الدفع (2025) انتهت قبل الافتتاح: السنة الأولى من الافتتاح حتى آخر 2026
+  const cov = RB.zakatCoverage(set, '2026-10-15');
+  assert.deepEqual(cov, { startDate: '2026-07-01', months: 6 });
+  assert.ok(cov.startDate >= set.openingDate);
+  assert.deepEqual(RB.zakatCoverage({ openingDate: '2026-07-15' }, '2026-10-15'), { startDate: '2026-07-15', months: 6 });
+  // افتتاح أول يناير من سنة الدفع: سنة الافتتاح كاملة لا السنة التي قبلها
+  assert.deepEqual(RB.zakatCoverage({ openingDate: '2026-01-01' }, '2026-10-15'), { startDate: '2026-01-01', months: 12 });
+  // دفع قبل الافتتاح (ولو بسنوات): لا بداية قبل الافتتاح أبداً
+  for (const d of ['2026-03-01', '2025-05-10', '2024-12-31']) assert.ok(RB.zakatCoverage(set, d).startDate >= set.openingDate, d);
+  // السنة الثانية بعد الافتتاح كما كانت
+  assert.deepEqual(RB.zakatCoverage(set, '2027-04-20'), { startDate: '2026-07-01', months: 6 });
+  // التجربة (افتتاح 1 يوليو 2026، اليوم 15 أكتوبر 2026): الزكاة بتغطيتها الافتراضية لا تُحمَّل على 2025،
+  // وأول قيد في الدفتر (بداية «كل الفترات») كما هو قبلها
+  const t = '2026-10-15';
+  const D = RB.demoState(t);
+  const first = RB.buildLedger(D, '9999-12-31').entries.reduce((m, e) => (e.date < m ? e.date : m), '9999-12-31');
+  D.expenses.push(Object.assign({ id: 'zk', date: t, category: 'zakat', desc: 'الزكاة', amount: 3000, includesVat: false, taxable: false, account: 'bank' }, RB.zakatCoverage(D.settings, t)));
+  const L = RB.buildLedger(D, '9999-12-31');
+  assert.equal(L.entries.reduce((m, e) => (e.date < m ? e.date : m), '9999-12-31'), first);
+  const zk = L.entries.filter((e) => e.kind === 'amort' && e.ref && e.ref.id === 'zk');
+  assert.deepEqual(zk.map((e) => e.date), ['2026-07-01', '2026-08-01', '2026-09-01', '2026-10-15', '2026-11-01', '2026-12-01']); // شهر الدفع بتاريخ الدفع كما في amortSchedule
+  close(RB.incomeStatement(D, '2025-01-01', '2025-12-31', L).zakat, 0);
+  close(RB.incomeStatement(D, D.settings.openingDate, '2026-12-31', L).zakat, 3000);
+  close(RB.balanceSheet(D, '2026-12-31', L).check, 0);
+});
+
 test('جرد الدرج يصير قديماً بحركة نقدية بتاريخه أو قبله سُجّلت بعده، وإعادة حفظه تصححه (المتبقيات)', () => {
   const S = base();
   S.settings.vatRegistered = false;
@@ -2868,6 +2896,81 @@ test('إعادة حفظ ما فشل حفظه أو حذفه: ما يُعرض فو
   assert.equal(u.has('capital/c1'), false);
   u.clear();
   assert.equal(u.size, 0);
+});
+
+test('ما يُحفظ الآن يُعرض فوق اللقطات أثناء إعادة المحاولة التلقائية ولا يُعد فشلاً، وما فشل حفظه أو حذفه يُعاد بـ «أعد المحاولة» (المتبقيات 3)', () => {
+  const rec = (id, amount) => ({ section: 'capital', id, rec: { id, amount } });
+  const P = 'capital/c1';
+  const u = RB.unsavedWrites();
+  const shown = (snap) => RB.withUnsaved('capital', snap, u.values());
+  const amounts = (list) => Object.fromEntries(list.map((x) => [x.id, x.amount]));
+  const server = [{ id: 'c1', amount: 1000 }, { id: 'c2', amount: 2000 }];
+  // تعديل 1000 → 1500 جارٍ: لقطة بعد محاولة رفضها الخادم (المنصة أسقطت الكتابة المحلية فعادت القيمة القديمة) تُعرض
+  // بـ 1500، والحالة ليست فشلاً (الأحمر للفشل وحده)
+  let n = u.start(P, rec('c1', 1500));
+  assert.equal(u.size, 0);
+  assert.equal(u.busy(P), true);
+  assert.deepEqual(amounts(shown(server)), { c1: 1500, c2: 2000 });
+  // الإعدادات كذلك: الاسم الجديد يبقى أثناء إعادة المحاولة
+  const s = u.start('config/settings', { section: 'settings', id: 'settings', rec: { name: 'اسم جديد' } });
+  assert.deepEqual(RB.withUnsaved('settings', { name: 'سحابي' }, u.values()), { name: 'اسم جديد' });
+  // فشل نهائي: يبقى معروضاً ويُعد فشلاً، ويُعاد من «أعد المحاولة»
+  assert.equal(u.fail(P, n, rec('c1', 1500)), true);
+  assert.equal(u.size, 1);
+  assert.equal(u.busy(P), false);
+  assert.deepEqual(amounts(shown(server)), { c1: 1500, c2: 2000 });
+  assert.deepEqual(u.failed(), [{ path: P, keep: rec('c1', 1500) }]);
+  // نجاح الإعدادات: لا يبقى منها شيء فوق اللقطات
+  assert.equal(u.ok('config/settings', s), true);
+  assert.deepEqual(RB.withUnsaved('settings', { name: 'اسم جديد' }, u.values()), { name: 'اسم جديد' });
+  assert.equal(u.values().length, 1);
+  // إعادة المحاولة جارية: لا تُعاد مرة ثانية (failed فارغة) والحالة حمراء حتى تنتهي، ثم تزول بنجاحها
+  n = u.start(P, rec('c1', 1500));
+  assert.deepEqual(u.failed(), []);
+  assert.equal(u.size, 1);
+  assert.equal(u.ok(P, n), true);
+  assert.equal(u.size, 0);
+  assert.deepEqual(u.values(), []);
+  assert.deepEqual(amounts(shown([{ id: 'c1', amount: 1500 }])), { c1: 1500 });
+  // سجل جديد جارٍ حفظه يظهر ولو لم تحمله اللقطة، وحذف جارٍ لا يُعيده
+  n = u.start('capital/c9', rec('c9', 777));
+  assert.deepEqual(amounts(shown(server)), { c1: 1000, c2: 2000, c9: 777 });
+  u.ok('capital/c9', n);
+  // حذف فشل: السجل مخفي فلا يمكن فتحه وحذفه ثانية، فيبقى في failed حتى تنجح إعادة المحاولة
+  n = u.start(P, { section: 'capital', id: 'c1', rec: null });
+  assert.deepEqual(amounts(shown(server)), { c2: 2000 });
+  u.fail(P, n, { section: 'capital', id: 'c1', rec: null });
+  assert.deepEqual(amounts(shown(server)), { c2: 2000 });
+  assert.deepEqual(u.failed(), [{ path: P, keep: { section: 'capital', id: 'c1', rec: null } }]);
+  // كتابة لاحقة ناجحة لمستند آخر لا تُزيله
+  n = u.start('capital/c2', rec('c2', 2200));
+  u.ok('capital/c2', n);
+  assert.equal(u.size, 1);
+  n = u.start(P, u.failed()[0].keep);
+  assert.deepEqual(amounts(shown(server)), { c2: 2000 });
+  assert.equal(u.ok(P, n), true);
+  assert.equal(u.size, 0);
+  // كتابتان للمستند نفسه: فشل الأقدم لا يُعرض فوق الأحدث الجارية، والأحدث هي المعروضة
+  const a = u.start(P, rec('c1', 1));
+  const b = u.start(P, rec('c1', 2));
+  assert.equal(u.fail(P, a, rec('c1', 1)), false);
+  assert.deepEqual(amounts(shown(server)), { c1: 2, c2: 2000 });
+  assert.equal(u.size, 0);
+  assert.equal(u.ok(P, b), true);
+  assert.deepEqual(u.values(), []);
+  // رفض لا يُحتفظ به (عرض فقط): يزول الجاري والفاشل للمستند فتعود الشاشة للبيانات المشتركة
+  n = u.start(P, rec('c1', 5));
+  u.fail(P, n, rec('c1', 5));
+  n = u.start(P, rec('c1', 6));
+  assert.equal(u.discard(P, n), true);
+  assert.equal(u.size, 0);
+  assert.deepEqual(shown(server), server);
+  // discard لكتابة تلتها أحدث لا يمس الأحدث
+  const c = u.start(P, rec('c1', 7));
+  const d = u.start(P, rec('c1', 8));
+  assert.equal(u.discard(P, c), false);
+  assert.deepEqual(amounts(shown(server)), { c1: 8, c2: 2000 });
+  u.ok(P, d);
 });
 
 test('تنبيه الرصيد السالب: الجاري منذ بداية هذا السالب لا أول سالب سابق في الفترة عاد بعده موجباً (المتبقيات 2)', () => {

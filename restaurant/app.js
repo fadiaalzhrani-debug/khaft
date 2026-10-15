@@ -13,11 +13,12 @@
   let VER = 0;
   // save: حالة الحفظ الفعلية (pending عمليات لم تُؤكَّد بعد، failed رمز آخر فشل). readOnly: عرض فقط بلا صلاحية تعديل.
   // syncLost: انقطع التحديث المباشر. replacing: استيراد أو مسح جارٍ في البيانات المشتركة من هذه الصفحة.
-  // replaceFailed: لم يكتمل ذلك (state: الدفتر المطلوب حفظه). replaceMarker: علامة config/replace كما في البيانات المشتركة
+  // replaceFailed: لم يكتمل ذلك (state: الدفتر المطلوب حفظه). replaceMarker: علامة config/replace كما في البيانات المشتركة.
+  // retrying: إعادة حفظ ما لم يُحفظ جارية (زر «أعد المحاولة»)
   const APP = {
     mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false,
     save: { pending: 0, failed: null }, canWrite: null, readOnly: false, syncLost: false, noStorage: false,
-    replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false,
+    replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false, retrying: false,
   };
   // معرّف هذه الزيارة: يميّز علامة الاستيراد التي كتبتها هذه الصفحة عن علامة جهاز آخر
   const SID = Math.random().toString(36).slice(2, 10);
@@ -423,7 +424,8 @@
       this.q[path] = p.catch(() => {});
       return p;
     }
-    write(path, fn, section, keep) {
+    // onErr (إعادة المحاولة من الشريط): يُجمع الخطأ فيُنبَّه مرة واحدة لكل المحاولات، لا رسالة لكل سجل
+    write(path, fn, section, keep, onErr) {
       APP.save.pending++;
       updateSaveStatus();
       const n = this.bad.start(path, keep);
@@ -433,16 +435,18 @@
           if (!this.bad.size) APP.save.failed = null;
           APP.savedAt = Date.now();
         })
-        .catch((e) => this.failed(e, section, path, keep, n))
+        .catch((e) => this.failed(e, section, path, keep, n, onErr))
         .finally(() => {
           APP.save.pending--;
           updateSaveStatus();
         });
     }
-    failed(e, section, path, keep, n) {
+    failed(e, section, path, keep, n, onErr) {
       const code = e && e.code;
-      // رفض الكتابة لمن لم تحدد المنصة صلاحيته: عرض فقط بقية الزيارة، ويُعاد القسم من البيانات المشتركة (لا يبقى سجل وهمي)
+      // رفض الكتابة لمن لم تحدد المنصة صلاحيته: عرض فقط بقية الزيارة، ويُعاد القسم من البيانات المشتركة (لا يبقى سجل وهمي،
+      // ولا يُعرض ما كان يُحفظ فوق اللقطات)
       if (code === 'invalid_argument' && APP.canWrite !== true) {
+        this.bad.discard(path, n);
         APP.save.failed = code;
         APP.readOnly = true;
         toast('ليست لديك صلاحية تعديل هذه البيانات.', 'bad');
@@ -452,11 +456,24 @@
       // تلتها كتابة أحدث للمستند نفسه (تعديل أو حذف بعدها): تلك هي التي تقرر ما يُحفظ وما يُنبَّه له
       if (!this.bad.fail(path, n, keep)) return;
       APP.save.failed = failCode(code || (e instanceof TypeError ? 'invalid_id' : 'error'));
-      toast(dbErrMsg(e), 'bad');
+      if (onErr) onErr(e);
+      else toast(dbErrMsg(e), 'bad');
     }
-    // لقطة من البيانات المشتركة ومعها ما فشل حفظه من هذه الصفحة (كما في الشاشة)
+    // لقطة من البيانات المشتركة ومعها ما يُحفظ الآن وما فشل حفظه من هذه الصفحة (كما في الشاشة): لقطة تصل أثناء
+    // إعادة المحاولة التلقائية (بالقيمة القديمة) لا تُخفي التعديل الجاري حفظه
     overlay(section, data) {
-      return this.bad.size ? RB.withUnsaved(section, data, this.bad.values()) : data;
+      const un = this.bad.values();
+      return un.length ? RB.withUnsaved(section, data, un) : data;
+    }
+    // زر «أعد المحاولة» في شريط «لم يُحفظ آخر تعديل»: كل ما فشل حفظه أو حذفه ولا تجري له كتابة الآن يُعاد بآخر ما
+    // أراده المستخدم (يُحفظ السجل، أو يُحذف، أو تُحفظ الإعدادات). يرجع null إن لم يبقَ ما يُعاد، وإلا {ok, err}:
+    // ok إن لم يبقَ شيء لم يُحفظ، وerr آخر خطأ (للتنبيه مرة واحدة)
+    async retryFailed() {
+      const list = this.bad.failed();
+      if (!list.length) return null;
+      let err = null;
+      await Promise.all(list.map(({ keep }) => this.save(keep, (e) => (err = e))));
+      return { ok: !this.bad.size, err };
     }
     async resync(section) {
       try {
@@ -473,15 +490,20 @@
       render();
     }
     put(section, rec) {
-      const body = clone(rec);
-      return this.write(section + '/' + rec.id, () => this.db.collection(section).doc(rec.id).set(body), section, { section, id: rec.id, rec: body });
+      return this.save({ section, id: rec.id, rec: clone(rec) });
     }
     del(section, id) {
-      return this.write(section + '/' + id, () => this.db.collection(section).doc(id).delete(), section, { section, id, rec: null });
+      return this.save({ section, id, rec: null });
     }
     saveSettings(settings) {
-      const body = clone(settings);
-      return this.write('config/settings', () => this.db.doc('config/settings').set(body), 'settings', { section: 'settings', id: 'settings', rec: body });
+      return this.save({ section: 'settings', id: 'settings', rec: clone(settings) });
+    }
+    // كتابة مستند كما يصفه keep ({section, id, rec}؛ rec = null للحذف): الحفظ العادي وإعادة المحاولة بالطريقة نفسها
+    save(keep, onErr) {
+      const { section, id, rec } = keep;
+      if (section === 'settings') return this.write('config/settings', () => this.db.doc('config/settings').set(rec), section, keep, onErr);
+      const fn = rec ? () => this.db.collection(section).doc(id).set(rec) : () => this.db.collection(section).doc(id).delete();
+      return this.write(section + '/' + id, fn, section, keep, onErr);
     }
     // علامة config/replace: تُكتب عند البدء وتتجدد كل 30 ثانية ما دامت العملية جارية (فيعرف الجهاز الآخر
     // أنها جارية لا متوقفة)، وتصير failed إن توقفت، وتُحذف عند الاكتمال. كتاباتها متتالية لا تتداخل
@@ -4828,6 +4850,23 @@
       if (await replaceAll(fresh)) toast('تم مسح البيانات.');
     },
     reload: () => location.reload(),
+    // إعادة حفظ ما لم يُحفظ في البيانات المشتركة (شريط «لم يُحفظ آخر تعديل»): تنبيه واحد بالنتيجة
+    retrysave: async () => {
+      const be = APP.backend;
+      if (APP.retrying || APP.replacing || !be || !be.retryFailed || roBlock()) return;
+      APP.retrying = true;
+      updateBanner();
+      let res = null;
+      try {
+        res = await be.retryFailed();
+      } finally {
+        APP.retrying = false;
+        updateSaveStatus();
+      }
+      if (!res) toast('جاري الحفظ الآن…');
+      else if (res.ok) toast('حُفظ كل ما لم يُحفظ في البيانات المشتركة.');
+      else if (res.err) toast(dbErrMsg(res.err), 'bad');
+    },
     // إكمال استيراد أو مسح لم يكتمل في البيانات المشتركة: إعادة كتابة الدفتر المطلوب (آمنة إن تكررت).
     // الدفتر المطلوب هو ما كان يُحفظ مع تعديلات المستخدم بعده، لا خليط البيانات المشتركة ولا التجربة المعروضة
     resumereplace: async () => {
@@ -5449,9 +5488,15 @@
     if (APP.noStorage) h += bar('bad', '<b>هذا المتصفح لا يسمح بالحفظ (وضع خاص أو تخزين محظور) — لن تُحفظ بياناتك</b>', '');
     // حفظ فشل بعد الفتح (امتلأت مساحة المتصفح، أو رُفض في البيانات المشتركة): شريط ظاهر على كل شاشة، لا في الشريط
     // الجانبي وحده (مخفي في درج الجوال، وأسفل الشاشة القصيرة). لا تخزين أصلاً، وعرض فقط، والاستيراد الناقص لها أشرطتها
+    // في البيانات المشتركة: «أعد المحاولة» يعيد حفظ كل ما فشل حفظه أو حذفه (الحذف الفاشل يُخفي السجل فلا يمكن فتحه
+    // وحذفه ثانية، فلا مخرج من الحالة الحمراء بغير هذا الزر)
     const sf = APP.save.failed;
-    if (sf && sf !== 'invalid_argument' && !APP.noStorage && !APP.replaceFailed && !APP.demo)
-      h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${APP.backend && APP.backend.kind === 'cloud' ? 'تعذّر حفظه في البيانات المشتركة' : 'تعذّر حفظه في هذا المتصفح'}. صدّر نسخة احتياطية الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.`, btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary'));
+    if (sf && sf !== 'invalid_argument' && !APP.noStorage && !APP.replaceFailed && !APP.demo) {
+      const cloud = APP.backend && APP.backend.kind === 'cloud';
+      const retry = cloud && !APP.readOnly && APP.backend.bad.size > 0;
+      const acts = (retry ? btn(APP.retrying ? 'جاري إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm primary') : '') + btn('صدّر نسخة احتياطية', 'backup', '', retry ? 'sm' : 'sm primary');
+      h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${cloud ? 'تعذّر حفظه أو حذفه في البيانات المشتركة' : 'تعذّر حفظه في هذا المتصفح'}. ${retry ? 'اضغط «أعد المحاولة»، وإن تكرر الفشل فصدّر' : 'صدّر'} نسخة احتياطية الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.`, acts);
+    }
     if (APP.syncLost) h += bar('bad', 'انقطع التحديث المباشر للبيانات المشتركة، وقد لا تكون تعديلات شريكك الأخيرة ظاهرة. أعد تحميل الصفحة قبل أن تعدّل.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
     if (APP.replaceFailed) {
       // ما بقي من العملية: سجلات الدفتر التي لم تُكتب، والقديمة التي لم تُحذف، أو الإعدادات وحدها (تُكتب آخراً)
@@ -5471,8 +5516,13 @@
         APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary sm') : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary sm')
       );
     if (h !== lastBanner) {
+      // زر في الشريط عليه التركيز (أعد المحاولة مثلاً) يبقى عليه بعد إعادة رسم الشريط
+      const a = document.activeElement;
+      const act = a && el.contains(a) && a.dataset ? a.dataset.act : '';
       el.innerHTML = h;
       lastBanner = h;
+      const b = act && el.querySelector(`[data-act="${act}"]`);
+      if (b) b.focus();
     }
   }
 

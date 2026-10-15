@@ -371,25 +371,33 @@
     return out;
   };
 
-  // سجل ما فشل حفظه في البيانات المشتركة ولم يُحفظ بعده، لكل مستند (المسار ← {section, id, rec}؛ rec = null للحذف)،
-  // ومنه تُعرض الشاشة فوق اللقطات (withUnsaved). كل كتابة تحل محل المستند كله أو تحذفه، ولها رقم بترتيب بدايتها:
-  // ما يبقى للمستند هو دائماً آخر ما أراده المستخدم — كتابة جديدة لمستند فشل حفظه تحل محل نسخته الفاشلة من لحظة
-  // بدايتها (فلقطتها الفورية أثناء الحفظ تُعرض بها لا بالقديمة، والحذف لا يُعيد السجل)، ونجاح كتابة أو فشلها بعد أن
-  // بدأت للمستند نفسه كتابة أحدث لا يُعتدّ به (الأحدث هي التي تقرر). start يرجع رقم الكتابة، وok وfail يرجعان
-  // false إن لم تكن آخر كتابة للمستند
+  // سجل ما يُحفظ الآن وما فشل حفظه في البيانات المشتركة ولم يُحفظ بعده، لكل مستند (المسار ← {section, id, rec}؛
+  // rec = null للحذف)، ومنه تُعرض الشاشة فوق اللقطات (withUnsaved). كل كتابة تحل محل المستند كله أو تحذفه، ولها رقم
+  // بترتيب بدايتها: ما يبقى للمستند هو دائماً آخر ما أراده المستخدم — الكتابة الجارية تُعرض من لحظة بدايتها حتى تنتهي
+  // (المنصة تُسقط الكتابة المحلية مع كل محاولة يرفضها الخادم، فلقطة أثناء إعادة المحاولة التلقائية تحمل القيمة القديمة،
+  // ولا يختفي التعديل من الشاشة فيُدخله المستخدم مرة ثانية)، وكتابة جديدة لمستند فشل حفظه تحل محل نسخته الفاشلة،
+  // ونجاح كتابة أو فشلها بعد أن بدأت للمستند نفسه كتابة أحدث لا يُعتدّ به (الأحدث هي التي تقرر).
+  // size عدد ما فشل فعلاً (الجاري لا يُعد: الحالة الحمراء للفشل وحده)، وvalues ما يُعرض فوق اللقطات (الجاري ثم الفاشل)،
+  // وfailed ما فشل ولا تجري له كتابة الآن (لإعادة المحاولة). start يرجع رقم الكتابة، وok وfail وdiscard ترجع
+  // false إن لم تكن آخر كتابة للمستند. discard: كتابة رُفضت ولا يُحتفظ بها (عرض فقط)، فتعود الشاشة للبيانات المشتركة
   RB.unsavedWrites = () => {
     const bad = new Map();
+    const inflight = new Map();
     const last = new Map();
     let seq = 0;
     const settle = (path, n) => {
       if (last.get(path) !== n) return false;
       last.delete(path);
+      inflight.delete(path);
       return true;
     };
     return {
       start(path, keep) {
         last.set(path, ++seq);
-        if (isObj(keep) && bad.has(path)) bad.set(path, keep);
+        if (isObj(keep)) {
+          inflight.set(path, keep);
+          if (bad.has(path)) bad.set(path, keep);
+        } else inflight.delete(path);
         return seq;
       },
       ok(path, n) {
@@ -402,11 +410,23 @@
         if (isObj(keep)) bad.set(path, keep);
         return true;
       },
+      discard(path, n) {
+        if (!settle(path, n)) return false;
+        bad.delete(path);
+        return true;
+      },
       has: (path) => bad.has(path),
+      busy: (path) => last.has(path),
       get size() {
         return bad.size;
       },
-      values: () => [...bad.values()],
+      values: () => {
+        if (!inflight.size) return [...bad.values()];
+        const m = new Map(bad);
+        for (const [p, k] of inflight) m.set(p, k);
+        return [...m.values()];
+      },
+      failed: () => [...bad].filter(([p]) => !last.has(p)).map(([path, keep]) => ({ path, keep })),
       clear: () => bad.clear(),
     };
   };
@@ -1607,11 +1627,13 @@
   };
 
   // السنة المالية التي تخصها زكاة تُدفع في تاريخ date: السنة السابقة لسنة الدفع ({startDate, months}).
-  // إن افتُتح المطعم أثناء تلك السنة فسنته الزكوية الأولى من الافتتاح: لا يُحمَّل منها شيء على أشهر ما قبل الافتتاح
+  // إن افتُتح المطعم أثناء تلك السنة فسنته الزكوية الأولى من الافتتاح: لا يُحمَّل منها شيء على أشهر ما قبل الافتتاح.
+  // وإن افتُتح بعدها (زكاة تُدفع في سنة الافتتاح نفسها أو قبله) فلا سنة سابقة له: سنته الأولى من الافتتاح حتى آخر
+  // سنة الافتتاح، فلا تبدأ التغطية أبداً قبل الافتتاح (ولا تمتد «كل الفترات» إلى سنة لم يعمل فيها المطعم)
   RB.zakatCoverage = (set, date) => {
     const y = +(RB.isISODate(date) && date >= '2000' ? date : RB.todayISO()).slice(0, 4) - 1;
     const open = set && set.openingDate;
-    if (RB.isISODate(open) && open > y + '-01-01' && open <= y + '-12-31') return { startDate: open, months: 13 - +open.slice(5, 7) };
+    if (RB.isISODate(open) && open > y + '-01-01') return { startDate: open, months: 13 - +open.slice(5, 7) };
     return { startDate: y + '-01-01', months: 12 };
   };
 
