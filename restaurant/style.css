@@ -488,6 +488,10 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
 .kv:last-child { border-bottom: 0; }
 .kv span { color: var(--ink-2); }
 .copy-area { width: 100%; min-height: 220px; font-family: ui-monospace, monospace; font-size: 11px; direction: ltr; }
+.copy-intro { margin-bottom: 2px; }
+.copy-name { margin: 0 0 10px; font-weight: 600; }
+/* تاريخ اسم الملف وامتداده لا ينكسران بين سطرين */
+.fname span { white-space: nowrap; }
 
 /* ─── الإشعارات ─── */
 #toast { position: fixed; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); inset-inline-start: 50%; transform: translateX(50%); z-index: 120; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; width: min(520px, calc(100% - 32px)); }

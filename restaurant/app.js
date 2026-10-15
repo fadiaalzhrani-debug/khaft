@@ -3176,6 +3176,8 @@
     render();
   }
   // وضع التجربة بلا دفتر: بدأ أحدٌ الدفتر (الشريك في البيانات المشتركة أو نافذة أخرى) فيُفتح بدل التجربة
+  // القفل يمنع تحميلين متزامنين فقط (لقطات الأقسام تصل متتابعة)، ويُفك بعد الفتح: إن رجعت النافذة
+  // إلى التجربة لاحقاً (مسح الدفتر في نافذة أخرى) يُفتح الدفتر الجديد كذلك
   async function adoptSaved() {
     if (APP.adopting) return;
     APP.adopting = true;
@@ -3183,13 +3185,11 @@
     try {
       d = await APP.backend.load();
     } catch (e) {
-      APP.adopting = false;
       return;
-    }
-    if (!(APP.demo && !APP.real && hasBooks(d))) {
+    } finally {
       APP.adopting = false;
-      return;
     }
+    if (!(APP.demo && !APP.real && hasBooks(d))) return;
     openBooks(d);
     // تعذّر التحميل عند الفتح ثم وصلت البيانات: ليست بداية جديدة من الشريك
     toast(APP.loadFailed ? 'تم فتح دفتر المطعم بعد تعذّر تحميله أول مرة.' : APP.backend.kind === 'cloud' ? 'بدأ شريكك دفتر المطعم — تم فتح البيانات المشتركة.' : 'بدأ دفتر المطعم في نافذة أخرى — تم فتحه هنا.');
@@ -3272,12 +3272,19 @@
     }
     return navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject(new Error('no clipboard'));
   }
-  // نافذة نسخ النص حين لا يمكن تنزيل الملف. ترجع (عند إغلاقها) true إن نُسخ النص
-  function copyBox(title, txt) {
+  // اسم ملف داخل نص عربي: الجزء العربي ثم التاريخ والامتداد كتلة واحدة من اليسار لليمين لا تنكسر بين سطرين
+  // (عزل بالوسوم لا بعلامات اتجاه خفية تنتقل مع الاسم إن نُسخ)
+  function fileNameHtml(name) {
+    const i = name.search(/\d/);
+    if (i < 0) return `<bdi class="fname">${esc(name)}</bdi>`;
+    return `<bdi class="fname">${esc(name.slice(0, i))}<span dir="ltr">${esc(name.slice(i))}</span></bdi>`;
+  }
+  // نافذة نسخ النص حين لا يمكن تنزيل الملف. intro: شرح (HTML) فوق النص. ترجع (عند إغلاقها) true إن نُسخ النص
+  function copyBox(title, txt, intro) {
     return new Promise((resolve) => {
       let copied = false;
       const m = openModal({ title, wide: true, onClose: () => resolve(copied) });
-      m.body.innerHTML = `<textarea class="copy-area" readonly aria-label="نص الملف">${esc(txt)}</textarea>`;
+      m.body.innerHTML = (intro || '') + `<textarea class="copy-area" readonly aria-label="نص الملف">${esc(txt)}</textarea>`;
       m.foot.innerHTML = `<button type="button" class="btn primary" data-copy>نسخ</button><button type="button" class="btn ghost" data-close>إغلاق</button>`;
       const ta = m.body.querySelector('textarea');
       m.foot.querySelector('[data-copy]').addEventListener('click', async () => {
@@ -3305,8 +3312,8 @@
   async function saveFile(name, data, opt) {
     opt = opt || {};
     const copy = async () => {
-      // علامة اتجاه قبل أول رقم: تاريخ الاسم يظهر بترتيبه بعد الحروف العربية
-      const ok = await copyBox('التنزيل غير متاح هنا — انسخ النص واحفظه في ملف باسم ' + name.replace(/\d/, '\u200E$&'), data);
+      // العنوان قصير، والاسم في سطر وحده تحته فلا ينكسر داخل التاريخ على الجوال
+      const ok = await copyBox('التنزيل غير متاح هنا', data, `<p class="note copy-intro">انسخ النص واحفظه في ملف نصي باسم:</p><p class="copy-name">${fileNameHtml(name)}</p>`);
       if (ok && opt.okMsg) toast(opt.okMsg);
       return ok;
     };
