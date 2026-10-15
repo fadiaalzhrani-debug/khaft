@@ -572,7 +572,8 @@
     VER++;
     costCache = null;
   }
-  const find = (section, id) => S[section].find((x) => String(x.id) === String(id));
+  // السجل بمعرّفه في قسم (الإعدادات ليست قائمة سجلات: لا شيء)
+  const find = (section, id) => (Array.isArray(S[section]) ? S[section].find((x) => String(x.id) === String(id)) : undefined);
   function upsert(section, rec) {
     if (roBlock()) return false;
     // العلامة تُحسب من جديد: السجل المصحح يخرج من «سجلات تحتاج تصحيح»
@@ -1434,6 +1435,42 @@
   }
 
   // ─── لوحة المتابعة ───
+  // الشهر الجاري قبل تسجيل مسيره: الرواتب لم تُحمَّل بعد، والإيجار والمدفوع مقدماً والإهلاك محمّلة للشهر كاملاً من أوله،
+  // فيظهر الربح أعلى من الحقيقة. تقدير «حتى اليوم» لمؤشرات اللوحة فقط (التقارير على الدفاتر الفعلية):
+  // التحميل الشهري بنسبة الأيام المنقضية f، ومسير الشهر المتوقع من بيانات الموظفين (مع مخصص نهاية الخدمة) × f.
+  // null إن لم تشمل الفترة اليوم، أو للشهر مسير، أو لا موظف له راتب فيه
+  function mtdEstimate(from, asOf, L, inc) {
+    const t = today();
+    const ym = t.slice(0, 7);
+    if (asOf !== t || from > t || paidMonths().has(ym)) return null;
+    const emps = S.employees.filter((e) => e && RB.isEmployeeActive(e, ym));
+    if (!emps.length) return null;
+    const f = +t.slice(8, 10) / +RB.monthEnd(ym).slice(8, 10);
+    const tot = Object.assign({}, inc.tot);
+    const lo = from > ym + '-01' ? from : ym + '-01';
+    for (const e of L.entries) {
+      if ((e.kind !== 'amort' && e.kind !== 'dep') || e.date < lo || e.date > t) continue;
+      for (const l of e.lines) {
+        const info = RB.accInfo(l.a, S);
+        if (info.type !== 'X') continue;
+        const g = tot[info.group] !== undefined ? info.group : 'opex';
+        tot[g] = r2(tot[g] - l.v * (1 - f));
+      }
+    }
+    const lines = emps.map((e) => RB.payrollLine(e, S, ym));
+    const pt = RB.payrollTotals({ lines });
+    const eosb = RB.sum(lines, (l) => {
+      const e = emps.find((x) => x.id === l.employeeId) || {};
+      return RB.eosbMonthly(num(l.basic) + num(l.housing) + num(l.allowances), e.startDate, RB.monthEnd(ym));
+    });
+    tot.labor = r2(tot.labor + f * (pt.cost + eosb));
+    const rev = inc.revenue;
+    const net = r2(rev - tot.cogs - tot.sell - tot.labor - tot.occ - tot.opex - tot.dep - tot.zakat);
+    const pctOf = (x) => (rev ? (x / rev) * 100 : 0);
+    return { f, tot, net, ratios: { foodCost: pctOf(tot.cogs), labor: pctOf(tot.labor), prime: pctOf(tot.cogs + tot.labor), netMargin: pctOf(net) } };
+  }
+  const EST_LABEL = 'حتى اليوم · تقديري (الرواتب لم تُسجَّل بعد)';
+
   PAGES.dashboard = () => {
     const [from, to] = range();
     const asOf = minD(to, today());
@@ -1442,8 +1479,12 @@
     const sales = RB.salesByChannel(S, from, asOf);
     const bal = RB.balances(L.entries, null, asOf);
     const target = num(S.settings.targetFoodCost);
+    // مؤشرات الربح والتكلفة الأساسية: تقدير الشهر الجاري حتى اليوم إن لم يُسجَّل مسيره بعد
+    const est = mtdEstimate(from, asOf, L, inc);
+    const k = est || inc;
+    const estTag = est ? `<span class="kpi-est" title="الإيجار والإهلاك بنسبة الأيام المنقضية من الشهر، والرواتب مقدّرة من بيانات الموظفين حتى يُسجَّل مسير الشهر">${EST_LABEL}</span>` : '';
     const fcState = !inc.revenue ? '' : fcLevel(inc.ratios.foodCost, target);
-    const primeState = !inc.revenue ? '' : inc.ratios.prime > 65 ? 'bad' : inc.ratios.prime > 60 ? 'warn' : 'good';
+    const primeState = !inc.revenue ? '' : k.ratios.prime > 65 ? 'bad' : k.ratios.prime > 60 ? 'warn' : 'good';
     const vatBal = -(bal['2102'] || 0);
     const setup = setupShown();
     // النسب من المبيعات بلا مبيعات: «—» لا «0%» (الدفتر الجديد قبل أول إقفال، أو فترة بلا مبيعات)
@@ -1453,9 +1494,9 @@
     if (setup) h += setupCard();
     h += `<div class="kpis">
       ${kpi('المبيعات شاملة الضريبة', money(sales.total.gross), `${fmt0(sales.total.orders)} طلب · متوسط الفاتورة ${fmt(sales.total.avgTicket)}`)}
-      ${kpi('صافي الربح', money(inc.net), inc.revenue ? `هامش ${pct(inc.ratios.netMargin)} من المبيعات بدون الضريبة` : 'هامش الربح: ' + noRev, inc.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
+      ${kpi('صافي الربح', money(k.net), (inc.revenue ? `هامش ${pct(k.ratios.netMargin)} من المبيعات بدون الضريبة` : 'هامش الربح: ' + noRev) + estTag, k.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
       ${kpi('تكلفة المواد', inc.revenue ? pct(inc.ratios.foodCost) : dash, inc.revenue ? `المستهدف ${pct(target, 0)} · ${fmt(inc.tot.cogs)} ${cur()}` : noRev, fcState)}
-      ${kpi('التكلفة الأساسية', inc.revenue ? pct(inc.ratios.prime) : dash, inc.revenue ? 'المواد + العمالة · الأفضل أقل من 60%' : noRev, primeState)}
+      ${kpi('التكلفة الأساسية', inc.revenue ? pct(k.ratios.prime) : dash, (inc.revenue ? `المواد + العمالة${est ? ` (العمالة ${pct(k.ratios.labor)})` : ''} · الأفضل أقل من 60%` : noRev) + estTag, primeState)}
     </div>`;
     h += `<div class="kpis small">
       ${kpi('الصندوق (الكاشير)', money(bal['1101'] || 0), 'حتى ' + dtText(asOf), (bal['1101'] || 0) < 0 ? 'bad' : '')}
@@ -1492,7 +1533,7 @@
     const gItems = Object.keys(RB.GROUPS).map((g) => ({ label: RB.GROUPS[g], v: inc.tot[g] })).filter((x) => x.v);
     h += `<div class="grid2">${card('المبيعات حسب القناة', hbars(chItems, { empty: 'لا توجد مبيعات.' }), { sub: typeLine })}${card('أين ذهبت الإيرادات؟', hbars(gItems, { total: inc.revenue, empty: 'لا توجد مصاريف في هذه الفترة.' }), { sub: `النسبة من المبيعات بدون الضريبة (${fmt(inc.revenue)} ${cur()})` })}</div>`;
     // التنبيهات
-    h += card('تنبيهات تحتاج متابعة', alertsHTML(asOf, setup), { sub: 'تجديدات، ضريبة، أسعار، وأرصدة' });
+    h += card('تنبيهات تحتاج متابعة', alertsHTML(asOf, setup), { sub: 'إقفالات ورواتب، تجديدات، ضريبة، أسعار، وأرصدة' });
     return h;
   };
 
@@ -1516,6 +1557,16 @@
     if (bad.length) out.push(['bad', `سجلات تحتاج تصحيح: <span class="n">${bad.length}</span> — لا تدخل في الحسابات حتى تُصحَّح${fixList(bad, true)}`, '']);
     const bk = backupAge();
     if (bk !== null) out.push(['warn', `${bk < 0 ? 'لم تُؤخذ نسخة احتياطية بعد' : `آخر نسخة احتياطية قبل <span class="n">${bk}</span> يوم`} — مسح بيانات المتصفح يمسح الدفتر`, btn('صدّر الآن', 'backup', '', 'sm')]);
+    // أيام بلا إقفال يومي، وأشهر بلا مسير رواتب (الربح يظهر أعلى من الحقيقة)
+    const noClose = missingClosings();
+    if (noClose.length) {
+      const d0 = esc(noClose[0]);
+      out.push(['warn', `لا يوجد إقفال يومي لـ <span class="n">${noClose.length}</span> يوم: ${noClose.slice(0, 5).map(dt).join('، ')}${noClose.length > 5 ? '…' : ''}`, `<span class="al-a">${btn('سجّل إقفال ' + dt(noClose[0]), 'add', `data-s="sales" data-x="${d0}"`, 'sm')}${btn('كان مغلقاً', 'closedDay', `data-d="${d0}"`, 'sm ghost')}</span>`]);
+    }
+    for (const ym of missingPayroll()) {
+      const late = today() > RB.ymAdd(ym, 1) + '-15';
+      out.push([late ? 'bad' : 'warn', `لم يُسجَّل مسير رواتب ${esc(RB.monthName(ym))} — الأرباح لهذا الشهر أعلى من الحقيقة. اصرف الرواتب عبر البنك وارفع ملف «مدد»، وسدّد التأمينات قبل يوم 15.`, btn('مسير الرواتب', 'add', `data-s="payroll" data-x="${esc(ym)}"`, 'sm')]);
+    }
     for (const r of RB.renewals(S, today())) {
       if (r.status === 'ok') continue;
       const name = (r.rec.desc || RB.expenseCat(r.rec.category).name) + (r.rec.entity ? ' — ' + r.rec.entity : '') + empName(r.rec.employeeId, ' · ');
@@ -1566,15 +1617,73 @@
     }
     const shares = RB.sum(S.partners, (p) => num(p.share));
     if (S.partners.length && Math.abs(shares - 100) > 0.01) out.push(['warn', `مجموع نسب الشركاء ${fmt(shares)}% وليس 100%.`, btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
+    // مشتريات المخزون الافتتاحي قبل الافتتاح بلا جرد قبله: تُحمَّل كلها على شهر ما قبل التشغيل
+    const od = S.settings.openingDate;
+    const opInfo = RB.openingInfo(S);
+    if (od && !(opInfo && opInfo.inventory)) {
+      const pre = good(S.purchases).filter((p) => p.date < od && RB.purchaseCat(p.category).cogs);
+      const first = pre.reduce((m, p) => (!m || p.date < m ? p.date : m), '');
+      if (first && !good(S.stockCounts).some((c) => c.date >= first && c.date < od)) out.push(['warn', 'سجّل جرداً افتتاحياً بتاريخ اليوم السابق للافتتاح حتى لا تُحمَّل بضاعة الافتتاح على شهر ما قبل التشغيل', btn('+ جرد', 'add', `data-s="stockCounts" data-x="${esc(RB.addDays(od, -1))}"`, 'sm')]);
+    }
+    if (ledger().errors.some((e) => e.section === 'settings' && e.id === 'opening')) out.push(['bad', 'الأرصدة الافتتاحية لم تدخل في الحسابات: أضف الشركاء ونسبهم ليُسجَّل صافيها حقوقاً لهم.', btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
+    out.push(...advanceAlerts());
     out.push(...eosbAlerts(false));
     if (!out.length) return setup ? `<div class="empty-box">لا تنبيهات بعد — أكمل خطوات البداية أعلاه.</div>` : `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
     return alertsUL(out);
+  }
+  // أيام بلا إقفال يومي حتى أمس: من آخر 30 يوماً، ولا قبل الافتتاح أو أول إقفال مسجل، إلا الأيام المعلَّمة
+  // «كان مغلقاً» (settings.closedDays). دفتر بلا إقفالات: لا شيء
+  function missingClosings() {
+    const sales = good(S.sales);
+    if (!sales.length) return [];
+    const t = today();
+    const has = new Set();
+    let start = RB.addDays(t, -30);
+    let first = '';
+    for (const x of sales) {
+      has.add(x.date);
+      if (!first || x.date < first) first = x.date;
+    }
+    if (first > start) start = first;
+    const op = S.settings.openingDate;
+    if (op && op > start) start = op;
+    const closed = new Set(S.settings.closedDays || []);
+    const out = [];
+    for (let d = start, y = RB.addDays(t, -1); d <= y; d = RB.addDays(d, 1)) if (!has.has(d) && !closed.has(d)) out.push(d);
+    return out;
+  }
+  // أشهر منتهية (آخر 3 أشهر) فيها موظف له راتب ولا مسير رواتب لها: من شهر الافتتاح وأول مباشرة لموظف
+  // (وتاريخ الأرصدة الافتتاحية لمطعم قائم بدأ دفتره بعد تشغيله)
+  function missingPayroll() {
+    const emps = S.employees.filter(Boolean);
+    if (!emps.length) return [];
+    const thisYm = today().slice(0, 7);
+    const lows = [RB.ymAdd(thisYm, -3)];
+    if (S.settings.openingDate) lows.push(S.settings.openingDate.slice(0, 7));
+    const starts = emps.map((e) => (RB.isISODate(e.startDate) ? e.startDate.slice(0, 7) : '')).filter(Boolean).sort();
+    if (starts.length) lows.push(starts[0]);
+    const op = RB.openingInfo(S);
+    if (op) lows.push(op.date.slice(0, 7));
+    const lo = lows.sort().pop();
+    const paid = paidMonths();
+    const out = [];
+    for (let ym = lo; ym < thisYm; ym = RB.ymAdd(ym, 1)) if (!paid.has(ym) && emps.some((e) => RB.isEmployeeActive(e, ym))) out.push(ym);
+    return out;
+  }
+  // من ترك العمل أو توقف وما زالت عليه سلفة
+  function advanceAlerts() {
+    const t = today();
+    const bal = RB.advanceBalances(S, t);
+    return S.employees
+      .filter((e) => e && (bal[e.id] || 0) > 0.005 && (e.active === false || (RB.isISODate(e.endDate) && e.endDate <= t)))
+      .map((e) => ['warn', `${esc(e.name)} ترك العمل وعليه سلفة مستحقة ${fmt(bal[e.id])} ${cur()} — استقطعها في مسير التسوية أو سجّل سدادها.`, `<span class="al-a">${btn('سجّل السداد', 'add', `data-s="advances" data-x="repay:${esc(e.id)}"`, 'sm')}</span>`]);
   }
   // ─── سجلات تحتاج تصحيح: تاريخ ناقص أو غير صالح (_bad)، أو فشل حسابها في الدفتر أو التكلفة ───
   const SECTION_NAME = {
     partners: 'شريك', capital: 'حركة رأس مال', assets: 'أصل', expenses: 'مصروف', employees: 'موظف', payroll: 'مسير رواتب',
     raw: 'مادة خام', purchases: 'فاتورة مشتريات', supplierPayments: 'سداد مورد', composites: 'منتج مجمّع', products: 'صنف في المنيو',
     sales: 'إقفال يومي', payouts: 'تحويل تطبيق', transfers: 'تحويل بين الصندوق والبنك', stockCounts: 'جرد', vatPayments: 'سداد ضريبة',
+    cashCounts: 'جرد الصندوق', advances: 'سلفة عامل',
   };
   const FIELD_NAME = { date: 'التاريخ', startDate: 'بداية التغطية', endDate: 'تاريخ ترك العمل', month: 'الشهر' };
   const fieldName = (section, f) => (section === 'employees' && f === 'startDate' ? 'تاريخ المباشرة' : FIELD_NAME[f] || f);
@@ -1651,6 +1760,19 @@
           add(x.period);
           amt();
           break;
+        case 'cashCounts':
+          add(x.counted !== undefined && x.counted !== '' ? 'المعدود ' + fmt(x.counted) : '');
+          add(num(x.diff) ? (num(x.diff) < 0 ? 'عجز ' : 'زيادة ') + fmt(Math.abs(num(x.diff))) : '');
+          add(x.note);
+          break;
+        case 'advances': {
+          const e = S.employees.find((y) => y.id === x.employeeId);
+          add(e && e.name);
+          add(x.kind === 'repay' ? 'سداد سلفة' : 'سلفة');
+          amt();
+          add(x.note);
+          break;
+        }
         case 'purchases': {
           add(x.supplier);
           add(x.invoiceNo ? 'فاتورة ' + x.invoiceNo : '');
@@ -1720,20 +1842,22 @@
       table(
         [
           { h: 'الشريك', f: (r) => `<b>${esc(r.name)}</b>` },
-          { h: 'النسبة المتفق عليها', num: 1, f: (r) => pct(r.sharePct, 0) },
-          { h: 'إجمالي مساهمته', num: 1, f: (r) => N(r.contributed) },
-          { h: 'منها دفعها مباشرة', num: 1, f: (r) => N(r.direct) },
-          { h: 'المطلوب حسب نسبته', num: 1, f: (r) => N(r.required) },
+          { h: 'النسبة<br>المتفق عليها', num: 1, f: (r) => pct(r.sharePct, 0) },
+          { h: 'إجمالي<br>مساهمته', num: 1, f: (r) => N(r.contributed) },
+          { h: 'منها دفعها<br>مباشرة', num: 1, f: (r) => N(r.direct) },
+          { h: 'المطلوب<br>حسب نسبته', num: 1, f: (r) => N(r.required) },
           { h: 'الفرق', num: 1, f: (r) => (Math.abs(r.diff) < 0.5 ? '—' : `${N(r.diff)} ${r.diff > 0 ? chip('زيادة', 'good') : chip('ناقص', 'warn')}`) },
           { h: 'المسحوبات', num: 1, f: (r) => N(r.drawings) },
-          { h: 'نصيبه من ربح الفترة', num: 1, f: (r) => N(r.profitPeriod) },
-          { h: 'رصيد حقوقه', num: 1, f: (r) => N(r.equity) },
+          { h: 'نصيبه من<br>ربح الفترة', num: 1, f: (r) => N(r.profitPeriod) },
+          // نصيبه من الأرباح المتراكمة − مسحوباته؛ بالسالب سحب من رأس ماله (العناوين على سطرين ليتسع الجدول على شاشة 1280)
+          { h: 'أرباح متاحة<br>للسحب', num: 1, f: (r) => N(r.undistributed) + (r.undistributed < -0.5 ? '<div class="sm">' + chip('سحب من رأس المال', 'warn wrap') + '</div>' : '') },
+          { h: 'رصيد<br>حقوقه', num: 1, f: (r) => N(r.equity) },
           { h: '', cls: 'acts', f: (r) => rowActs('partners', r.id) },
         ],
         rep.rows,
-        { cards: 1, empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
+        { cards: 1, empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(rep.undistributedTotal), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
       ),
-      { sub: `ربح الفترة يوزّع حسب النسب (${periodLabel()}). «رصيد حقوقه» = مساهمته − مسحوباته + نصيبه من الأرباح المتراكمة.` }
+      { sub: `ربح الفترة يوزّع حسب النسب (${periodLabel()}). «المسحوبات» و«أرباح متاحة للسحب» تراكمية من بداية الدفتر حتى ${dtText(asOf)}: نصيبه من الأرباح المتراكمة كلها (لا ربح الفترة) − كل مسحوباته. «رصيد حقوقه» = مساهمته − مسحوباته + نصيبه من الأرباح المتراكمة.` }
     );
     const useItems = uses.assets.map((a) => ({ label: a.name, v: a.amount }));
     if (uses.preopen.expenses) useItems.push({ label: 'مصاريف قبل الافتتاح (إيجار، رسوم، تأمين…)', v: uses.preopen.expenses });
@@ -1945,7 +2069,9 @@
     // مخصص نهاية الخدمة المتراكم حتى اليوم (رصيد الحساب 2201) ونصيب كل موظف منه
     const eosb = RB.eosbBalances(S, today());
     const eosbTotal = -(RB.balances(ledger().entries, null, today())['2201'] || 0);
-    let h = pageHead('العمال والرواتب', 'الرواتب والبدلات، التأمينات الاجتماعية، المقابل المالي والإقامات، والتكلفة الحقيقية لكل عامل', btn('+ موظف', 'add', 'data-s="employees"') + btn('+ مسير رواتب', 'add', 'data-s="payroll"', 'primary'));
+    // أرصدة سلف العمال حتى اليوم (رصيد الحساب 1106)
+    const adv = RB.advanceBalances(S, today());
+    let h = pageHead('العمال والرواتب', 'الرواتب والبدلات، التأمينات الاجتماعية، المقابل المالي والإقامات، والتكلفة الحقيقية لكل عامل', btn('+ موظف', 'add', 'data-s="employees"') + btn('+ سلفة', 'add', 'data-s="advances"') + btn('+ مسير رواتب', 'add', 'data-s="payroll"', 'primary'));
     h += `<div class="kpis small five">
       ${kpi('عدد العمال النشطين', `<span class="n">${active.length}</span>`, `سعوديون ${saudi} · غير سعوديين ${active.length - saudi}${active.length ? ' · نسبة التوطين ' + pct((saudi / active.length) * 100, 0) : ''}`)}
       ${kpi('الرواتب الشهرية', money(RB.sum(active, (e) => costs[e.id].salary)), 'الأساسي + البدلات')}
@@ -1953,7 +2079,29 @@
       ${kpi('تأمينات المنشأة شهرياً', money(RB.sum(active, (e) => costs[e.id].gosi.er)), 'حسب النسب في الإعدادات')}
       ${kpi('مخصص نهاية الخدمة المتراكم', money(eosbTotal), 'يُستحق مع كل مسير رواتب')}
     </div>`;
-    h += tabs('staffTab', [['emp', 'الموظفون'], ['payroll', 'مسيرات الرواتب']], ui.staffTab);
+    h += tabs('staffTab', [['emp', 'الموظفون'], ['payroll', 'مسيرات الرواتب'], ['adv', 'سلف العمال']], ui.staffTab);
+    if (ui.staffTab === 'adv') {
+      const list = good(S.advances).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+      const owed = RB.r2(RB.sum(Object.values(adv)));
+      h += card(
+        'سلف العمال',
+        table(
+          [
+            { h: 'التاريخ', f: (a) => dt(a.date) },
+            { h: 'الموظف', f: (a) => `<b>${esc((S.employees.find((e) => e.id === a.employeeId) || {}).name || '—')}</b>` },
+            { h: 'النوع', f: (a) => (a.kind === 'repay' ? chip('سداد نقدي', 'good') : chip('سلفة', 'warn')) },
+            { h: 'المبلغ', num: 1, f: (a) => N(a.amount) },
+            { h: 'من / إلى', f: (a) => `<span class="muted">${esc(RB.PAY_LABEL[a.account === 'cash' ? 'cash' : 'bank'])}</span>` },
+            { h: 'ملاحظة', f: (a) => esc(a.note || '') },
+            { h: '', cls: 'acts', f: (a) => rowActs('advances', a.id) },
+          ],
+          limitRows(list),
+          { cards: 1, empty: 'لا توجد سلف. اضغط «سلفة» لتسجيل مبلغ أعطيته لعامل من الصندوق أو البنك.' }
+        ) + moreRows(list.length),
+        { sub: `المستحق على العمال الآن: ${fmt(owed)} ${cur()}. السلفة أصل على العامل لا مصروف، وتُستقطع من راتبه في مسير الرواتب (عمود «استقطاع سلفة») فيبقى مصروف الرواتب كاملاً.` }
+      );
+      return h;
+    }
     if (ui.staffTab === 'payroll') {
       const runMonth = (p) => p.month || p.date.slice(0, 7);
       const runs = good(S.payroll).sort((a, b) => (runMonth(a) < runMonth(b) ? 1 : -1));
@@ -1967,7 +2115,7 @@
             { h: 'إجمالي الرواتب', num: 1, f: (p) => N(RB.payrollTotals(p).gross) },
             { h: 'تأمينات (موظف + منشأة)', num: 1, f: (p) => N(RB.payrollTotals(p).gosiEe + RB.payrollTotals(p).gosiEr) },
             // ما خرج من الحساب للموظفين: الصافي + مكافأة نهاية الخدمة المصروفة (مسير تسوية بلا راتب يظهر بمكافأته)
-            { h: 'الصافي المصروف', num: 1, f: (p) => { const t = RB.payrollTotals(p); return N(t.net + t.eosbPaid) + (t.eosbPaid ? `<div class="muted sm">منه نهاية الخدمة<br>${N(t.eosbPaid)}</div>` : ''); } },
+            { h: 'الصافي المصروف', num: 1, f: (p) => { const t = RB.payrollTotals(p); return N(t.netPaid + t.eosbPaid) + (t.eosbPaid ? `<div class="muted sm">منه نهاية الخدمة<br>${N(t.eosbPaid)}</div>` : '') + (t.adv ? `<div class="muted sm">بعد استقطاع سلف<br>${N(t.adv)}</div>` : ''); } },
             { h: 'التكلفة على المطعم', num: 1, f: (p) => N(RB.payrollTotals(p).cost) },
             { h: 'من', f: (p) => `<span class="muted">${esc(RB.srcLabel(p.account, S))}</span>` },
             { h: '', cls: 'acts', f: (p) => rowActs('payroll', p.id) },
@@ -1975,7 +2123,7 @@
           runs,
           { cards: 1, empty: 'لا توجد مسيرات رواتب. اضغط «مسير رواتب» ليتعبأ تلقائياً من بيانات الموظفين.' }
         ),
-        { sub: 'التكلفة على المطعم = إجمالي الرواتب + حصة المنشأة في التأمينات. حصة الموظف تُخصم من راتبه وتُورّد مع حصة المنشأة. «الصافي المصروف» يشمل مكافأة نهاية الخدمة المصروفة، وهي من مخصصها المتراكم فلا تدخل في التكلفة.' }
+        { sub: 'التكلفة على المطعم = إجمالي الرواتب + حصة المنشأة في التأمينات. حصة الموظف تُخصم من راتبه وتُورّد مع حصة المنشأة. «الصافي المصروف» ما حُوّل للموظفين بعد استقطاع السلف، ويشمل مكافأة نهاية الخدمة المصروفة، وهي من مخصصها المتراكم فلا تدخل في التكلفة.' }
       );
       return h;
     }
@@ -1983,6 +2131,7 @@
     const expats = active.filter((e) => e.nationality !== 'saudi');
     const al = [];
     if (expats.length && saudi >= expats.length && expats.some((e) => num(e.levyMonthly) >= 800)) al.push(['warn', 'عدد السعوديين ≥ الوافدين: قد يكون المقابل المالي 700 ر.س — راجع قوى.', '']);
+    al.push(...advanceAlerts());
     al.push(...eosbAlerts(true));
     if (al.length) h += card('', alertsUL(al));
     h += card(
@@ -1997,6 +2146,7 @@
           { h: 'المقابل المالي<br>والإقامة', num: 1, f: (e) => N(RB.sum(costs[e.id].items.filter((i) => i.k === 'levy' || i.k === 'iqama'), (i) => i.v)) },
           { h: 'التكلفة الشهرية<br>الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
           { h: 'مخصص<br>نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
+          { h: 'سلف<br>مستحقة', num: 1, f: (e) => ((adv[e.id] || 0) > 0.005 ? N(adv[e.id]) : '—') },
           { h: 'الحالة', f: (e) => { const st = RB.employeeStatus(e, ym); return st === 'active' ? chip('على رأس العمل', 'good') : chip(EMP_STATUS[st], st === 'future' ? 'accent' : 'mute'); } },
           { h: '', cls: 'acts', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${esc(e.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
@@ -2136,13 +2286,22 @@
       return h;
     }
     const rows = S.raw.slice().sort((a, b) => (a.category + a.name).localeCompare(b.category + b.name, 'ar'));
+    // السعر السابق من الفواتير ونسبة التغيّر، وارتفاع أكثر من 5% بشارة تنبيه. سعر عُدّل يدوياً يُقارن بآخر فاتورة
+    const priceCell = (r) => {
+      const h = RB.rawPriceHistory(S, r.id);
+      if (h.length && Math.abs(h[0].priceNet - num(r.price)) > 0.004) return N(r.price) + `<div class="muted sm">آخر فاتورة ${fmt(h[0].priceNet)}</div>`;
+      const c = RB.rawPriceChange(S, r.id);
+      if (!c) return N(r.price);
+      const p = `<span class="n">${c.pct > 0 ? '+' : ''}${c.pct.toFixed(1)}%</span>`;
+      return N(r.price) + `<div class="muted sm">السابق ${fmt(c.prev)} ${c.pct > 5 ? chip(p, 'warn') : `(${p})`}</div>`;
+    };
     h += card(
       'قائمة المواد',
       table(
         [
           { h: 'المادة', f: (r) => `<b>${esc(r.name)}</b><div class="muted sm">${esc(r.category || '')}${r.supplier ? ' · ' + esc(r.supplier) : ''}</div>` },
           { h: 'وحدة الشراء', f: (r) => `${esc(r.buyUnit || '')}<div class="muted sm">= ${fmtQ(r.packQty)} ${esc(r.useUnit)}</div>` },
-          { h: 'سعر الشراء', num: 1, f: (r) => N(r.price) },
+          { h: 'سعر الشراء', num: 1, f: priceCell },
           { h: 'الهدر', num: 1, f: (r) => (num(r.wastePct) ? pct(r.wastePct, 0) : '—') },
           { h: 'الضريبة', f: (r) => (r.taxable ? chip('خاضعة', 'good') : chip('غير خاضعة', 'mute')) },
           { h: 'تكلفة وحدة الاستخدام', num: 1, f: (r) => `<b class="n">${(C.raw[r.id] || 0).toFixed(4)}</b><div class="muted sm">لكل 1 ${esc(r.useUnit)}</div>` },
@@ -2311,14 +2470,38 @@
     const bal = RB.balances(L.entries, null, asOf);
     const acc = ui.cashAcc === '1102' ? '1102' : '1101';
     const st = RB.accountStatement(S, acc, from, asOf, L);
-    let h = pageHead('الصندوق والبنك', 'كل حركة تدخل أو تخرج من الكاشير والحساب البنكي، مع الرصيد بعد كل حركة', btn('سحب من البنك للصندوق', 'add', 'data-s="transfers" data-x="bank"') + btn('+ إيداع الكاش في البنك', 'add', 'data-s="transfers" data-x="cash"', 'primary'));
+    let h = pageHead('الصندوق والبنك', 'كل حركة تدخل أو تخرج من الكاشير والحساب البنكي، مع الرصيد بعد كل حركة', btn('+ جرد الصندوق', 'add', 'data-s="cashCounts"') + btn('سحب من البنك للصندوق', 'add', 'data-s="transfers" data-x="bank"') + btn('+ إيداع الكاش في البنك', 'add', 'data-s="transfers" data-x="cash"', 'primary'));
     h += `<div class="kpis small">
       ${kpi('الصندوق (الكاشير)', money(bal['1101'] || 0), 'حتى ' + dtText(asOf), (bal['1101'] || 0) < 0 ? 'bad' : '')}
       ${kpi('الحساب البنكي', money(bal['1102'] || 0), 'حتى ' + dtText(asOf), (bal['1102'] || 0) < 0 ? 'bad' : '')}
       ${kpi('مستحقات التطبيقات', money(bal['1103'] || 0), 'تتحول للبنك لاحقاً')}
       ${kpi('مستحق للموردين', money(-(bal['2101'] || 0)), 'مشتريات آجلة')}
     </div>`;
-    h += tabs('cashAcc', [['1101', 'كشف الصندوق'], ['1102', 'كشف البنك']], acc);
+    h += tabs('cashAcc', [['1101', 'كشف الصندوق'], ['1102', 'كشف البنك'], ['counts', 'جرد الصندوق']], ui.cashAcc === 'counts' ? 'counts' : acc);
+    if (ui.cashAcc === 'counts') {
+      const list = good(S.cashCounts).filter((c) => inRange(c.date)).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+      const diffCell = (c) => {
+        const d = num(c.diff);
+        return Math.abs(d) < 0.01 ? chip('مطابق', 'good') : `${N(d)} ${d < 0 ? chip('عجز', 'warn') : chip('زيادة', 'good')}`;
+      };
+      const net = RB.r2(RB.sum(list, (c) => num(c.diff)));
+      h += card(
+        'جرد الصندوق',
+        table(
+          [
+            { h: 'التاريخ', f: (c) => dt(c.date) + (c.note ? `<div class="muted sm">${esc(c.note)}</div>` : '') },
+            { h: 'المتوقع', num: 1, f: (c) => N(c.expected) },
+            { h: 'المعدود', num: 1, f: (c) => `<b>${N(c.counted)}</b>` },
+            { h: 'الفرق', num: 1, f: diffCell },
+            { h: '', cls: 'acts', f: (c) => rowActs('cashCounts', c.id) },
+          ],
+          limitRows(list),
+          { cards: 1, empty: 'لا يوجد جرد للصندوق في هذه الفترة. بعد الإقفال اليومي عُدّ النقد في الدرج وسجّله من «جرد الصندوق».', foot: list.length ? ['صافي الفروق', '', '', N(net), ''] : null }
+        ) + moreRows(list.length),
+        { sub: `${periodLabel()} · المتوقع = رصيد الصندوق في الدفتر نهاية اليوم. الفرق يُسجَّل في «عجز وزيادة الصندوق» (العجز مصروف) فيصبح رصيد الصندوق = المعدود.` }
+      );
+      return h;
+    }
     const rows = st.rows.slice().reverse();
     h += card(
       RB.ACC[acc].name,
@@ -2523,7 +2706,7 @@
     );
     h += card(
       'التكلفة النظرية مقابل الفعلية',
-      `<div class="pv-grid"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق غير المفسَّر</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">الهدر المتوقع محسوب أصلاً في التكلفة النظرية عبر «نسبة الهدر %» لكل مادة؛ الفرق المتبقي من هدر غير مسجل، وجبات العمال، حصص أكبر، أو نقص/سرقة. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة.</p>`
+      `<div class="pv-grid"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق غير المفسَّر</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">الهدر المتوقع محسوب أصلاً في التكلفة النظرية عبر «نسبة الهدر %» لكل مادة؛ الفرق المتبقي من هدر غير مسجل، وجبات العمال، حصص أكبر، أو نقص/سرقة. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة. التكلفة النظرية محسوبة بأسعار المواد الحالية.</p>`
     );
     h += card(
       'الاستهلاك النظري للمواد الخام',
@@ -2608,6 +2791,15 @@
     h += card('بيانات المطعم', kv('الاسم', esc(st.name)) + kv('المدينة', esc(st.city || '—')) + kv('السجل التجاري', esc(st.crNumber || '—')) + kv('تاريخ الافتتاح', st.openingDate ? dtText(st.openingDate) : '—') + kv('مستهدف تكلفة الطعام', pct(st.targetFoodCost, 0)) + kv('تقريب السعر المقترح', fmt(st.priceRounding) + ' ' + cur()), { actions: btn('تعديل', 'settings', 'data-v="general"', 'sm') });
     h += card('ضريبة القيمة المضافة', kv('مسجل في الضريبة', st.vatRegistered ? 'نعم' : 'لا') + (st.vatRegistered ? kv('سريان التسجيل', st.vatRegisteredFrom ? dtText(st.vatRegisteredFrom) : 'منذ البداية') : '') + kv('الرقم الضريبي', esc(st.vatNumber || '—')) + kv('النسبة', pct(st.vatRate, 0)) + kv('فترة الإقرار', st.vatPeriod === 'monthly' ? 'شهرية' : 'ربع سنوية') + kv('ضريبة على العمولات والرسوم', st.feeVat ? 'نعم' : 'لا'), { actions: btn('تعديل', 'settings', 'data-v="vat"', 'sm') });
     h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي (النظام السابق) — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي (النظام السابق) — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('السعودي (النظام الجديد)', '<span class="n">+0.5%</span> لكل طرف كل يوليو 2025–2028') + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)) + kv('التأمين الطبي سنوياً (افتراضي)', fmt(st.labor.medicalAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
+    // مطعم قائم بدأ دفتره بعد تشغيله: ما كان له وعليه في تاريخ البدء
+    const op = RB.openingInfo(S);
+    h += card(
+      'أرصدة افتتاحية',
+      op
+        ? kv('تاريخ بدء الدفتر', dtText(op.date)) + kv('الصندوق', fmt(op.cash)) + kv('البنك', fmt(op.bank)) + kv('مستحقات التطبيقات', fmt(op.apps)) + kv('المخزون', fmt(op.inventory)) + kv('رصيد ضريبة دائن', fmt(op.vatCredit)) + kv('مستحق للموردين', fmt(op.owed)) + kv('الصافي (حقوق الشركاء)', fmt(op.net))
+        : '<p class="note">للمطعم الشغّال قبل بدء الدفتر: سجّل ما في الصندوق والبنك والمخزون وما عند التطبيقات وما عليه للموردين في تاريخ البدء، فتبدأ الأرصدة والتقارير صحيحة.</p>',
+      { actions: btn(op ? 'تعديل' : 'إضافة', 'opening', '', 'sm') + (op ? btn('حذف', 'delopening', '', 'sm ghost') : ''), sub: 'لمطعم قائم يبدأ دفتره بعد تشغيله' }
+    );
     h += card(
       'الحفظ والنسخ الاحتياطي',
       `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}${backend === 'local' && !APP.demo ? `<br>آخر نسخة احتياطية من هذا المتصفح: ${lastBackupText()}` : ''}</p>
@@ -2658,16 +2850,49 @@
   FORMS.capital = (rec, x, opts = {}) => {
     if (!S.partners.length) return toast('أضف الشركاء أولاً.', 'bad');
     const type = rec ? rec.type : x;
+    const isEdit = editing(rec, opts);
+    // المتاح من أرباح الشريك (نصيبه من الأرباح المتراكمة − مسحوباته) ورصيدا البنك والصندوق في تاريخ السحب،
+    // بلا هذه الحركة نفسها إن كانت محفوظة
+    const avail = (v) => {
+      const d = RB.isISODate(v.date) ? v.date : today();
+      const L = ledger();
+      const row = RB.partnersReport(S, d, d, L).rows.find((r) => r.id === v.partnerId);
+      const b = RB.balances(L.entries, null, d);
+      let u = row ? row.undistributed : 0;
+      let bank = b['1102'] || 0;
+      let cash = b['1101'] || 0;
+      const old = isEdit ? find('capital', v.id) : null;
+      if (old && !old._bad && old.date <= d) {
+        const a = num(old.amount) * (old.type === 'withdrawal' ? 1 : -1);
+        if (old.type === 'withdrawal' && old.partnerId === v.partnerId) u += a;
+        if (old.account === 'cash') cash += a;
+        else bank += a;
+      }
+      return { u: r2(u), bank: r2(bank), cash: r2(cash) };
+    };
     return formModal({
       title: editing(rec, opts) ? 'تعديل حركة رأس مال' : type === 'withdrawal' ? 'سحب شريك' : 'إيداع رأس مال',
       value: rec || { id: RB.uid(), date: today(), partnerId: S.partners[0].id, type: x || 'contribution', account: 'bank', amount: '', note: '' },
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'partnerId', type: 'select', label: 'الشريك', options: S.partners.map((p) => [p.id, p.name]) }] },
-        { type: 'row', fields: [{ k: 'type', type: 'select', label: 'النوع', options: [['contribution', 'إيداع في رأس المال'], ['withdrawal', 'سحب / توزيع أرباح']] }, { k: 'account', type: 'select', label: 'الحساب', options: [['bank', RB.PAY_LABEL.bank], ['cash', RB.PAY_LABEL.cash]] }] },
+        { type: 'row', fields: [{ k: 'type', type: 'select', label: 'النوع', options: [['contribution', 'إيداع في رأس المال'], ['withdrawal', 'سحب شريك (من الأرباح أو رأس المال)']] }, { k: 'account', type: 'select', label: 'الحساب', options: [['bank', RB.PAY_LABEL.bank], ['cash', RB.PAY_LABEL.cash]] }] },
         { k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 },
         { k: 'note', label: 'ملاحظة' },
       ],
-      onSave: (v) => upsert('capital', v),
+      // يتحدث مع تغيير الشريك أو النوع أو التاريخ
+      preview: (v) => {
+        if (v.type !== 'withdrawal') return '';
+        const a = avail(v);
+        return `<p class="note">المتاح من أرباح هذا الشريك: <b class="n">${fmt(a.u)}</b> — البنك: <b class="n">${fmt(a.bank)}</b> / الصندوق: <b class="n">${fmt(a.cash)}</b></p>`;
+      },
+      onSave: async (v) => {
+        if (v.type === 'withdrawal') {
+          const a = avail(v);
+          const over = r2(num(v.amount) - Math.max(0, a.u));
+          if (num(v.amount) > a.u + 0.005 && !(await confirmBox(`هذا السحب يتجاوز نصيبه من الأرباح بمقدار ${fmt(over)} وسيُخصم من رأس ماله. متابعة؟`, { ok: 'احفظ' }))) return false;
+        }
+        upsert('capital', v);
+      },
     });
   };
 
@@ -2903,8 +3128,10 @@
   const runMonth = (p) => p.month || String(p.date || '').slice(0, 7);
   // أشهر لها مسير رواتب (مسير التسوية بلا راتب لا يُعد مسيراً للشهر)
   const paidMonths = (exceptId) => new Set(good(S.payroll).filter((p) => p.id !== exceptId && RB.payrollTotals(p).gross > 0).map(runMonth));
-  // أسطر مسير الشهر ym من بيانات الموظفين، ويبقى ما أدخله المستخدم في الأسطر الحالية cur (RB.payrollFill)
-  const payrollFill = (ym, cur, fromYm) => RB.payrollFill(S, ym, cur, fromYm);
+  // أسطر مسير الشهر ym من بيانات الموظفين، ويبقى ما أدخله المستخدم في الأسطر الحالية cur (RB.payrollFill).
+  // exceptId: المسير المفتوح نفسه لا يُحسب استقطاعه من رصيد السلف المقترح استقطاعه
+  const withoutRun = (id) => (id ? Object.assign({}, S, { payroll: S.payroll.filter((p) => p.id !== id) }) : S);
+  const payrollFill = (ym, cur, fromYm, exceptId) => RB.payrollFill(withoutRun(exceptId), ym, cur, fromYm);
 
   FORMS.payroll = (rec, empId, opts = {}) => {
     const isEdit = editing(rec, opts);
@@ -2912,8 +3139,10 @@
     const thisYm = today().slice(0, 7);
     const def = RB.ymAdd(thisYm, today().slice(8) >= '25' ? 0 : -1);
     const paid = paidMonths();
-    let ym = def;
-    for (let m = def; m <= thisYm; m = RB.ymAdd(m, 1)) {
+    // من تنبيه «لم يُسجَّل مسير رواتب»: الشهر المطلوب
+    const monthX = !rec && RB.isISOMonth(empId) ? empId : '';
+    let ym = monthX || def;
+    for (let m = def; !monthX && m <= thisYm; m = RB.ymAdd(m, 1)) {
       if (!paid.has(m)) {
         ym = m;
         break;
@@ -2925,10 +3154,12 @@
     const empOf = (id) => (id ? S.employees.find((e) => e.id === id) : null);
     // من تنبيه «لم تُسوَّ مكافأة نهاية الخدمة»: مسير تسوية اليوم بسطر واحد لمن ترك العمل، والمكافأة مقترحة بمقدار مخصصه.
     // سطر المكافأة وحدها: لا راتب فيه ولا إضافي ولا خصم أيام (راتب شهر تركه في مسير ذلك الشهر)
-    const settleEmp = !rec && empOf(empId);
+    const settleEmp = !rec && !monthX && empOf(empId);
     if (settleEmp) {
       const prov = Math.max(0, RB.eosbBalances(S, today(), { release: false })[settleEmp.id] || 0);
-      const line = Object.assign(RB.payrollLine(settleEmp, S, today().slice(0, 7)), { basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov, _autoDed: 0 });
+      // سلفة باقية عليه تُستقطع من مكافأته (بقدرها)
+      const owe = Math.max(0, RB.advanceBalances(S, today())[settleEmp.id] || 0);
+      const line = Object.assign(RB.payrollLine(settleEmp, S, today().slice(0, 7)), { basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov, advance: r2(Math.min(owe, prov)), _autoDed: 0 });
       delete line.note;
       Object.assign(base, {
         month: today().slice(0, 7),
@@ -2951,6 +3182,8 @@
       const draft = Object.assign({}, v, { lines: (v.lines || []).map((l) => Object.assign({}, l, { eosbPaid: 0 })) });
       return RB.eosbBalances(Object.assign({}, S, { payroll: S.payroll.filter((p) => p.id !== v.id).concat([draft]) }), v.date, { release: false });
     };
+    // رصيد سلف كل موظف في تاريخ الصرف، بلا استقطاع هذا المسير نفسه
+    const advOut = (v) => RB.advanceBalances(withoutRun(v.id), RB.isISODate(v.date) ? v.date : today());
     // خصم الأيام التلقائي لموظف السطر في الشهر (0 لعامل غير مسجل أو لمن ليس له راتب فيه)
     const autoDed = (id, ym2) => {
       const e = empOf(id);
@@ -2982,7 +3215,7 @@
           // مسير جديد: أسطر الشهر الجديد، ويبقى ما أدخله المستخدم فيها
           if (!isEdit) {
             if (!snap) snap = { lines: clone(v.lines || []), ym: linesYm };
-            v.lines = payrollFill(v.month, clone(snap.lines), snap.ym);
+            v.lines = payrollFill(v.month, clone(snap.lines), snap.ym, v.id);
             linesYm = v.month;
           }
           // تاريخ الصرف يتبع الشهر ما دام الافتراضي لشهره السابق (التاريخ الذي كتبه المستخدم يبقى)
@@ -3038,13 +3271,13 @@
               label: 'تعبئة من بيانات الموظفين',
               run: (v, rows) => {
                 if (!RB.isISOMonth(v.month)) return toast('اختر الشهر أولاً.', 'bad');
-                rows.splice(0, rows.length, ...payrollFill(v.month, rows, linesYm));
+                rows.splice(0, rows.length, ...payrollFill(v.month, rows, linesYm, v.id));
                 linesYm = v.month;
                 snap = null;
               },
             },
           ],
-          newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 0 }),
+          newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 0, advance: 0 }),
           cols: [
             {
               k: 'employeeId',
@@ -3071,9 +3304,19 @@
                 return b > 0 || num(r.eosbPaid) > 0 ? `مخصصه <span class="n">${fmt(b)}</span>` : '';
               },
             }),
-            { k: 'net', label: 'الصافي', num: 1, calc: (r) => fmt(RB.payrollLineGross(r) - num(r.gosiEe)) },
+            // السلفة لا تغيّر الراتب ولا التأمينات: تُخصم مما يُحوَّل له، ورصيد سلفه تحتها
+            Object.assign(nCol('advance', 'استقطاع سلفة'), {
+              min: 0,
+              hint: (r, v) => {
+                if (!r.employeeId) return '';
+                const b = advOut(v)[r.employeeId] || 0;
+                return b > 0.005 || num(r.advance) > 0 ? `سلفه <span class="n">${fmt(b)}</span>` : '';
+              },
+            }),
+            // ما يُحوَّل للموظف: الصافي + مكافأة نهاية الخدمة المصروفة − السلفة المستقطعة
+            { k: 'net', label: 'المحوَّل فعلياً', num: 1, calc: (r) => fmt(RB.payrollLineGross(r) - num(r.gosiEe) + Math.max(0, num(r.eosbPaid)) - Math.max(0, num(r.advance))) },
           ],
-          help: '«مكافأة نهاية الخدمة المصروفة» تُكتب عند انتهاء خدمة الموظف فقط: تُخصم من مخصصه المتراكم (يظهر تحتها)، ولا تدخل في إجمالي الرواتب ولا في التأمينات. لموظف ترك العمل: «إضافة موظف» ثم اختره من القائمة.',
+          help: '«مكافأة نهاية الخدمة المصروفة» تُكتب عند انتهاء خدمة الموظف فقط: تُخصم من مخصصه المتراكم (يظهر تحتها)، ولا تدخل في إجمالي الرواتب ولا في التأمينات. لموظف ترك العمل: «إضافة موظف» ثم اختره من القائمة. «استقطاع سلفة» يُخصم مما يُحوَّل للموظف ويسدّد سلفه، ولا يغيّر مصروف الرواتب.',
           foot: (v) => {
             const t = RB.payrollTotals(v);
             // تسوية من ترك العمل (مسير شهر تركه أو ما بعده): بصرف مكافأته يُرد ما بقي من مخصصه إلى المصروف،
@@ -3097,7 +3340,7 @@
                 return `<li>${head}، يُصرف منه <span class="n">${fmt(Math.min(p, b))}</span>${rest > 0 ? `، ويُرد الباقي <span class="n">${fmt(rest)}</span> إلى المصروف (المكافأة المستحقة أقل من المخصص، كالاستقالة).` : rest < 0 ? `، والزيادة <span class="n">${fmt(-rest)}</span> مصروف في تاريخ الصرف.` : '.'}</li>`;
               })
               .join('');
-            return `<div class="pv-grid"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}${settle ? `<ul class="note settle">${settle}</ul>` : ''}`;
+            return `<div class="pv-grid"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>المحوَّل فعلياً</span>${money(t.netPaid + t.eosbPaid)}${t.adv || t.eosbPaid ? `<small>الصافي ${fmt(t.net)}${t.eosbPaid ? ` + نهاية الخدمة ${fmt(t.eosbPaid)}` : ''}${t.adv ? ` − سلف ${fmt(t.adv)}` : ''}</small>` : ''}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}${settle ? `<ul class="note settle">${settle}</ul>` : ''}`;
           },
         },
         { k: 'note', label: 'ملاحظات' },
@@ -3115,10 +3358,56 @@
         // سطر راتب سالب (خصومات أكبر من الأجر) يقيّد رواتب سالبة ومالاً داخلاً للبنك
         const neg = v.lines.findIndex((l) => RB.payrollLineGross(l) < 0);
         if (neg >= 0) return `الخصومات أكبر من الراتب في السطر ${neg + 1}${v.lines[neg].name ? ' (' + v.lines[neg].name + ')' : ''}.`;
+        // استقطاع السلفة مما يُصرف له (صافي الراتب ومكافأة نهاية الخدمة)، وأكبر من رصيد سلفه يُؤكَّد (السلفة لم تُسجَّل بعد مثلاً)
+        const over = v.lines.findIndex((l) => num(l.advance) > RB.payrollLineGross(l) - num(l.gosiEe) + Math.max(0, num(l.eosbPaid)) + 0.005);
+        if (over >= 0) return `استقطاع السلفة أكبر مما يُصرف للموظف في السطر ${over + 1}${v.lines[over].name ? ' (' + v.lines[over].name + ')' : ''}.`;
+        const out = advOut(v);
+        const more = v.lines.filter((l) => num(l.advance) > (out[l.employeeId || ''] || 0) + 0.005);
+        if (more.length && !(await confirmBox(`استقطاع السلفة أكبر من رصيد السلف المستحق: ${more.map((l) => `${esc(l.name || (empOf(l.employeeId) || {}).name || 'عامل')} ${fmt(l.advance)} والرصيد ${fmt(Math.max(0, out[l.employeeId || ''] || 0))}`).join('، ')}. متابعة؟`, { ok: 'احفظ' }))) return false;
         v.lines.forEach((l) => delete l._autoDed);
         // مسير ثانٍ لنفس الشهر برواتب: يُؤكَّد (تعديل مسير قائم يُسأل فقط إن نُقل إلى شهر له مسير)
         if (otherRun(v) && RB.payrollTotals(v).gross > 0 && (!isEdit || v.month !== runMonth(rec)) && !(await confirmBox('يوجد مسير لنفس الشهر. حفظ مسير ثانٍ؟', { ok: 'احفظ' }))) return 'لم يُحفظ المسير.';
         upsert('payroll', v);
+      },
+    });
+  };
+
+  // سلفة عامل: صرف مبلغ له (أصل عليه في 1106)، أو سداد نقدي منه. الاستقطاع من الراتب في مسير الرواتب.
+  // x: «repay:معرّف الموظف» من تنبيه سلفة من ترك العمل
+  FORMS.advances = (rec, x, opts = {}) => {
+    if (!S.employees.length) return toast('أضف العمال أولاً.', 'bad');
+    const isEdit = editing(rec, opts);
+    const m = /^(give|repay):(.+)$/.exec(String(x || ''));
+    const ym = today().slice(0, 7);
+    const emp0 = (m && S.employees.find((e) => e.id === m[2])) || S.employees.find((e) => RB.employeeStatus(e, ym) === 'active') || S.employees[0];
+    // رصيده كله بلا هذه العملية (السلف وما استُقطع في كل المسيرات المسجلة)
+    const bal = (v) => RB.advanceBalances(Object.assign({}, S, { advances: S.advances.filter((a) => a.id !== v.id) }), '9999-12-31')[v.employeeId] || 0;
+    // من على رأس العمل أولاً، ثم من ترك العمل أو توقف (لسداد سلفه)
+    const empOpts = (v) => {
+      const st = (e) => RB.employeeStatus(e, ym);
+      const list = S.employees.filter((e) => st(e) === 'active').concat(S.employees.filter((e) => st(e) !== 'active'));
+      return list.map((e) => [e.id, e.name + (st(e) === 'active' ? '' : ' — ' + EMP_STATUS[st(e)])]).concat(v.employeeId && !S.employees.some((e) => e.id === v.employeeId) ? [[v.employeeId, 'موظف محذوف']] : []);
+    };
+    const value = rec || { id: RB.uid(), date: today(), employeeId: emp0.id, kind: m ? m[1] : 'give', amount: '', account: 'cash', note: '' };
+    if (!rec && m && m[1] === 'repay') value.amount = r2(Math.max(0, bal(value))) || '';
+    return formModal({
+      title: isEdit ? 'تعديل سلفة' : value.kind === 'repay' ? 'سداد سلفة' : 'سلفة عامل',
+      value,
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'employeeId', type: 'select', label: 'الموظف', options: empOpts }] },
+        { type: 'row', fields: [{ k: 'kind', type: 'select', label: 'النوع', options: [['give', 'صرف سلفة للعامل'], ['repay', 'سداد نقدي من العامل']] }, { k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'من / إلى', options: [['cash', RB.PAY_LABEL.cash], ['bank', RB.PAY_LABEL.bank]] }] },
+        { k: 'note', label: 'ملاحظة' },
+      ],
+      preview: (v) => {
+        const b = bal(v);
+        const after = r2(b + (v.kind === 'repay' ? -1 : 1) * num(v.amount));
+        return `<p class="note">رصيد سلفه قبل هذه العملية: <b class="n">${fmt(b)}</b> · بعدها: <b class="n">${fmt(after)}</b> ${cur()}</p><p class="note">السلفة ليست مصروفاً: تُستقطع من راتبه في مسير الرواتب (عمود «استقطاع سلفة») فيبقى مصروف الرواتب كاملاً.</p>`;
+      },
+      onSave: (v) => {
+        if (!(num(v.amount) > 0)) return 'أدخل مبلغاً أكبر من صفر.';
+        if (v.kind === 'repay' && num(v.amount) > bal(v) + 0.005) return `السداد أكبر من رصيد سلفه المستحق (${fmt(Math.max(0, bal(v)))}).`;
+        v.amount = num(v.amount);
+        upsert('advances', v);
       },
     });
   };
@@ -3241,12 +3530,21 @@
         delete v.updatePrices;
         if (upsert('purchases', v) === false) return false;
         if (updPrices) {
-          const ch = RB.rawPriceUpdates(Object.assign({}, v, { lines: typed }), S.raw, set);
+          // فاتورة أقدم من آخر سعر مسجل للمادة (فاتورة متأخرة الإدخال) لا ترجع سعرها إلى سعر قديم
+          const all = RB.rawPriceUpdates(Object.assign({}, v, { lines: typed }), S.raw, set);
+          const older = all.filter((c) => {
+            const h = RB.rawPriceHistory(S, c.id, v.id);
+            return h.length && v.date < h[0].date;
+          });
+          const ch = all.filter((c) => !older.includes(c));
           for (const c of ch) {
             const raw = S.raw.find((x) => x.id === c.id);
             if (raw) upsert('raw', Object.assign({}, raw, { price: c.price, taxable: !!v.taxable }));
           }
-          if (ch.length) toast(`تحدّث سعر ${ch.length} من المواد الخام وتكلفة الوصفات المرتبطة بها: ` + ch.map((c) => `${c.name}: ${ltr(fmt(c.old) + ' → ' + fmt(c.price))}`).join('، '));
+          const msg = [];
+          if (ch.length) msg.push(`تحدّث سعر ${ch.length} من المواد الخام وتكلفة الوصفات المرتبطة بها: ` + ch.map((c) => `${c.name}: ${ltr(fmt(c.old) + ' → ' + fmt(c.price))}`).join('، '));
+          if (older.length) msg.push(`لم يُحدَّث سعر ${older.length} مادة لأن الفاتورة أقدم من آخر سعر مسجل`);
+          if (msg.length) toast(msg.join(' · '));
         }
       },
     });
@@ -3313,7 +3611,8 @@
     return formModal({
       title: editing(rec, opts) ? 'تعديل جرد' : 'جرد المخزون',
       wide: true,
-      value: rec || { id: RB.uid(), date: today(), note: '', lines: all() },
+      // من تنبيه الجرد الافتتاحي: بتاريخ اليوم السابق للافتتاح
+      value: rec || { id: RB.uid(), date: RB.isISODate(x) ? x : today(), note: RB.isISODate(x) && x < (S.settings.openingDate || '') ? 'جرد افتتاحي' : '', lines: all() },
       onChange: (p, v) => {
         const m = p.match(/^lines\.(\d+)\.rawId$/);
         if (m) {
@@ -3488,7 +3787,11 @@
     const isEdit = editing(rec, opts);
     // القنوات المفعّلة، والموقوفة التي لها مبيعات في الإقفال المحفوظ
     const chs = S.settings.channels.filter((c) => c.active !== false || (isEdit && rec.channels && rec.channels[c.id]));
-    const base = { id: RB.uid(), date: today(), channels: {}, items: [], note: '' };
+    // اليوم الافتراضي: المطلوب (من تنبيه يوم بلا إقفال)، أو أمس إن كان آخر إقفال قبله مباشرة (إقفال الأمس صباحاً)، وإلا اليوم
+    const lastClose = good(S.sales).reduce((m, z) => (z.date > m ? z.date : m), '');
+    const yest = RB.addDays(today(), -1);
+    const day0 = RB.isISODate(x) ? x : lastClose && RB.addDays(lastClose, 1) === yest ? yest : today();
+    const base = { id: RB.uid(), date: day0, channels: {}, items: [], note: '' };
     chs.forEach((c) => (base.channels[c.id] = { amount: '', orders: '' }));
     const v0 = rec ? clone(rec) : base;
     v0.channels = v0.channels || {};
@@ -3513,6 +3816,7 @@
       // اليوم بلا إعادة رسم (يُكتب بلوحة المفاتيح بمقاطعه)، وتنبيه الإقفال الثاني لنفس اليوم في المعاينة
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'اليوم', req: 1 }, { k: 'note', label: 'ملاحظات' }] },
+        ...(!isEdit && lastClose ? [{ type: 'html', html: () => `<p class="note">آخر إقفال مسجّل: ${dtText(lastClose)}</p>` }] : []),
         {
           type: 'html',
           html: (v) =>
@@ -3676,6 +3980,36 @@
     });
   };
 
+  // جرد الصندوق (عدّ الدرج): المعدود مقابل رصيد الصندوق المتوقع في الدفتر نهاية اليوم. المتوقع والفرق يُحفظان
+  // مع الجرد، والفرق قيد «عجز وزيادة الصندوق» يجعل رصيد الصندوق = المعدود
+  FORMS.cashCounts = (rec, x, opts = {}) => {
+    const isEdit = editing(rec, opts);
+    const expAt = (v) => RB.cashExpected(ledger(), RB.isISODate(v.date) ? v.date : today(), v.id);
+    const has = (v) => v.counted !== '' && v.counted !== undefined && v.counted !== null;
+    return formModal({
+      title: isEdit ? 'تعديل جرد الصندوق' : 'جرد الصندوق (عدّ الدرج)',
+      value: rec || { id: RB.uid(), date: today(), counted: '', note: '' },
+      fields: [
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'counted', type: 'money', label: 'النقد المعدود في الدرج', req: 1, min: 0 }] },
+        { k: 'note', label: 'ملاحظة' },
+      ],
+      preview: (v) => {
+        const e = expAt(v);
+        const d = has(v) ? r2(num(v.counted) - e) : 0;
+        const st = !has(v) ? '' : Math.abs(d) < 0.01 ? chip('مطابق', 'good') : d < 0 ? chip('عجز', 'warn') : chip('زيادة', 'good');
+        return `<div class="pv-grid"><div><span>الرصيد المتوقع</span>${money(e)}<small>رصيد الصندوق في الدفتر نهاية اليوم</small></div>${has(v) ? `<div><span>الفرق</span>${money(d)}<small>${st}</small></div>` : ''}</div><p class="note">سجّل إقفال اليوم ومصروفاته النقدية قبل عدّ الدرج. العجز يُسجَّل مصروفاً في «عجز وزيادة الصندوق» والزيادة تخفضه، فيصبح رصيد الصندوق في الدفتر = المعدود.</p>`;
+      },
+      onSave: (v) => {
+        v.counted = num(v.counted);
+        v.expected = expAt(v);
+        v.diff = r2(v.counted - v.expected);
+        upsert('cashCounts', v);
+        const d = v.diff;
+        toast(Math.abs(d) < 0.01 ? 'الصندوق مطابق للدفتر.' : `${d < 0 ? 'عجز' : 'زيادة'} في الصندوق ${fmt(Math.abs(d))} ${S.settings.currency || ''} — سُجّل الفرق.`, Math.abs(d) < 0.01 ? '' : 'bad');
+      },
+    });
+  };
+
   FORMS.vatPayments = (rec, x, opts = {}) => {
     const isEdit = editing(rec, opts);
     const t = today();
@@ -3703,6 +4037,61 @@
       onSave: (v) => upsert('vatPayments', v),
     });
   };
+
+  // الأرصدة الافتتاحية لمطعم قائم (settings.opening): الأصول والالتزامات في تاريخ بدء الدفتر، وصافيها حقوق للشركاء
+  function openingForm() {
+    const apps = S.settings.channels.filter((c) => c.type === 'app');
+    const o = S.settings.opening;
+    const val = RB.isObj(o) ? clone(o) : { date: today(), cash: '', bank: '', inventory: '', vatCredit: '', apps: {}, payables: [] };
+    val.apps = RB.isObj(val.apps) ? val.apps : {};
+    if (!Array.isArray(val.payables)) val.payables = [];
+    // ما يُحفظ: أرقام، والموردون بأسماء ومبالغ
+    const clean = (v) => {
+      const out = { date: v.date, cash: num(v.cash), bank: num(v.bank), inventory: num(v.inventory), vatCredit: num(v.vatCredit), apps: {}, payables: [] };
+      for (const id of Object.keys(v.apps || {})) if (num(v.apps[id])) out.apps[id] = num(v.apps[id]);
+      out.payables = (v.payables || []).filter((x) => x && (String(x.supplier || '').trim() || num(x.amount))).map((x) => ({ supplier: String(x.supplier || '').trim(), amount: num(x.amount) }));
+      return out;
+    };
+    formModal({
+      title: 'أرصدة افتتاحية',
+      wide: true,
+      value: val,
+      fields: [
+        { type: 'html', html: () => '<p class="note">للمطعم الشغّال قبل بدء الدفتر: ما في الصندوق والبنك والمخزون، وما للمطعم عند التطبيقات، وما عليه للموردين في تاريخ البدء. صافيها يُسجَّل حقوقاً للشركاء حسب نسبهم.</p><p class="note">الأصول الموجودة سجّلها في صفحة الأصول بقيمتها الدفترية وعمرها المتبقي، والدفع «دفعها الشريك من حسابه» (بتاريخ بدء الدفتر).</p>' },
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ بدء الدفتر', req: 1, help: 'الأرصدة كما هي صباح هذا اليوم' }, { k: 'cash', type: 'money', label: 'النقد في الصندوق', min: 0 }, { k: 'bank', type: 'money', label: 'رصيد الحساب البنكي', min: 0 }] },
+        { type: 'row', fields: [{ k: 'inventory', type: 'money', label: 'قيمة المخزون من جرد افتتاحي', min: 0, help: 'الكميات × سعر الشراء بدون الضريبة' }, { k: 'vatCredit', type: 'money', label: 'رصيد ضريبة دائن من إقرار سابق', min: 0, help: 'يُخصم من أول إقرار في الدفتر' }] },
+        ...(apps.length ? [{ type: 'section', label: 'مستحقات التطبيقات (مبيعات لم تُحوَّل للبنك بعد)' }, { type: 'row', fields: apps.map((c) => ({ k: 'apps.' + c.id, type: 'money', label: c.name, min: 0 })) }] : []),
+        {
+          k: 'payables',
+          type: 'lines',
+          label: 'مستحق للموردين (فواتير آجلة لم تُسدَّد)',
+          addLabel: 'إضافة مورد',
+          newRow: () => ({ supplier: '', amount: '' }),
+          cols: [
+            { k: 'supplier', label: 'المورد' },
+            { k: 'amount', label: 'المبلغ شامل الضريبة', type: 'num', num: 1, min: 0 },
+          ],
+          empty: 'لا مستحقات للموردين',
+          help: 'سدادها لاحقاً من «سداد مورد» باسم المورد نفسه.',
+        },
+      ],
+      preview: (v) => {
+        const info = RB.openingInfo({ settings: { opening: clean(v) } });
+        if (!info) return '';
+        const sh = RB.openingShares(S, info.net);
+        return `<div class="pv-grid"><div><span>الأصول</span>${money(info.assets)}</div><div><span>الالتزامات</span>${money(info.owed)}</div><div><span>الصافي (حقوق الشركاء)</span>${money(info.net)}</div></div>${sh.length ? `<p class="note">${sh.map((x) => `${esc((S.partners.find((p) => p.id === x.partnerId) || {}).name || '')}: <b class="n">${fmt(x.amount)}</b>`).join(' · ')}</p>` : '<p class="note bad">أضف الشركاء أولاً: الصافي يُسجَّل حقوقاً لهم.</p>'}`;
+      },
+      onSave: (v) => {
+        if (roBlock()) return false;
+        if (!S.partners.length) return 'أضف الشركاء أولاً: صافي الأرصدة الافتتاحية يُسجَّل حقوقاً لهم.';
+        const c = clean(v);
+        if (c.payables.some((x) => !x.supplier)) return 'اكتب اسم المورد لكل مبلغ مستحق.';
+        S.settings.opening = c;
+        saveSettings();
+      },
+      done: 'حُفظت الأرصدة الافتتاحية.',
+    });
+  }
 
   function channelForm(id) {
     const c = id ? S.settings.channels.find((x) => x.id === id) : null;
@@ -3815,14 +4204,15 @@
     // رأس مال، أو أي قيد على حساب الشريك في الدفاتر (أصل أو مصروف أو فاتورة أو سداد مورد دفعه من حسابه…)
     partners: (id) => RB.partnerUsed(S, id),
     // تاريخ المباشرة وتاريخ ترك العمل يحددان مخصص نهاية الخدمة في المسيرات السابقة؛ حذفه يغيّر الدفاتر
-    employees: (id) => S.payroll.some((pr) => (pr.lines || []).some((l) => l && l.employeeId === id)),
+    // وسلفه مرتبطة به (رصيده في 1106)
+    employees: (id) => S.payroll.some((pr) => (pr.lines || []).some((l) => l && l.employeeId === id)) || S.advances.some((a) => a && a.employeeId === id),
   };
   const refMsg = {
     raw: 'هذه المادة مستخدمة في وصفات. احذفها من الوصفات أولاً.',
     composites: 'هذا المنتج المجمّع مستخدم في منتجات أخرى. احذفه منها أولاً.',
     products: 'هذا الصنف داخل في وجبة مركّبة. احذفه منها أولاً، أو اجعله غير مفعّل.',
     partners: 'لهذا الشريك حركات رأس مال أو مدفوعات. احذفها أولاً.',
-    employees: 'لهذا الموظف مسيرات رواتب؛ حدّد «تاريخ ترك العمل» وأوقفه بدلاً من حذفه.',
+    employees: 'لهذا الموظف مسيرات رواتب أو سلف؛ حدّد «تاريخ ترك العمل» وأوقفه بدلاً من حذفه.',
   };
 
   // حذف مادة في جرد سابق: سطرها يبقى بلا اسم بقيمته. الجرد قبل التسجيل في الضريبة يُقيَّم بضريبة المادة الخاضعة،
@@ -3872,6 +4262,8 @@
     go: (el) => go(el.dataset.v),
     add: (el) => FORMS[el.dataset.s] && FORMS[el.dataset.s](null, el.dataset.x),
     edit: (el) => {
+      // قيد الأرصدة الافتتاحية (من كشف الصندوق أو البنك) يُفتح بنموذجها
+      if (el.dataset.s === 'settings') return el.dataset.id === 'opening' ? openingForm() : undefined;
       const rec = find(el.dataset.s, el.dataset.id);
       if (rec && FORMS[el.dataset.s]) FORMS[el.dataset.s](clone(rec));
     },
@@ -3984,6 +4376,25 @@
       S.settings.channels = S.settings.channels.filter((c) => c.id !== id);
       saveSettings();
       render();
+    },
+    // يوم بلا إقفال لأن المطعم كان مغلقاً: لا يُنبَّه عليه (آخر 60 يوماً معلَّماً)
+    closedDay: (el) => {
+      if (roBlock()) return;
+      const d = el.dataset.d;
+      if (!RB.isISODate(d)) return;
+      S.settings.closedDays = (S.settings.closedDays || []).filter((x) => x !== d).concat([d]).sort().slice(-60);
+      saveSettings();
+      render();
+      toast('سُجّل ' + dtText(d) + ' يوماً مغلقاً، فلا تنبيه له.');
+    },
+    opening: () => openingForm(),
+    delopening: async () => {
+      if (roBlock()) return;
+      if (!(await confirmBox('حذف الأرصدة الافتتاحية؟ يُحذف قيدها من الدفاتر (الصندوق والبنك والمخزون والموردون وحقوق الشركاء).', { danger: true, ok: 'احذف' }))) return;
+      S.settings.opening = null;
+      saveSettings();
+      render();
+      toast('تم الحذف.');
     },
     // «إخفاء» خطوات البداية (يُحفظ في الإعدادات، فتختفي عند الشريك كذلك)
     setupdone: () => {
@@ -4218,7 +4629,7 @@
     formModal({
       title: 'ابدأ ببيانات مطعمك',
       ok: 'ابدأ',
-      value: { name: '', openingDate: '', vatRegistered: true, vatRegisteredFrom: '', p1: '', s1: 50, p2: '', s2: 50 },
+      value: { name: '', openingDate: '', vatRegistered: true, vatRegisteredFrom: '', p1: '', s1: 50, p2: '', s2: 50, existing: false },
       // نسبة الثاني تظهر فوراً أثناء الكتابة (الحقل الذي يُكتب فيه يبقى كما هو)، فلا يُحفظ ما لم يُعرض
       onChange: (p, v) => {
         if (p === 's2') s2Typed = true;
@@ -4243,6 +4654,7 @@
         },
         { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %', min: 0, max: 100, redraw: true, help: 'إذا كنت الشريك الوحيد اترك الثاني فارغاً وتصبح نسبتك 100%' }] },
         { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني', redraw: true }, { k: 's2', type: 'num', label: 'نسبته %', min: 0, max: 100 }] },
+        { k: 'existing', type: 'check', label: 'المطعم شغّال من قبل — أبدأ الدفتر بأرصدة افتتاحية', help: 'بعد البدء يُفتح نموذج الأرصدة الافتتاحية: ما في الصندوق والبنك والمخزون، وما عند التطبيقات، وما عليك للموردين' },
       ],
       onSave: async (v) => {
         // شريك واحد: نسبته 100% مهما كُتب في حقلها؛ شريكان: نسبتان موجبتان مجموعهما 100%
@@ -4276,7 +4688,11 @@
         if (two) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: s2, phone: '', note: '' });
         const ok = await replaceAll(st);
         go('dashboard');
-        if (ok) toast('جاهز. اتبع خطوات «ابدأ من هنا» في لوحة المتابعة.');
+        if (ok && v.existing) {
+          // بعد إغلاق نافذة البداية
+          setTimeout(openingForm, 50);
+          toast('جاهز. أدخل الأرصدة الافتتاحية في تاريخ بدء الدفتر.');
+        } else if (ok) toast('جاهز. اتبع خطوات «ابدأ من هنا» في لوحة المتابعة.');
       },
     });
   }

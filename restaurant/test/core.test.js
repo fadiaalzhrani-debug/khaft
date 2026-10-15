@@ -2092,3 +2092,246 @@ test('خطوات البداية: دفتر فيه إقفالات بلا reviewedA
   assert.deepEqual(st.steps.filter((x) => x.done).map((x) => x.id), ['settings', 'sales']);
   assert.equal(st.pending, true);
 });
+
+// ───────────── WP6 ─────────────
+const tbBalanced = (S, asOf) => {
+  const L = RB.buildLedger(S, asOf);
+  for (const e of L.entries) close(RB.sum(e.lines, (l) => l.v), 0, 0.001);
+  const tb = RB.trialBalance(S, null, asOf, L);
+  close(tb.dr, tb.cr);
+  close(RB.balanceSheet(S, asOf, L).check, 0);
+  return { L, b: RB.balances(L.entries, null, asOf) };
+};
+
+test('جرد الدرج: العجز مصروف في 5316 والزيادة دائنة، والصندوق = المعدود (WP6)', () => {
+  const S = base();
+  S.sales = [{ id: 's1', date: '2026-10-01', channels: { cash: { amount: 1000, orders: 20, type: 'cash' } } }];
+  S.purchases = [{ id: 'b1', date: '2026-10-01', supplier: 'مخبز', category: 'food', account: 'cash', taxable: true, includesVat: true, lines: [{ qty: 1, price: 200 }] }];
+  // المتوقع 800، المعدود 790: عجز 10 (الفرق المحفوظ = المعدود − المتوقع)
+  S.cashCounts = [{ id: 'k1', date: '2026-10-01', counted: 790, expected: 800, diff: -10, note: '' }];
+  let { L, b } = tbBalanced(S, '2026-10-31');
+  close(b['5316'], 10);
+  close(b['1101'], 790);
+  const e = L.entries.find((x) => x.kind === 'cashadj');
+  assert.deepEqual(e.ref, { s: 'cashCounts', id: 'k1' });
+  // جرد الدرج آخر قيود يومه (بعد مبيعات اليوم ومشترياته)
+  assert.equal(L.entries.filter((x) => x.date === '2026-10-01').pop().kind, 'cashadj');
+  // زيادة: دائن 5316
+  S.cashCounts = [{ id: 'k1', date: '2026-10-01', counted: 815, expected: 800, diff: 15 }];
+  ({ b } = tbBalanced(S, '2026-10-31'));
+  close(b['5316'], -15);
+  close(b['1101'], 815);
+  // لا فرق (أو أقل من هللة): لا قيد
+  S.cashCounts = [{ id: 'k1', date: '2026-10-01', counted: 800, expected: 800, diff: 0.004 }];
+  assert.ok(!RB.buildLedger(S, '2026-10-31').entries.some((x) => x.kind === 'cashadj'));
+  // المتوقع لجرد محفوظ بلا فرقه هو نفسه، وبعده الصندوق = المعدود؛ ولجرد جديد في اليوم التالي يشمل الفرق السابق
+  S.cashCounts = [{ id: 'k1', date: '2026-10-01', counted: 790, expected: 800, diff: -10 }];
+  const LL = RB.buildLedger(S, '2026-10-31');
+  close(RB.cashExpected(LL, '2026-10-01', 'k1'), 800);
+  close(RB.cashExpected(LL, '2026-10-02', 'new'), 790);
+  close(RB.cashExpected(LL, '2026-09-30'), 0);
+  assert.ok(RB.SECTIONS.includes('cashCounts') && RB.DATED.includes('cashCounts'));
+  assert.equal(RB.accInfo('5316').group, 'opex');
+});
+
+test('أرصدة افتتاحية لمطعم قائم: المخزون والموردون والتطبيقات والضريبة، والحقوق للشركاء حسب نسبهم (WP6)', () => {
+  const S = base(); // الشريكان 60% و40%
+  S.settings.opening = { date: '2026-10-01', cash: 3000, bank: 20000, inventory: 5000, vatCredit: 1200, apps: { jahez: 2500, keeta: 500 }, payables: [{ supplier: 'ملحمة', amount: 4000 }, { supplier: '', amount: 0 }] };
+  S.raw = [{ id: 'r1', name: 'لحم', price: 40, packQty: 1, taxable: true }];
+  // جرد بقيمة المخزون الافتتاحي نفسها: لا تغيّر في تكلفة المواد
+  S.stockCounts = [{ id: 'k1', date: '2026-10-31', lines: [{ rawId: 'r1', qty: 125, price: 40 }] }];
+  let { L, b } = tbBalanced(S, '2026-10-31');
+  close(b['5109'] || 0, 0);
+  close(b['1104'], 5000);
+  close(b['1101'], 3000);
+  close(b['1102'], 20000);
+  close(b['1103'], 3000);
+  close(b['2102'], 1200);
+  close(b['2101'], -4000);
+  // الصافي 28,200 = حقوق الشريكين 60/40
+  close(-b['cap:p1'], 16920);
+  close(-b['cap:p2'], 11280);
+  assert.equal(L.entries[0].kind, 'opening');
+  // الموردون: المستحق الافتتاحي ثم سداده يصفّره
+  close(RB.supplierBalances(S, '2026-10-31').find((r) => r.supplier === 'ملحمة').balance, 4000);
+  S.supplierPayments = [{ id: 'sp', date: '2026-10-04', supplier: 'ملحمة', account: 'bank', amount: 4000 }];
+  close(RB.supplierBalances(S, '2026-10-31').find((r) => r.supplier === 'ملحمة').balance, 0);
+  ({ b } = tbBalanced(S, '2026-10-31'));
+  close(b['2101'] || 0, 0);
+  // التطبيقات: المستحق الافتتاحي ثم التحويل
+  close(RB.appReceivables(S, '2026-10-31').find((a) => a.id === 'jahez').balance, 2500);
+  S.payouts = [{ id: 'po', date: '2026-10-03', channelId: 'jahez', amount: 2500, deductions: 0 }];
+  close(RB.appReceivables(S, '2026-10-31').find((a) => a.id === 'jahez').balance, 0);
+  // قبل تاريخ الأرصدة الافتتاحية لا شيء
+  assert.equal(RB.supplierBalances(S, '2026-09-30').length, 0);
+  // الضريبة: الرصيد الدائن الافتتاحي لا يدخل في إقرار الفترة، ويُرحّل للإقرار الأول
+  S.sales = [{ id: 's1', date: '2026-10-05', channels: { cash: { amount: 11500, orders: 300, type: 'cash' } } }];
+  const v = RB.vatReport(S, '2026-10-01', '2026-12-31');
+  close(v.net, 1500);
+  const q4 = RB.vatReturns(S, '2026-12-31').find((r) => r.key === '2026-Q4');
+  close(q4.carried, -1200);
+  close(q4.due, 300);
+  // حقوق الشركاء الافتتاحية رأس مال لا دفع مباشر
+  const p = RB.partnersReport(S, '2026-10-01', '2026-10-31');
+  close(RB.sum(p.rows, (r) => r.direct), 0);
+  close(p.rows[0].contributed, 16920);
+  const u = RB.capitalUses(S);
+  close(u.direct, 0);
+  close(u.contributions, 28200);
+  assert.ok(RB.setupSteps(S).steps.find((x) => x.id === 'capital').done);
+  // تاريخ غير صالح: لا قيد افتتاحي
+  assert.equal(RB.openingInfo(RB.normalize({ settings: { opening: { date: '2026-13-01', cash: 5 } } })), null);
+});
+
+test('الجرد بعد الأرصدة الافتتاحية: الفرق عن المخزون الافتتاحي، ورصيد المخزون = آخر جرد (WP6)', () => {
+  const S = base();
+  S.settings.opening = { date: '2026-10-01', inventory: 5000 };
+  S.raw = [{ id: 'r1', name: 'لحم', price: 40, packQty: 1, taxable: true }];
+  S.purchases = [{ id: 'b1', date: '2026-10-10', supplier: 'م', category: 'food', account: 'bank', taxable: true, includesVat: false, lines: [{ rawId: 'r1', qty: 100, price: 40 }] }];
+  S.stockCounts = [{ id: 'k1', date: '2026-10-31', lines: [{ rawId: 'r1', qty: 150, price: 40 }] }];
+  const { b } = tbBalanced(S, '2026-10-31');
+  // المستهلك = 5,000 + 4,000 − 6,000
+  close(RB.incomeStatement(S, '2026-10-01', '2026-10-31').tot.cogs, 3000);
+  close(b['1104'], 6000);
+  // بلا شركاء: لا قيد افتتاحي غير متوازن بل خطأ يُذكر
+  const N = RB.emptyState();
+  N.settings.opening = { date: '2026-10-01', cash: 100 };
+  const L = RB.buildLedger(N, '2026-10-31');
+  assert.ok(!L.entries.some((e) => e.kind === 'opening'));
+  assert.equal(L.errors[0].id, 'opening');
+});
+
+test('سلف العمال: الصرف أصل، والاستقطاع من المسير لا يغيّر مصروف الرواتب ويعيد الرصيد إلى صفر (WP6)', () => {
+  const S = base();
+  S.settings.vatRegistered = false;
+  S.capital = [{ id: 'c', date: '2026-09-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  S.employees = [{ id: 'e1', name: 'سليم', nationality: 'expat', basic: 2000, housing: 0, startDate: '2025-01-01', active: true }];
+  S.advances = [{ id: 'a1', date: '2026-09-10', employeeId: 'e1', amount: 500, account: 'cash', kind: 'give', note: '' }];
+  S.capital.push({ id: 'c2', date: '2026-09-01', partnerId: 'p1', type: 'contribution', account: 'cash', amount: 1000 });
+  const run = (ym, adv) => ({ id: 'w' + ym, month: ym, date: RB.monthEnd(ym), account: 'bank', gosiAccount: 'bank', lines: [Object.assign(RB.payrollLine(S.employees[0], S, ym), { advance: adv })] });
+  S.payroll = [run('2026-09', 0), run('2026-10', 500)];
+  const { b } = tbBalanced(S, '2026-10-31');
+  const sep = RB.incomeStatement(S, '2026-09-01', '2026-09-30');
+  const oct = RB.incomeStatement(S, '2026-10-01', '2026-10-31');
+  const g = (inc) => (inc.groups.labor.find((x) => x.code === '5201') || {}).amount;
+  close(g(sep), 2000);
+  close(g(oct), 2000);
+  close(b['1106'] || 0, 0);
+  close(b['1101'], 500);
+  // في سبتمبر بعد الصرف: الرصيد 500 على الموظف، ويطابق حساب 1106
+  close(RB.advanceBalances(S, '2026-09-30').e1, 500);
+  close(RB.balances(RB.buildLedger(S, '2026-09-30').entries, null, '2026-09-30')['1106'], 500);
+  close(RB.advanceBalances(S, '2026-10-31').e1, 0);
+  // المسير: المحوَّل فعلياً = الصافي − السلفة
+  const t = RB.payrollTotals(S.payroll[1]);
+  close(t.adv, 500);
+  close(t.netPaid, 1500);
+  close(t.cost, 2040); // الإجمالي + تأمينات المنشأة 2% (السلفة لا تغيّره)
+  // مسير الشهر التالي للصرف يقترح استقطاع المستحق (بقدر الصافي)، والمسيرات المحفوظة تُخصم من الرصيد
+  S.payroll = [run('2026-09', 0)];
+  close(RB.payrollLine(S.employees[0], S, '2026-10').advance, 500);
+  S.advances.push({ id: 'a2', date: '2026-09-20', employeeId: 'e1', amount: 5000, account: 'bank', kind: 'give' });
+  close(RB.payrollLine(S.employees[0], S, '2026-10').advance, 2000);
+  S.advances.push({ id: 'a3', date: '2026-10-02', employeeId: 'e1', amount: 4000, account: 'cash', kind: 'repay' });
+  close(RB.advanceBalances(S, '2026-10-31').e1, 1500);
+  // التعبئة تحفظ ما عدّله المستخدم من الاستقطاع
+  const kept = RB.payrollFill(S, '2026-10', [Object.assign(RB.payrollLine(S.employees[0], S, '2026-10'), { advance: 300 })]);
+  close(kept[0].advance, 300);
+  // الاستقطاع في مسير يُصرف في الشهر التالي: في قيد الصرف
+  S.advances = [{ id: 'a1', date: '2026-09-10', employeeId: 'e1', amount: 500, account: 'cash', kind: 'give' }];
+  S.payroll = [Object.assign(run('2026-09', 500), { date: '2026-10-03' })];
+  const r = tbBalanced(S, '2026-10-31');
+  close(r.b['1106'] || 0, 0);
+  close(RB.incomeStatement(S, '2026-09-01', '2026-09-30').groups.labor.find((x) => x.code === '5201').amount, 2000);
+  assert.ok(RB.SECTIONS.includes('advances') && RB.accInfo('1106').type === 'A');
+});
+
+test('الشركاء: الأرباح المتاحة للسحب = نصيب الأرباح المتراكمة − المسحوبات (WP6)', () => {
+  for (const today of ['2026-10-14', '2027-02-17']) {
+    const D = RB.demoState(today);
+    const L = RB.buildLedger(D, today);
+    const p = RB.partnersReport(D, '2000-01-01', today, L);
+    close(p.undistributedTotal, RB.r2(p.retained - RB.sum(p.rows, (r) => r.drawings)));
+    close(RB.sum(p.rows, (r) => r.undistributed), p.undistributedTotal, 0.02);
+    for (const r of p.rows) close(r.undistributed, RB.r2(r.profitAll - r.drawings));
+  }
+  const S = base();
+  S.sales = [{ id: 's1', date: '2026-10-05', channels: { cash: { amount: 1150, orders: 10, type: 'cash' } } }];
+  S.capital = [{ id: 'w', date: '2026-10-06', partnerId: 'p2', type: 'withdrawal', account: 'cash', amount: 600 }];
+  const p = RB.partnersReport(S, '2026-10-01', '2026-10-31');
+  // ربح 1,000: نصيب الثاني 400 وسحب 600 → −200 (سحب من رأس المال)
+  close(p.rows[1].undistributed, -200);
+  close(p.rows[0].undistributed, 600);
+  close(p.undistributedTotal, 400);
+});
+
+test('تاريخ أسعار المادة الخام: بلا ضريبة، الأحدث أولاً، وأسطر الشراء فقط (WP6)', () => {
+  const S = base();
+  S.raw = [{ id: 'beef', name: 'لحم', price: 360 }];
+  const buy = (id, date, price, o) => Object.assign({ id, date, supplier: 'ملحمة', category: 'food', account: 'bank', taxable: true, includesVat: false, lines: [{ rawId: 'beef', qty: 2, price }] }, o || {});
+  S.purchases = [
+    buy('b1', '2026-07-01', 340),
+    buy('b2', '2026-09-01', 391, { includesVat: true }), // 340 بلا ضريبة
+    buy('b3', '2026-10-01', 360, { includesVat: true, taxable: false }), // غير خاضعة: كما هو
+    buy('b4', '2026-10-05', 300, { lines: [{ rawId: 'beef', qty: -1, price: 300 }] }), // مرتجع لا يُعد
+    buy('b5', '2026-08-01', 272, { supplier: 'آخر' }),
+  ];
+  const h = RB.rawPriceHistory(S, 'beef');
+  assert.deepEqual(h.map((x) => [x.date, x.priceNet, x.purchaseId]), [['2026-10-01', 360, 'b3'], ['2026-09-01', 340, 'b2'], ['2026-08-01', 272, 'b5'], ['2026-07-01', 340, 'b1']]);
+  assert.equal(h[2].supplier, 'آخر');
+  const ch = RB.rawPriceChange(S, 'beef');
+  close(ch.last, 360);
+  close(ch.prev, 340);
+  close(ch.pct, (20 / 340) * 100, 1e-9);
+  // استثناء الفاتورة التي تُحفظ (الأحدث الآن من غيرها)
+  assert.equal(RB.rawPriceHistory(S, 'beef', 'b3')[0].date, '2026-09-01');
+  // سعر واحد لم يتغير: لا تغيّر
+  S.purchases = [buy('b1', '2026-07-01', 340), buy('b2', '2026-09-01', 340)];
+  assert.equal(RB.rawPriceChange(S, 'beef'), null);
+});
+
+test('البيانات التجريبية واقعية: جرد افتتاحي، تكلفة مواد معقولة، وكميات الأصناف بأسعار المحل والتطبيقات (WP6)', () => {
+  for (const today of ['2026-10-14', '2026-10-09', '2027-02-17', '2026-12-31']) {
+    const D = RB.demoState(today);
+    const L = RB.buildLedger(D, today);
+    const open = D.settings.openingDate;
+    // جرد افتتاحي في اليوم السابق للافتتاح: لا تكلفة مواد في شهر ما قبل التشغيل
+    const first = D.stockCounts.slice().sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+    assert.equal(first.date, RB.addDays(open, -1));
+    const preYm = RB.ymAdd(open.slice(0, 7), -1);
+    close(RB.incomeStatement(D, preYm + '-01', RB.monthEnd(preYm), L).tot.cogs, 0);
+    for (let ym = open.slice(0, 7); ym < today.slice(0, 7); ym = RB.ymAdd(ym, 1)) {
+      const to = RB.monthEnd(ym);
+      const inc = RB.incomeStatement(D, ym + '-01', to, L);
+      assert.ok(inc.ratios.foodCost >= 30 && inc.ratios.foodCost <= 34, `${today} ${ym} تكلفة المواد ${inc.ratios.foodCost}`);
+      const m = RB.menuAnalysis(D, ym + '-01', to, L);
+      assert.ok(Math.abs(m.variance / m.theoretical) <= 0.05, `${today} ${ym} الفرق ${m.variance}`);
+      // قيمة الأصناف بسعر المحل أقل من المبيعات (أصناف التطبيقات بأسعارها الأعلى)
+      const days = D.sales.filter((s) => s.date.slice(0, 7) === ym);
+      const atShop = RB.sum(days, (s) => RB.sum(s.items, (i) => i.qty * D.products.find((p) => p.id === i.productId).price));
+      assert.ok(atShop < RB.sum(days, RB.saleTotal), ym);
+      // جرد آخر الشهر كميات غير سالبة
+      const c = D.stockCounts.find((x) => x.date === to);
+      assert.ok(c && c.lines.every((l) => l.qty >= 0));
+    }
+    // سحب شريك، وفاتورة لحم بسعر أعلى يتحدث منها سعر المادة
+    assert.ok(D.capital.some((c) => c.type === 'withdrawal'));
+    const ch = RB.rawPriceChange(D, 'm_beef');
+    assert.ok(ch && ch.last > ch.prev);
+    assert.equal(D.raw.find((r) => r.id === 'm_beef').price, ch.last);
+  }
+});
+
+test('سلفة من ترك العمل تُستقطع من مكافأة نهاية الخدمة في مسير التسوية (WP6)', () => {
+  const S = base();
+  S.capital = [{ id: 'c', date: '2026-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  S.employees = [{ id: 'e1', name: 'سليم', nationality: 'expat', basic: 2400, housing: 0, startDate: '2024-01-01', endDate: '2026-09-30', active: false }];
+  S.advances = [{ id: 'a1', date: '2026-09-10', employeeId: 'e1', amount: 300, account: 'bank', kind: 'give' }];
+  const line = Object.assign(RB.payrollLine(S.employees[0], S, '2026-10'), { basic: 0, housing: 0, allowances: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 450, advance: 300 });
+  S.payroll = [{ id: 'st', month: '2026-10', date: '2026-10-05', account: 'bank', gosiAccount: 'bank', lines: [line] }];
+  const { L, b } = tbBalanced(S, '2026-10-31');
+  close(b['1106'] || 0, 0);
+  // من البنك: السلفة 300، ثم صافي التسوية 450 − 300 = 150
+  close(b['1102'], 50000 - 300 - 150);
+  assert.ok(L.entries.some((e) => e.kind === 'payroll' && e.lines.some((l) => l.a === '1106')));
+});

@@ -328,6 +328,7 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .kpi-l { color: var(--ink-2); font-size: 0.85rem; }
 .kpi-v { font-size: 1.6rem; font-weight: 600; line-height: 1.3; }
 .kpi-s { color: var(--muted); font-size: 0.8rem; }
+.kpi-est { display: block; margin-top: 3px; color: var(--warn); font-weight: 600; }
 .kpis.small .kpi-v { font-size: 1.25rem; }
 .kpis.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .kpi.good::after, .kpi.warn::after, .kpi.bad::after { content: ''; position: absolute; top: 16px; inset-inline-end: 14px; width: 9px; height: 9px; border-radius: 50%; }
@@ -394,6 +395,7 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
 .chip.accent { background: var(--accent-soft); color: var(--accent-text); border-color: transparent; }
 .chip.mute { background: transparent; color: var(--muted); }
+.chip.wrap { white-space: normal; border-radius: 8px; text-align: center; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .fchip { border: 1px solid var(--line); background: transparent; border-radius: 99px; padding: 3px 12px; cursor: pointer; font-size: 0.84rem; color: var(--ink-2); }
 .fchip.on { background: var(--ink); color: var(--surface); border-color: var(--ink); }

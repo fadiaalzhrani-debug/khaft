@@ -141,17 +141,23 @@
     for (const d of [RB.addMonths(posLast, -3), posLast]) if (d >= RB.addDays(opening, -15)) exp({ date: d, category: 'software', desc: 'اشتراك نظام نقاط البيع', entity: 'مزود نظام الكاشير', amount: 690, includesVat: true, months: 3 });
 
     // ─── التشغيل اليومي ───
-    const need = {}; // احتياج المواد غير المشتراة بعد (بوحدة الاستخدام)
+    // need: الاستهلاك ناقص المشتريات لكل مادة بوحدة الاستخدام (بالسالب = المخزون الموجود)،
+    // daily: متوسط الاستهلاك اليومي (متوسط متحرك) لتحديد حد إعادة الطلب
+    const need = {};
+    const daily = {};
     const supplierRaw = (sup) => S.raw.filter((r) => r.supplier === sup);
     let cash = 0;
     const pending = {}; // مستحقات التطبيقات بانتظار التحويل
     const apps = { hungerstation: 0.4, jahez: 0.3, keeta: 0.15, mrsool: 0.08, thechefz: 0.07 };
 
+    // كل مورد يُشترى منه حتى حد يكفي إلى موعد الشراء التالي ويومين احتياطاً (فلا ينفد المخزون)، بزيادة 6%
+    const EVERY = { meat: 4, bread: 2, veg: 2, dry: 7, pack: 14, drinks: 7 };
     function buy(date, sup, opts) {
       const lines = [];
       for (const r of supplierRaw(sup)) {
         const q = need[r.id] || 0;
-        const packs = opts.initial ? 2 : q > 0 ? Math.ceil((q * 1.06) / r.packQty) : 0;
+        const par = (daily[r.id] || 0) * (EVERY[sup] + 2);
+        const packs = opts.initial ? 2 : Math.ceil((Math.max(0, q + par) * 1.06) / r.packQty);
         if (!packs) continue;
         need[r.id] = q - packs * r.packQty;
         lines.push({ rawId: r.id, desc: r.name, qty: packs, price: r.price });
@@ -172,8 +178,12 @@
       drinks: { supplier: 'موزع المشروبات', category: 'drinks', account: 'bank', taxable: true },
     };
 
-    // مخزون افتتاحي قبل الافتتاح بيومين
+    // مخزون افتتاحي قبل الافتتاح بيومين، وجرده في اليوم السابق للافتتاح: بضاعة الافتتاح لا تُحمَّل على شهر ما قبل التشغيل
     for (const sup of Object.keys(SUP)) buy(RB.addDays(opening, -2), sup, { initial: true, inv: SUP[sup] });
+    S.stockCounts.push({ id: id('k'), date: RB.addDays(opening, -1), note: 'جرد افتتاحي', lines: S.purchases.flatMap((p) => p.lines.filter((l) => l.rawId).map((l) => ({ rawId: l.rawId, qty: l.qty, price: l.price }))) });
+    // ارتفاع سعر اللحم قبل نهاية التشغيل بثلاثة أسابيع (فاتورة بسعر أعلى يتحدث منها سعر المادة)
+    const beefUp = RB.addDays(today, -21);
+    const withdrawAt = RB.ymAdd(openYm, 2) + '-05';
 
     let d = opening;
     let dayIdx = 0;
@@ -200,20 +210,31 @@
         ch[k].feePct = c.feePct;
         ch[k].type = c.type;
       }
-      const total = Object.values(ch).reduce((s, v) => s + v.amount, 0);
+      // الكميات المباعة: مبيعات المحل بسعر المحل، ومبيعات التطبيقات بسعر التطبيقات
+      const storeGross = (ch.cash ? ch.cash.amount : 0) + (ch.card ? ch.card.amount : 0);
+      const appGross = Object.values(ch).reduce((s, v) => s + v.amount, 0) - storeGross;
       const items = [];
+      const used = {};
       for (const pid of Object.keys(mixW)) {
         const p = S.products.find((x) => x.id === pid);
-        const q = Math.round((total * mixW[pid]) / p.price);
+        const q = Math.round((storeGross * mixW[pid]) / p.price + (appGross * mixW[pid]) / (p.appPrice || p.price));
         if (q > 0) items.push({ productId: pid, qty: q });
-        const use = RB.explode(S, 'prod', pid, q);
-        for (const rid of Object.keys(use)) need[rid] = (need[rid] || 0) + use[rid];
+        RB.explode(S, 'prod', pid, q, used);
+      }
+      for (const r of S.raw) {
+        const u = used[r.id] || 0;
+        need[r.id] = (need[r.id] || 0) + u;
+        daily[r.id] = daily[r.id] === undefined ? u : daily[r.id] * 0.8 + u * 0.2;
       }
       S.sales.push({ id: id('s'), date: d, channels: ch, items, note: '' });
       cash += ch.cash ? ch.cash.amount : 0;
       for (const k of Object.keys(apps)) if (ch[k]) pending[k] = (pending[k] || 0) + RB.saleChannelSplit(S, k, ch[k]).receive;
 
       // المشتريات حسب الاستهلاك
+      if (d >= beefUp && d < RB.addDays(beefUp, 7) && (wd === 0 || wd === 3)) {
+        const beef = S.raw.find((r) => r.id === 'm_beef');
+        if (beef.price === 340) beef.price = 360;
+      }
       if (wd === 0 || wd === 3) buy(d, 'meat', { inv: SUP.meat });
       if (dayIdx % 2 === 1) buy(d, 'bread', { inv: SUP.bread });
       if (dayIdx % 2 === 0 && dayIdx > 0) buy(d, 'veg', { inv: SUP.veg });
@@ -261,6 +282,10 @@
         cash -= 650;
       }
       if (dom === 25 && dayIdx < 40) exp({ date: d, category: 'cleaning', desc: 'مكافحة حشرات (3 أشهر)', amount: 600, months: 3, includesVat: true });
+      // سحب شريك بعد شهرين من التشغيل
+      if (d === withdrawAt) S.capital.push({ id: id('c'), date: d, partnerId: 'p1', type: 'withdrawal', account: 'bank', amount: 3000, note: 'سحب من الأرباح' });
+      // جرد آخر كل شهر: الموجود فعلاً (بفرق عدّ بسيط) مقرّباً لنصف وحدة شراء
+      if (d === RB.monthEnd(d.slice(0, 7))) S.stockCounts.push({ id: id('k'), date: d, note: 'جرد نهاية الشهر', lines: S.raw.map((r) => ({ rawId: r.id, qty: Math.max(0, Math.round(((-(need[r.id] || 0) / r.packQty) * between(0.97, 1.03)) * 2) / 2), price: r.price })) });
       // سكن العمال كل 3 أشهر
       if (d === RB.addMonths(RB.addDays(opening, -15), 3)) {
         exp({ date: d, category: 'housing', desc: 'إيجار سكن العمال — 3 أشهر', entity: 'مالك السكن', amount: 4500, taxable: false, months: 3 });
@@ -278,12 +303,6 @@
       // الشهر الأول جزئي: باشروا قبل نهايته بعشرين يوماً، فيُخصم من رواتبهم ما لم يعملوه (RB.payrollLine)
       const lines = S.employees.filter((e) => RB.isEmployeeActive(e, ym)).map((e) => RB.payrollLine(e, S, ym));
       S.payroll.push({ id: id('w'), month: ym, date, account: 'bank', gosiAccount: 'bank', lines, note: ym < openYm ? 'شهر جزئي قبل الافتتاح' : '' });
-    }
-
-    // ─── الجرد آخر كل شهر ───
-    for (let ym = openYm; ym < thisYm; ym = RB.ymAdd(ym, 1)) {
-      const date = RB.monthEnd(ym);
-      S.stockCounts.push({ id: id('k'), date, note: 'جرد نهاية الشهر', lines: S.raw.map((r) => ({ rawId: r.id, qty: Math.round(between(0.6, 2.4) * 2) / 2, price: r.price })) });
     }
 
     // ─── سداد ضريبة القيمة المضافة للأرباع المنتهية ───
