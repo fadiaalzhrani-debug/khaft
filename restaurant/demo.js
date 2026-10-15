@@ -152,12 +152,25 @@
 
     // كل مورد يُشترى منه حتى حد يكفي إلى موعد الشراء التالي ويومين احتياطاً (فلا ينفد المخزون)، بزيادة 6%
     const EVERY = { meat: 4, bread: 2, veg: 2, dry: 7, pack: 14, drinks: 7 };
+    // استهلاك يوم متوقع في أول التشغيل (لبضاعة الافتتاح): طلبات أول يوم بمتوسط أيام الأسبوع، نصفها في المحل
+    // ونصفها عبر التطبيقات بمتوسط قيمة الطلب، موزعة على الأصناف (mixW) ومفككة إلى موادها
+    const firstDay = {};
+    {
+      const orders0 = 80 * 0.72 * 1.1;
+      const storeGross0 = orders0 * 0.5 * 34;
+      const appGross0 = orders0 * 0.5 * 46;
+      for (const pid of Object.keys(mixW)) {
+        const p = S.products.find((x) => x.id === pid);
+        RB.explode(S, 'prod', pid, (storeGross0 * mixW[pid]) / p.price + (appGross0 * mixW[pid]) / (p.appPrice || p.price), firstDay);
+      }
+    }
     function buy(date, sup, opts) {
       const lines = [];
       for (const r of supplierRaw(sup)) {
         const q = need[r.id] || 0;
-        const par = (daily[r.id] || 0) * (EVERY[sup] + 2);
-        const packs = opts.initial ? 2 : Math.ceil((Math.max(0, q + par) * 1.06) / r.packQty);
+        // بضاعة الافتتاح تكفي حتى أول توريد من المورد (قد يتأخر أسبوعاً للموردين الأسبوعيين) ويومين احتياطاً
+        const par = (opts.initial ? firstDay[r.id] || 0 : daily[r.id] || 0) * (EVERY[sup] + 2);
+        const packs = opts.initial ? Math.max(1, Math.ceil((par * 1.06) / r.packQty)) : Math.ceil((Math.max(0, q + par) * 1.06) / r.packQty);
         if (!packs) continue;
         need[r.id] = q - packs * r.packQty;
         lines.push({ rawId: r.id, desc: r.name, qty: packs, price: r.price });
@@ -180,6 +193,8 @@
 
     // مخزون افتتاحي قبل الافتتاح بيومين، وجرده في اليوم السابق للافتتاح: بضاعة الافتتاح لا تُحمَّل على شهر ما قبل التشغيل
     for (const sup of Object.keys(SUP)) buy(RB.addDays(opening, -2), sup, { initial: true, inv: SUP[sup] });
+    // متوسط الاستهلاك اليومي يبدأ من التقدير نفسه (حد إعادة الطلب في الأيام الأولى)
+    for (const r of S.raw) daily[r.id] = firstDay[r.id] || 0;
     S.stockCounts.push({ id: id('k'), date: RB.addDays(opening, -1), note: 'جرد افتتاحي', lines: S.purchases.flatMap((p) => p.lines.filter((l) => l.rawId).map((l) => ({ rawId: l.rawId, qty: l.qty, price: l.price }))) });
     // ارتفاع سعر اللحم قبل نهاية التشغيل بثلاثة أسابيع (فاتورة بسعر أعلى يتحدث منها سعر المادة)
     const beefUp = RB.addDays(today, -21);
@@ -224,7 +239,7 @@
       for (const r of S.raw) {
         const u = used[r.id] || 0;
         need[r.id] = (need[r.id] || 0) + u;
-        daily[r.id] = daily[r.id] === undefined ? u : daily[r.id] * 0.8 + u * 0.2;
+        daily[r.id] = daily[r.id] * 0.8 + u * 0.2;
       }
       S.sales.push({ id: id('s'), date: d, channels: ch, items, note: '' });
       cash += ch.cash ? ch.cash.amount : 0;

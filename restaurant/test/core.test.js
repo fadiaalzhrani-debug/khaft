@@ -2335,3 +2335,110 @@ test('سلفة من ترك العمل تُستقطع من مكافأة نهاي�
   close(b['1102'], 50000 - 300 - 150);
   assert.ok(L.entries.some((e) => e.kind === 'payroll' && e.lines.some((l) => l.a === '1106')));
 });
+
+test('أصل قائم قبل بدء الدفتر: بلا ضريبة مدخلات، وقيمته حقوق للشركاء حسب نسبهم لا دفعاً من شريك واحد (مراجعة WP6)', () => {
+  const S = base(); // الشريكان 60% و40%
+  S.settings.opening = { date: '2026-10-01', bank: 10000 };
+  // كما يقترح الدليل: بالقيمة الدفترية، والنموذج حُفظ بقيم «خاضع/غير شامل» الافتراضية
+  S.assets = [{ id: 'a1', name: 'شواية', date: '2026-10-01', category: 'kitchen', amount: 50000, includesVat: false, taxable: true, account: 'opening', lifeMonths: 60, salvage: 0 }];
+  assert.equal(RB.assetTaxable(S.assets[0]), false);
+  assert.equal(RB.srcLabel('opening', S), 'أصل قائم قبل بدء الدفتر');
+  const { L, b } = tbBalanced(S, '2026-12-31');
+  // لا ضريبة مدخلات في أول إقرار
+  const v = RB.vatReport(S, '2026-10-01', '2026-12-31');
+  close(v.inVat, 0);
+  close(v.net, 0);
+  close(b['2102'] || 0, 0);
+  // الأصل بقيمته، والحقوق 60/40 مع بقية الأرصدة الافتتاحية
+  close(b['1201'], 50000);
+  close(-b['cap:p1'], 36000);
+  close(-b['cap:p2'], 24000);
+  const e = L.entries.find((x) => x.ref.s === 'assets' && x.ref.id === 'a1' && x.lines.some((l) => l.a === '1201'));
+  assert.equal(e.kind, 'opening');
+  // الإهلاك من تاريخ بدء الدفتر بعمره المتبقي
+  close(RB.depSchedule(S.assets[0], S).monthly, 833.33);
+  // الشركاء: لا فرق بينهما ولا «دفعها مباشرة»
+  const p = RB.partnersReport(S, '2026-10-01', '2026-12-31', L);
+  for (const r of p.rows) {
+    close(r.diff, 0);
+    close(r.direct, 0);
+  }
+  // رأس المال التأسيسي: الأصل القائم مصدر واستخدام معاً فلا يغيّر المتبقي
+  const u = RB.capitalUses(S, L);
+  close(u.contributions, 60000);
+  close(u.direct, 0);
+  close(u.assetsTotal, 50000);
+  close(u.remaining, 10000);
+  // الطريقة القديمة (دفعها الشريك من حسابه، خاضع): ضريبة مدخلات وحقوق لشريك واحد — هذا ما يمنعه المصدر الجديد
+  const old = JSON.parse(JSON.stringify(S));
+  old.assets[0].account = 'partner:p1';
+  close(RB.vatReport(old, '2026-10-01', '2026-12-31').inVat, 7500);
+  // بلا شركاء: خطأ يُذكر ولا قيد غير متوازن
+  const N = RB.emptyState();
+  N.assets = [Object.assign({}, S.assets[0])];
+  const LN = RB.buildLedger(N, '2026-12-31');
+  assert.ok(!LN.entries.some((x) => x.lines.some((l) => l.a === '1201')));
+  assert.equal(LN.errors[0].id, 'a1');
+});
+
+test('رصيد السلف عبر الزمن: حذف سلفة استُقطعت في مسير يجعله سالباً (يُمنع في الواجهة) (مراجعة WP6)', () => {
+  const S = base();
+  S.employees = [{ id: 'e1', name: 'سليم', nationality: 'expat', basic: 2000, housing: 0, startDate: '2025-01-01', active: true }];
+  S.advances = [{ id: 'a1', date: '2026-09-10', employeeId: 'e1', amount: 500, account: 'cash', kind: 'give' }];
+  const line = Object.assign(RB.payrollLine(S.employees[0], S, '2026-09'));
+  close(line.advance, 500);
+  S.payroll = [{ id: 'w', month: '2026-09', date: '2026-10-01', account: 'bank', gosiAccount: 'bank', lines: [line] }];
+  assert.deepEqual(RB.advanceLow(S, 'e1'), { min: 0, date: '' });
+  // بلا السلفة: −500 من يوم الصرف، و1106 دائن
+  const del = Object.assign({}, S, { advances: [] });
+  assert.deepEqual(RB.advanceLow(del, 'e1'), { min: -500, date: '2026-10-01' });
+  close(RB.balances(RB.buildLedger(del, '2026-10-31').entries, null, '2026-10-31')['1106'], -500);
+  // إنقاصها إلى 300: −200
+  close(RB.advanceLow(Object.assign({}, S, { advances: [Object.assign({}, S.advances[0], { amount: 300 })] }), 'e1').min, -200);
+  // نقلها إلى ما بعد الاستقطاع: سالب بين التاريخين ثم يعود صفراً
+  const late = Object.assign({}, S, { advances: [Object.assign({}, S.advances[0], { date: '2026-10-05' })] });
+  assert.deepEqual(RB.advanceLow(late, 'e1'), { min: -500, date: '2026-10-01' });
+  close(RB.advanceBalances(late, '2026-10-31').e1, 0);
+  // سداد نقدي في اليوم نفسه بعد الصرف: لا سالب في نهاية اليوم
+  const same = Object.assign({}, S, { payroll: [], advances: S.advances.concat([{ id: 'r', date: '2026-09-10', employeeId: 'e1', amount: 500, account: 'cash', kind: 'repay' }]) });
+  close(RB.advanceLow(same, 'e1').min, 0);
+});
+
+test('تعبئة المسير: استقطاع السلفة التلقائي (_autoAdv) يتبع الشهر، وما كتبه المستخدم يبقى (مراجعة WP6)', () => {
+  const S = base();
+  S.employees = [{ id: 'e1', name: 'سليم', nationality: 'expat', basic: 2000, housing: 0, startDate: '2025-01-01', active: true }];
+  S.advances = [{ id: 'a1', date: '2026-09-10', employeeId: 'e1', amount: 500, account: 'cash', kind: 'give' }];
+  const sep = RB.payrollFill(S, '2026-09');
+  close(sep[0].advance, 500);
+  close(sep[0]._autoAdv, 500);
+  // أغسطس قبل السلفة: التلقائي يصير صفراً
+  const aug = RB.payrollFill(S, '2026-08', JSON.parse(JSON.stringify(sep)), '2026-09');
+  close(aug[0].advance, 0);
+  // ما كتبه المستخدم (200) يبقى
+  sep[0].advance = 200;
+  close(RB.payrollFill(S, '2026-08', JSON.parse(JSON.stringify(sep)), '2026-09')[0].advance, 200);
+});
+
+test('التجريبي: المخزون المحسوب لا يصير سالباً، وبضاعة الافتتاح تكفي حتى أول توريد (مراجعة WP6)', () => {
+  for (const today of ['2026-10-14', '2026-10-09', '2027-02-17', '2026-12-31']) {
+    const D = RB.demoState(today);
+    const pack = Object.fromEntries(D.raw.map((r) => [r.id, r.packQty]));
+    const byDay = {};
+    for (const p of D.purchases) (byDay[p.date] = byDay[p.date] || { p: [], s: [] }).p.push(p);
+    for (const s of D.sales) (byDay[s.date] = byDay[s.date] || { p: [], s: [] }).s.push(s);
+    const oh = {};
+    for (const d of Object.keys(byDay).sort()) {
+      for (const p of byDay[d].p) for (const l of p.lines) if (l.rawId) oh[l.rawId] = (oh[l.rawId] || 0) + l.qty * pack[l.rawId];
+      const u = {};
+      for (const s of byDay[d].s) for (const i of s.items) RB.explode(D, 'prod', i.productId, i.qty, u);
+      for (const k of Object.keys(u)) {
+        oh[k] = (oh[k] || 0) - u[k];
+        assert.ok(oh[k] >= -0.001, `${today}: ${k} بالسالب ${(oh[k] / pack[k]).toFixed(2)} في ${d}`);
+      }
+    }
+    // الجرد الافتتاحي = بضاعة الافتتاح
+    const open = D.settings.openingDate;
+    const init = D.purchases.filter((p) => p.date === RB.addDays(open, -2));
+    close(RB.stockValue(D.stockCounts.find((c) => c.date === RB.addDays(open, -1)), D), RB.sum(init, RB.purchaseTotal));
+  }
+});

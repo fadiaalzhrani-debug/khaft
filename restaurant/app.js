@@ -1671,12 +1671,19 @@
     return out;
   }
   // من ترك العمل أو توقف وما زالت عليه سلفة
+  // واستقطاع سلفة من مسير أكثر من سلف الموظف (رصيد سالب: سلفة حُذفت أو لم تُسجَّل، أو استقطاع لعامل غير مسجل)
   function advanceAlerts() {
     const t = today();
     const bal = RB.advanceBalances(S, t);
-    return S.employees
+    const out = S.employees
       .filter((e) => e && (bal[e.id] || 0) > 0.005 && (e.active === false || (RB.isISODate(e.endDate) && e.endDate <= t)))
       .map((e) => ['warn', `${esc(e.name)} ترك العمل وعليه سلفة مستحقة ${fmt(bal[e.id])} ${cur()} — استقطعها في مسير التسوية أو سجّل سدادها.`, `<span class="al-a">${btn('سجّل السداد', 'add', `data-s="advances" data-x="repay:${esc(e.id)}"`, 'sm')}</span>`]);
+    for (const id of Object.keys(bal)) {
+      if (!(bal[id] < -0.005)) continue;
+      const e = id && S.employees.find((z) => z && z.id === id);
+      out.push(['bad', `استُقطع من راتب ${e ? esc(e.name) : id ? 'موظف محذوف' : 'عامل غير مسجل'} في مسير الرواتب ${fmt(-bal[id])} ${cur()} أكثر من سلفه المسجلة — سجّل السلفة، أو عدّل «استقطاع سلفة» في المسير.`, btn('مسيرات الرواتب', 'go', 'data-v="staff"', 'sm')]);
+    }
+    return out;
   }
   // ─── سجلات تحتاج تصحيح: تاريخ ناقص أو غير صالح (_bad)، أو فشل حسابها في الدفتر أو التكلفة ───
   const SECTION_NAME = {
@@ -1849,13 +1856,14 @@
           { h: 'الفرق', num: 1, f: (r) => (Math.abs(r.diff) < 0.5 ? '—' : `${N(r.diff)} ${r.diff > 0 ? chip('زيادة', 'good') : chip('ناقص', 'warn')}`) },
           { h: 'المسحوبات', num: 1, f: (r) => N(r.drawings) },
           { h: 'نصيبه من<br>ربح الفترة', num: 1, f: (r) => N(r.profitPeriod) },
-          // نصيبه من الأرباح المتراكمة − مسحوباته؛ بالسالب سحب من رأس ماله (العناوين على سطرين ليتسع الجدول على شاشة 1280)
-          { h: 'أرباح متاحة<br>للسحب', num: 1, f: (r) => N(r.undistributed) + (r.undistributed < -0.5 ? '<div class="sm">' + chip('سحب من رأس المال', 'warn wrap') + '</div>' : '') },
+          // نصيبه من الأرباح المتراكمة − مسحوباته؛ بالسالب مع مسحوبات: سحب من رأس ماله (وبلا مسحوبات: خسارة فقط)
+          // (العناوين على سطرين، والشارة قصيرة، والهوامش أضيق ليتسع الجدول على شاشة 1280)
+          { h: 'أرباح متاحة<br>للسحب', num: 1, f: (r) => N(r.undistributed) + (r.undistributed < -0.5 && r.drawings > 0.5 ? `<div class="sm" title="مسحوباته أكثر من نصيبه من الأرباح بمقدار ${fmt(-r.undistributed)}: الزيادة سحب من رأس ماله">${chip('من رأس المال', 'warn')}</div>` : '') },
           { h: 'رصيد<br>حقوقه', num: 1, f: (r) => N(r.equity) },
           { h: '', cls: 'acts', f: (r) => rowActs('partners', r.id) },
         ],
         rep.rows,
-        { cards: 1, empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(rep.undistributedTotal), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
+        { cards: 1, cls: 'dense', empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(rep.undistributedTotal), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
       ),
       { sub: `ربح الفترة يوزّع حسب النسب (${periodLabel()}). «المسحوبات» و«أرباح متاحة للسحب» تراكمية من بداية الدفتر حتى ${dtText(asOf)}: نصيبه من الأرباح المتراكمة كلها (لا ربح الفترة) − كل مسحوباته. «رصيد حقوقه» = مساهمته − مسحوباته + نصيبه من الأرباح المتراكمة.` }
     );
@@ -1877,9 +1885,9 @@
         [
           { h: 'التاريخ', f: (r) => dt(r.date) },
           { h: 'الشريك', f: (r) => esc((S.partners.find((p) => p.id === r.partnerId) || {}).name || '—') },
-          { h: 'النوع', f: (r) => (r.type === 'withdrawal' ? chip('سحب', 'warn') : chip('إيداع', 'good')) },
-          { h: 'الحساب', f: (r) => esc(RB.srcLabel(r.account, S)) },
-          { h: 'المبلغ', num: 1, f: (r) => N(r.amount) },
+          // الحساب تحت النوع (لا عمود له) ليتسع المبلغ في نصف الصفحة
+          { h: 'النوع والحساب', f: (r) => (r.type === 'withdrawal' ? chip('سحب', 'warn') : chip('إيداع', 'good')) + `<div class="muted sm">${esc(RB.srcLabel(r.account, S))}</div>` },
+          { h: 'المبلغ', num: 1, cls: 'nw', f: (r) => N(r.amount) },
           { h: '', cls: 'acts', f: (r) => rowActs('capital', r.id) },
         ],
         good(S.capital).sort((a, b) => (a.date < b.date ? 1 : -1)),
@@ -2146,7 +2154,8 @@
           { h: 'المقابل المالي<br>والإقامة', num: 1, f: (e) => N(RB.sum(costs[e.id].items.filter((i) => i.k === 'levy' || i.k === 'iqama'), (i) => i.v)) },
           { h: 'التكلفة الشهرية<br>الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
           { h: 'مخصص<br>نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
-          { h: 'سلف<br>مستحقة', num: 1, f: (e) => ((adv[e.id] || 0) > 0.005 ? N(adv[e.id]) : '—') },
+          // بالسالب: استُقطع من راتبه أكثر من سلفه (تنبيه في لوحة المتابعة)
+          { h: 'سلف<br>مستحقة', num: 1, f: (e) => (Math.abs(adv[e.id] || 0) > 0.005 ? N(adv[e.id]) : '—') },
           { h: 'الحالة', f: (e) => { const st = RB.employeeStatus(e, ym); return st === 'active' ? chip('على رأس العمل', 'good') : chip(EMP_STATUS[st], st === 'future' ? 'accent' : 'mute'); } },
           { h: '', cls: 'acts', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${esc(e.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
@@ -2897,37 +2906,82 @@
   };
 
   FORMS.assets = (rec, x, opts = {}) => {
-    // التأمين المسترد لا ضريبة عليه: يُفرض «غير خاضع» عند اختيار التصنيف وعند فتح سجل محفوظ أو حفظه
+    const isEdit = editing(rec, opts);
+    // التأمين المسترد لا ضريبة عليه: يُفرض «غير خاضع» عند اختيار التصنيف وعند فتح سجل محفوظ أو حفظه،
+    // وكذلك الأصل القائم قبل بدء الدفتر (ضريبته استُردّت عند شرائه)
     const noVat = (v) => Object.assign(v, { taxable: false, includesVat: false });
     const value = Object.assign({}, rec || { id: RB.uid(), date: today(), name: '', category: 'kitchen', amount: '', includesVat: false, taxable: true, account: 'bank', lifeMonths: 60, salvage: 0, supplier: '', note: '' });
-    if (value.category === 'deposit') noVat(value);
+    if (value.category === 'deposit' || RB.isOpeningAsset(value)) noVat(value);
+    // مطعم قائم (له أرصدة افتتاحية): «أصل قائم قبل بدء الدفتر» مصدراً للدفع — قيمته الدفترية حقوق للشركاء حسب نسبهم
+    const op = RB.openingInfo(S);
+    const accOpts = payOptions(true).concat(op || RB.isOpeningAsset(value) ? [['opening', RB.PAY_LABEL.opening + ' (رصيد افتتاحي)']] : []);
+    // أصل جديد بتاريخ بدء الدفتر أو قبله: «أصل قائم» تلقائياً ما دام المستخدم لم يختر مصدر الدفع بنفسه
+    let accTouched = isEdit;
+    let lastAcc = value.account;
+    const date0 = value.date;
+    const setAcc = (v, a) => {
+      if (a === 'opening') {
+        noVat(v);
+        // بتاريخ بدء الدفتر ما لم يكتب المستخدم تاريخاً
+        if (!isEdit && op && v.date === date0 && v.date > op.date) v.date = op.date;
+      } else if (lastAcc === 'opening') v.taxable = v.category !== 'deposit';
+      v.account = a;
+      lastAcc = a;
+    };
     return formModal({
-      title: editing(rec, opts) ? 'تعديل أصل' : 'أصل جديد',
+      title: isEdit ? 'تعديل أصل' : 'أصل جديد',
       value,
       onChange: (p, v) => {
+        if (p === 'account') {
+          accTouched = true;
+          setAcc(v, v.account);
+          return 'redraw';
+        }
+        if (p === 'date') {
+          if (accTouched || !op || !RB.isISODate(v.date) || !['bank', 'opening'].includes(v.account)) return;
+          const want = v.date <= op.date ? 'opening' : 'bank';
+          if (want === v.account) return;
+          setAcc(v, want);
+          return 'redraw';
+        }
         if (p !== 'category') return;
         v.lifeMonths = RB.assetCat(v.category).life;
-        v.taxable = v.category !== 'deposit';
+        v.taxable = v.category !== 'deposit' && !RB.isOpeningAsset(v);
         if (!v.taxable) v.includesVat = false;
         return 'redraw';
       },
-      fields: (v) => [
-        { k: 'name', label: 'اسم الأصل', req: 1, placeholder: 'مثال: شواية برقر مسطحة' },
-        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'تصنيف الأصل', options: RB.ASSET_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الشراء', req: 1 }] },
-        { type: 'html', html: (x) => `<p class="note">${esc(RB.assetCat(x.category).hint)}</p>` },
-        { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'دُفع من', options: payOptions(true) }] },
-        ...(v.category === 'deposit' ? [{ type: 'html', html: () => '<p class="note">التأمين المسترد لا تُحتسب عليه ضريبة القيمة المضافة</p>' }] : vatFields()),
-        { type: 'row', fields: [{ k: 'lifeMonths', type: 'num', label: 'العمر الإنتاجي (بالأشهر)', min: 0, help: '0 = لا يُستهلك (مثل التأمين المسترد)' }, { k: 'salvage', type: 'money', label: 'القيمة المتبقية في النهاية', min: 0 }] },
-        { k: 'supplier', label: 'المورد' },
-        { k: 'note', type: 'textarea', label: 'ملاحظات' },
-      ],
+      fields: (v) => {
+        const old = RB.isOpeningAsset(v);
+        return [
+          { k: 'name', label: 'اسم الأصل', req: 1, placeholder: 'مثال: شواية برقر مسطحة' },
+          { type: 'row', fields: [{ k: 'category', type: 'select', label: 'تصنيف الأصل', options: RB.ASSET_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: old ? 'تاريخ بدء الدفتر' : 'تاريخ الشراء', req: 1 }] },
+          { type: 'html', html: (x) => `<p class="note">${esc(RB.assetCat(x.category).hint)}</p>` },
+          { type: 'row', fields: [{ k: 'amount', type: 'money', label: old ? 'القيمة الدفترية' : 'المبلغ', req: 1, min: 0, help: old ? 'التكلفة − ما استُهلك منها حتى بدء الدفتر' : '' }, { k: 'account', type: 'select', label: 'دُفع من', options: accOpts }] },
+          ...(old
+            ? [{ type: 'html', html: () => '<p class="note">أصل كان يملكه المطعم قبل بدء الدفتر: يُسجَّل بقيمته الدفترية بلا ضريبة (ضريبته استُردّت عند شرائه)، وتُضاف قيمته لحقوق الشركاء حسب نسبهم.</p>' }]
+            : v.category === 'deposit'
+              ? [{ type: 'html', html: () => '<p class="note">التأمين المسترد لا تُحتسب عليه ضريبة القيمة المضافة</p>' }]
+              : vatFields()),
+          { type: 'row', fields: [{ k: 'lifeMonths', type: 'num', label: old ? 'العمر المتبقي (بالأشهر)' : 'العمر الإنتاجي (بالأشهر)', min: 0, help: '0 = لا يُستهلك (مثل التأمين المسترد)' }, { k: 'salvage', type: 'money', label: 'القيمة المتبقية في النهاية', min: 0 }] },
+          { k: 'supplier', label: 'المورد' },
+          { k: 'note', type: 'textarea', label: 'ملاحظات' },
+        ];
+      },
       preview: (v) => {
         const sch = RB.depSchedule(Object.assign({}, v, { date: v.date || today() }), S);
-        return vatPreview(v.amount, v.includesVat, RB.assetTaxable(v), v.date) + (sch.monthly ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>` : `<p class="note">لا يُستهلك هذا الأصل.</p>`);
+        const dep = sch.monthly ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>` : `<p class="note">لا يُستهلك هذا الأصل.</p>`;
+        if (RB.isOpeningAsset(v)) {
+          const sh = RB.openingShares(S, num(v.amount));
+          return (sh.length ? `<p class="note">حقوق الشركاء: ${sh.map((z) => `${esc((S.partners.find((p) => p.id === z.partnerId) || {}).name || '')} <b class="n">${fmt(z.amount)}</b>`).join(' · ')}</p>` : '<p class="note bad">أضف الشركاء أولاً: قيمة الأصل القائم تُسجَّل حقوقاً لهم.</p>') + (op && RB.isISODate(v.date) && v.date !== op.date ? `<p class="note">تاريخ بدء الدفتر في الأرصدة الافتتاحية ${dtText(op.date)}.</p>` : '') + dep;
+        }
+        // تاريخ قبل بدء الدفتر بدفع من البنك أو الصندوق: الأرجح أصل قائم (لا تُسترد ضريبته مرة أخرى ولا يُخصم ثمنه)
+        const early = op && RB.isISODate(v.date) && v.date < op.date ? `<p class="note bad">تاريخ الأصل قبل بدء الدفتر (${dtText(op.date)}). إن كان المطعم يملكه قبل البدء فاختر في «دُفع من»: «${RB.PAY_LABEL.opening}».</p>` : '';
+        return early + vatPreview(v.amount, v.includesVat, RB.assetTaxable(v), v.date) + dep;
       },
       onSave: (v) => {
         if (v.account === 'payable' && !(v.supplier || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';
-        if (v.category === 'deposit') noVat(v);
+        if (RB.isOpeningAsset(v) && !S.partners.length) return 'أضف الشركاء أولاً: قيمة الأصل القائم تُسجَّل حقوقاً لهم حسب نسبهم.';
+        if (v.category === 'deposit' || RB.isOpeningAsset(v)) noVat(v);
         upsert('assets', v);
       },
     });
@@ -3160,6 +3214,7 @@
       // سلفة باقية عليه تُستقطع من مكافأته (بقدرها)
       const owe = Math.max(0, RB.advanceBalances(S, today())[settleEmp.id] || 0);
       const line = Object.assign(RB.payrollLine(settleEmp, S, today().slice(0, 7)), { basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov, advance: r2(Math.min(owe, prov)), _autoDed: 0 });
+      line._autoAdv = line.advance;
       delete line.note;
       Object.assign(base, {
         month: today().slice(0, 7),
@@ -3189,8 +3244,19 @@
       const e = empOf(id);
       return e && RB.isISOMonth(ym2) && RB.isEmployeeActive(e, ym2) ? num(RB.payrollLine(e, S, ym2).deductions) : 0;
     };
-    // المسير المحفوظ (أو المنسوخ): خصم الأيام التلقائي لكل سطر، ليُعرف عند تغيير الموظف ما وضعه البرنامج
-    const value = rec && Array.isArray(rec.lines) ? Object.assign({}, rec, { lines: rec.lines.map((l) => (l && typeof l === 'object' && l._autoDed === undefined ? Object.assign({}, l, { _autoDed: autoDed(l.employeeId, rec.month) }) : l)) }) : rec || base;
+    // المسير المحفوظ (أو المنسوخ): خصم الأيام التلقائي لكل سطر، ليُعرف عند تغيير الموظف ما وضعه البرنامج؛
+    // واستقطاع السلفة المحفوظ يخص موظف السطر، فيُعامل كتلقائي يتغيّر بتغيير الموظف
+    const value = rec && Array.isArray(rec.lines)
+      ? Object.assign({}, rec, {
+          lines: rec.lines.map((l) => {
+            if (!l || typeof l !== 'object') return l;
+            const o = Object.assign({}, l);
+            if (o._autoDed === undefined) o._autoDed = autoDed(l.employeeId, rec.month);
+            if (o._autoAdv === undefined) o._autoAdv = num(l.advance);
+            return o;
+          }),
+        })
+      : rec || base;
     // linesYm: الشهر الذي بُنيت له الأسطر (لمعرفة ما عدّله المستخدم عند إعادة التعبئة)، lastMonth: آخر شهر صالح
     let linesYm = value.month;
     let lastMonth = value.month;
@@ -3231,6 +3297,19 @@
           if (!num(row.deductions) || (row._autoDed !== undefined && Math.abs(num(row.deductions) - num(row._autoDed)) < 0.005)) row.deductions = d;
           row._autoDed = d;
         };
+        // استقطاع السلفة يخص الموظف: رصيد سلف الجديد في تاريخ الصرف (بلا هذا المسير) بقدر ما يُصرف له
+        // (كما في RB.payrollLine). عامل غير مسجل أو بلا سلف: صفر؛ وما كتبه المستخدم يبقى لموظف عليه سلف
+        const adv = () => {
+          const b = row.employeeId ? advOut(v)[row.employeeId] || 0 : 0;
+          if (!(b > 0.005)) {
+            row.advance = 0;
+            row._autoAdv = 0;
+            return;
+          }
+          const a = r2(Math.max(0, Math.min(b, RB.payrollLineGross(row) - num(row.gosiEe) + Math.max(0, num(row.eosbPaid)))));
+          if (!num(row.advance) || (row._autoAdv !== undefined && Math.abs(num(row.advance) - num(row._autoAdv)) < 0.005)) row.advance = a;
+          row._autoAdv = a;
+        };
         const e = empOf(row.employeeId);
         if (e) {
           // له راتب في الشهر: راتبه وتأميناته من بياناته (وخصم ما لم يعمله إن باشر أو ترك العمل أثناءه)؛
@@ -3239,13 +3318,15 @@
           row.name = e.name;
           for (const k of ['basic', 'housing', 'allowances', 'gosiEe', 'gosiEr']) row[k] = pl[k];
           ded(num(pl.deductions));
+          adv();
           if (pl.note) row.note = pl.note;
           else delete row.note;
           return 'redraw';
         }
-        // عامل غير مسجل: لا خصم أيام له (بقية السطر تبقى ليُعدّلها المستخدم)
+        // عامل غير مسجل: لا خصم أيام له ولا سلفة (بقية السطر تبقى ليُعدّلها المستخدم)
         if (!row.employeeId) {
           ded(0);
+          adv();
           delete row.note;
           return 'redraw';
         }
@@ -3364,13 +3445,30 @@
         const out = advOut(v);
         const more = v.lines.filter((l) => num(l.advance) > (out[l.employeeId || ''] || 0) + 0.005);
         if (more.length && !(await confirmBox(`استقطاع السلفة أكبر من رصيد السلف المستحق: ${more.map((l) => `${esc(l.name || (empOf(l.employeeId) || {}).name || 'عامل')} ${fmt(l.advance)} والرصيد ${fmt(Math.max(0, out[l.employeeId || ''] || 0))}`).join('، ')}. متابعة؟`, { ok: 'احفظ' }))) return false;
-        v.lines.forEach((l) => delete l._autoDed);
+        v.lines.forEach((l) => {
+          delete l._autoDed;
+          delete l._autoAdv;
+        });
         // مسير ثانٍ لنفس الشهر برواتب: يُؤكَّد (تعديل مسير قائم يُسأل فقط إن نُقل إلى شهر له مسير)
         if (otherRun(v) && RB.payrollTotals(v).gross > 0 && (!isEdit || v.month !== runMonth(rec)) && !(await confirmBox('يوجد مسير لنفس الشهر. حفظ مسير ثانٍ؟', { ok: 'احفظ' }))) return 'لم يُحفظ المسير.';
         upsert('payroll', v);
       },
     });
   };
+
+  // سلفة استُقطعت في مسير رواتب: حذفها أو إنقاصها أو نقلها لموظف آخر أو لتاريخ بعد الاستقطاع يجعل رصيد سلف
+  // الموظف سالباً (1106 دائن). يُمنع ما دام يزيد السالب، ويُعدَّل «استقطاع سلفة» في المسير أولاً.
+  // next: قائمة السلف بعد التغيير، ids: الموظفون المتأثرون. يرجع رسالة المنع أو ''
+  function advanceGuard(next, ids) {
+    const T = Object.assign({}, S, { advances: next });
+    for (const id of new Set(ids.filter(Boolean))) {
+      const after = RB.advanceLow(T, id);
+      if (after.min >= -0.005 || after.min >= RB.advanceLow(S, id).min - 0.005) continue;
+      const e = S.employees.find((z) => z.id === id);
+      return `هذه السلفة استُقطعت من راتب ${e ? e.name : 'الموظف'} في مسير الرواتب، ورصيد سلفه يصير ${fmt(after.min)} في ${dtText(after.date)}. عدّل «استقطاع سلفة» في المسير أولاً.`;
+    }
+    return '';
+  }
 
   // سلفة عامل: صرف مبلغ له (أصل عليه في 1106)، أو سداد نقدي منه. الاستقطاع من الراتب في مسير الرواتب.
   // x: «repay:معرّف الموظف» من تنبيه سلفة من ترك العمل
@@ -3407,6 +3505,8 @@
         if (!(num(v.amount) > 0)) return 'أدخل مبلغاً أكبر من صفر.';
         if (v.kind === 'repay' && num(v.amount) > bal(v) + 0.005) return `السداد أكبر من رصيد سلفه المستحق (${fmt(Math.max(0, bal(v)))}).`;
         v.amount = num(v.amount);
+        const block = advanceGuard(S.advances.filter((a) => a && a.id !== v.id).concat([v]), [v.employeeId, rec && rec.employeeId]);
+        if (block) return block;
         upsert('advances', v);
       },
     });
@@ -4057,7 +4157,7 @@
       wide: true,
       value: val,
       fields: [
-        { type: 'html', html: () => '<p class="note">للمطعم الشغّال قبل بدء الدفتر: ما في الصندوق والبنك والمخزون، وما للمطعم عند التطبيقات، وما عليه للموردين في تاريخ البدء. صافيها يُسجَّل حقوقاً للشركاء حسب نسبهم.</p><p class="note">الأصول الموجودة سجّلها في صفحة الأصول بقيمتها الدفترية وعمرها المتبقي، والدفع «دفعها الشريك من حسابه» (بتاريخ بدء الدفتر).</p>' },
+        { type: 'html', html: () => '<p class="note">للمطعم الشغّال قبل بدء الدفتر: ما في الصندوق والبنك والمخزون، وما للمطعم عند التطبيقات، وما عليه للموردين في تاريخ البدء. صافيها يُسجَّل حقوقاً للشركاء حسب نسبهم.</p><p class="note">الأصول الموجودة (المعدات والأثاث والديكور) سجّلها بعد حفظ هذه الأرصدة من صفحة الأصول: بقيمتها الدفترية وعمرها المتبقي وبتاريخ بدء الدفتر، واختر في «دُفع من»: «أصل قائم قبل بدء الدفتر». لا تُحتسب عليها ضريبة (استُردّت عند شرائها)، وتُضاف قيمتها لحقوق الشركاء حسب نسبهم.</p>' },
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ بدء الدفتر', req: 1, help: 'الأرصدة كما هي صباح هذا اليوم' }, { k: 'cash', type: 'money', label: 'النقد في الصندوق', min: 0 }, { k: 'bank', type: 'money', label: 'رصيد الحساب البنكي', min: 0 }] },
         { type: 'row', fields: [{ k: 'inventory', type: 'money', label: 'قيمة المخزون من جرد افتتاحي', min: 0, help: 'الكميات × سعر الشراء بدون الضريبة' }, { k: 'vatCredit', type: 'money', label: 'رصيد ضريبة دائن من إقرار سابق', min: 0, help: 'يُخصم من أول إقرار في الدفتر' }] },
         ...(apps.length ? [{ type: 'section', label: 'مستحقات التطبيقات (مبيعات لم تُحوَّل للبنك بعد)' }, { type: 'row', fields: apps.map((c) => ({ k: 'apps.' + c.id, type: 'money', label: c.name, min: 0 })) }] : []),
@@ -4285,6 +4385,9 @@
       const id = el.dataset.id;
       if (refCheck[s] && refCheck[s](id)) return toast(refMsg[s], 'bad');
       const rec = find(s, id);
+      // سلفة استُقطعت في مسير: حذفها يجعل رصيد سلف الموظف سالباً
+      const advBlock = s === 'advances' && rec ? advanceGuard(S.advances.filter((a) => a && a.id !== id), [rec.employeeId]) : '';
+      if (advBlock) return toast(advBlock, 'bad');
       if (s === 'products' && S.sales.some((x) => (x.items || []).some((i) => i.productId === id))) {
         if (!(await confirmBox('هذا الصنف له مبيعات مسجلة، وحذفه يُسقطه من تحليل المنيو. الأفضل جعله «غير مفعّل». هل تحذفه رغم ذلك؟', { danger: true, ok: 'احذف' }))) return;
       } else if (s === 'raw' && S.stockCounts.some((c) => (c.lines || []).some((l) => l && l.rawId === id))) {
@@ -4387,7 +4490,10 @@
       render();
       toast('سُجّل ' + dtText(d) + ' يوماً مغلقاً، فلا تنبيه له.');
     },
-    opening: () => openingForm(),
+    opening: () => {
+      if (roBlock()) return;
+      openingForm();
+    },
     delopening: async () => {
       if (roBlock()) return;
       if (!(await confirmBox('حذف الأرصدة الافتتاحية؟ يُحذف قيدها من الدفاتر (الصندوق والبنك والمخزون والموردون وحقوق الشركاء).', { danger: true, ok: 'احذف' }))) return;

@@ -256,7 +256,7 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
 .banner.info { background: var(--surface-2); border-color: var(--line); }
 
 /* ─── عرض فقط: لا أزرار تعديل لمن لا يملك صلاحية تعديل البيانات المشتركة ─── */
-body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-act='del'], [data-act='renew'], [data-act='stopRenew'], [data-act='start'], [data-act='wipe'], [data-act='settings'], [data-act='channel'], [data-act='delchannel'], [data-act='resumereplace'], [data-act='import']) { display: none !important; }
+body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-act='del'], [data-act='renew'], [data-act='stopRenew'], [data-act='start'], [data-act='wipe'], [data-act='settings'], [data-act='channel'], [data-act='delchannel'], [data-act='resumereplace'], [data-act='import'], [data-act='closedDay'], [data-act='opening'], [data-act='delopening']) { display: none !important; }
 
 /* ─── رؤوس الصفحات ─── */
 .page-h { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
@@ -378,6 +378,9 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .tbl.stmt tr.total td { font-weight: 700; border-top: 2px solid var(--ink); background: var(--accent-soft); }
 .tbl.stmt tr.total.big td { font-size: 1.05rem; }
 .tbl.stmt tr.total.neg td .n { color: var(--bad); }
+/* جدول بأعمدة كثيرة (حصص الشركاء): هوامش أضيق ليتسع على شاشة 1280 */
+.tbl.dense th, .tbl.dense td { padding-inline: 6px; }
+.tbl td.nw { white-space: nowrap; }
 .tbl.mini { font-size: 0.86rem; }
 .tbl.mini tr.total td { font-weight: 700; border-top: 2px solid var(--ink); }
 .tbl.journal tr.jh td { background: var(--surface-2); font-weight: 600; border-top: 1px solid var(--line); }

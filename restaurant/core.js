@@ -191,7 +191,8 @@
     other: { name: 'غرامة أو تسوية — بدون ضريبة', short: 'غرامة أو تسوية' },
   };
 
-  RB.PAY_LABEL = { cash: 'الصندوق (الكاشير)', bank: 'الحساب البنكي', payable: 'آجل على المورد' };
+  // opening: أصل كان يملكه المطعم قبل بدء الدفتر (مطعم قائم) — للأصول فقط (RB.isOpeningAsset)
+  RB.PAY_LABEL = { cash: 'الصندوق (الكاشير)', bank: 'الحساب البنكي', payable: 'آجل على المورد', opening: 'أصل قائم قبل بدء الدفتر' };
 
   RB.defaultSettings = () => ({
     name: 'مطعم البرقر',
@@ -484,8 +485,12 @@
 
   const catOf = (list, id) => list.find((c) => c.id === id) || list[list.length - 1];
   RB.assetCat = (id) => RB.ASSET_CATS.find((c) => c.id === id) || RB.ASSET_CATS[0];
-  // التأمين المسترد (تأمين الإيجار أو العدادات) ليس توريداً خاضعاً: لا ضريبة عليه مهما كانت قيمة taxable المحفوظة
-  RB.assetTaxable = (a) => a.category !== 'deposit' && !!a.taxable;
+  // أصل قائم قبل بدء الدفتر (رصيد افتتاحي): يُسجَّل بقيمته الدفترية، لا ضريبة مدخلات عليه (استُردّت عند شرائه)،
+  // وقيمته حقوق للشركاء حسب نسبهم كبقية الأرصدة الافتتاحية
+  RB.isOpeningAsset = (a) => !!a && a.account === 'opening';
+  // التأمين المسترد (تأمين الإيجار أو العدادات) ليس توريداً خاضعاً: لا ضريبة عليه مهما كانت قيمة taxable المحفوظة،
+  // ولا الأصل القائم قبل بدء الدفتر
+  RB.assetTaxable = (a) => a.category !== 'deposit' && !RB.isOpeningAsset(a) && !!a.taxable;
   RB.expenseCat = (id) => catOf(RB.EXPENSE_CATS, id);
   RB.purchaseCat = (id) => RB.PURCHASE_CATS.find((c) => c.id === id) || RB.PURCHASE_CATS[0];
 
@@ -760,13 +765,36 @@
     }
     return out;
   };
+  // أدنى رصيد سلف للموظف في نهاية أي يوم (السلف وسدادها واستقطاعات المسيرات بتواريخها): {min, date}.
+  // بالسالب: استُقطع من راتبه أكثر مما أُعطي حتى ذلك اليوم (رصيد دائن في 1106)
+  RB.advanceLow = (S, empId) => {
+    const day = {};
+    const add = (d, v) => (day[d] = (day[d] || 0) + v);
+    for (const a of good(S.advances)) if ((a.employeeId || '') === (empId || '') && a.date) add(a.date, a.kind === 'repay' ? -num(a.amount) : num(a.amount));
+    for (const pr of good(S.payroll)) {
+      if (!pr.date) continue;
+      for (const l of pr.lines || []) if (l && (l.employeeId || '') === (empId || '') && num(l.advance) > 0) add(pr.date, -num(l.advance));
+    }
+    let bal = 0;
+    let min = 0;
+    let at = '';
+    for (const d of Object.keys(day).sort()) {
+      bal = r2(bal + day[d]);
+      if (bal < min) {
+        min = bal;
+        at = d;
+      }
+    }
+    return { min, date: at };
+  };
   // أسطر مسير الشهر ym من بيانات الموظفين: من له راتب في الشهر، ومن باشر أو ترك العمل أثناءه بخصم ما لم يعمله
   // (نسب التأمينات حسب الشهر). cur: الأسطر الحالية (بُنيت لشهر fromYm) يبقى منها ما أدخله المستخدم:
   // الإضافي، والخصومات والتأمينات إن اختلفت عمّا يُحسب تلقائياً، ومكافأة نهاية الخدمة المصروفة؛
   // والأسطر بلا موظف مسجل، وسطر من ليس له راتب في الشهر إن صُرفت له فيه مكافأة نهاية الخدمة.
   // ما أُدخل لموظف ليس له راتب في ym لا يبقى في الناتج، فتغيير الشهر يُبنى دائماً من أسطر ما قبل التغيير
   // (النموذج يحتفظ بها حتى يغادر المستخدم حقل الشهر) لا من أسطر شهر وسيط.
-  // l._autoDed (مؤقت، يُحذف عند الحفظ): خصم الأيام الذي وضعه البرنامج في السطر، فما خالفه أدخله المستخدم
+  // l._autoDed و l._autoAdv (مؤقتان، يُحذفان عند الحفظ): خصم الأيام واستقطاع السلفة اللذان وضعهما البرنامج في السطر،
+  // فما خالفهما أدخله المستخدم
   RB.payrollFill = (S, ym, cur, fromYm) => {
     cur = (cur || []).filter((l) => l && typeof l === 'object');
     fromYm = RB.isISOMonth(fromYm) ? fromYm : ym;
@@ -778,6 +806,7 @@
       .map((e) => {
         const n = RB.payrollLine(e, S, ym);
         n._autoDed = n.deductions;
+        n._autoAdv = n.advance;
         const o = old[e.id];
         if (!o) return n;
         const was = RB.payrollLine(e, S, fromYm);
@@ -789,7 +818,7 @@
         if (!same(o.gosiEr, was.gosiEr) && !same(o.gosiEr, g.er)) n.gosiEr = o.gosiEr;
         if (num(o.eosbPaid) > 0) n.eosbPaid = o.eosbPaid;
         // استقطاع السلفة: ما عدّله المستخدم يبقى، وإلا فالمستحق عليه في الشهر الجديد
-        if (o.advance !== undefined && !same(o.advance, was.advance)) n.advance = o.advance;
+        if (o.advance !== undefined && !same(o.advance, o._autoAdv !== undefined ? o._autoAdv : was.advance)) n.advance = o.advance;
         return n;
       });
     const ids = new Set(lines.map((l) => l.employeeId));
@@ -1194,7 +1223,12 @@
       const cat = RB.assetCat(a.category);
       const sp = RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date);
       const ref = { s: 'assets', id: a.id };
-      add(a.date, 'asset', ref, 'شراء أصل: ' + a.name, [[cat.acc, sp.cost], ['2102', sp.vat, sp.net], [RB.srcAcc(a.account), -sp.gross]]);
+      if (RB.isOpeningAsset(a)) {
+        // أصل قائم قبل بدء الدفتر: رصيد افتتاحي، قيمته حقوق للشركاء حسب نسبهم (قيد 'opening' لا دفعاً مباشراً من شريك)
+        const shares = RB.openingShares(S, sp.cost);
+        if (!shares.length && Math.abs(sp.cost) >= 0.005) throw new Error('أضف الشركاء قبل الأصل القائم: قيمته تُسجَّل حقوقاً لهم');
+        add(a.date, 'opening', ref, 'أصل قائم (رصيد افتتاحي): ' + a.name, [[cat.acc, sp.cost], ...shares.map((x) => ['cap:' + x.partnerId, -x.amount])]);
+      } else add(a.date, 'asset', ref, 'شراء أصل: ' + a.name, [[cat.acc, sp.cost], ['2102', sp.vat, sp.net], [RB.srcAcc(a.account), -sp.gross]]);
       const sched = RB.depSchedule(a, S);
       for (const m of sched.months) add(m.date, 'dep', ref, 'إهلاك: ' + a.name, [['5501', m.amount], ['1290', -m.amount]]);
     });
@@ -1936,7 +1970,9 @@
     const open = set.openingDate;
     // حقوق الشركاء من الأرصدة الافتتاحية (مطعم قائم) رأس مال كالإيداع، لا دفعاً مباشراً من الشريك
     const opInfo = RB.openingInfo(S);
-    const contributions = r2(sum(good(S.capital).filter((c) => c.type !== 'withdrawal'), (c) => num(c.amount)) + (opInfo ? opInfo.net : 0));
+    // والأصول القائمة قبل بدء الدفتر: قيمتها حقوق افتتاحية، وتُعرض في الاستخدامات أياً كان تاريخها
+    const opAssets = good(S.assets).filter(RB.isOpeningAsset);
+    const contributions = r2(sum(good(S.capital).filter((c) => c.type !== 'withdrawal'), (c) => num(c.amount)) + (opInfo ? opInfo.net : 0) + sum(opAssets, (a) => num(a.amount)));
     let direct = 0;
     for (const e of L.entries) for (const l of e.lines) if (l.a.startsWith('cap:') && l.v < 0 && e.kind !== 'capital' && e.kind !== 'opening') direct = r2(direct - l.v);
     // الأصول التأسيسية فقط: المشتراة حتى الافتتاح (نقداً أو بالآجل، مثل مشتريات ومصاريف ما قبل الافتتاح).
@@ -1947,7 +1983,7 @@
     for (const a of good(S.assets)) {
       const c = RB.assetCat(a.category);
       const sp = RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date);
-      if (open && a.date > open) {
+      if (open && a.date > open && !RB.isOpeningAsset(a)) {
         laterAssets.amount = r2(laterAssets.amount + sp.gross);
         laterAssets.count++;
         continue;
