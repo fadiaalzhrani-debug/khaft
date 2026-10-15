@@ -602,6 +602,7 @@
     el.appendChild(t);
     setTimeout(() => t.classList.add('out'), 4200);
     setTimeout(() => t.remove(), 4700);
+    return t;
   }
 
   // النافذة: الخلفية (الصفحة والنوافذ تحتها) معطّلة (inert) فلا يصلها Tab ولا النقر، وعند الإغلاق يعود التركيز
@@ -822,8 +823,45 @@
   // القائمة ومربع الاختيار تتغير قيمتهما دفعة واحدة (change)، والحقل النصي أو التاريخ مع كل حرف (input)
   const discrete = (el) => el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio';
 
-  // o.onChange(path, val) يرجع 'redraw' إذا غيّر حقولاً أخرى فيُعاد رسم النموذج لتظهر قيمها الجديدة.
-  // o.focus: محدد CSS للحقل الذي يبدأ عنده التركيز
+  // الحقل الذي يُكتب فيه يبقى في الصفحة عند إعادة الرسم (لا يُنزع ثم يُعاد): يُستبدل ما حوله فقط، فلا تنقطع
+  // الكتابة ولا إدخال التاريخ بمقاطعه (اليوم ثم الشهر…) ولا يفقد التركيز. يرجع false إن اختلف موضعه أو قيمته
+  // في الرسم الجديد (فيُرسم النموذج كله ويُعاد التركيز إلى الحقل الجديد)
+  function syncAttrs(a, n, skip) {
+    for (const at of [...a.attributes]) if (!n.hasAttribute(at.name) && at.name !== skip) a.removeAttribute(at.name);
+    for (const at of [...n.attributes]) if (at.name !== skip && a.getAttribute(at.name) !== at.value) a.setAttribute(at.name, at.value);
+  }
+  function graftDraw(body, box, a, n) {
+    // الرقم أثناء كتابته («33.» = 33) قيمته كقيمة الرسم الجديد
+    if (!n || a.tagName !== n.tagName || a.type !== n.type) return false;
+    if (a.value !== n.value && !(a.dataset.type === 'num' && n.value !== '' && readInput(a) === readInput(n))) return false;
+    const oc = [];
+    for (let x = a; x && x !== body; x = x.parentNode) oc.push(x);
+    const nc = [];
+    for (let x = n; x && x !== box; x = x.parentNode) nc.push(x);
+    if (oc.length !== nc.length || oc.some((x, i) => x.tagName !== nc[i].tagName)) return false;
+    // من الأعلى إلى الحقل: كل مستوى يأخذ عناصر الرسم الجديد، وفرع الحقل نفسه يبقى في مكانه
+    for (let i = oc.length; i > 0; i--) {
+      const op = i === oc.length ? body : oc[i];
+      const np = i === nc.length ? box : nc[i];
+      const keep = oc[i - 1];
+      const nk = nc[i - 1];
+      if (op !== body) syncAttrs(op, np);
+      for (const c of [...op.childNodes]) if (c !== keep) c.remove();
+      let before = true;
+      for (const c of [...np.childNodes]) {
+        if (c === nk) before = false;
+        else if (before) op.insertBefore(c, keep);
+        else op.appendChild(c);
+      }
+    }
+    // قيمة الحقل الحية تبقى كما هي (لا تُلمس سمة value أثناء الكتابة)
+    syncAttrs(a, n, 'value');
+    return true;
+  }
+
+  // o.onChange(path, val) يرجع 'redraw' إذا غيّر حقولاً أخرى فيُعاد رسم النموذج فوراً لتظهر قيمها الجديدة
+  // (حتى أثناء كتابة التاريخ: الحقل نفسه لا يُمس). o.onLeave(path, val): عند مغادرة الحقل (انتهاء تعديله)،
+  // ويرجع 'redraw' إن غيّر شيئاً. o.focus: محدد CSS للحقل الذي يبدأ عنده التركيز
   function formModal(o) {
     const val = clone(o.value || {});
     // dirty: أدخل المستخدم شيئاً (حقلاً أو سطراً)، فالإغلاق بلا حفظ يُسأل عنه أولاً
@@ -838,7 +876,7 @@
     // drawing يمنع رسماً داخل رسم (حدث يطلقه حذف العنصر المركَّز أثناء innerHTML)، ويُعاد الرسم بعده مرة واحدة
     let drawing = false;
     let redo = false;
-    // حقل نصي أو تاريخ بإعادة رسم: يُرسم النموذج عند مغادرته لا أثناء الكتابة (التاريخ يُكتب بمقاطع)
+    // حقل نصي أو تاريخ بإعادة رسم (data-redraw) لم يطلب onChange رسمه: يُرسم النموذج عند مغادرته
     let pending = false;
     // أخطاء التحقق لكل مسار: تبقى تحت الحقل (وبعد إعادة الرسم) حتى يُعدَّل
     let errs = {};
@@ -850,7 +888,7 @@
       drawing = true;
       pending = false;
       try {
-        // الحقل الذي يُكتب فيه يعود إليه التركيز وموضع المؤشر بعد إعادة الرسم
+        // الحقل الذي يُكتب فيه يبقى كما هو، أو يعود إليه التركيز وموضع المؤشر بعد إعادة الرسم
         const a = document.activeElement;
         const ap = a && a !== m.body && m.body.contains(a) && a.dataset ? a.dataset.path : '';
         let sel = null;
@@ -860,18 +898,20 @@
           sel = null;
         }
         const sc = m.body.scrollTop;
-        m.body.innerHTML = `<form class="form" novalidate>${fields().map((f) => fieldHTML(f, val)).join('')}<div class="form-preview" ${o.preview ? '' : 'hidden'}></div><button type="submit" hidden></button></form>`;
+        const box = document.createElement('div');
+        box.innerHTML = `<form class="form" novalidate>${fields().map((f) => fieldHTML(f, val)).join('')}<div class="form-preview" ${o.preview ? '' : 'hidden'}></div><button type="submit" hidden></button></form>`;
+        const kept = !!ap && !discrete(a) && graftDraw(m.body, box, a, box.querySelector(pathSel(ap)));
+        if (!kept) m.body.replaceChildren(...box.childNodes);
         m.body.scrollTop = sc;
         upd();
         for (const p of Object.keys(errs)) {
           const el = m.body.querySelector(pathSel(p));
           if (el) markErr(el, errs[p]);
         }
-        const n = ap && m.body.querySelector(pathSel(ap));
+        const n = !kept && ap && m.body.querySelector(pathSel(ap));
         if (n && !discrete(a) && a.tagName === n.tagName && a.type === n.type && a.value === n.value) {
-          // قيمته لم تتغير: يبقى العنصر نفسه (موضع المؤشر والتحديد، حتى في الحقل الرقمي) بخصائص الرسم الجديد
-          for (const at of [...a.attributes]) if (!n.hasAttribute(at.name)) a.removeAttribute(at.name);
-          for (const at of [...n.attributes]) a.setAttribute(at.name, at.value);
+          // تغيّر موضعه في النموذج وقيمته كما هي: يعود العنصر نفسه (موضع المؤشر والتحديد) بخصائص الرسم الجديد
+          syncAttrs(a, n);
           n.replaceWith(a);
           a.focus({ preventScroll: true });
         } else if (n) {
@@ -969,13 +1009,9 @@
       setPath(val, p, nv);
       clearErr(el);
       const want = o.onChange ? o.onChange(p, val) : undefined;
-      if ((isChange && el.dataset.redraw) || want === 'redraw') {
-        // تاريخ أثناء كتابته بمقاطعه: يُرسم عند مغادرة الحقل
-        if (!isChange && (el.type === 'date' || el.type === 'month')) {
-          pending = true;
-          upd();
-        } else draw();
-      } else upd();
+      // ما غيّره onChange يظهر فوراً، حتى أثناء كتابة التاريخ بمقاطعه (الحقل نفسه يبقى في مكانه فلا تنقطع كتابته)
+      if ((isChange && el.dataset.redraw) || want === 'redraw') draw();
+      else upd();
     }
     m.el.addEventListener('input', (e) => {
       if (!discrete(e.target)) onField(e, false);
@@ -988,11 +1024,18 @@
       if (getPath(val, el.dataset.path) !== readInput(el)) onField(e, false);
       if (el.dataset.redraw) pending = true;
     });
-    m.el.addEventListener('focusout', () => {
-      if (pending)
-        setTimeout(() => {
-          if (pending) draw();
-        }, 0);
+    // مغادرة الحقل: o.onLeave (انتهى تعديله)، ثم إعادة الرسم المؤجلة. البقاء في الحقل نفسه (أُعيد رسمه، أو انتقل
+    // التركيز إلى نافذة أخرى ثم عاد) ليس مغادرة
+    m.el.addEventListener('focusout', (e) => {
+      const p = !drawing && e.target.dataset && e.target.dataset.path;
+      if (!pending && !(p && o.onLeave)) return;
+      setTimeout(() => {
+        if (p && o.onLeave) {
+          const x = document.activeElement;
+          if (!(x && x.dataset && x.dataset.path === p && m.body.contains(x)) && o.onLeave(p, val) === 'redraw') pending = true;
+        }
+        if (pending) draw();
+      }, 0);
     });
     // Enter ينقل إلى الحقل التالي ولا يحفظ (آخر حقل يحفظ)، وCtrl/Cmd+Enter يحفظ من أي مكان في النموذج.
     // القائمة المنسدلة والنص متعدد الأسطر يبقى لهما سلوكهما المعتاد
@@ -1084,8 +1127,17 @@
     }
     async function submit() {
       if (saving) return;
-      // تعديل لم يُرسم بعد (تاريخ أثناء الكتابة): يظهر قبل الحفظ فيطابق المحفوظ ما على الشاشة
-      if (pending) draw();
+      // إعادة رسم مؤجلة لم تحدث بعد: تُرسم أولاً، وإن غيّرت شيئاً على الشاشة (حقلاً أو سطراً) لا يُحفظ قبل أن
+      // يراه المستخدم — فلا يُحفظ أبداً ما لم يُعرض
+      if (pending) {
+        const shown = () => JSON.stringify([...m.body.querySelectorAll('[data-path]')].map((x) => [x.dataset.path, x.type === 'checkbox' ? x.checked : x.value]));
+        const before = shown();
+        draw();
+        if (shown() !== before) {
+          toast('تحدّثت بعض القيم في النموذج — راجعها ثم احفظ.', 'bad');
+          return;
+        }
+      }
       m.body.querySelectorAll('[aria-invalid="true"]').forEach(clearErr);
       const chk = validate();
       errs = chk.errs;
@@ -2411,7 +2463,7 @@
       value: rec || { id: RB.uid(), name: '', share: S.partners.length ? Math.max(0, 100 - RB.sum(S.partners, (p) => num(p.share))) : 50, phone: '', note: '' },
       fields: [
         { k: 'name', label: 'اسم الشريك', req: 1 },
-        { type: 'row', fields: [{ k: 'share', type: 'num', label: 'نسبة الشراكة %', req: 1, help: 'يتوزع الربح حسبها' }, { k: 'phone', label: 'الجوال' }] },
+        { type: 'row', fields: [{ k: 'share', type: 'num', label: 'نسبة الشراكة %', req: 1, min: 0, max: 100, help: 'يتوزع الربح حسبها. 0 لشريك خرج من الشراكة وبقيت حركاته في الدفتر' }, { k: 'phone', label: 'الجوال' }] },
         { k: 'note', type: 'textarea', label: 'ملاحظات' },
       ],
       onSave: (v) => upsert('partners', v),
@@ -2665,44 +2717,8 @@
   const runMonth = (p) => p.month || String(p.date || '').slice(0, 7);
   // أشهر لها مسير رواتب (مسير التسوية بلا راتب لا يُعد مسيراً للشهر)
   const paidMonths = (exceptId) => new Set(good(S.payroll).filter((p) => p.id !== exceptId && RB.payrollTotals(p).gross > 0).map(runMonth));
-  // أسطر مسير الشهر ym من بيانات الموظفين: من له راتب في الشهر، ومن باشر أو ترك العمل أثناءه بخصم ما لم يعمله
-  // (نسب التأمينات حسب الشهر). cur: الأسطر الحالية (بُنيت لشهر fromYm) يبقى منها ما أدخله المستخدم:
-  // الإضافي، والخصومات والتأمينات إن اختلفت عمّا يُحسب تلقائياً، ومكافأة نهاية الخدمة المصروفة؛
-  // والأسطر بلا موظف مسجل، وسطر من ليس له راتب في الشهر إن صُرفت له فيه مكافأة نهاية الخدمة.
-  // l._autoDed (مؤقت، يُحذف عند الحفظ): خصم الأيام الذي وضعه البرنامج في السطر، فما خالفه أدخله المستخدم
-  function payrollFill(ym, cur, fromYm) {
-    cur = (cur || []).filter((l) => l && typeof l === 'object');
-    fromYm = RB.isISOMonth(fromYm) ? fromYm : ym;
-    const old = {};
-    for (const l of cur) if (l.employeeId && !old[l.employeeId]) old[l.employeeId] = l;
-    const same = (a, b) => Math.abs(num(a) - num(b)) < 0.005;
-    const lines = S.employees
-      .filter((e) => RB.isEmployeeActive(e, ym))
-      .map((e) => {
-        const n = RB.payrollLine(e, S, ym);
-        n._autoDed = n.deductions;
-        const o = old[e.id];
-        if (!o) return n;
-        const was = RB.payrollLine(e, S, fromYm);
-        // التأمينات تلقائية إن طابقت المحسوب من بيانات الموظف أو من أساسي السطر وسكنه
-        const g = RB.gosiFor(Object.assign({}, e, { basic: num(o.basic), housing: num(o.housing) }), S, fromYm);
-        if (num(o.additions)) n.additions = o.additions;
-        if (num(o.deductions) && !same(o.deductions, o._autoDed !== undefined ? o._autoDed : was.deductions)) n.deductions = o.deductions;
-        if (!same(o.gosiEe, was.gosiEe) && !same(o.gosiEe, g.ee)) n.gosiEe = o.gosiEe;
-        if (!same(o.gosiEr, was.gosiEr) && !same(o.gosiEr, g.er)) n.gosiEr = o.gosiEr;
-        if (num(o.eosbPaid) > 0) n.eosbPaid = o.eosbPaid;
-        return n;
-      });
-    const ids = new Set(lines.map((l) => l.employeeId));
-    for (const l of cur) {
-      if (!l.employeeId) lines.push(l);
-      else if (!ids.has(l.employeeId) && num(l.eosbPaid) > 0) {
-        lines.push(l);
-        ids.add(l.employeeId);
-      }
-    }
-    return lines;
-  }
+  // أسطر مسير الشهر ym من بيانات الموظفين، ويبقى ما أدخله المستخدم في الأسطر الحالية cur (RB.payrollFill)
+  const payrollFill = (ym, cur, fromYm) => RB.payrollFill(S, ym, cur, fromYm);
 
   FORMS.payroll = (rec, empId, opts = {}) => {
     const isEdit = editing(rec, opts);
@@ -2759,6 +2775,10 @@
     // linesYm: الشهر الذي بُنيت له الأسطر (لمعرفة ما عدّله المستخدم عند إعادة التعبئة)، lastMonth: آخر شهر صالح
     let linesYm = value.month;
     let lastMonth = value.month;
+    // snap: الأسطر كما كانت قبل بدء تعديل الشهر (حتى مغادرة حقله). كتابة الشهر بلوحة المفاتيح تمر بأشهر وسيطة
+    // (كتابة 11 تمر بيناير)، فكل تعبئة تُبنى من هذه الأسطر لا من أسطر شهر وسيط قد لا يكون فيه بعض الموظفين،
+    // فلا يضيع ما أُدخل لهم من إضافي وخصومات وتأمينات معدّلة
+    let snap = null;
     // مسير آخر لنفس الشهر فيه رواتب: مسير ثانٍ يضاعف مصروف الرواتب (مسير التسوية بلا راتب مستثنى)
     const otherRun = (v) => !settleEmp && RB.isISOMonth(v.month) && paidMonths(v.id).has(v.month);
     return formModal({
@@ -2775,7 +2795,8 @@
           if (from === v.month || settleEmp) return;
           // مسير جديد: أسطر الشهر الجديد، ويبقى ما أدخله المستخدم فيها
           if (!isEdit) {
-            v.lines = payrollFill(v.month, v.lines, linesYm);
+            if (!snap) snap = { lines: clone(v.lines || []), ym: linesYm };
+            v.lines = payrollFill(v.month, clone(snap.lines), snap.ym);
             linesYm = v.month;
           }
           // تاريخ الصرف يتبع الشهر ما دام الافتراضي لشهره السابق (التاريخ الذي كتبه المستخدم يبقى)
@@ -2810,6 +2831,10 @@
           return 'redraw';
         }
       },
+      // انتهى تعديل الشهر: الأسطر المعروضة هي أساس التعديل التالي
+      onLeave: (p) => {
+        if (p === 'month') snap = null;
+      },
       fields: [
         { type: 'row', fields: [{ k: 'month', type: 'month', label: 'الشهر', req: 1, redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الصرف', req: 1, help: 'تُحمَّل التكلفة على الشهر المختار مهما كان تاريخ الصرف' }, { k: 'account', type: 'select', label: 'صُرفت من', options: payOptions(false, false) }, { k: 'gosiAccount', type: 'select', label: 'التأمينات سُددت من', options: payOptions(false, false) }] },
         { type: 'html', html: (v) => (otherRun(v) ? `<p class="note bad">يوجد مسير مسجل لشهر ${esc(RB.monthName(v.month))}. الحفظ يضيف مسيراً ثانياً يتضاعف به مصروف الرواتب — للمكافآت أو الإضافي استخدم عمود «إضافي ومكافآت» في المسير الموجود.</p>` : '') },
@@ -2829,6 +2854,7 @@
                 if (!RB.isISOMonth(v.month)) return toast('اختر الشهر أولاً.', 'bad');
                 rows.splice(0, rows.length, ...payrollFill(v.month, rows, linesYm));
                 linesYm = v.month;
+                snap = null;
               },
             },
           ],
@@ -2923,8 +2949,12 @@
     const last = S.purchases.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0];
     const payOpts = payOptions(true);
     // ما غيّره المستخدم بنفسه من هذه الإعدادات لا تغيّره ذاكرة المورد
-    const MEM = ['category', 'account', 'taxable', 'includesVat'];
+    const MEM = RB.SUPPLIER_MEM_KEYS;
     const touched = {};
+    // memo: ما طبّقته ذاكرة المورد (RB.supplierMemoryStep)، وmemoToast تنبيهه
+    let memo = null;
+    let memoToast = null;
+    const memOK = { category: (x) => RB.PURCHASE_CATS.some((c) => c.id === x), account: (x) => payOpts.some((o) => o[0] === x), taxable: () => true, includesVat: () => true };
     const memText = {
       category: (v) => (RB.PURCHASE_CATS.find((c) => c.id === v.category) || {}).name || v.category,
       account: (v) => (payOpts.find((o) => o[0] === v.account) || [0, v.account])[1],
@@ -2971,20 +3001,18 @@
         }
         let again = p === 'includesVat' || p === 'taxable';
         if (p === 'supplier' && !isEdit) {
-          // ذاكرة المورد: إعدادات آخر فاتورة منه، إلا ما غيّره المستخدم بنفسه، وتظهر في النموذج قبل الحفظ
-          const name = String(v.supplier || '').trim();
-          const prev = name && S.purchases.filter((x) => String(x.supplier || '').trim() === name).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
-          if (prev) {
-            const mem = { category: prev.category, account: prev.account, taxable: !!prev.taxable, includesVat: !!prev.includesVat };
-            const ok = { category: (x) => RB.PURCHASE_CATS.some((c) => c.id === x), account: (x) => payOpts.some((o) => o[0] === x), taxable: () => true, includesVat: () => true };
-            const ch = MEM.filter((k) => !touched[k] && ok[k](mem[k]) && v[k] !== mem[k]);
-            if (ch.length) {
-              ch.forEach((k) => (v[k] = mem[k]));
-              const txt = ch.filter((k) => k !== 'includesVat' || v.taxable).map((k) => memText[k](v));
-              if (txt.length) toast('طُبّقت إعدادات آخر فاتورة من هذا المورد: ' + txt.join(' · ') + ' — يمكنك تغييرها');
-              again = true;
-            }
+          // ذاكرة المورد: إعدادات آخر فاتورة منه، إلا ما غيّره المستخدم بنفسه، وتظهر في النموذج قبل الحفظ.
+          // إن لم يعد الاسم اسمه (مورد جديد يبدأ اسمه باسمه أثناء الكتابة، أو مُسح) تعود الإعدادات التي غيّرتها
+          // ويُزال تنبيهها (RB.supplierMemoryStep)
+          const st = RB.supplierMemoryStep(v, S.purchases, memo, touched, (k, x) => memOK[k](x));
+          memo = st.memo;
+          if (st.dropped && memoToast) {
+            memoToast.remove();
+            memoToast = null;
           }
+          const txt = st.applied.filter((k) => k !== 'includesVat' || v.taxable).map((k) => memText[k](v));
+          if (txt.length) memoToast = toast('طُبّقت إعدادات آخر فاتورة من هذا المورد: ' + txt.join(' · ') + ' — يمكنك تغييرها');
+          if (st.changed) again = true;
         }
         if (again) {
           reprice(v);
@@ -3946,12 +3974,16 @@
       title: 'ابدأ ببيانات مطعمك',
       ok: 'ابدأ',
       value: { name: '', openingDate: '', vatRegistered: true, vatRegisteredFrom: '', p1: '', s1: 50, p2: '', s2: 50 },
-      // تُرسم عند مغادرة الحقل (redraw)، فلا تنقطع الكتابة
+      // نسبة الثاني تظهر فوراً أثناء الكتابة (الحقل الذي يُكتب فيه يبقى كما هو)، فلا يُحفظ ما لم يُعرض
       onChange: (p, v) => {
         if (p === 's2') s2Typed = true;
         const s1 = num(v.s1);
         if (!twoP(v) || v.s1 === '' || !(s1 >= 0 && s1 <= 100)) return;
-        if (p === 's1' || (p === 'p2' && !s2Typed)) v.s2 = r2(Math.max(0, 100 - s1));
+        if (p !== 's1' && !(p === 'p2' && !s2Typed)) return;
+        const s2 = r2(Math.max(0, 100 - s1));
+        if (s2 === v.s2) return;
+        v.s2 = s2;
+        return 'redraw';
       },
       fields: [
         { type: 'html', html: () => '<p class="note">تبدأ بدفتر فارغ (قنوات البيع والتصنيفات جاهزة). البيانات التجريبية لن تُحفظ.</p>' },

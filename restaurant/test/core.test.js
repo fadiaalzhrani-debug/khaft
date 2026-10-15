@@ -1918,3 +1918,97 @@ test('مرتجع المشتريات: إجمالي سالب ولا يغيّر س�
   assert.deepEqual(RB.rawPriceUpdates(ret, S.raw, S.settings), []);
   assert.ok(RB.vatSplit(RB.purchaseTotal(ret), false, true, S.settings).gross < 0);
 });
+
+test('تغيير شهر المسير: التعبئة من أسطر ما قبل التغيير فلا يمحو شهر وسيط بلا موظفين ما أُدخل (مراجعة WP4)', () => {
+  const S = base();
+  const emp = (id, name, basic) => ({ id, name, nationality: 'expat', basic, housing: 0, transport: 0, otherAllow: 0, startDate: '2026-06-01', active: true });
+  S.employees = [emp('a', 'سليم', 3000), emp('b', 'رفيق', 2500)];
+  const oct = RB.payrollFill(S, '2026-10');
+  assert.deepEqual(oct.map((l) => l.employeeId), ['a', 'b']);
+  oct[0].additions = 500;
+  oct[1].deductions = 200;
+  oct.push({ employeeId: '', name: 'عامل يومي', basic: 900, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 0 });
+  const snap = JSON.parse(JSON.stringify(oct));
+  // كتابة «11» في حقل الشهر تمر بيناير (لم يباشر فيه أحد): تعبئة نوفمبر من أسطر يناير تفقد الإضافي والخصم
+  const jan = RB.payrollFill(S, '2026-01', JSON.parse(JSON.stringify(oct)), '2026-10');
+  assert.deepEqual(jan.map((l) => l.name), ['عامل يومي']);
+  const chained = RB.payrollFill(S, '2026-11', jan, '2026-01');
+  assert.equal(chained.find((l) => l.employeeId === 'a').additions, 0);
+  assert.equal(chained.find((l) => l.employeeId === 'b').deductions, 0);
+  // من أسطر ما قبل تغيير الشهر (ما يحتفظ به النموذج حتى مغادرة الحقل): يبقى كل شيء
+  const nov = RB.payrollFill(S, '2026-11', JSON.parse(JSON.stringify(snap)), '2026-10');
+  assert.equal(nov.find((l) => l.employeeId === 'a').additions, 500);
+  assert.equal(nov.find((l) => l.employeeId === 'b').deductions, 200);
+  assert.ok(nov.some((l) => !l.employeeId && l.name === 'عامل يومي'));
+  // والعودة إلى الشهر الأصلي تعيد الأسطر نفسها، والأسطر الأصلية لا تتغير بالتعبئة
+  const back = RB.payrollFill(S, '2026-10', JSON.parse(JSON.stringify(snap)), '2026-10');
+  const key = (ls) => ls.map((l) => [l.employeeId, l.name, l.additions, l.deductions, l.gosiEe, l.gosiEr]);
+  assert.deepEqual(key(back), key(snap));
+  RB.payrollFill(S, '2026-01', snap, '2026-10');
+  assert.equal(snap.length, 3);
+  assert.equal(snap[0].additions, 500);
+});
+
+test('ذاكرة المورد: الاسم كاملاً لا بدايته، وتعود الإعدادات حين لا يعود الاسم اسمه (مراجعة WP4)', () => {
+  const P = [
+    { id: '1', date: '2026-09-01', supplier: 'مخبز الريان', category: 'food', account: 'bank', taxable: true, includesVat: false },
+    { id: '2', date: '2026-10-01', supplier: ' مخبز الريان ', category: 'food', account: 'cash', taxable: false, includesVat: false },
+    { id: '3', date: '2026-10-02', supplier: 'مؤسسة اللحوم', category: 'food', account: 'payable', taxable: true, includesVat: true },
+  ];
+  // آخر فاتورة من المورد نفسه، والاسم الذي يبدأ باسمه أو جزء منه ليس هو
+  assert.deepEqual(RB.supplierMemory(P, 'مخبز الريان'), { category: 'food', account: 'cash', taxable: false, includesVat: false });
+  assert.equal(RB.supplierMemory(P, 'مخبز الريان الجديد'), null);
+  assert.equal(RB.supplierMemory(P, 'مخبز'), null);
+  assert.equal(RB.supplierMemory(P, '  '), null);
+  const v = { supplier: '', category: 'food', account: 'bank', taxable: true, includesVat: false };
+  let memo = null;
+  const touched = {};
+  const type = (s) => {
+    v.supplier = s;
+    const r = RB.supplierMemoryStep(v, P, memo, touched);
+    memo = r.memo;
+    return r;
+  };
+  // كتابة مورد جديد يمر اسمه باسم مورد موجود: تُطبَّق إعداداته عند تطابق الاسم ثم تعود
+  assert.equal(type('مخبز').changed, false);
+  let r = type('مخبز الريان');
+  assert.deepEqual(r.applied, ['account', 'taxable']);
+  assert.deepEqual([v.account, v.taxable], ['cash', false]);
+  r = type('مخبز الريان ');
+  assert.deepEqual([r.changed, r.dropped, v.account], [false, false, 'cash']);
+  r = type('مخبز الريان الجديد');
+  assert.deepEqual([r.dropped, r.changed, r.applied], [true, true, []]);
+  assert.deepEqual([v.account, v.taxable, memo], ['bank', true, null]);
+  // ما غيّره المستخدم بعد تطبيق الذاكرة يبقى، والباقي يعود
+  type('مخبز الريان');
+  touched.account = true;
+  v.account = 'payable';
+  type('مخبز الريان 2');
+  assert.deepEqual([v.account, v.taxable], ['payable', true]);
+  // من مورد معروف إلى آخر: تعود إعدادات الأول ثم تُطبَّق إعدادات الثاني
+  delete touched.account;
+  v.account = 'bank';
+  type('مخبز الريان');
+  r = type('مؤسسة اللحوم');
+  assert.deepEqual([r.dropped, r.applied], [true, ['account', 'includesVat']]);
+  assert.deepEqual([v.account, v.taxable, v.includesVat], ['payable', true, true]);
+  // مسح الاسم يعيد ما كان قبل الذاكرة
+  type('');
+  assert.deepEqual([v.account, v.taxable, v.includesVat], ['bank', true, false]);
+  // قيمة لا تصلح (حساب شريك محذوف مثلاً) لا تُطبَّق
+  const w = { supplier: 'مورد', category: 'food', account: 'bank', taxable: true, includesVat: false };
+  const old = [{ id: 'x', date: '2026-01-01', supplier: 'مورد', category: 'food', account: 'partner:gone', taxable: true, includesVat: true }];
+  r = RB.supplierMemoryStep(w, old, null, {}, (k, x) => k !== 'account' || x !== 'partner:gone');
+  assert.deepEqual([r.applied, w.account, w.includesVat], [['includesVat'], 'bank', true]);
+});
+
+test('نسبة الشريك: لا تكون سالبة ولا أكثر من 100، والصفر لشريك خرج وبقيت حركاته (مراجعة WP4)', () => {
+  assert.equal(RB.rangeMsg(-10, 0, 100), 'القيمة لا تقل عن 0');
+  assert.match(RB.rangeMsg(150, 0, 100), /100/);
+  assert.equal(RB.rangeMsg(0, 0, 100), '');
+  // شريك بنسبة صفر لا نصيب له من الربح، والنسبة السالبة كانت تزيد نصيب الآخرين على الربح كله
+  const S = base();
+  S.partners.push({ id: 'p3', name: 'ج', share: 0 });
+  const rep = RB.partnersReport(S, '2026-01-01', '2026-12-31');
+  assert.deepEqual(rep.rows.map((x) => RB.r2(x.share)), [0.6, 0.4, 0]);
+});

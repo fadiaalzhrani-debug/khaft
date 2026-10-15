@@ -512,6 +512,52 @@
     return [...out.values()].filter((x) => Math.abs(x.price - x.old) > 0.004);
   };
 
+  // ذاكرة المورد: إعدادات آخر فاتورة من المورد نفسه (اسمه كاملاً بلا المسافات الطرفية، لا اسماً يبدأ به)؛
+  // التاريخ الأحدث، وفي اليوم نفسه آخر ما سُجّل. null إن لم تكن له فاتورة
+  RB.SUPPLIER_MEM_KEYS = ['category', 'account', 'taxable', 'includesVat'];
+  RB.supplierMemory = (purchases, name) => {
+    const n = String(name || '').trim();
+    if (!n) return null;
+    let last = null;
+    for (const x of purchases || []) if (x && String(x.supplier || '').trim() === n && (!last || String(x.date || '') >= String(last.date || ''))) last = x;
+    return last ? { category: last.category, account: last.account, taxable: !!last.taxable, includesVat: !!last.includesVat } : null;
+  };
+  // خطوة ذاكرة المورد عند كل تغيير لاسم المورد في نموذج الفاتورة (تعدّل v):
+  // - memo: ما طبّقته الذاكرة سابقاً {name, was: القيم قبلها، now: ما وضعته} أو null.
+  // - الاسم لم يعد اسم ذلك المورد (مورد جديد يبدأ اسمه باسمه أثناء الكتابة، أو مُسح الاسم): تعود القيم التي
+  //   وضعتها الذاكرة إلى ما كانت عليه، إلا ما غيّره المستخدم بعدها (touched) أو ما تغيّر بغيرها.
+  // - ثم إعدادات آخر فاتورة من المورد المكتوب، إلا ما غيّره المستخدم بنفسه أو ما لا يصلح (valid).
+  // يرجع {memo, changed: تغيّرت قيم، applied: ما طُبّق الآن، dropped: أُلغيت ذاكرة سابقة}
+  RB.supplierMemoryStep = (v, purchases, memo, touched, valid) => {
+    const name = String(v.supplier || '').trim();
+    const t = touched || {};
+    let changed = false;
+    let dropped = false;
+    if (memo && memo.name !== name) {
+      for (const k of Object.keys(memo.was)) {
+        if (t[k] || v[k] !== memo.now[k]) continue;
+        v[k] = memo.was[k];
+        changed = true;
+      }
+      memo = null;
+      dropped = true;
+    }
+    let applied = [];
+    const mem = !memo && RB.supplierMemory(purchases, name);
+    if (mem) {
+      applied = RB.SUPPLIER_MEM_KEYS.filter((k) => !t[k] && (!valid || valid(k, mem[k])) && v[k] !== mem[k]);
+      if (applied.length) {
+        memo = { name, was: {}, now: {} };
+        for (const k of applied) {
+          memo.was[k] = v[k];
+          v[k] = memo.now[k] = mem[k];
+        }
+        changed = true;
+      }
+    }
+    return { memo, changed, applied, dropped };
+  };
+
   // حدود الحقل الرقمي: فراغ = لا قيمة (يحكمه «مطلوب»)؛ يرجع نص الخطأ أو فراغاً
   RB.rangeMsg = (v, min, max) => {
     if (v === '' || v === undefined || v === null || (typeof v === 'string' && !v.trim())) return '';
@@ -647,6 +693,46 @@
     const gosiEr = r2(sum(lines, (l) => num(l.gosiEr)));
     const eosbPaid = r2(sum(lines, (l) => Math.max(0, num(l.eosbPaid))));
     return { gross, gosiEe, gosiEr, net: r2(gross - gosiEe), count: lines.length, cost: r2(gross + gosiEr), eosbPaid };
+  };
+  // أسطر مسير الشهر ym من بيانات الموظفين: من له راتب في الشهر، ومن باشر أو ترك العمل أثناءه بخصم ما لم يعمله
+  // (نسب التأمينات حسب الشهر). cur: الأسطر الحالية (بُنيت لشهر fromYm) يبقى منها ما أدخله المستخدم:
+  // الإضافي، والخصومات والتأمينات إن اختلفت عمّا يُحسب تلقائياً، ومكافأة نهاية الخدمة المصروفة؛
+  // والأسطر بلا موظف مسجل، وسطر من ليس له راتب في الشهر إن صُرفت له فيه مكافأة نهاية الخدمة.
+  // ما أُدخل لموظف ليس له راتب في ym لا يبقى في الناتج، فتغيير الشهر يُبنى دائماً من أسطر ما قبل التغيير
+  // (النموذج يحتفظ بها حتى يغادر المستخدم حقل الشهر) لا من أسطر شهر وسيط.
+  // l._autoDed (مؤقت، يُحذف عند الحفظ): خصم الأيام الذي وضعه البرنامج في السطر، فما خالفه أدخله المستخدم
+  RB.payrollFill = (S, ym, cur, fromYm) => {
+    cur = (cur || []).filter((l) => l && typeof l === 'object');
+    fromYm = RB.isISOMonth(fromYm) ? fromYm : ym;
+    const old = {};
+    for (const l of cur) if (l.employeeId && !old[l.employeeId]) old[l.employeeId] = l;
+    const same = (a, b) => Math.abs(num(a) - num(b)) < 0.005;
+    const lines = (S.employees || [])
+      .filter((e) => e && RB.isEmployeeActive(e, ym))
+      .map((e) => {
+        const n = RB.payrollLine(e, S, ym);
+        n._autoDed = n.deductions;
+        const o = old[e.id];
+        if (!o) return n;
+        const was = RB.payrollLine(e, S, fromYm);
+        // التأمينات تلقائية إن طابقت المحسوب من بيانات الموظف أو من أساسي السطر وسكنه
+        const g = RB.gosiFor(Object.assign({}, e, { basic: num(o.basic), housing: num(o.housing) }), S, fromYm);
+        if (num(o.additions)) n.additions = o.additions;
+        if (num(o.deductions) && !same(o.deductions, o._autoDed !== undefined ? o._autoDed : was.deductions)) n.deductions = o.deductions;
+        if (!same(o.gosiEe, was.gosiEe) && !same(o.gosiEe, g.ee)) n.gosiEe = o.gosiEe;
+        if (!same(o.gosiEr, was.gosiEr) && !same(o.gosiEr, g.er)) n.gosiEr = o.gosiEr;
+        if (num(o.eosbPaid) > 0) n.eosbPaid = o.eosbPaid;
+        return n;
+      });
+    const ids = new Set(lines.map((l) => l.employeeId));
+    for (const l of cur) {
+      if (!l.employeeId) lines.push(l);
+      else if (!ids.has(l.employeeId) && num(l.eosbPaid) > 0) {
+        lines.push(l);
+        ids.add(l.employeeId);
+      }
+    }
+    return lines;
   };
 
   const isDay = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
