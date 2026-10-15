@@ -417,7 +417,8 @@
     if (f.type === 'html') return `<div class="fhtml">${f.html(val)}</div>`;
     if (f.type === 'section') return `<h4 class="fsec">${esc(f.label)}</h4>`;
     if (f.type === 'lines') return linesHTML(f, val);
-    const v = getPath(val, f.k);
+    // get: القيمة المعروضة حين تُشتق من حقول أخرى ما لم يحددها المستخدم
+    const v = f.get ? f.get(val) : getPath(val, f.k);
     const id = 'f' + ++FID;
     const rd = f.redraw ? 'data-redraw="1"' : '';
     const lab = `<label for="${id}">${esc(f.label)}${f.req ? ' <b class="req">*</b>' : ''}</label>`;
@@ -759,7 +760,7 @@
     for (const r of RB.renewals(S, today())) {
       if (r.status === 'ok') continue;
       const name = (r.rec.desc || RB.expenseCat(r.rec.category).name) + (r.rec.entity ? ' — ' + r.rec.entity : '') + empName(r.rec.employeeId, ' · ');
-      out.push([r.status === 'expired' ? 'bad' : 'warn', r.status === 'expired' ? `انتهى: ${esc(name)} منذ ${-r.days} يوم` : `يحتاج تجديد: ${esc(name)} خلال ${r.days} يوم (${dtText(r.end)})`, btn('تجديد', 'renew', `data-id="${r.rec.id}"`, 'sm')]);
+      out.push([r.status === 'expired' ? 'bad' : 'warn', r.status === 'expired' ? `انتهى: ${esc(name)} منذ ${-r.days} يوم` : `يحتاج تجديد: ${esc(name)} خلال ${r.days} يوم (${dtText(r.end)})`, renewActs(r)]);
     }
     // إقرارات الضريبة: كل فترة منتهية لم تُسدد وفات موعدها، وآخر فترة منتهية ما زال موعدها قائماً
     if (S.settings.vatRegistered) {
@@ -773,6 +774,12 @@
         if (!last.settled) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: المستحق ${fmt(last.remaining)} ${cur()} — آخر موعد ${dtText(deadline(last))}`, payBtn(last)]);
         else if (last.credit > 0) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(last.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار قبل ${dtText(deadline(last))}.`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm')]);
       }
+    } else {
+      // غير المسجل: حد التسجيل من مبيعات آخر 12 شهراً أو المتوقعة لسنة إن كان التشغيل أقل من سنة
+      const th = RB.vatThreshold(S, today());
+      const vatBtn = btn('إعدادات الضريبة', 'settings', 'data-v="vat"', 'sm');
+      if (th && th.level === 'mandatory') out.push(['bad', 'مبيعاتك (آخر 12 شهراً أو المتوقعة للـ12 شهراً القادمة) ' + fmt(th.est) + ' ر.س تجاوزت حد التسجيل الإلزامي في ضريبة القيمة المضافة (375,000 ر.س) — يجب التسجيل لدى هيئة الزكاة والضريبة والجمارك خلال 30 يوماً، ثم فعّل التسجيل في الإعدادات مع تاريخ السريان.', vatBtn]);
+      else if (th && th.level === 'voluntary') out.push(['warn', 'تجاوزت حد التسجيل الاختياري (187,500 ر.س) — يمكنك التسجيل واسترداد ضريبة المشتريات.', vatBtn]);
     }
     const C = costing();
     const target = num(S.settings.targetFoodCost);
@@ -790,6 +797,8 @@
     if (!out.length) return `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
     return `<ul class="alerts">${out.map(([k, t, a]) => `<li class="al ${k}"><span class="al-dot" aria-hidden="true"></span><span class="al-t">${t}</span>${a}</li>`).join('')}</ul>`;
   }
+  // زرّا متابعة التجديد: تجديد البند، أو إيقاف متابعته (رسم لن يتكرر)
+  const renewActs = (r) => `<span class="al-a">${btn('تجديد', 'renew', `data-id="${esc(r.rec.id)}"`, 'sm')}${btn('إيقاف المتابعة', 'stopRenew', `data-id="${esc(r.rec.id)}"`, 'sm ghost')}</span>`;
   const empName = (id, pre) => {
     const e = id && S.employees.find((x) => x.id === id);
     return e ? (pre || '') + esc(e.name) : '';
@@ -975,12 +984,13 @@
   // ─── الرسوم الحكومية ───
   PAGES.gov = () => {
     const rn = RB.renewals(S, today()).filter((r) => RB.GOV_CATS.includes(r.rec.category) || ['rent', 'housing'].includes(r.rec.category));
-    const annual = RB.sum(rn.filter((r) => RB.GOV_CATS.includes(r.rec.category)), (r) => (RB.vatSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings).gross * 12) / Math.max(1, num(r.rec.months)));
+    // التكلفة السنوية للبنود المتكررة (المنتهية منها باقية): تكلفة آخر دفعة بدون الضريبة المستردة، محوّلة لسنة
+    const annual = RB.sum(rn.filter((r) => RB.GOV_CATS.includes(r.rec.category)), (r) => (RB.costSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings, r.rec.date).cost * 12) / Math.max(1, num(r.rec.months)));
     const list = S.expenses.filter((x) => RB.GOV_CATS.includes(x.category) && inRange(x.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
-    let h = pageHead('الرسوم الحكومية والاشتراكات', 'السجل التجاري والبلدية والدفاع المدني والغرفة التجارية، ورسوم العمالة (قوى ومقيم)، والتأمين، واشتراكات الأنظمة — مع تنبيه قبل انتهاء كل منها', btn('+ رسم أو اشتراك', 'add', 'data-s="expenses" data-x="gov"', 'primary'));
+    let h = pageHead('الرسوم الحكومية والاشتراكات', 'السجل التجاري والبلدية والدفاع المدني والغرفة التجارية، ورسوم العمالة (قوى ومقيم)، والتأمين، والزكاة، واشتراكات الأنظمة، مع تنبيه قبل انتهاء كل منها — التأمينات الاجتماعية تُحسب من مسير الرواتب', btn('+ رسم أو اشتراك', 'add', 'data-s="expenses" data-x="gov"', 'primary'));
     const soon = rn.filter((r) => r.status !== 'ok').length;
     h += `<div class="kpis small">
-      ${kpi('التكلفة السنوية التقديرية', money(annual), 'لآخر دفعة من كل بند')}
+      ${kpi('التكلفة السنوية التقديرية', money(annual), 'للبنود المتكررة')}
       ${kpi('ما يعادل شهرياً', money(annual / 12), 'يُوزّع على أشهر التغطية')}
       ${kpi('بنود تحتاج تجديد', `<span class="n">${soon}</span>`, 'منتهية أو تنتهي خلال 30 يوماً', soon ? 'warn' : 'good')}
     </div>`;
@@ -994,7 +1004,7 @@
           { h: 'آخر دفعة', f: (r) => dt(r.rec.date) },
           { h: 'المبلغ', num: 1, f: (r) => N(RB.vatSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings).gross) },
           { h: 'ينتهي في', f: (r) => dt(r.end) },
-          { h: '', f: (r) => btn('تجديد', 'renew', `data-id="${r.rec.id}"`, 'sm') },
+          { h: '', f: (r) => renewActs(r) },
         ],
         rn,
         { empty: 'لا توجد رسوم أو اشتراكات مسجلة. أضف السجل التجاري ورخصة البلدية وشهادة السلامة ورسوم العمالة.', rowCls: (r) => r.status }
@@ -1010,14 +1020,18 @@
     const ym = today().slice(0, 7);
     const emps = S.employees.slice().sort((a, b) => (a.active === false) - (b.active === false));
     const active = emps.filter((e) => RB.isEmployeeActive(e, ym));
-    const costs = Object.fromEntries(emps.map((e) => [e.id, RB.employeeMonthlyCost(e, S)]));
+    const costs = Object.fromEntries(emps.map((e) => [e.id, RB.employeeMonthlyCost(e, S, ym)]));
     const saudi = active.filter((e) => e.nationality === 'saudi').length;
+    // مخصص نهاية الخدمة المتراكم حتى اليوم (رصيد الحساب 2201) ونصيب كل موظف منه
+    const eosb = RB.eosbBalances(S, today());
+    const eosbTotal = -(RB.balances(ledger(today()).entries, null, today())['2201'] || 0);
     let h = pageHead('العمال والرواتب', 'الرواتب والبدلات، التأمينات الاجتماعية، المقابل المالي والإقامات، والتكلفة الحقيقية لكل عامل', btn('+ موظف', 'add', 'data-s="employees"') + btn('+ مسير رواتب', 'add', 'data-s="payroll"', 'primary'));
-    h += `<div class="kpis small">
+    h += `<div class="kpis small five">
       ${kpi('عدد العمال النشطين', `<span class="n">${active.length}</span>`, `سعوديون ${saudi} · غير سعوديين ${active.length - saudi}${active.length ? ' · نسبة التوطين ' + pct((saudi / active.length) * 100, 0) : ''}`)}
       ${kpi('الرواتب الشهرية', money(RB.sum(active, (e) => costs[e.id].salary)), 'الأساسي + البدلات')}
       ${kpi('التكلفة الشهرية الحقيقية', money(RB.sum(active, (e) => costs[e.id].total)), 'تشمل التأمينات والرسوم والسكن ونهاية الخدمة')}
       ${kpi('تأمينات المنشأة شهرياً', money(RB.sum(active, (e) => costs[e.id].gosi.er)), 'حسب النسب في الإعدادات')}
+      ${kpi('مخصص نهاية الخدمة المتراكم', money(eosbTotal), 'يُستحق مع كل مسير رواتب')}
     </div>`;
     h += tabs('staffTab', [['emp', 'الموظفون'], ['payroll', 'مسيرات الرواتب']], ui.staffTab);
     if (ui.staffTab === 'payroll') {
@@ -1053,6 +1067,7 @@
           { h: 'تأمينات المنشأة', num: 1, f: (e) => N(costs[e.id].gosi.er) },
           { h: 'المقابل المالي والإقامة', num: 1, f: (e) => N(costs[e.id].items[2].v + costs[e.id].items[3].v) },
           { h: 'التكلفة الشهرية الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
+          { h: 'مخصص نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
           { h: 'الحالة', f: (e) => (RB.isEmployeeActive(e, ym) ? chip('على رأس العمل', 'good') : chip('متوقف', 'mute')) },
           { h: '', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${e.id}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
@@ -1411,7 +1426,9 @@
       ${G('cogs', RB.GROUPS.cogs)}
       <tr class="total"><td>مجمل الربح</td><td class="num">${N(inc.grossProfit)}</td><td class="num">${pct(rev ? (inc.grossProfit / rev) * 100 : 0)}</td></tr>
       ${G('sell', RB.GROUPS.sell)}${G('labor', RB.GROUPS.labor)}${G('occ', RB.GROUPS.occ)}${G('opex', RB.GROUPS.opex)}${G('dep', RB.GROUPS.dep)}
-      <tr class="total big ${inc.net < 0 ? 'neg' : ''}"><td>صافي الربح (الخسارة)</td><td class="num">${N(inc.net)}</td><td class="num">${pct(inc.ratios.netMargin)}</td></tr>
+      <tr class="total ${inc.netBeforeZakat < 0 ? 'neg' : ''}"><td>صافي الربح قبل الزكاة</td><td class="num">${N(inc.netBeforeZakat)}</td><td class="num">${pct(rev ? (inc.netBeforeZakat / rev) * 100 : 0)}</td></tr>
+      ${inc.groups.zakat.length ? lineRows(inc.groups.zakat, rev) : `<tr><td class="ind">${RB.GROUPS.zakat}</td><td class="num">${N(0)}</td><td></td></tr>`}
+      <tr class="total big ${inc.net < 0 ? 'neg' : ''}"><td>صافي الربح بعد الزكاة</td><td class="num">${N(inc.net)}</td><td class="num">${pct(inc.ratios.netMargin)}</td></tr>
       </tbody></table></div>`;
     const R = inc.ratios;
     const ratio = (l, v, hint) => `<div><span>${l}</span><b class="n">${pct(v)}</b><small>${hint}</small></div>`;
@@ -1451,7 +1468,7 @@
     const v = RB.vatReport(S, from, asOf, L);
     const regFrom = S.settings.vatRegisteredFrom;
     let h = '';
-    if (!S.settings.vatRegistered) h += `<p class="note">المطعم غير مسجل في ضريبة القيمة المضافة حسب الإعدادات، فلا تُحسب ضريبة على المبيعات.</p>`;
+    if (!S.settings.vatRegistered) h += `<p class="note">المطعم غير مسجل في ضريبة القيمة المضافة حسب الإعدادات، فلا تُحسب ضريبة على المبيعات. التسجيل إلزامي إذا تجاوزت المبيعات الخاضعة 375,000 ر.س خلال 12 شهراً، واختياري من 187,500 ر.س.</p>`;
     else if (regFrom && from < regFrom) h += `<p class="note">التسجيل في الضريبة ساري من ${dtText(regFrom)}؛ العمليات قبله بلا ضريبة مخرجات ولا مدخلات.</p>`;
     const inRows = Object.keys(v.inputs).map((k) => `<tr><td class="ind">${esc(k)}</td><td class="num">${N(v.inputs[k].base)}</td><td class="num">${N(v.inputs[k].vat)}</td></tr>`).join('');
     h += card(
@@ -1582,7 +1599,7 @@
     const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th>${months.map((m) => `<th class="num">${RB.monthName(m)}</th>`).join('')}</tr></thead><tbody>
       ${row('المبيعات بدون الضريبة', (i) => N(i.revenue))}
       ${Object.keys(RB.GROUPS).map((g) => row(RB.GROUPS[g], (i) => N(i.tot[g]))).join('')}
-      ${row('صافي الربح', (i) => N(i.net), 'total')}
+      ${row('صافي الربح بعد الزكاة', (i) => N(i.net), 'total')}
       ${row('تكلفة المواد %', (i) => pct(i.ratios.foodCost))}
       ${row('التكلفة الأساسية %', (i) => pct(i.ratios.prime))}
       ${row('صافي الهامش %', (i) => pct(i.ratios.netMargin))}
@@ -1628,7 +1645,7 @@
     h += `<div class="grid2">`;
     h += card('بيانات المطعم', kv('الاسم', esc(st.name)) + kv('المدينة', esc(st.city || '—')) + kv('السجل التجاري', esc(st.crNumber || '—')) + kv('تاريخ الافتتاح', st.openingDate ? dtText(st.openingDate) : '—') + kv('مستهدف تكلفة الطعام', pct(st.targetFoodCost, 0)) + kv('تقريب السعر المقترح', fmt(st.priceRounding) + ' ' + cur()), { actions: btn('تعديل', 'settings', 'data-v="general"', 'sm') });
     h += card('ضريبة القيمة المضافة', kv('مسجل في الضريبة', st.vatRegistered ? 'نعم' : 'لا') + (st.vatRegistered ? kv('سريان التسجيل', st.vatRegisteredFrom ? dtText(st.vatRegisteredFrom) : 'منذ البداية') : '') + kv('الرقم الضريبي', esc(st.vatNumber || '—')) + kv('النسبة', pct(st.vatRate, 0)) + kv('فترة الإقرار', st.vatPeriod === 'monthly' ? 'شهرية' : 'ربع سنوية') + kv('ضريبة على العمولات والرسوم', st.feeVat ? 'نعم' : 'لا'), { actions: btn('تعديل', 'settings', 'data-v="vat"', 'sm') });
-    h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
+    h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي (النظام السابق) — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي (النظام السابق) — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('السعودي (النظام الجديد)', '<span class="n">+0.5%</span> لكل طرف كل يوليو 2025–2028') + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
     h += card(
       'الحفظ والنسخ الاحتياطي',
       `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${new Date(APP.savedAt).toLocaleTimeString('ar-SA')}` : ''}</p>
@@ -1716,33 +1733,76 @@
   FORMS.expenses = (rec, x) => {
     const isGov = x === 'gov' || (rec && RB.GOV_CATS.includes(rec.category));
     const cat0 = x && RB.EXPENSE_CATS.some((c) => c.id === x) ? x : isGov ? 'gov' : 'utilities';
-    const base = { id: RB.uid(), date: today(), category: cat0, desc: '', entity: '', amount: '', includesVat: true, taxable: !['housing', 'gov', 'labor_gov'].includes(cat0), account: 'bank', months: RB.expenseCat(cat0).months, startDate: '', employeeId: '', note: '', preset: '' };
+    // بلا ضريبة افتراضياً: سكن العمال والرسوم الحكومية والزكاة
+    const noVat = ['housing', 'gov', 'labor_gov', 'zakat'];
+    // الزكاة تخص السنة المالية السابقة لسنة الدفع (بداية التغطية = أول تلك السنة)
+    const zakatStart = (d) => +(d || today()).slice(0, 4) - 1 + '-01-01';
+    const empCats = ['labor_gov', 'insurance', 'staff'];
+    const oneOffCats = RB.GOV_CATS.concat(['rent', 'housing']);
+    const base = { id: RB.uid(), date: today(), category: cat0, desc: '', entity: '', amount: '', includesVat: true, taxable: !noVat.includes(cat0), account: 'bank', months: RB.expenseCat(cat0).months, startDate: cat0 === 'zakat' ? zakatStart(today()) : '', employeeId: '', note: '', preset: '' };
     const presetList = RB.GOV_PRESETS.map((p, i) => [String(i), p.entity + ' — ' + p.desc]);
+    // العامل الذي ترك العمل قبل تاريخ الدفع: لا تعبئة تلقائية له، ويظهر آخر القائمة بعلامة «(غادر)»
+    const gone = (e, d) => e.active === false || (!!e.endDate && e.endDate < (d || today()));
+    const empOptions = (v) => [['', '— للجميع —']].concat(S.employees.slice().sort((a, b) => gone(a, v.date) - gone(b, v.date)).map((e) => [e.id, e.name + (gone(e, v.date) ? ' (غادر)' : '')]));
+    // المبلغ التلقائي يتبع القالب والعامل ما دام المستخدم لم يكتب مبلغاً غيره (v._auto مؤقت لا يُحفظ)
+    const applyAuto = (v) => {
+      const blank = v.amount === '' || v.amount === undefined || v.amount === null;
+      if (!blank && !(v._auto !== undefined && num(v.amount) === v._auto)) return;
+      const e = v.employeeId && empCats.includes(v.category) ? S.employees.find((z) => z.id === v.employeeId) : null;
+      const pr = v.preset !== '' && v.preset !== undefined ? RB.GOV_PRESETS[+v.preset] : null;
+      const a = e && !gone(e, v.date) ? RB.autoFeeAmount(pr ? pr.auto : undefined, e, pr ? '' : v.category) : 0;
+      v.amount = a || '';
+      if (a) v._auto = a;
+      else delete v._auto;
+    };
+    const onCategory = (v) => {
+      if (!empCats.includes(v.category)) v.employeeId = '';
+      if (!oneOffCats.includes(v.category)) delete v.oneOff;
+      if (v.category === 'zakat') {
+        v.taxable = false;
+        if (!v.startDate) v.startDate = v._zs = zakatStart(v.date);
+      } else if (v._zs && v.startDate === v._zs) {
+        // بداية التغطية الافتراضية للزكاة لا تخص التصنيفات الأخرى
+        v.startDate = '';
+        delete v._zs;
+      }
+    };
     return formModal({
       title: rec ? 'تعديل مصروف' : isGov ? 'رسم حكومي أو اشتراك' : 'مصروف تشغيلي',
       value: rec ? Object.assign({ preset: '' }, rec) : base,
       onChange: (p, v) => {
         if (p === 'category') {
           v.months = RB.expenseCat(v.category).months;
-          v.taxable = !['housing', 'gov', 'labor_gov'].includes(v.category);
+          v.taxable = !noVat.includes(v.category);
+          onCategory(v);
         }
         if (p === 'preset' && v.preset !== '') {
           const pr = RB.GOV_PRESETS[+v.preset];
-          Object.assign(v, { entity: pr.entity, desc: pr.desc, category: pr.category, months: pr.months, taxable: ['insurance', 'software'].includes(pr.category) });
+          Object.assign(v, { entity: pr.entity, desc: pr.desc, category: pr.category, months: pr.months, taxable: ['insurance', 'shop_insurance', 'software'].includes(pr.category), oneOff: !!pr.oneOff });
+          onCategory(v);
         }
-        if (p === 'employeeId' && v.employeeId && v.category === 'labor_gov' && !num(v.amount)) {
-          const e = S.employees.find((z) => z.id === v.employeeId);
-          if (e && e.nationality !== 'saudi') v.amount = num(e.levyMonthly) * 12 + num(e.iqamaAnnual) + num(e.workPermitAnnual);
-        }
+        // تاريخ دفع الزكاة يحدد سنتها ما دامت بداية التغطية هي الافتراضية
+        if (p === 'date' && v.category === 'zakat' && v.startDate && v.startDate === v._zs) v.startDate = v._zs = zakatStart(v.date);
+        if (p === 'preset' || p === 'employeeId' || p === 'category') applyAuto(v);
       },
       fields: (v) => [
         ...(isGov && !rec ? [{ k: 'preset', type: 'select', label: 'اختر من القائمة (اختياري)', options: [['', '— بند آخر —']].concat(presetList), redraw: true }] : []),
-        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.EXPENSE_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الدفع', req: 1 }] },
+        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.EXPENSE_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الدفع', req: 1, redraw: v.category === 'zakat' }] },
+        ...(v.category === 'zakat' ? [{ type: 'html', html: () => '<p class="note">يُقدَّم إقرار الزكاة ويُسدَّد خلال 120 يوماً من نهاية السنة المالية؛ الزكاة 2.5% من الوعاء الزكوي، وتُحمَّل على السنة التي تخصها.</p>' }] : []),
+        ...(v.category === 'insurance' ? [{ type: 'html', html: () => '<p class="note">اشتراكات التأمينات الاجتماعية (GOSI) تُحسب وتُسجَّل تلقائياً من مسير الرواتب — لا تسجّل فاتورة سداد التأمينات هنا حتى لا تُحسب مرتين.</p>' }] : []),
         { type: 'row', fields: [{ k: 'desc', label: 'البيان', req: 1, placeholder: 'مثال: فاتورة الكهرباء' }, { k: 'entity', label: v.category === 'rent' || v.category === 'housing' ? 'المؤجر' : 'الجهة / المورد', list: () => [...new Set(S.expenses.map((e) => e.entity).filter(Boolean))] }] },
-        ...(['labor_gov', 'insurance', 'staff'].includes(v.category) ? [{ k: 'employeeId', type: 'select', label: 'العامل (اختياري)', options: [['', '— للجميع —']].concat(S.employees.map((e) => [e.id, e.name])), redraw: true }] : []),
+        ...(empCats.includes(v.category) ? [{ k: 'employeeId', type: 'select', label: 'العامل (اختياري)', options: empOptions, redraw: true }] : []),
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'دُفع من', options: payOptions(true) }] },
         ...vatFields(),
-        { type: 'row', fields: [{ k: 'months', type: 'num', label: 'يغطي كم شهر؟', min: 1, help: 'مثال: إيجار 6 أشهر، رخصة سنة = 12' }, { k: 'startDate', type: 'date', label: 'بداية التغطية', help: 'إن اختلفت عن تاريخ الدفع' }] },
+        {
+          type: 'row',
+          fields: [
+            { k: 'months', type: 'num', label: 'يغطي كم شهر؟', min: 1, help: 'مثال: إيجار 6 أشهر، رخصة سنة = 12' },
+            v.category === 'zakat' ? { k: 'startDate', type: 'date', label: 'بداية السنة المالية التي تخصها', help: 'تُحمَّل الزكاة على هذه السنة لا على سنة الدفع' } : { k: 'startDate', type: 'date', label: 'بداية التغطية', help: 'إن اختلفت عن تاريخ الدفع' },
+          ],
+        },
+        ...(oneOffCats.includes(v.category) ? [{ k: 'oneOff', type: 'check', label: 'رسم لمرة واحدة (لا يحتاج تجديد)' }] : []),
+        ...(rec && rec.noRenew ? [{ k: 'noRenew', type: 'check', label: 'أوقفت متابعة تجديده' }] : []),
         { k: 'note', type: 'textarea', label: 'ملاحظات' },
       ],
       preview: (v) => {
@@ -1755,6 +1815,8 @@
       onSave: (v) => {
         if (v.account === 'payable' && !(v.entity || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';
         delete v.preset;
+        delete v._auto;
+        delete v._zs;
         upsert('expenses', v);
       },
     });
@@ -1769,15 +1831,27 @@
       onChange: (p, v) => {
         if (p === 'nationality' && v.nationality === 'saudi') Object.assign(v, { levyMonthly: 0, iqamaAnnual: 0, workPermitAnnual: 0 });
         if (p === 'nationality' && v.nationality !== 'saudi' && !num(v.levyMonthly)) Object.assign(v, { levyMonthly: L.levyMonthly, iqamaAnnual: L.iqamaAnnual, workPermitAnnual: L.workPermitAnnual });
+        // السعودي الجديد: النظام الجديد افتراضياً؛ السجل القائم بلا قيمة يبقى على النظام السابق
+        if (p === 'nationality' && v.nationality === 'saudi' && !rec && !v.gosiSystem) v.gosiSystem = 'new';
       },
       fields: (v) => [
         { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1 }, { k: 'job', label: 'الوظيفة', placeholder: 'طباخ، كاشير، عامل نظافة…' }] },
         { type: 'row', fields: [{ k: 'nationality', type: 'select', label: 'الجنسية', options: [['expat', 'غير سعودي'], ['saudi', 'سعودي']], redraw: true }, { k: 'startDate', type: 'date', label: 'تاريخ المباشرة' }, { k: 'endDate', type: 'date', label: 'تاريخ ترك العمل' }] },
+        {
+          k: 'gosiSystem',
+          type: 'select',
+          label: 'نظام التأمينات الاجتماعية',
+          show: (x) => x.nationality === 'saudi',
+          options: [['old', 'مسجّل في التأمينات قبل 3 يوليو 2024 (النظام السابق)'], ['new', 'أول تسجيل في التأمينات من 3 يوليو 2024 (النظام الجديد)']],
+          help: 'يحدده تاريخ أول تسجيل في التأمينات في أي منشأة، لا تاريخ التعيين عندكم',
+        },
         { type: 'section', label: 'الراتب الشهري' },
         { type: 'row', fields: [{ k: 'basic', type: 'money', label: 'الراتب الأساسي', req: 1, min: 0 }, { k: 'housing', type: 'money', label: 'بدل السكن', min: 0 }, { k: 'transport', type: 'money', label: 'بدل النقل', min: 0 }, { k: 'otherAllow', type: 'money', label: 'بدلات أخرى (إعاشة…)', min: 0 }] },
         { type: 'section', label: 'تكاليف أخرى على المطعم' },
         ...(v.nationality !== 'saudi' ? [{ type: 'row', fields: [{ k: 'levyMonthly', type: 'money', label: 'المقابل المالي شهرياً', min: 0 }, { k: 'iqamaAnnual', type: 'money', label: 'رسوم الإقامة سنوياً', min: 0 }, { k: 'workPermitAnnual', type: 'money', label: 'رخصة العمل سنوياً', min: 0 }] }] : []),
         { type: 'row', fields: [{ k: 'medicalAnnual', type: 'money', label: 'التأمين الطبي سنوياً', min: 0 }, { k: 'ticketAnnual', type: 'money', label: 'تذاكر السفر سنوياً', min: 0 }, { k: 'housingCost', type: 'money', label: 'نصيبه من سكن العمال شهرياً', min: 0 }, { k: 'otherAnnual', type: 'money', label: 'رسوم أخرى سنوياً', min: 0 }] },
+        // بلا اختيار صريح يُفترض العيني إن لم يكن له بدل سكن نقدي وله نصيب من سكن العمال
+        { k: 'housingInKind', type: 'check', label: 'السكن مقدَّم عيناً من المطعم (يُحتسب للتأمينات بأجر شهرين في السنة)', get: (x) => RB.housingInKind(x) },
         { k: 'active', type: 'check', label: 'على رأس العمل' },
         { k: 'note', type: 'textarea', label: 'ملاحظات' },
       ],
@@ -1786,14 +1860,21 @@
     });
   };
   function empCostHTML(e) {
-    const c = RB.employeeMonthlyCost(e, S);
+    const ym = today().slice(0, 7);
+    const c = RB.employeeMonthlyCost(e, S, ym);
+    // النسب الفعلية لهذا الشهر (السعودي في النظام الجديد تزيد نسبته كل يوليو)
+    const rp = (x) => `<span class="n">${+num(x).toFixed(2)}%</span>`;
+    const saudi = e.nationality === 'saudi';
+    const r = saudi ? RB.gosiSaudiRates(e, S, ym) : { er: S.settings.gosi.expatEr, ee: 0 };
+    const rates = saudi ? `بنسبة ${rp(r.er)} على المنشأة و${rp(r.ee)} على الموظف (${e.gosiSystem === 'new' ? 'النظام الجديد' : 'النظام السابق'})` : `بنسبة ${rp(r.er)} على المنشأة`;
     return `<div class="tbl-wrap"><table class="tbl mini"><tbody>${c.items.filter((i) => i.v).map((i) => `<tr><td>${esc(i.label)}</td><td class="num">${N(i.v)}</td></tr>`).join('')}<tr class="total"><td>التكلفة الشهرية الحقيقية</td><td class="num">${N(c.total)}</td></tr></tbody></table></div>
-      <p class="note">التأمينات على أجر خاضع ${fmt(c.gosi.base)} (الأساسي + السكن). ${c.gosi.ee ? `يُخصم من الموظف ${fmt(c.gosi.ee)} فيصله صافي ${fmt(c.netPay)}.` : 'لا يُخصم من الموظف غير السعودي.'} تكلفته السنوية ≈ ${fmt(c.total * 12)} ${cur()}.</p>`;
+      <p class="note">التأمينات ${rates} من أجر خاضع ${fmt(c.gosi.base)}. الأجر الخاضع = الأساسي + بدل السكن (أو السكن العيني مقدّراً بأجر شهرين في السنة). ${c.gosi.ee ? `يُخصم من الموظف ${fmt(c.gosi.ee)} فيصله صافي ${fmt(c.netPay)}.` : 'لا يُخصم من الموظف غير السعودي.'} تكلفته السنوية ≈ ${fmt(c.total * 12)} ${cur()}.</p>`;
   }
 
   FORMS.payroll = (rec) => {
     const ym = RB.ymAdd(today().slice(0, 7), today().slice(8) >= '25' ? 0 : -1);
-    const fill = (v) => (v.lines = S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S)));
+    // نسب التأمينات حسب شهر المسير (النظام الجديد للسعودي يتغير كل يوليو)
+    const fill = (v) => (v.lines = S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S, v.month)));
     const base = { id: RB.uid(), month: ym, date: RB.monthEnd(ym) <= today() ? RB.monthEnd(ym) : today(), account: 'bank', gosiAccount: 'bank', lines: [], note: '' };
     if (!rec) fill(base);
     const nCol = (k, label) => ({ k, label, type: 'num', num: 1 });
@@ -1814,8 +1895,8 @@
           type: 'lines',
           label: 'الموظفون',
           addLabel: 'إضافة موظف',
-          tools: [{ id: 'fill', label: 'تعبئة من بيانات الموظفين', run: (v, rows) => rows.splice(0, rows.length, ...S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S))) }],
-          newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0 }),
+          tools: [{ id: 'fill', label: 'تعبئة من بيانات الموظفين', run: (v, rows) => rows.splice(0, rows.length, ...S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S, v.month))) }],
+          newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 0 }),
           cols: [
             { k: 'name', label: 'الموظف', w: '9rem' },
             nCol('basic', 'الأساسي'),
@@ -1825,11 +1906,13 @@
             nCol('deductions', 'خصومات وغياب'),
             nCol('gosiEe', 'تأمينات الموظف'),
             nCol('gosiEr', 'تأمينات المنشأة'),
+            nCol('eosbPaid', 'مكافأة نهاية الخدمة المصروفة'),
             { k: 'net', label: 'الصافي', num: 1, calc: (r) => fmt(RB.payrollLineGross(r) - num(r.gosiEe)) },
           ],
+          help: '«مكافأة نهاية الخدمة المصروفة» تُكتب عند انتهاء خدمة الموظف فقط: تُخصم من مخصصه المتراكم، ولا تدخل في إجمالي الرواتب ولا في التأمينات.',
           foot: (v) => {
             const t = RB.payrollTotals(v);
-            return `<div class="pv-grid four"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>`;
+            return `<div class="pv-grid four"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}`;
           },
         },
         { k: 'note', label: 'ملاحظات' },
@@ -2289,7 +2372,7 @@
         { type: 'row', fields: [{ k: 'targetFoodCost', type: 'num', label: 'مستهدف تكلفة الطعام %', min: 1, help: 'شائع في مطاعم البرقر بين 28% و35%' }, { k: 'priceRounding', type: 'num', label: 'تقريب السعر المقترح لأقرب', min: 0.25, help: '1 = لأقرب ريال' }] },
       ],
       vat: (v) => [
-        { k: 'vatRegistered', type: 'check', label: 'المطعم مسجل في ضريبة القيمة المضافة', redraw: true },
+        { k: 'vatRegistered', type: 'check', label: 'المطعم مسجل في ضريبة القيمة المضافة', redraw: true, help: 'التسجيل إلزامي إذا تجاوزت المبيعات الخاضعة 375,000 ر.س خلال 12 شهراً، واختياري من 187,500 ر.س' },
         {
           k: 'vatRegisteredFrom',
           type: 'date',
@@ -2303,8 +2386,10 @@
         { k: 'feeVat', type: 'check', label: 'عمولات التطبيقات ورسوم الشبكة عليها ضريبة قيمة مضافة' },
       ],
       labor: [
-        { type: 'section', label: 'نسب التأمينات الاجتماعية من الأجر الخاضع (الأساسي + السكن)' },
-        { type: 'row', fields: [{ k: 'gosi.saudiEr', type: 'num', label: 'السعودي — حصة المنشأة %' }, { k: 'gosi.saudiEe', type: 'num', label: 'السعودي — حصة الموظف %' }] },
+        { type: 'section', label: 'نسب التأمينات الاجتماعية من الأجر الخاضع' },
+        { type: 'html', html: () => '<p class="note">الأجر الخاضع = الأساسي + بدل السكن (أو السكن العيني مقدّراً بأجر شهرين في السنة)</p>' },
+        { type: 'row', fields: [{ k: 'gosi.saudiEr', type: 'num', label: 'السعودي (النظام السابق) — حصة المنشأة %' }, { k: 'gosi.saudiEe', type: 'num', label: 'السعودي (النظام السابق) — حصة الموظف %' }] },
+        { type: 'html', html: () => '<p class="note">المشتركون الجدد (أول تسجيل من 3 يوليو 2024): تُضاف زيادة فرع المعاشات 0.5% لكل طرف كل يوليو من 2025 حتى 2028 (من يوليو 2026: المنشأة 12.75% والموظف 10.75%).</p>' },
         { type: 'row', fields: [{ k: 'gosi.expatEr', type: 'num', label: 'غير السعودي — حصة المنشأة % (الأخطار المهنية)' }, { k: 'gosi.cap', type: 'num', label: 'الحد الأعلى للأجر الخاضع' }] },
         { type: 'section', label: 'قيم افتراضية للعامل غير السعودي (تتعبأ عند إضافة موظف)' },
         { type: 'row', fields: [{ k: 'labor.levyMonthly', type: 'num', label: 'المقابل المالي شهرياً' }, { k: 'labor.iqamaAnnual', type: 'num', label: 'رسوم الإقامة سنوياً' }] },
@@ -2404,10 +2489,22 @@
       if (!rec) return;
       const c = clone(rec);
       c.id = RB.uid();
-      const end = RB.coverageEnd(rec.startDate || rec.date, rec.months);
-      c.startDate = RB.addDays(end, 1);
+      // التجديد بند جديد يُتابع: لا يرث إيقاف المتابعة ولا «لمرة واحدة»
+      delete c.noRenew;
+      delete c.oneOff;
       c.date = today();
+      // الزكاة: سنة الدفع الجديدة تخص السنة السابقة لها؛ غيرها يبدأ بعد نهاية التغطية السابقة
+      if (rec.category === 'zakat') c.startDate = +c.date.slice(0, 4) - 1 + '-01-01';
+      else c.startDate = RB.addDays(RB.coverageEnd(rec.startDate || rec.date, rec.months), 1);
       FORMS.expenses(c);
+    },
+    stopRenew: async (el) => {
+      const rec = find('expenses', el.dataset.id);
+      if (!rec) return;
+      if (!(await confirmBox(`إيقاف متابعة تجديد «${esc(rec.desc || RB.expenseCat(rec.category).name)}»؟ لن يظهر في متابعة التجديد ولا في التنبيهات، ويعود إذا سجّلت تجديده لاحقاً.`, { ok: 'أوقف المتابعة' }))) return;
+      upsert('expenses', Object.assign(clone(rec), { noRenew: true }));
+      render();
+      toast('أُوقفت متابعة التجديد.');
     },
     tab: (el) => {
       ui[el.dataset.tab] = el.dataset.v;
@@ -2518,7 +2615,7 @@
       fields: [
         { type: 'html', html: () => '<p class="note">تبدأ بدفتر فارغ (قنوات البيع والتصنيفات جاهزة). البيانات التجريبية لن تُحفظ.</p>' },
         { k: 'name', label: 'اسم المطعم', req: 1 },
-        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح (أو المتوقع)' }, { k: 'vatRegistered', type: 'check', label: 'مسجل في ضريبة القيمة المضافة', redraw: true }] },
+        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح (أو المتوقع)' }, { k: 'vatRegistered', type: 'check', label: 'مسجل في ضريبة القيمة المضافة', redraw: true, help: 'التسجيل إلزامي إذا تجاوزت المبيعات الخاضعة 375,000 ر.س خلال 12 شهراً، واختياري من 187,500 ر.س' }] },
         {
           k: 'vatRegisteredFrom',
           type: 'date',
@@ -2634,8 +2731,10 @@
         const inc = RB.incomeStatement(S, from, asOf, L);
         rows.push(['القسم', 'البند', 'المبلغ']);
         rows.push(['الإيرادات', 'المبيعات بدون الضريبة', inc.revenue]);
-        Object.keys(RB.GROUPS).forEach((g) => inc.groups[g].forEach((x) => rows.push([RB.GROUPS[g], x.name, x.amount])));
-        rows.push(['', 'صافي الربح', inc.net]);
+        Object.keys(RB.GROUPS).filter((g) => g !== 'zakat').forEach((g) => inc.groups[g].forEach((x) => rows.push([RB.GROUPS[g], x.name, x.amount])));
+        rows.push(['', 'صافي الربح قبل الزكاة', inc.netBeforeZakat]);
+        rows.push([RB.GROUPS.zakat, RB.GROUPS.zakat, inc.zakat]);
+        rows.push(['', 'صافي الربح بعد الزكاة', inc.net]);
       }
       name = (REPORTS.find((r) => r[0] === rep) || ['', 'تقرير'])[1];
     }
@@ -2793,6 +2892,8 @@
   }
 
   function onRemote(section, data) {
+    // تصنيفات المصاريف القديمة تُرحّل كما عند التحميل، فلا ترجع اللقطة المحفوظة بالتصنيف القديم
+    if (section === 'expenses' && Array.isArray(data)) data = data.map(RB.migrateExpense);
     if (APP.demo) {
       if (APP.real) {
         if (section === 'settings') APP.real.settings = RB.normalize({ settings: data }).settings;

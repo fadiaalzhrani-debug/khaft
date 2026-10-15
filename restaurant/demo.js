@@ -66,7 +66,8 @@
       Object.assign({ id: 'e2', name: 'رفيق', job: 'طباخ مساعد', basic: 1900, otherAllow: 200 }, expat),
       Object.assign({ id: 'e3', name: 'أنور', job: 'تحضير وتغليف', basic: 1600, otherAllow: 200 }, expat),
       Object.assign({ id: 'e4', name: 'جمال', job: 'نظافة وخدمة', basic: 1400, otherAllow: 200 }, expat),
-      { id: 'e5', name: 'سعود', job: 'كاشير ومشرف وردية', nationality: 'saudi', basic: 4000, housing: 1000, transport: 500, otherAllow: 0, levyMonthly: 0, iqamaAnnual: 0, workPermitAnnual: 0, medicalAnnual: 0, ticketAnnual: 0, housingCost: 0, otherAnnual: 0, startDate: empStart, active: true },
+      // أول تسجيل له في التأمينات بعد 3 يوليو 2024: نسب النظام الجديد
+      { id: 'e5', name: 'سعود', job: 'كاشير ومشرف وردية', nationality: 'saudi', gosiSystem: 'new', basic: 4000, housing: 1000, transport: 500, otherAllow: 0, levyMonthly: 0, iqamaAnnual: 0, workPermitAnnual: 0, medicalAnnual: 0, ticketAnnual: 0, housingCost: 0, otherAnnual: 0, startDate: empStart, active: true },
     ];
 
     // ─── المواد الخام (السعر لوحدة الشراء بدون ضريبة) ───
@@ -274,7 +275,7 @@
       const date = RB.monthEnd(ym);
       if (date > today) break;
       const lines = S.employees.filter((e) => RB.isEmployeeActive(e, ym)).map((e) => {
-        const l = RB.payrollLine(e, S);
+        const l = RB.payrollLine(e, S, ym);
         if (ym < openYm) l.deductions = r2(((l.basic + l.housing + l.allowances) * 10) / 30); // بدأوا قبل نهاية الشهر بعشرين يوماً
         return l;
       });

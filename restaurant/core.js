@@ -80,7 +80,9 @@
     { id: 'telecom', name: 'اتصالات وإنترنت', acc: '5304', group: 'opex', months: 1 },
     { id: 'gov', name: 'رسوم حكومية واشتراكات المنصات', acc: '5305', group: 'opex', months: 12 },
     { id: 'labor_gov', name: 'المقابل المالي والإقامات ورسوم العمالة', acc: '5306', group: 'labor', months: 12 },
-    { id: 'insurance', name: 'التأمين الطبي والتأمينات', acc: '5307', group: 'labor', months: 12 },
+    // التأمينات الاجتماعية (GOSI) لا تُسجَّل هنا: تُحسب من مسير الرواتب
+    { id: 'insurance', name: 'التأمين الطبي للعمال', acc: '5307', group: 'labor', months: 12 },
+    { id: 'shop_insurance', name: 'تأمين المحل والممتلكات', acc: '5315', group: 'opex', months: 12 },
     { id: 'maintenance', name: 'صيانة وإصلاحات', acc: '5308', group: 'opex', months: 1 },
     { id: 'marketing', name: 'تسويق وإعلان', acc: '5309', group: 'opex', months: 1 },
     { id: 'software', name: 'أنظمة واشتراكات تقنية', acc: '5310', group: 'opex', months: 1 },
@@ -88,10 +90,13 @@
     { id: 'transport', name: 'نقل ومواصلات', acc: '5312', group: 'opex', months: 1 },
     { id: 'staff', name: 'إعاشة ومزايا العمال', acc: '5313', group: 'labor', months: 1 },
     { id: 'bankfees', name: 'رسوم بنكية', acc: '5314', group: 'opex', months: 1 },
+    // الزكاة: بند مستقل بعد صافي الربح، تُحمَّل على السنة التي تخصها (بداية التغطية = بداية تلك السنة)
+    { id: 'zakat', name: 'الزكاة', acc: '5901', group: 'zakat', months: 12 },
+    // «أخرى» آخر القائمة دائماً: التصنيف غير المعروف يُعامل كمصاريف أخرى
     { id: 'other', name: 'مصاريف أخرى', acc: '5399', group: 'opex', months: 1 },
   ];
   // التصنيفات التي تظهر في صفحة الرسوم الحكومية والاشتراكات
-  RB.GOV_CATS = ['gov', 'labor_gov', 'insurance', 'software'];
+  RB.GOV_CATS = ['gov', 'labor_gov', 'insurance', 'shop_insurance', 'software', 'zakat'];
 
   // المشتريات التشغيلية. cogs = تدخل في تكلفة المبيعات
   RB.PURCHASE_CATS = [
@@ -107,7 +112,9 @@
   RB.UNITS = ['جم', 'كجم', 'مل', 'لتر', 'حبة', 'شريحة', 'حصة', 'علبة', 'كيس', 'كرتون'];
   RB.PRODUCT_CATS = ['برقر', 'وجبات', 'بطاطس وجانبي', 'مشروبات', 'صوصات وإضافات', 'حلى', 'أخرى'];
 
-  // قوالب جاهزة للرسوم الحكومية والاشتراكات (المبالغ يحددها المستخدم)
+  // قوالب جاهزة للرسوم الحكومية والاشتراكات (المبالغ يحددها المستخدم).
+  // oneOff = رسم لمرة واحدة لا يحتاج تجديداً. auto = مبلغ يتعبأ من بيانات العامل المختار:
+  // qiwa = المقابل المالي × 12 + رخصة العمل، iqama = رسوم الإقامة، medical = التأمين الطبي السنوي
   RB.GOV_PRESETS = [
     { entity: 'وزارة التجارة', desc: 'السجل التجاري (تأكيد سنوي)', category: 'gov', months: 12 },
     { entity: 'الغرفة التجارية', desc: 'اشتراك الغرفة التجارية', category: 'gov', months: 12 },
@@ -115,17 +122,65 @@
     { entity: 'بلدي (أمانة المنطقة)', desc: 'لوحة المحل', category: 'gov', months: 12 },
     { entity: 'بلدي (أمانة المنطقة)', desc: 'الشهادات الصحية للعمال', category: 'labor_gov', months: 12 },
     { entity: 'الدفاع المدني (سلامة)', desc: 'شهادة السلامة', category: 'gov', months: 12 },
-    { entity: 'هيئة الزكاة والضريبة والجمارك', desc: 'الزكاة السنوية', category: 'gov', months: 12 },
-    { entity: 'قوى', desc: 'رخصة عمل + المقابل المالي', category: 'labor_gov', months: 12 },
-    { entity: 'مقيم (الجوازات)', desc: 'تجديد إقامة', category: 'labor_gov', months: 12 },
-    { entity: 'مقيم (الجوازات)', desc: 'تأشيرة خروج وعودة', category: 'labor_gov', months: 1 },
-    { entity: 'مساند / الاستقدام', desc: 'تأشيرة استقدام', category: 'labor_gov', months: 1 },
-    { entity: 'شركة التأمين', desc: 'تأمين طبي للعمال', category: 'insurance', months: 12 },
-    { entity: 'شركة التأمين', desc: 'تأمين المحل ضد الحريق', category: 'insurance', months: 12 },
+    { entity: 'منصة إيجار', desc: 'توثيق عقد إيجار المحل', category: 'gov', months: 12 },
+    { entity: 'هيئة الزكاة والضريبة والجمارك', desc: 'الزكاة عن السنة المالية السابقة', category: 'zakat', months: 12 },
+    { entity: 'قوى', desc: 'رخصة عمل + المقابل المالي', category: 'labor_gov', months: 12, auto: 'qiwa' },
+    { entity: 'مقيم (الجوازات)', desc: 'تجديد إقامة', category: 'labor_gov', months: 12, auto: 'iqama' },
+    { entity: 'مقيم (الجوازات)', desc: 'تأشيرة خروج وعودة', category: 'labor_gov', months: 1, oneOff: true },
+    { entity: 'قوى (وزارة الموارد البشرية)', desc: 'إصدار تأشيرة عمل (استقدام عامل)', category: 'labor_gov', months: 1, oneOff: true },
+    { entity: 'قوى', desc: 'نقل خدمات عامل', category: 'labor_gov', months: 1, oneOff: true },
+    { entity: 'قوى', desc: 'تغيير مهنة', category: 'labor_gov', months: 1, oneOff: true },
+    { entity: 'شركة التأمين', desc: 'تأمين طبي للعمال', category: 'insurance', months: 12, auto: 'medical' },
+    { entity: 'شركة التأمين', desc: 'تأمين المحل ضد الحريق', category: 'shop_insurance', months: 12 },
     { entity: 'مزود نظام الكاشير', desc: 'اشتراك نظام نقاط البيع', category: 'software', months: 1 },
     { entity: 'مزود الفوترة الإلكترونية', desc: 'ربط فاتورة (المرحلة الثانية)', category: 'software', months: 12 },
+    { entity: 'مقيم (علم)', desc: 'اشتراك بوابة مقيم', category: 'software', months: 12 },
     { entity: 'تطبيق توصيل', desc: 'رسوم تسجيل أو اشتراك تطبيق', category: 'software', months: 12 },
   ];
+
+  // المبلغ التلقائي لرسم عامل: auto من القالب، أو بلا قالب لرسوم العمالة = المقابل المالي × 12 + الإقامة + رخصة العمل.
+  // المقابل المالي والإقامة لا تُدفع عن السعودي. يرجع 0 إن لم توجد قاعدة
+  RB.autoFeeAmount = (auto, emp, category) => {
+    if (!emp) return 0;
+    const saudi = emp.nationality === 'saudi';
+    let a = 0;
+    if (auto === 'qiwa') a = saudi ? 0 : num(emp.levyMonthly) * 12 + num(emp.workPermitAnnual);
+    else if (auto === 'iqama') a = saudi ? 0 : num(emp.iqamaAnnual);
+    else if (auto === 'medical') a = num(emp.medicalAnnual);
+    else if (!auto && category === 'labor_gov' && !saudi) a = num(emp.levyMonthly) * 12 + num(emp.iqamaAnnual) + num(emp.workPermitAnnual);
+    return a > 0 ? r2(a) : 0;
+  };
+
+  // حد التسجيل في ضريبة القيمة المضافة (للمطعم غير المسجل): إلزامي إذا تجاوزت المبيعات الخاضعة 375,000
+  // خلال 12 شهراً (الماضية أو المتوقعة القادمة)، واختياري من 187,500.
+  // المتوقع: إن كان التشغيل المسجل في الدفتر أقل من سنة (من الافتتاح، أو من أول مبيعات إن بدأ الدفتر بعده)
+  // فمبيعاته ÷ أيامه × 365. يرجع null للمسجل (أو من حدّد تاريخ سريان لتسجيله)
+  RB.VAT_MANDATORY = 375000;
+  RB.VAT_VOLUNTARY = 187500;
+  RB.vatThreshold = (S, today) => {
+    today = today || RB.todayISO();
+    const set = S.settings;
+    if (set.vatRegistered) return null;
+    const y0 = RB.addDays(today, -365);
+    let last12 = 0;
+    let first = '';
+    for (const s of S.sales || []) {
+      if (!s || !s.date || s.date > today) continue;
+      const v = RB.saleTotal(s);
+      if (s.date >= y0) last12 += v;
+      if (v > 0 && (!first || s.date < first)) first = s.date;
+    }
+    const open = set.openingDate && set.openingDate <= today ? set.openingDate : '';
+    const start = open && first ? (open > first ? open : first) : open || first;
+    let runRate = 0;
+    if (start && RB.daysBetween(start, today) < 365) {
+      const since = sum((S.sales || []).filter((s) => s && s.date >= start && s.date <= today), RB.saleTotal);
+      runRate = r2((since / (RB.daysBetween(start, today) + 1)) * 365);
+    }
+    last12 = r2(last12);
+    const est = Math.max(last12, runRate);
+    return { last12, runRate, start, est, level: est >= RB.VAT_MANDATORY ? 'mandatory' : est >= RB.VAT_VOLUNTARY ? 'voluntary' : '' };
+  };
 
   RB.CHANNEL_TYPES = { cash: 'كاش (الصندوق)', card: 'شبكة (تُودع في البنك)', app: 'تطبيق توصيل' };
 
@@ -189,7 +244,18 @@
     RB.SECTIONS.forEach((k) => {
       if (Array.isArray(src[k])) out[k] = src[k].filter((x) => x && typeof x === 'object' && x.id);
     });
+    out.expenses = out.expenses.map(RB.migrateExpense);
     return out;
+  };
+
+  // تصنيفات أقدم: الزكاة كانت ضمن «رسوم حكومية»، وتأمين المحل ضمن «التأمين الطبي».
+  // يرجع السجل نفسه إن لم يتغير، وإلا نسخة بالتصنيف الجديد
+  RB.migrateExpense = (x) => {
+    if (!x || typeof x !== 'object') return x;
+    const d = String(x.desc || '');
+    if (x.category === 'gov' && /زكاة/.test(d)) return Object.assign({}, x, { category: 'zakat' });
+    if (x.category === 'insurance' && /حريق|المحل|ممتلكات/.test(d) && !/طبي|صحي/.test(d)) return Object.assign({}, x, { category: 'shop_insurance' });
+    return x;
   };
 
   RB.isEmpty = (S) => RB.SECTIONS.every((k) => !S[k] || S[k].length === 0);
@@ -206,10 +272,12 @@
     2101: { name: 'ذمم الموردين (آجل)', type: 'L', group: 'liab' },
     2102: { name: 'ضريبة القيمة المضافة', type: 'L', group: 'liab' },
     2103: { name: 'رواتب وتأمينات مستحقة', type: 'L', group: 'liab' },
+    2201: { name: 'مخصص مكافأة نهاية الخدمة', type: 'L', group: 'liab' },
     4101: { name: 'المبيعات (بدون الضريبة)', type: 'R', group: 'sales' },
     5109: { name: 'تغيّر المخزون (حسب الجرد)', type: 'X', group: 'cogs' },
     5201: { name: 'الرواتب والأجور', type: 'X', group: 'labor' },
     5202: { name: 'التأمينات الاجتماعية (حصة المنشأة)', type: 'X', group: 'labor' },
+    5203: { name: 'مكافأة نهاية الخدمة (مخصص)', type: 'X', group: 'labor' },
     5401: { name: 'عمولات تطبيقات التوصيل', type: 'X', group: 'sell' },
     5402: { name: 'رسوم أجهزة الشبكة', type: 'X', group: 'sell' },
     5403: { name: 'خصومات وتسويات التطبيقات', type: 'X', group: 'sell' },
@@ -227,6 +295,8 @@
     occ: 'إيجار المحل',
     opex: 'مصاريف تشغيلية وإدارية',
     dep: 'الإهلاك والإطفاء',
+    // بعد صافي الربح التشغيلي: لا تدخل في المصاريف ولا في نقطة التعادل
+    zakat: 'الزكاة',
   };
 
   RB.accInfo = (code, S) => {
@@ -286,17 +356,43 @@
   RB.purchaseTotal = (p) => r2(sum(p.lines || [], (l) => num(l.qty) * num(l.price)));
 
   // ───────────── الرواتب والعمالة ─────────────
-  RB.gosiFor = (emp, S) => {
+  // نظام التأمينات الاجتماعية الجديد: لمن سُجّل في التأمينات أول مرة من 3 يوليو 2024 تزيد نسبة فرع المعاشات
+  // 0.5% لكل طرف كل يوليو من 2025 حتى 2028، فوق نسب الإعدادات (النظام السابق). بلا قيمة = النظام السابق
+  RB.GOSI_NEW_STEPS = ['2025-07', '2026-07', '2027-07', '2028-07'];
+  RB.gosiSaudiRates = (emp, S, ym) => {
     const g = S.settings.gosi;
-    const base = Math.min(num(emp.basic) + num(emp.housing), num(g.cap) || Infinity);
-    if (emp.nationality === 'saudi') return { base, er: r2((base * num(g.saudiEr)) / 100), ee: r2((base * num(g.saudiEe)) / 100) };
-    return { base, er: r2((base * num(g.expatEr)) / 100), ee: 0 };
+    const m = ym || RB.todayISO().slice(0, 7);
+    const step = emp.gosiSystem === 'new' ? 0.5 * RB.GOSI_NEW_STEPS.filter((s) => m >= s).length : 0;
+    return { er: num(g.saudiEr) + step, ee: num(g.saudiEe) + step };
+  };
+  // السكن المقدَّم عيناً (بلا بدل نقدي): يدخل في الأجر الخاضع مقدّراً بأجر شهرين في السنة.
+  // بلا اختيار صريح: يُفترض إن لم يكن له بدل سكن نقدي وله نصيب من سكن العمال
+  RB.housingInKind = (emp) => (emp.housingInKind != null ? !!emp.housingInKind : !num(emp.housing) && num(emp.housingCost) > 0);
+  // ym = شهر الرواتب (للنظام الجديد)؛ بدونه الشهر الحالي
+  RB.gosiFor = (emp, S, ym) => {
+    const g = S.settings.gosi;
+    // السكن العيني المقدَّر يدخل في أساس التأمينات فقط، لا في الراتب ولا في المسير
+    const hous = num(emp.housing) > 0 ? num(emp.housing) : RB.housingInKind(emp) ? (num(emp.basic) * 2) / 12 : 0;
+    const base = Math.min(num(emp.basic) + hous, num(g.cap) || Infinity);
+    if (emp.nationality === 'saudi') {
+      const r = RB.gosiSaudiRates(emp, S, ym);
+      return { base: r2(base), er: r2((base * r.er) / 100), ee: r2((base * r.ee) / 100) };
+    }
+    return { base: r2(base), er: r2((base * num(g.expatEr)) / 100), ee: 0 };
   };
 
-  // التكلفة الشهرية الحقيقية للعامل على المطعم
-  RB.employeeMonthlyCost = (emp, S) => {
+  // مخصص مكافأة نهاية الخدمة الشهري (نظام العمل، المادة 84): نصف أجر شهر عن كل سنة من الخمس الأولى
+  // (الأجر ÷ 24 شهرياً)، وأجر شهر عن كل سنة بعدها (الأجر ÷ 12). مدة الخدمة حتى atDate
+  RB.eosbMonthly = (wage, startDate, atDate) => {
+    const y = startDate ? RB.daysBetween(startDate, atDate || RB.todayISO()) / 365.25 : 0;
+    return r2(num(wage) / (isFinite(y) && y >= 5 ? 12 : 24));
+  };
+
+  // التكلفة الشهرية الحقيقية للعامل على المطعم. ym = الشهر (للتأمينات ومدة الخدمة)؛ بدونه الشهر الحالي
+  RB.employeeMonthlyCost = (emp, S, ym) => {
+    ym = ym || RB.todayISO().slice(0, 7);
     const salary = num(emp.basic) + num(emp.housing) + num(emp.transport) + num(emp.otherAllow);
-    const gosi = RB.gosiFor(emp, S);
+    const gosi = RB.gosiFor(emp, S, ym);
     const expat = emp.nationality !== 'saudi';
     const levy = expat ? num(emp.levyMonthly) : 0;
     const iqama = expat ? (num(emp.iqamaAnnual) + num(emp.workPermitAnnual)) / 12 : 0;
@@ -304,7 +400,8 @@
     const ticket = num(emp.ticketAnnual) / 12;
     const other = num(emp.otherAnnual) / 12;
     const housing = num(emp.housingCost); // نصيبه من سكن العمال إن كان السكن على المطعم
-    const eosb = salary / 24; // مخصص نهاية الخدمة: نصف شهر عن كل سنة في أول خمس سنوات
+    // مخصص نهاية الخدمة: نفس ما يُستحق في الدفاتر مع كل مسير
+    const eosb = RB.eosbMonthly(salary, emp.startDate, RB.monthEnd(ym));
     const items = [
       ['الراتب والبدلات', salary],
       ['التأمينات الاجتماعية (حصة المنشأة)', gosi.er],
@@ -314,7 +411,7 @@
       ['تذاكر السفر (شهرياً)', ticket],
       ['السكن المقدّم (نصيبه)', housing],
       ['رسوم ومزايا أخرى (شهرياً)', other],
-      ['مخصص نهاية الخدمة (تقديري)', eosb],
+      ['مخصص نهاية الخدمة', eosb],
     ].map(([label, v]) => ({ label, v: r2(v) }));
     return { salary: r2(salary), gosi, items, total: r2(sum(items, (i) => i.v)), netPay: r2(salary - gosi.ee) };
   };
@@ -326,8 +423,9 @@
     return true;
   };
 
-  RB.payrollLine = (emp, S) => {
-    const g = RB.gosiFor(emp, S);
+  // سطر المسير لشهر ym (نسب التأمينات حسب الشهر)؛ بدونه الشهر الحالي
+  RB.payrollLine = (emp, S, ym) => {
+    const g = RB.gosiFor(emp, S, ym);
     return {
       employeeId: emp.id,
       name: emp.name,
@@ -338,6 +436,7 @@
       deductions: 0,
       gosiEe: g.ee,
       gosiEr: g.er,
+      eosbPaid: 0, // مكافأة نهاية الخدمة المصروفة: خارج إجمالي الرواتب والتأمينات، تُخصم من المخصص
     };
   };
   RB.payrollLineGross = (l) => r2(num(l.basic) + num(l.housing) + num(l.allowances) + num(l.additions) - num(l.deductions));
@@ -346,7 +445,55 @@
     const gross = r2(sum(lines, RB.payrollLineGross));
     const gosiEe = r2(sum(lines, (l) => num(l.gosiEe)));
     const gosiEr = r2(sum(lines, (l) => num(l.gosiEr)));
-    return { gross, gosiEe, gosiEr, net: r2(gross - gosiEe), count: lines.length, cost: r2(gross + gosiEr) };
+    const eosbPaid = r2(sum(lines, (l) => Math.max(0, num(l.eosbPaid))));
+    return { gross, gosiEe, gosiEr, net: r2(gross - gosiEe), count: lines.length, cost: r2(gross + gosiEr), eosbPaid };
+  };
+
+  // مخصص نهاية الخدمة من المسيرات بترتيب تاريخ الاستحقاق: لكل مسير استحقاق (لكل موظف له سطر من أجره:
+  // الأساسي + السكن + البدلات، بلا إضافي ولا خصومات) في تاريخ استحقاق الرواتب، ثم صرف المكافأة
+  // (eosbPaid) في تاريخ الصرف: من المخصص المتراكم للموظف، وما زاد عليه مصروف في حينه
+  RB.eosbEvents = (S) => {
+    const emps = byId(S.employees);
+    const accrued = {};
+    const out = [];
+    const runs = (S.payroll || [])
+      .filter((pr) => pr && pr.date)
+      .map((pr) => {
+        const ym = pr.month || pr.date.slice(0, 7);
+        return { pr, ym, date: pr.date.slice(0, 7) === ym ? pr.date : RB.monthEnd(ym) };
+      })
+      .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    for (const { pr, ym, date } of runs) {
+      const lines = [];
+      for (const l of pr.lines || []) {
+        if (!l || !l.employeeId) continue;
+        const e = emps[l.employeeId] || {};
+        const amount = RB.eosbMonthly(num(l.basic) + num(l.housing) + num(l.allowances), e.startDate, RB.monthEnd(ym));
+        if (!(amount > 0)) continue;
+        accrued[l.employeeId] = r2((accrued[l.employeeId] || 0) + amount);
+        lines.push({ employeeId: l.employeeId, amount });
+      }
+      if (lines.length) out.push({ kind: 'accrual', pr, ym, date, lines, total: r2(sum(lines, (x) => x.amount)) });
+      for (const l of pr.lines || []) {
+        const paid = r2(num(l && l.eosbPaid));
+        if (!(paid > 0)) continue;
+        const id = l.employeeId || '';
+        const fromProv = id ? r2(Math.min(paid, Math.max(0, accrued[id] || 0))) : 0;
+        if (id) accrued[id] = r2((accrued[id] || 0) - fromProv);
+        out.push({ kind: 'payout', pr, ym, date: pr.date, employeeId: id, name: l.name || (emps[id] || {}).name || '', paid, fromProv, excess: r2(paid - fromProv) });
+      }
+    }
+    return out;
+  };
+  // المخصص المتراكم لكل موظف حتى تاريخ (مجموعها = رصيد حساب 2201)
+  RB.eosbBalances = (S, asOf) => {
+    const out = {};
+    for (const ev of RB.eosbEvents(S)) {
+      if (asOf && ev.date > asOf) continue;
+      if (ev.kind === 'accrual') for (const l of ev.lines) out[l.employeeId] = r2((out[l.employeeId] || 0) + l.amount);
+      else if (ev.employeeId) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.fromProv);
+    }
+    return out;
   };
 
   // ───────────── تكلفة المواد والوصفات ─────────────
@@ -513,7 +660,7 @@
   RB.saleTotal = (s) => r2(sum(Object.values(s.channels || {}), (v) => num(v.amount)));
   RB.saleOrders = (s) => sum(Object.values(s.channels || {}), (v) => num(v.orders));
 
-  const KIND_ORDER = { capital: 0, asset: 1, expense: 2, purchase: 3, payroll: 4, sale: 5, payout: 6, transfer: 7, supplierpay: 8, vatpay: 9, withdrawal: 10, amort: 11, dep: 12, stock: 13 };
+  const KIND_ORDER = { capital: 0, asset: 1, expense: 2, purchase: 3, payroll: 4, eosb: 5, sale: 6, payout: 7, transfer: 8, supplierpay: 9, vatpay: 10, withdrawal: 11, amort: 12, dep: 13, stock: 14 };
 
   RB.buildLedger = (S, asOf) => {
     asOf = asOf || RB.todayISO();
@@ -609,6 +756,12 @@
         add(RB.monthEnd(ym), 'payroll', ref, 'استحقاق ' + desc, [['5201', t.gross], ['5202', t.gosiEr], ['2103', -t.cost]]);
         add(pr.date, 'payroll', ref, 'صرف ' + desc, [['2103', t.cost], ...pay]);
       }
+    }
+    // مخصص مكافأة نهاية الخدمة: يُستحق مع كل مسير في تاريخ استحقاق الرواتب، والمكافأة المصروفة تُخصم من المخصص
+    for (const ev of RB.eosbEvents(S)) {
+      const ref = { s: 'payroll', id: ev.pr.id };
+      if (ev.kind === 'accrual') add(ev.date, 'eosb', ref, 'مخصص نهاية الخدمة — ' + RB.monthName(ev.ym), [['5203', ev.total], ['2201', -ev.total]]);
+      else add(ev.date, 'eosb', ref, 'صرف مكافأة نهاية الخدمة' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.fromProv], ['5203', ev.excess], [RB.srcAcc(ev.pr.account), -ev.paid]]);
     }
 
     // المبيعات اليومية لكل قناة
@@ -765,7 +918,7 @@
   RB.incomeStatement = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
     const b = RB.balances(L.entries, from, to);
-    const groups = { cogs: [], sell: [], labor: [], occ: [], opex: [], dep: [] };
+    const groups = { cogs: [], sell: [], labor: [], occ: [], opex: [], dep: [], zakat: [] };
     let revenue = 0;
     for (const code of Object.keys(b)) {
       const info = RB.accInfo(code, S);
@@ -782,10 +935,13 @@
     revenue = r2(revenue);
     const grossProfit = r2(revenue - tot.cogs);
     const expenses = r2(tot.sell + tot.labor + tot.occ + tot.opex + tot.dep);
-    const net = r2(grossProfit - expenses);
+    // الزكاة بعد صافي الربح التشغيلي: صافي الربح قبل الزكاة − الزكاة = صافي الربح بعد الزكاة
+    const netBeforeZakat = r2(grossProfit - expenses);
+    const zakat = tot.zakat;
+    const net = r2(netBeforeZakat - zakat);
     const pctOf = (x) => (revenue ? (x / revenue) * 100 : 0);
     return {
-      from, to, revenue, groups, tot, grossProfit, expenses, net,
+      from, to, revenue, groups, tot, grossProfit, expenses, netBeforeZakat, zakat, net,
       ratios: {
         foodCost: pctOf(tot.cogs),
         labor: pctOf(tot.labor),
@@ -1116,20 +1272,30 @@
     return Object.values(out).map((o) => Object.assign(o, { balance: r2(o.purchases - o.paid) }));
   };
 
-  // متابعة التجديد: آخر تغطية لكل بند حكومي أو اشتراك أو عقد
+  // متابعة التجديد: آخر تغطية لكل بند حكومي أو اشتراك أو عقد يغطي 3 أشهر فأكثر (والزكاة دائماً).
+  // لا تُتابع: الرسوم لمرة واحدة (oneOff)، والبند الذي أوقف المستخدم متابعته (noRenew على آخر سجل؛
+  // تجديده لاحقاً يعيده)، ورسوم عامل غادر أو حُذف أو انتهى عمله قبل نهاية التغطية
   RB.renewals = (S, today) => {
     today = today || RB.todayISO();
     const groups = {};
     for (const x of S.expenses || []) {
+      if (!x || !x.date || x.oneOff) continue;
       const months = Math.round(num(x.months) || 1);
-      const tracked = RB.GOV_CATS.includes(x.category) || months >= 3;
-      if (!tracked || months < 1) continue;
-      if (x.category === 'software' && months < 3) continue;
+      const zakat = x.category === 'zakat';
+      if (months < 1 || (months < 3 && !zakat)) continue;
       const key = [x.category, (x.entity || '').trim(), (x.desc || '').trim(), x.employeeId || ''].join('|');
-      const end = RB.coverageEnd(x.startDate || x.date, months);
+      // الزكاة تُدفع عن سنة سابقة: التذكير سنوي من تاريخ الدفع لا من بداية السنة التي تخصها
+      const end = zakat ? RB.coverageEnd(x.date, 12) : RB.coverageEnd(x.startDate || x.date, months);
       if (!groups[key] || groups[key].end < end) groups[key] = { key, rec: x, end };
     }
+    const emps = byId(S.employees);
+    const staffGone = (g) => {
+      if (!g.rec.employeeId) return false;
+      const e = emps[g.rec.employeeId];
+      return !e || e.active === false || (!!e.endDate && e.endDate <= g.end);
+    };
     return Object.values(groups)
+      .filter((g) => !g.rec.noRenew && !staffGone(g))
       .map((g) => {
         const days = RB.daysBetween(today, g.end);
         const status = days < 0 ? 'expired' : days <= 30 ? 'soon' : 'ok';

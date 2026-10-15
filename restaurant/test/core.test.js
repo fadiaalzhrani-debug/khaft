@@ -115,7 +115,8 @@ test('الرواتب والتأمينات للسعودي وغير السعودي
   assert.equal(t.net, 7012.5);
   assert.equal(t.cost, 8127.5);
   const inc = RB.incomeStatement(S, '2026-05-01', '2026-05-31');
-  close(inc.tot.labor, 8127.5);
+  // التكلفة + مخصص نهاية الخدمة (الأجر ÷ 24 لأقل من خمس سنوات): (5,500 + 2,000) ÷ 24
+  close(inc.tot.labor, 8127.5 + RB.r2(5500 / 24) + RB.r2(2000 / 24));
 });
 
 test('غير المسجل في الضريبة: لا ضريبة مبيعات والضريبة المدفوعة تكلفة', () => {
@@ -510,7 +511,8 @@ test('الرواتب تُحمّل على شهر الخدمة وإن صُرفت �
   S.payroll = [{ id: 'w9', month: '2026-09', date: '2026-10-02', account: 'bank', gosiAccount: 'bank', lines: [RB.payrollLine(sa, S)] }];
   const L = RB.buildLedger(S, '2026-10-14');
   for (const e of L.entries) close(RB.sum(e.lines, (l) => l.v), 0, 0.001);
-  close(RB.incomeStatement(S, '2026-09-01', '2026-09-30', L).tot.labor, 6087.5);
+  // الرواتب والتأمينات + مخصص نهاية الخدمة للشهر (5,500 ÷ 24) على نفس الشهر
+  close(RB.incomeStatement(S, '2026-09-01', '2026-09-30', L).tot.labor, 6087.5 + RB.r2(5500 / 24));
   close(RB.incomeStatement(S, '2026-10-01', '2026-10-31', L).tot.labor, 0);
   const sep = RB.balanceSheet(S, '2026-09-30', RB.buildLedger(S, '2026-09-30'));
   close(sep.liab.find((x) => x.code === '2103').amount, 6087.5);
@@ -897,4 +899,303 @@ test('كشف الصندوق والبنك: الداخل قبل الخارج في 
   const sep = RB.accountStatement(D, '1102', '2026-09-30', '2026-09-30', DL).rows.filter((r) => r.kind === 'payroll');
   assert.equal(sep.length, 2);
   assert.notEqual(sep[0].desc, sep[1].desc);
+});
+
+// ───────── WP2: الأنظمة السعودية والتصنيفات ─────────
+
+test('التأمينات للسعودي في النظام الجديد: زيادة 0.5% لكل طرف كل يوليو من 2025 حتى 2028', () => {
+  const S = base();
+  const sa = { id: 'e1', name: 'سعود', nationality: 'saudi', basic: 4000, housing: 1000, gosiSystem: 'new' };
+  const at = (emp, ym) => {
+    const g = RB.gosiFor(emp, S, ym);
+    return [g.base, g.er, g.ee];
+  };
+  assert.deepEqual(at(sa, '2026-10'), [5000, 637.5, 537.5]);
+  assert.deepEqual(at(sa, '2025-10'), [5000, 612.5, 512.5]);
+  assert.deepEqual(at(sa, '2025-06'), [5000, 587.5, 487.5]);
+  assert.deepEqual(at(sa, '2028-08'), [5000, 687.5, 587.5]);
+  // النظام السابق أو بلا قيمة (بيانات قائمة): نسب الإعدادات في كل الأشهر
+  for (const gosiSystem of ['old', undefined]) {
+    for (const ym of ['2025-06', '2026-10', '2028-08']) assert.deepEqual(at(Object.assign({}, sa, { gosiSystem }), ym), [5000, 587.5, 487.5]);
+  }
+  // المسير والتكلفة الشهرية يأخذان شهرهما
+  const l = RB.payrollLine(sa, S, '2026-07');
+  assert.deepEqual([l.gosiEr, l.gosiEe], [637.5, 537.5]);
+  assert.equal(RB.employeeMonthlyCost(sa, S, '2025-08').gosi.er, 612.5);
+  assert.deepEqual(RB.gosiSaudiRates(sa, S, '2026-07'), { er: 12.75, ee: 10.75 });
+  // الزيادة فوق نسب الإعدادات، فتعديلها ينعكس على النظام الجديد
+  S.settings.gosi.saudiEr = 12;
+  assert.equal(RB.gosiFor(sa, S, '2026-10').er, 650);
+  // غير السعودي لا يتأثر
+  assert.equal(RB.gosiFor({ nationality: 'expat', basic: 2000, gosiSystem: 'new' }, S, '2028-08').er, 40);
+  // البيانات التجريبية: الموظف السعودي في النظام الجديد، ومسيراته بنسب شهرها
+  const D = RB.demoState('2026-10-15');
+  const e5 = D.employees.find((e) => e.nationality === 'saudi');
+  assert.equal(e5.gosiSystem, 'new');
+  for (const pr of D.payroll) {
+    const line = pr.lines.find((x) => x.employeeId === e5.id);
+    assert.equal(line.gosiEr, RB.gosiFor(e5, D, pr.month).er, pr.month);
+  }
+  assert.equal(D.payroll.find((p) => p.month === '2026-09').lines.find((x) => x.employeeId === e5.id).gosiEr, 637.5);
+});
+
+test('السكن المقدَّم عيناً يدخل أجر التأمينات مقدّراً بأجر شهرين في السنة', () => {
+  const S = base();
+  const ex = { id: 'e2', nationality: 'expat', basic: 2500, housing: 0, housingCost: 375 };
+  let g = RB.gosiFor(ex, S);
+  close(g.base, 2916.67);
+  assert.equal(g.er, 58.33);
+  g = RB.gosiFor(Object.assign({}, ex, { housingInKind: false }), S);
+  assert.deepEqual([g.base, g.er], [2500, 50]);
+  // بدل سكن نقدي: يدخل كما هو
+  assert.equal(RB.gosiFor(Object.assign({}, ex, { housing: 625 }), S).base, 3125);
+  // اختيار صريح بلا نصيب من السكن
+  assert.equal(RB.gosiFor({ nationality: 'expat', basic: 2400, housingInKind: true }, S).base, 2800);
+  // السعودي كذلك، ضمن الحد الأعلى للأجر الخاضع
+  close(RB.gosiFor({ nationality: 'saudi', basic: 4000, housingCost: 500 }, S, '2026-10').base, 4666.67);
+  assert.equal(RB.gosiFor({ nationality: 'saudi', basic: 44000, housingCost: 500 }, S, '2026-10').base, 45000);
+  // السكن المقدّر للتأمينات فقط: لا يغيّر الراتب ولا سطر المسير ولا إجماليه
+  const l = RB.payrollLine(ex, S);
+  assert.deepEqual([l.housing, RB.payrollLineGross(l), l.gosiEr], [0, 2500, 58.33]);
+  assert.equal(RB.employeeMonthlyCost(ex, S).salary, 2500);
+});
+
+test('مخصص نهاية الخدمة يُستحق مع كل مسير، والمكافأة تُصرف منه', () => {
+  const S = base();
+  S.capital = [{ id: 'c', date: '2026-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  S.employees = [{ id: 'e1', name: 'سالم', nationality: 'expat', basic: 2500, housing: 0, transport: 0, otherAllow: 500, startDate: '2026-01-10' }];
+  const run = (ym, extra) => ({ id: 'w' + ym, month: ym, date: RB.monthEnd(ym), account: 'bank', gosiAccount: 'bank', lines: [Object.assign(RB.payrollLine(S.employees[0], S, ym), extra)] });
+  // الأجر = الأساسي + السكن + البدلات = 3,000؛ الإضافي والخصومات لا تدخل
+  S.payroll = [run('2026-03'), run('2026-04', { additions: 400 }), run('2026-05', { deductions: 300 })];
+  const check = (asOf) => {
+    const L = RB.buildLedger(S, asOf);
+    for (const e of L.entries) close(RB.sum(e.lines, (x) => x.v), 0, 0.001);
+    const tb = RB.trialBalance(S, null, asOf, L);
+    close(tb.dr, tb.cr);
+    const bs = RB.balanceSheet(S, asOf, L);
+    close(bs.check, 0);
+    close(RB.incomeStatement(S, '2000-01-01', asOf, L).net, bs.retained);
+    return { b: RB.balances(L.entries, null, asOf), bs, L };
+  };
+  let { b, bs, L } = check('2026-12-31');
+  close(b['5203'], 375);
+  close(b['2201'], -375);
+  close(bs.liab.find((x) => x.code === '2201').amount, 375);
+  assert.deepEqual(RB.eosbBalances(S, '2026-12-31'), { e1: 375 });
+  assert.deepEqual(RB.eosbBalances(S, '2026-04-30'), { e1: 250 });
+  // قيد واحد لكل مسير بتاريخ استحقاق الرواتب
+  assert.deepEqual(L.entries.filter((e) => e.kind === 'eosb').map((e) => e.date), ['2026-03-31', '2026-04-30', '2026-05-31']);
+  // المسير المصروف في الشهر التالي: المخصص على شهر الخدمة
+  S.payroll[2].date = '2026-06-03';
+  close(RB.incomeStatement(S, '2026-05-01', '2026-05-31', RB.buildLedger(S, '2026-06-30')).groups.labor.find((x) => x.code === '5203').amount, 125);
+  S.payroll[2].date = '2026-05-31';
+  // صفحة العمال والدفاتر متفقة
+  assert.equal(RB.employeeMonthlyCost(S.employees[0], S, '2026-05').items.find((i) => /نهاية الخدمة/.test(i.label)).v, 125);
+  // أكثر من خمس سنوات خدمة: أجر شهر عن كل سنة (الأجر ÷ 12)
+  S.employees[0].startDate = '2018-01-01';
+  close(check('2026-12-31').b['5203'], 750);
+  assert.equal(RB.eosbMonthly(3000, '2021-06-01', '2026-05-31'), 125);
+  assert.equal(RB.eosbMonthly(3000, '2021-05-01', '2026-05-31'), 250);
+  assert.equal(RB.eosbMonthly(3000, '', '2026-05-31'), 125);
+  S.employees[0].startDate = '2026-01-10';
+  // الصرف 400 مقابل 375 متراكماً: المخصص يُقفل والزيادة 25 مصروف
+  S.payroll[2].lines[0].eosbPaid = 400;
+  assert.equal(RB.payrollTotals(S.payroll[2]).eosbPaid, 400);
+  assert.equal(RB.payrollTotals(S.payroll[2]).gross, 2700);
+  ({ b, bs, L } = check('2026-12-31'));
+  close(b['2201'] || 0, 0);
+  close(b['5203'], 375 + 25);
+  assert.ok(!bs.liab.some((x) => x.code === '2201'));
+  assert.deepEqual(RB.eosbBalances(S, '2026-12-31'), { e1: 0 });
+  const pay = L.entries.find((e) => e.kind === 'eosb' && e.lines.some((x) => x.a === '1102'));
+  assert.equal(pay.date, '2026-05-31');
+  close(pay.lines.find((x) => x.a === '1102').v, -400);
+  // سطر بلا موظف لا يُستحق له مخصص، وصرفه كله مصروف
+  S.payroll.push({ id: 'wx', month: '2026-06', date: '2026-06-30', account: 'bank', lines: [{ name: 'عامل مؤقت', basic: 1000, eosbPaid: 50 }] });
+  b = check('2026-12-31').b;
+  close(b['5203'], 375 + 25 + 50);
+  close(b['2201'] || 0, 0);
+  // البيانات التجريبية: مخصص سبتمبر = مجموع أجور العاملين ÷ 24، والميزانية تعرض المخصص
+  const t = '2026-10-15';
+  const D = RB.demoState(t);
+  const DL = RB.buildLedger(D, t);
+  const wages = RB.sum(D.employees.filter((e) => RB.isEmployeeActive(e, '2026-09')), (e) => RB.eosbMonthly(RB.num(e.basic) + RB.num(e.housing) + RB.num(e.transport) + RB.num(e.otherAllow), e.startDate, '2026-09-30'));
+  const sep = RB.incomeStatement(D, '2026-09-01', '2026-09-30', DL);
+  close(sep.groups.labor.find((x) => x.code === '5203').amount, wages);
+  close(wages, 13700 / 24, 0.05);
+  const dbs = RB.balanceSheet(D, t, DL);
+  close(dbs.check, 0);
+  close(dbs.liab.find((x) => x.code === '2201').amount, -RB.balances(DL.entries, null, t)['2201']);
+  close(RB.sum(Object.values(RB.eosbBalances(D, t))), dbs.liab.find((x) => x.code === '2201').amount);
+});
+
+test('الزكاة بند مستقل بعد صافي الربح وتُحمَّل على السنة التي تخصها', () => {
+  const S = base();
+  S.settings.openingDate = '2025-01-01';
+  S.capital = [{ id: 'c', date: '2025-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 100000 }];
+  S.sales = [
+    { id: 's1', date: '2025-06-10', channels: { cash: { amount: 115000, orders: 1000, type: 'cash' } } },
+    { id: 's2', date: '2026-06-10', channels: { cash: { amount: 115000, orders: 1000, type: 'cash' } } },
+  ];
+  const ex = (o) => Object.assign({ includesVat: false, taxable: false, account: 'bank', entity: '', employeeId: '' }, o);
+  S.expenses = [
+    ex({ id: 'r1', date: '2025-01-01', category: 'rent', desc: 'إيجار', amount: 24000, months: 12 }),
+    ex({ id: 'g1', date: '2025-01-05', category: 'gov', desc: 'رخصة المحل التجاري', amount: 1200, months: 12 }),
+    ex({ id: 'z1', date: '2026-04-28', category: 'zakat', desc: 'الزكاة عن السنة المالية السابقة', entity: 'هيئة الزكاة والضريبة والجمارك', amount: 12000, months: 12, startDate: '2025-01-01' }),
+  ];
+  const y25 = RB.incomeStatement(S, '2025-01-01', '2025-12-31', RB.buildLedger(S, '2025-12-31'));
+  assert.equal(y25.zakat, 12000);
+  assert.deepEqual(y25.groups.zakat.map((x) => x.code), ['5901']);
+  assert.ok(!y25.groups.opex.some((x) => x.code === '5901'));
+  close(y25.tot.opex, 1200);
+  close(y25.expenses, y25.tot.sell + y25.tot.labor + y25.tot.occ + y25.tot.opex + y25.tot.dep);
+  close(y25.netBeforeZakat, y25.grossProfit - y25.expenses);
+  close(y25.net, y25.netBeforeZakat - 12000);
+  const y26 = RB.incomeStatement(S, '2026-01-01', '2026-12-31', RB.buildLedger(S, '2026-12-31'));
+  assert.equal(y26.zakat, 0);
+  close(y26.net, y26.netBeforeZakat);
+  // الميزانية متوازنة: زكاة 2025 غير المدفوعة في نهايتها مستحقة
+  const bs25 = RB.balanceSheet(S, '2025-12-31', RB.buildLedger(S, '2025-12-31'));
+  close(bs25.check, 0);
+  close(bs25.liab.find((x) => x.code === '1105').amount, 12000);
+  // نقطة التعادل لا تتغير بالزكاة
+  const noZ = Object.assign({}, S, { expenses: S.expenses.filter((x) => x.id !== 'z1') });
+  for (const [from, to] of [['2025-01-01', '2025-12-31'], ['2026-04-01', '2026-04-30']]) {
+    assert.equal(RB.breakEven(S, from, to, null, '2026-10-15').fixedMonthly, RB.breakEven(noZ, from, to, null, '2026-10-15').fixedMonthly);
+  }
+  // تذكير سنوي من تاريخ الدفع
+  const rz = RB.renewals(S, '2026-10-15').find((r) => r.rec.id === 'z1');
+  assert.equal(rz.end, '2027-04-27');
+  assert.equal(rz.status, 'ok');
+  // القالب والتصنيف
+  const pr = RB.GOV_PRESETS.find((p) => p.category === 'zakat');
+  assert.deepEqual([pr.entity, pr.desc, pr.months], ['هيئة الزكاة والضريبة والجمارك', 'الزكاة عن السنة المالية السابقة', 12]);
+  assert.ok(RB.GOV_CATS.includes('zakat'));
+  assert.equal(RB.GROUPS.zakat, 'الزكاة');
+  assert.equal(RB.ACC['5901'].group, 'zakat');
+  // الزكاة المسجلة سابقاً «رسوماً حكومية» تنتقل لتصنيفها
+  const old = RB.normalize({ expenses: [{ id: 'q', date: '2026-04-01', category: 'gov', desc: 'الزكاة السنوية', amount: 5000, months: 12 }, { id: 'q2', date: '2026-04-01', category: 'gov', desc: 'رخصة', amount: 50, months: 12 }] });
+  assert.deepEqual(old.expenses.map((x) => x.category), ['zakat', 'gov']);
+});
+
+test('تأمين المحل مصروف تشغيلي والتأمين الطبي للعمال ضمن العمالة', () => {
+  const fire = RB.GOV_PRESETS.find((p) => p.desc.includes('الحريق'));
+  assert.equal(fire.category, 'shop_insurance');
+  assert.deepEqual([RB.expenseCat('shop_insurance').acc, RB.expenseCat('shop_insurance').group], ['5315', 'opex']);
+  assert.ok(RB.GOV_CATS.includes('shop_insurance'));
+  assert.deepEqual([RB.expenseCat('insurance').name, RB.expenseCat('insurance').acc, RB.expenseCat('insurance').group], ['التأمين الطبي للعمال', '5307', 'labor']);
+  assert.equal(RB.GOV_PRESETS.find((p) => p.desc === 'تأمين طبي للعمال').category, 'insurance');
+  // التصنيف غير المعروف ما زال «مصاريف أخرى»
+  assert.equal(RB.expenseCat('???').id, 'other');
+  const S = base();
+  S.sales = [{ id: 's', date: '2026-05-15', channels: { cash: { amount: 115000, orders: 900, type: 'cash' } } }];
+  S.expenses = [
+    { id: 'f', date: '2026-05-01', category: fire.category, desc: fire.desc, amount: 6000, taxable: true, includesVat: false, months: 12, account: 'bank' },
+    { id: 'm', date: '2026-05-01', category: 'insurance', desc: 'تأمين طبي للعمال', amount: 2400, taxable: true, includesVat: false, months: 12, account: 'bank' },
+  ];
+  const may = RB.incomeStatement(S, '2026-05-01', '2026-05-31');
+  close(may.tot.opex, 500);
+  close(may.tot.labor, 200);
+  close(may.ratios.labor, 0.2);
+  // السجلات القديمة: تأمين المحل كان تحت «التأمين الطبي والتأمينات»
+  const n = RB.normalize({
+    expenses: [
+      { id: 'a', date: '2026-01-01', category: 'insurance', desc: 'تأمين المحل ضد الحريق', amount: 1 },
+      { id: 'b', date: '2026-01-01', category: 'insurance', desc: 'تأمين ممتلكات', amount: 1 },
+      { id: 'c', date: '2026-01-01', category: 'insurance', desc: 'تأمين طبي للعمال', amount: 1 },
+      { id: 'd', date: '2026-01-01', category: 'insurance', desc: 'التأمين الطبي لعمال المحل', amount: 1 },
+    ],
+  });
+  assert.deepEqual(n.expenses.map((x) => x.category), ['shop_insurance', 'shop_insurance', 'insurance', 'insurance']);
+});
+
+test('متابعة التجديد: لا رسوم لمرة واحدة ولا لعامل غادر، وإيقاف المتابعة حتى التجديد', () => {
+  const S = base();
+  S.employees = [
+    { id: 'eL', name: 'غادر', nationality: 'expat', basic: 2000, startDate: '2025-01-01', endDate: '2026-08-15', active: false },
+    { id: 'eE', name: 'ينتهي عقده', nationality: 'expat', basic: 2000, startDate: '2025-01-01', endDate: '2026-12-31', active: true },
+    { id: 'eA', name: 'على رأس العمل', nationality: 'expat', basic: 2000, startDate: '2025-01-01', active: true },
+  ];
+  const ex = (o) => Object.assign({ includesVat: false, taxable: false, account: 'bank', startDate: '', entity: '', employeeId: '', months: 12 }, o);
+  S.expenses = [
+    ex({ id: 'v1', date: '2026-09-01', category: 'labor_gov', desc: 'تأشيرة خروج وعودة', amount: 200, months: 1 }),
+    ex({ id: 'v2', date: '2026-02-01', category: 'labor_gov', desc: 'إصدار تأشيرة عمل (استقدام عامل)', amount: 2000, oneOff: true }),
+    ex({ id: 'i1', date: '2025-09-01', category: 'labor_gov', desc: 'تجديد إقامة', amount: 650, employeeId: 'eL' }),
+    ex({ id: 'i2', date: '2026-03-01', category: 'labor_gov', desc: 'تجديد إقامة', amount: 650, employeeId: 'eE' }),
+    ex({ id: 'i3', date: '2026-03-01', category: 'labor_gov', desc: 'تجديد إقامة', amount: 650, employeeId: 'eA' }),
+    ex({ id: 'i4', date: '2026-03-01', category: 'labor_gov', desc: 'تجديد إقامة', amount: 650, employeeId: 'deleted' }),
+    ex({ id: 'l1', date: '2025-11-01', category: 'gov', desc: 'رخصة المحل التجاري', amount: 1800 }),
+    ex({ id: 'c1', date: '2025-12-20', category: 'gov', desc: 'لوحة المحل', amount: 500, noRenew: true }),
+    ex({ id: 'p1', date: '2026-09-20', category: 'software', desc: 'اشتراك نظام نقاط البيع', amount: 230, months: 1 }),
+  ];
+  const ids = (d) => RB.renewals(S, d).map((r) => r.rec.id).sort();
+  assert.deepEqual(ids('2026-10-15'), ['i3', 'l1']);
+  const lic = (d) => RB.renewals(S, d).find((r) => r.rec.id === 'l1');
+  assert.deepEqual([lic('2026-10-15').end, lic('2026-10-15').status], ['2026-10-31', 'soon']);
+  assert.equal(lic('2026-09-15').status, 'ok');
+  assert.equal(lic('2026-11-05').status, 'expired');
+  // تجديد البند الموقوف (سجل جديد بلا noRenew) يعيده للمتابعة
+  S.expenses.push(ex({ id: 'c2', date: '2026-12-10', category: 'gov', desc: 'لوحة المحل', amount: 500, startDate: '2026-12-20' }));
+  assert.deepEqual(ids('2026-10-15'), ['c2', 'i3', 'l1']);
+  // إيقاف المتابعة على آخر سجل يخفي البند كله
+  S.expenses.find((x) => x.id === 'c2').noRenew = true;
+  assert.deepEqual(ids('2026-10-15'), ['i3', 'l1']);
+  // عامل عاد للعمل بلا تاريخ ترك: يُتابع
+  Object.assign(S.employees[1], { endDate: '' });
+  assert.deepEqual(ids('2026-10-15'), ['i2', 'i3', 'l1']);
+});
+
+test('قوالب الرسوم الحكومية: رسوم لمرة واحدة ومبالغ تتعبأ من بيانات العامل', () => {
+  const P = (d) => RB.GOV_PRESETS.find((p) => p.desc === d);
+  for (const d of ['تأشيرة خروج وعودة', 'إصدار تأشيرة عمل (استقدام عامل)', 'نقل خدمات عامل', 'تغيير مهنة']) {
+    assert.ok(P(d) && P(d).oneOff && P(d).category === 'labor_gov', d);
+  }
+  assert.ok(!RB.GOV_PRESETS.some((p) => p.desc === 'تأشيرة استقدام'));
+  assert.deepEqual([P('توثيق عقد إيجار المحل').entity, P('توثيق عقد إيجار المحل').category], ['منصة إيجار', 'gov']);
+  assert.deepEqual([P('اشتراك بوابة مقيم').entity, P('اشتراك بوابة مقيم').category, P('اشتراك بوابة مقيم').months], ['مقيم (علم)', 'software', 12]);
+  assert.deepEqual(RB.GOV_PRESETS.filter((p) => p.auto).map((p) => [p.desc, p.auto]), [['رخصة عمل + المقابل المالي', 'qiwa'], ['تجديد إقامة', 'iqama'], ['تأمين طبي للعمال', 'medical']]);
+  const e1 = RB.demoState('2026-10-15').employees.find((e) => e.id === 'e1');
+  assert.equal(RB.autoFeeAmount('qiwa', e1), 9700);
+  assert.equal(RB.autoFeeAmount('iqama', e1), 650);
+  assert.equal(RB.autoFeeAmount('medical', e1), 1800);
+  assert.equal(RB.autoFeeAmount(undefined, e1, 'labor_gov'), 10350);
+  assert.equal(RB.autoFeeAmount(undefined, e1, 'gov'), 0);
+  const sa = { nationality: 'saudi', levyMonthly: 800, iqamaAnnual: 650, workPermitAnnual: 100, medicalAnnual: 2300 };
+  assert.deepEqual(['qiwa', 'iqama', 'medical'].map((a) => RB.autoFeeAmount(a, sa)), [0, 0, 2300]);
+  assert.equal(RB.autoFeeAmount(undefined, sa, 'labor_gov'), 0);
+  assert.equal(RB.autoFeeAmount('qiwa', null), 0);
+});
+
+test('حد التسجيل في ضريبة القيمة المضافة لغير المسجل: 375,000 إلزامي و187,500 اختياري', () => {
+  const t = '2026-10-15';
+  const D = RB.demoState(t);
+  assert.equal(RB.vatThreshold(D, t), null); // المسجل لا يُنبّه
+  D.settings.vatRegistered = false;
+  const v = RB.vatThreshold(D, t);
+  // مفتوح منذ أقل من سنة: المتوقع لسنة من مبيعات أيام التشغيل يتجاوز الحد الإلزامي
+  assert.equal(v.start, D.settings.openingDate);
+  assert.ok(v.last12 < RB.VAT_MANDATORY, String(v.last12));
+  close(v.last12, RB.sum(D.sales, RB.saleTotal));
+  close(v.runRate, (v.last12 / (RB.daysBetween(D.settings.openingDate, t) + 1)) * 365, 0.02);
+  assert.equal(v.level, 'mandatory');
+  // مسجل بتاريخ سريان لاحق: سُجّل فعلاً فلا تنبيه
+  assert.equal(RB.vatThreshold(Object.assign({}, D, { settings: Object.assign({}, D.settings, { vatRegistered: true, vatRegisteredFrom: '2026-12-01' }) }), t), null);
+  // مطعم قائم منذ سنوات: آخر 12 شهراً فقط
+  const S = base();
+  S.settings.vatRegistered = false;
+  S.settings.openingDate = '2020-01-01';
+  const day = (date, amount) => ({ id: date, date, channels: { cash: { amount, orders: 1, type: 'cash' } } });
+  S.sales = [day('2025-09-01', 300000), day('2025-11-01', 100000), day('2026-08-01', 100000)];
+  let x = RB.vatThreshold(S, '2026-10-15');
+  assert.deepEqual([x.last12, x.runRate, x.level], [200000, 0, 'voluntary']);
+  S.sales.push(day('2026-10-15', 175000));
+  assert.equal(RB.vatThreshold(S, '2026-10-15').level, 'mandatory');
+  S.sales = [day('2025-01-01', 1000), day('2026-05-01', 100000)];
+  assert.equal(RB.vatThreshold(S, '2026-10-15').level, '');
+  // الدفتر بدأ بعد الافتتاح بسنوات: المتوقع من أول مبيعات مسجلة
+  S.sales = [day('2026-09-16', 40000)];
+  x = RB.vatThreshold(S, '2026-10-15');
+  assert.equal(x.start, '2026-09-16');
+  close(x.runRate, (40000 / 30) * 365);
+  assert.equal(x.level, 'mandatory');
 });
