@@ -3,7 +3,7 @@ window.OC = window.OC || {};
 (function (OC) {
   'use strict';
   const KEY = 'oneclick.v1';
-  const SEED = 2; // bump when sample data changes shape; migrate() refreshes untouched sample lists
+  const SEED = 3; // bump when sample data changes shape; migrate() refreshes untouched sample lists
 
   /* ---------- helpers ---------- */
   const pad = n => String(n).padStart(2, '0');
@@ -44,18 +44,11 @@ window.OC = window.OC || {};
     const pw = shiftWeek(cw.year, cw.week, -1);
     const monthStr = t.slice(0, 7);
     const dom = n => `${monthStr}-${pad(n)}`;
+    const team = SAMPLE_TEAM.map(m => Object.assign({ id: uid() }, m));
     return {
+      courses: sampleCourses(), training: {}, leaves: [],
       settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'Maintenance Team', owner: '', seed: SEED },
-      team: [
-        { id: uid(), name: 'Ahmed Al-Harbi', badge: '87163', role: 'Team Lead', shift: 'A', status: 'on', phone: '0550000001' },
-        { id: uid(), name: 'Fahad Al-Otaibi', badge: '87201', role: 'Mechanical Tech', shift: 'A', status: 'on', phone: '0550000002' },
-        { id: uid(), name: 'Sara Al-Zahrani', badge: '87355', role: 'Planner', shift: 'A', status: 'on', phone: '0550000003' },
-        { id: uid(), name: 'Khalid Al-Dossary', badge: '87410', role: 'Electrical Tech', shift: 'B', status: 'off', phone: '0550000004' },
-        { id: uid(), name: 'Noura Al-Shehri', badge: '87488', role: 'Safety Officer', shift: 'A', status: 'training', phone: '0550000005' },
-        { id: uid(), name: 'Omar Al-Ghamdi', badge: '87502', role: 'Instrument Tech', shift: 'B', status: 'leave', phone: '0550000006' },
-        { id: uid(), name: 'Yousef Al-Mutairi', badge: '87577', role: 'Welder', shift: 'C', status: 'off', phone: '0550000007' },
-        { id: uid(), name: 'Reem Al-Qahtani', badge: '87634', role: 'Materials Coordinator', shift: 'A', status: 'on', phone: '0550000008' }
-      ],
+      team,
       inventory: [
         { id: uid(), name: 'Nitrile gloves (box)', sku: 'PPE-0101', category: 'PPE', qty: 14, min: 10, unit: 'box', location: 'Cabinet A1' },
         { id: uid(), name: 'Safety glasses', sku: 'PPE-0115', category: 'PPE', qty: 6, min: 12, unit: 'pcs', location: 'Cabinet A1' },
@@ -125,19 +118,60 @@ window.OC = window.OC || {};
       votes: []
     };
   }
+  const SAMPLE_TEAM = [
+    { name: 'Ahmed Al-Harbi', badge: '87163', role: 'Team Lead', group: 'Mechanical', shift: 'A', status: 'on', phone: '0550000001' },
+    { name: 'Fahad Al-Otaibi', badge: '87201', role: 'Mechanical Tech', group: 'Mechanical', shift: 'A', status: 'on', phone: '0550000002' },
+    { name: 'Sara Al-Zahrani', badge: '87355', role: 'Planner', group: 'Planning', shift: 'A', status: 'on', phone: '0550000003' },
+    { name: 'Khalid Al-Dossary', badge: '87410', role: 'Electrical Tech', group: 'Electrical', shift: 'B', status: 'off', phone: '0550000004' },
+    { name: 'Noura Al-Shehri', badge: '87488', role: 'Safety Officer', group: 'Safety', shift: 'A', status: 'training', phone: '0550000005' },
+    { name: 'Omar Al-Ghamdi', badge: '87502', role: 'Instrument Tech', group: 'Electrical', shift: 'B', status: 'leave', phone: '0550000006' },
+    { name: 'Yousef Al-Mutairi', badge: '87577', role: 'Welder', group: 'Mechanical', shift: 'C', status: 'off', phone: '0550000007' },
+    { name: 'Reem Al-Qahtani', badge: '87634', role: 'Materials Coordinator', group: 'Planning', shift: 'A', status: 'on', phone: '0550000008' }
+  ];
+  const SAMPLE_GROUPS = Object.fromEntries(SAMPLE_TEAM.map(m => [m.name, m.group]));
+  function sampleCourses() {
+    return [['H2S Awareness', 24], ['First Aid & CPR', 24], ['Fire Fighting', 36], ['Confined Space Entry', 24], ['Working at Heights', 36], ['Lock-out / Tag-out', 24], ['Forklift Operation', 36], ['Defensive Driving', 36]]
+      .map(([name, validity]) => ({ id: uid(), name, validity }));
+  }
+  /* completions and leaves for the sample team, relative to today */
+  function sampleTraining(team, courses) {
+    const t = today(), training = {};
+    courses.forEach((c, ci) => {
+      training[c.id] = {};
+      team.forEach((m, mi) => {
+        const k = (mi * 7 + ci * 3) % 10;
+        if (k < 6) training[c.id][m.id] = addDays(t, -(40 + ((mi * 53 + ci * 97) % 600)));
+        else if (k === 6) training[c.id][m.id] = addDays(t, -(800 + mi * 9)); // expired
+      });
+    });
+    return training;
+  }
+  function sampleLeaves(team) {
+    const t = today(), L = (mi, type, a, b, notes) => ({ id: uid(), personId: team[mi].id, type, from: addDays(t, a), to: addDays(t, b), notes: notes || '' });
+    return [
+      L(5, 'annual', -3, 10, 'Family travel'), L(4, 'training', -1, 2, 'NEBOSH module 2'), L(1, 'training', 6, 8, 'Rigging course'),
+      L(2, 'annual', 24, 37), L(3, 'annual', 30, 44), L(7, 'annual', 33, 40), L(6, 'sick', -26, -25),
+      L(0, 'annual', 62, 82), L(3, 'mission', 12, 15, 'Ras Tanura support'), L(6, 'annual', -60, -46), L(0, 'emergency', -90, -88)
+    ];
+  }
 
+  function sampleFull() {
+    const d = sample(); d.training = sampleTraining(d.team, d.courses); d.leaves = sampleLeaves(d.team); return d;
+  }
   function empty() {
     return { settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'My Team', owner: '', seed: SEED },
-      team: [], inventory: [], events: [], prints: [], vehicles: [], tasks: [], turnovers: [], ideas: [], votes: [] };
+      courses: [], training: {}, leaves: [], team: [], inventory: [], events: [], prints: [], vehicles: [], tasks: [], turnovers: [], ideas: [], votes: [] };
   }
 
   /* ---------- persistence ---------- */
-  const LISTS = ['team', 'inventory', 'events', 'prints', 'vehicles', 'tasks', 'turnovers', 'ideas', 'votes'];
+  const LISTS = ['team', 'inventory', 'events', 'prints', 'vehicles', 'tasks', 'turnovers', 'ideas', 'votes', 'courses', 'leaves'];
+  const LEAVE_TYPES = ['annual', 'sick', 'emergency', 'training', 'mission', 'off', 'other'];
+  const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
   /* Everything that reaches the DOM goes through esc(), but ids land in attributes and numbers in
      inline styles, so imported backups are coerced into safe shapes here as well. */
   const SAFE_ID = /^[a-z0-9_-]{1,40}$/i;
   const NUMERIC = { inventory: ['qty', 'min'], prints: ['qty', 'progress'], vehicles: ['mileage'], tasks: ['week', 'year'], ideas: ['votes'] };
-  const OPTIONAL_NUMERIC = { vehicles: ['year', 'nextServiceKm'] };
+  const OPTIONAL_NUMERIC = { vehicles: ['year', 'nextServiceKm'], courses: ['validity'] };
   function normalize(data) {
     const base = empty();
     const out = Object.assign({}, base, data || {});
@@ -146,6 +180,11 @@ window.OC = window.OC || {};
     out.settings.theme = out.settings.theme === 'light' ? 'light' : 'dark';
     out.settings.bg = out.settings.bg === 'minimal' ? 'minimal' : '3d';
     out.settings.teamName = String(out.settings.teamName || '').slice(0, 60);
+    const int = (v, d, lo, hi) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+    out.settings.maxOff = int(out.settings.maxOff, 2, 1, 99);
+    out.settings.annualDays = int(out.settings.annualDays, 30, 0, 365);
+    out.settings.weekend = ['fs', 'ss', 'f'].includes(out.settings.weekend) ? out.settings.weekend : 'fs';
+    out.settings.leaveCount = out.settings.leaveCount === 'working' ? 'working' : 'calendar';
     LISTS.forEach(k => {
       if (!Array.isArray(out[k])) out[k] = [];
       if (k === 'votes') { out.votes = out.votes.filter(v => typeof v === 'string'); return; }
@@ -157,6 +196,12 @@ window.OC = window.OC || {};
       });
     });
     out.tasks.forEach(x => { x.done = !!x.done; });
+    out.team.forEach(m => { m.group = String(m.group || ''); });
+    out.leaves = out.leaves.filter(l => SAFE_ID.test(String(l.personId || '')) && ISO_RE.test(l.from) && ISO_RE.test(l.to || l.from))
+      .map(l => Object.assign(l, { to: l.to && l.to >= l.from ? l.to : l.from, type: LEAVE_TYPES.includes(l.type) ? l.type : 'other', notes: String(l.notes || '') }));
+    const tr = (data && data.training && typeof data.training === 'object') ? data.training : {}; out.training = {};
+    Object.keys(tr).forEach(cid => { if (!SAFE_ID.test(cid) || !tr[cid] || typeof tr[cid] !== 'object') return; out.training[cid] = {};
+      Object.keys(tr[cid]).forEach(pid => { const v = String(tr[cid][pid] || ''); if (SAFE_ID.test(pid) && (v === '1' || ISO_RE.test(v))) out.training[cid][pid] = v; }); });
     out.vehicles.forEach(v => {
       if (v.photo != null && !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(String(v.photo))) delete v.photo;
       if (v.color != null && !/^#[0-9a-f]{6}$/i.test(String(v.color))) delete v.color;
@@ -175,15 +220,22 @@ window.OC = window.OC || {};
       const plates = data.vehicles.map(v => String(v.plate)).sort().join('|');
       if (plates === OLD_SAMPLE_PLATES) data.vehicles = sample().vehicles;
     }
+    if (seed < 3) {
+      data.team.forEach(m => { if (!m.group && SAMPLE_GROUPS[m.name]) m.group = SAMPLE_GROUPS[m.name]; });
+      const sampleNames = data.team.filter(m => SAMPLE_GROUPS[m.name]).length;
+      if (sampleNames >= 5 && !data.courses.length && !data.leaves.length) {
+        data.courses = sampleCourses(); data.training = sampleTraining(data.team, data.courses); data.leaves = sampleLeaves(data.team);
+      }
+    }
     data.settings.seed = SEED;
     return data;
   }
   function load() {
     try {
       const raw = localStorage.getItem(KEY);
-      if (!raw) { const s = sample(); s._fresh = true; return s; }
+      if (!raw) { const s = normalize(sampleFull()); s._fresh = true; return s; }
       return migrate(normalize(JSON.parse(raw)));
-    } catch (e) { console.warn('OneClick: could not read saved data, starting with sample data.', e); return sample(); }
+    } catch (e) { console.warn('OneClick: could not read saved data, starting with sample data.', e); return normalize(sampleFull()); }
   }
   function save() {
     try { delete OC.db._fresh; localStorage.setItem(KEY, JSON.stringify(OC.db)); return true; }
@@ -193,7 +245,7 @@ window.OC = window.OC || {};
   OC.db = load();
   OC.save = save;
   OC.storageKey = KEY;
-  OC.resetData = mode => { OC.db = mode === 'sample' ? sample() : empty(); save(); };
+  OC.resetData = mode => { OC.db = normalize(mode === 'sample' ? sampleFull() : empty()); save(); };
   OC.exportJSON = () => JSON.stringify(Object.assign({ _app: 'OneClick', _version: 1, _exported: nowISO() }, OC.db), null, 2);
   OC.importJSON = text => {
     const parsed = JSON.parse(text);
@@ -201,8 +253,27 @@ window.OC = window.OC || {};
     const settings = Object.assign({}, OC.db.settings, parsed.settings || {});
     OC.db = normalize(parsed); OC.db.settings = settings; save();
   };
+  /* full backup: localStorage data + the large inventory table from IndexedDB */
+  OC.exportBackup = async () => {
+    const out = Object.assign({ _app: 'OneClick', _version: 2, _exported: nowISO() }, OC.db);
+    if (OC.inv) out.inventoryStore = await OC.inv.exportData();
+    return JSON.stringify(out);
+  };
+  OC.importBackup = async text => {
+    const parsed = JSON.parse(text);
+    OC.importJSON(text);
+    if (OC.inv) {
+      const inv = parsed.inventoryStore;
+      if (inv && Array.isArray(inv.columns) && Array.isArray(inv.rows)) {
+        const n = inv.columns.length;
+        const rows = inv.rows.filter(Array.isArray).map(r => r.slice(0, n).map(v => (typeof v === 'number' || typeof v === 'string') ? v : ''));
+        await OC.inv.replaceAll(inv.columns.map(String), rows, inv.roles || {}, inv.info || {});
+      } else if (Array.isArray(parsed.inventory) && parsed.inventory.length) await OC.inv.importLegacy(OC.db.inventory);
+    }
+  };
   OC.find = (list, id) => (OC.db[list] || []).find(x => x.id === id);
   OC.remove = (list, id) => { OC.db[list] = OC.db[list].filter(x => x.id !== id); };
 
+  OC.LEAVE_TYPES = LEAVE_TYPES;
   OC.util = { pad, toISO, parseISO, today, addDays, daysBetween, uid, nowISO, isoWeek, weekStart, weeksInYear, shiftWeek };
 })(window.OC);

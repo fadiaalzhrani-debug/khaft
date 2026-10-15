@@ -46,7 +46,7 @@ OC.modules = OC.modules || {};
       const quick = `<form class="row" data-submit="quick" style="gap:8px;margin-top:14px"><input class="input" name="title" placeholder="${esc(t('week.quickPh'))}" aria-label="${esc(t('week.f.title'))}" required style="flex:1;min-width:180px"/><button class="btn primary" type="submit">${I('plus')}${esc(t('add'))}</button></form>`;
       return `
       <div class="page-head"><div><h2>${esc(t('week.title'))}</h2><p>${esc(t('week.desc'))}</p></div>
-        <div class="actions">${all.some(x => !x.done) ? `<button class="btn" data-act="carry">${I('arrow')}${esc(t('week.carry'))}</button>` : ''}<button class="btn primary" data-act="add">${I('plus')}${esc(t('week.addTask'))}</button></div></div>
+        <div class="actions"><button class="btn" data-act="import">${I('upload')}${esc(t('imp.button'))}</button>${all.some(x => !x.done) ? `<button class="btn" data-act="carry">${I('arrow')}${esc(t('week.carry'))}</button>` : ''}<button class="btn primary" data-act="add">${I('plus')}${esc(t('week.addTask'))}</button></div></div>
       <div class="split">
         <div class="stack">
           <div class="card pad">

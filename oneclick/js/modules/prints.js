@@ -65,7 +65,7 @@ OC.modules = OC.modules || {};
       const done7 = OC.db.prints.filter(p => p.status === 'done').length;
       return `
       <div class="page-head"><div><h2>${esc(t('prints.title'))}</h2><p>${esc(t('prints.desc'))}</p></div>
-        <div class="actions"><button class="btn primary" data-act="add">${I('plus')}${esc(t('prints.add'))}</button></div></div>
+        <div class="actions"><button class="btn" data-act="import">${I('upload')}${esc(t('imp.button'))}</button><button class="btn primary" data-act="add">${I('plus')}${esc(t('prints.add'))}</button></div></div>
       <div class="kpis">
         <div class="card kpi"><span class="lbl">${I('clock')}${esc(t('prints.s.queued'))}</span><span class="val">${col('queued').length}</span></div>
         <div class="card kpi"><span class="lbl">${I('printer')}${esc(t('prints.s.printing'))}</span><span class="val">${col('printing').length}</span></div>

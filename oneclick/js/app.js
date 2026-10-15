@@ -37,6 +37,7 @@ window.OC = window.OC || {};
     app.querySelector('[data-theme-btn]').addEventListener('click', () => { OC.db.settings.theme = OC.db.settings.theme === 'light' ? 'dark' : 'light'; OC.save(); OC.applySettings(); OC.refresh(); });
     bindDelegation();
   }
+  OC.renderNavCounts = () => { if (app.querySelector('[data-nav-list]')) renderNav(); };
   function renderNav() {
     const nav = app.querySelector('[data-nav-list]');
     nav.innerHTML = navModules().map(m => { const c = m.count ? m.count() : ''; return `<a href="#/${m.id}" class="${m.id === current ? 'active' : ''}" data-nav-link="${m.id}">${I(m.icon)}<span>${esc(m.title())}</span>${c ? `<span class="cnt">${esc(c)}</span>` : ''}</a>`; }).join('')
@@ -130,12 +131,13 @@ window.OC = window.OC || {};
     if (typing) return;
     if (e.key === '/') { const s = viewEl.querySelector('[data-input="q"]'); if (s) { e.preventDefault(); s.focus(); s.select(); } return; }
     if (e.key.toLowerCase() === 'h') { OC.go('home'); return; }
-    const n = Number(e.key); if (n >= 1 && n <= 8) { const m = navModules()[n]; if (m) OC.go(m.id); }
+    const n = Number(e.key); if (n >= 1 && n <= 9) { const m = navModules()[n]; if (m) OC.go(m.id); }
   });
 
   /* ---------- boot ---------- */
   function boot() {
     OC.applySettings();
+    OC.inv.init().then(() => { if (['home', 'settings'].includes(current)) OC.refresh(); else OC.renderNavCounts(); });
     shell();
     window.addEventListener('hashchange', route);
     route();

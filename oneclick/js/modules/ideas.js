@@ -39,7 +39,7 @@ OC.modules = OC.modules || {};
       const totalVotes = all.reduce((s, i) => s + (i.votes || 0), 0);
       return `
       <div class="page-head"><div><h2>${esc(t('ideas.title'))}</h2><p>${esc(t('ideas.desc'))}</p></div>
-        <div class="actions"><button class="btn primary" data-act="add">${I('plus')}${esc(t('ideas.add'))}</button></div></div>
+        <div class="actions"><button class="btn" data-act="import">${I('upload')}${esc(t('imp.button'))}</button><button class="btn primary" data-act="add">${I('plus')}${esc(t('ideas.add'))}</button></div></div>
       <div class="kpis">
         <div class="card kpi"><span class="lbl">${I('bulb')}${esc(t('ideas.total'))}</span><span class="val">${all.length}</span></div>
         <div class="card kpi"><span class="lbl">${I('clock')}${esc(t('ideas.s.review'))}</span><span class="val">${c('new') + c('review')}</span><span class="hint">${esc(t('ideas.reviewHint'))}</span></div>

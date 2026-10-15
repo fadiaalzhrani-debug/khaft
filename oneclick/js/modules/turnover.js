@@ -48,7 +48,7 @@ OC.modules = OC.modules || {};
       const openIssues = OC.db.turnovers.flatMap(tv => tv.issues.filter(i => i.open).map(i => Object.assign({ tv }, i)));
       return `
       <div class="page-head"><div><h2>${esc(t('turnover.title'))}</h2><p>${esc(t('turnover.desc'))}</p></div>
-        <div class="actions"><button class="btn primary" data-act="add">${I('plus')}${esc(t('turnover.add'))}</button></div></div>
+        <div class="actions"><button class="btn" data-act="import">${I('upload')}${esc(t('imp.button'))}</button><button class="btn primary" data-act="add">${I('plus')}${esc(t('turnover.add'))}</button></div></div>
       <div class="kpis">
         <div class="card kpi"><span class="lbl">${I('swap')}${esc(t('turnover.entries'))}</span><span class="val">${OC.db.turnovers.length}</span></div>
         <div class="card kpi"><span class="lbl">${I('alert')}${esc(t('turnover.openIssues'))}</span><span class="val">${openIssues.length}</span><span class="hint ${openIssues.length ? 'warn' : ''}">${esc(openIssues.length ? t('turnover.openHint') : t('turnover.noOpen'))}</span></div>

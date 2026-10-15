@@ -16,6 +16,7 @@ window.OC = window.OC || {};
     cube: '<path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5M12 12v10"/><path d="m7.5 4.5 9 5"/>',
     truck: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
     car: '<path d="M5 17H3v-4l2.2-5.3A2 2 0 0 1 7 6.5h10a2 2 0 0 1 1.8 1.2L21 13v4h-2"/><path d="M3 13h18"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/>',
+    grad: '<path d="m2 9 10-5 10 5-10 5-10-5Z"/><path d="M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5"/><path d="M22 9v6"/>',
     camera: '<path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.5"/>',
     shield: '<path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6l-8-3Z"/><path d="m9 12 2 2 4-4"/>',
     file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
@@ -72,22 +73,24 @@ window.OC = window.OC || {};
   OC.relDays = iso => { const d = OC.util.daysBetween(OC.util.today(), iso); if (d === 0) return OC.t('rel.today'); if (d === 1) return OC.t('rel.tomorrow'); if (d === -1) return OC.t('rel.yesterday'); return d > 0 ? OC.t('rel.inDays', { n: d }) : OC.t('rel.daysAgo', { n: -d }); };
 
   /* ---------- toast ---------- */
-  OC.toast = (msg, type = 'ok', ms = 2600) => {
+  OC.toast = (msg, type = 'ok', ms = 2600, action) => {
     const root = document.getElementById('toast-root');
     const el = document.createElement('div');
     el.className = `toast ${type}`;
-    el.innerHTML = OC.icon(type === 'err' ? 'alert' : type === 'info' ? 'info' : 'check') + `<span>${esc(msg)}</span>`;
+    el.innerHTML = OC.icon(type === 'err' ? 'alert' : type === 'info' ? 'info' : 'check') + `<span>${esc(msg)}</span>` + (action ? `<button type="button" class="toast-act">${esc(action.label)}</button>` : '');
+    const hide = () => { el.classList.add('out'); setTimeout(() => el.remove(), 260); };
+    if (action) el.querySelector('.toast-act').addEventListener('click', () => { action.fn(); hide(); });
     root.appendChild(el);
-    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 260); }, ms);
+    setTimeout(hide, ms);
   };
 
   /* ---------- modal ---------- */
   const stack = [];
-  OC.modal = ({ title, body, footer, narrow, onClose }) => {
+  OC.modal = ({ title, body, footer, narrow, wide, onClose }) => {
     const root = document.getElementById('modal-root');
     const ov = document.createElement('div');
     ov.className = 'overlay';
-    ov.innerHTML = `<div class="modal${narrow ? ' narrow' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    ov.innerHTML = `<div class="modal${narrow ? ' narrow' : ''}${wide ? ' wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
       <div class="m-head"><h3>${esc(title)}</h3><button class="ibtn" data-close aria-label="${esc(OC.t('close'))}">${OC.icon('x')}</button></div>
       <div class="m-body"></div>${footer !== false ? '<div class="m-foot"></div>' : ''}</div>`;
     const bodyEl = ov.querySelector('.m-body');

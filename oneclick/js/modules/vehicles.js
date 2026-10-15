@@ -144,7 +144,7 @@ OC.modules = OC.modules || {};
       const attention = all.filter(v => alerts(v).length), svcN = all.filter(v => stateOf(v, 'service') !== 'ok').length, docN = all.filter(v => stateOf(v, 'reg') !== 'ok' || stateOf(v, 'ins') !== 'ok').length;
       return `
       <div class="page-head"><div><h2>${esc(t('vehicles.title'))}</h2><p>${esc(t('vehicles.desc'))}</p></div>
-        <div class="actions"><button class="btn" data-act="csv">${I('download')}${esc(t('exportCsv'))}</button><button class="btn primary" data-act="add">${I('plus')}${esc(t('vehicles.add'))}</button></div></div>
+        <div class="actions"><button class="btn" data-act="csv">${I('download')}${esc(t('inv.exportXlsx'))}</button><button class="btn" data-act="import">${I('upload')}${esc(t('imp.button'))}</button><button class="btn primary" data-act="add">${I('plus')}${esc(t('vehicles.add'))}</button></div></div>
       <div class="kpis">
         <div class="card kpi"><span class="lbl">${I('check')}${esc(t('vehicles.s.available'))}</span><span class="val">${c('available')}<small>/ ${all.length}</small></span></div>
         <div class="card kpi"><span class="lbl">${I('key')}${esc(t('vehicles.s.inuse'))}</span><span class="val">${c('inuse')}</span></div>
