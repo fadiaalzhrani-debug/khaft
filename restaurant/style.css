@@ -599,8 +599,7 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
 .toast { background: var(--ink); color: var(--surface); padding: 10px 16px; border-radius: 10px; box-shadow: var(--shadow-lg); font-size: 0.9rem; transition: opacity 0.4s, transform 0.4s; text-align: center; }
 .toast.bad { background: var(--bad); color: var(--on-bad); }
 .toast.out { opacity: 0; transform: translateY(8px); }
-/* نافذة مفتوحة: الرسالة فوق أزرار أسفلها (حفظ/إلغاء) لا عليها — #toast يلي #modals مباشرة، و#modals فيه عناصر ما دامت نافذة مفتوحة */
-#modals:not(:empty) + #toast { bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+/* نافذة مفتوحة: الرسائل تحتها إن اتسع ما تحتها وإلا فوق أزرار أسفلها (حفظ/إلغاء) لا عليها — يُحسب في placeToasts (app.js) */
 /* رسالة بزر (اعرضه، تراجع): تُنقر */
 .toast.has-act { pointer-events: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px; }
 .toast-a { font: inherit; font-weight: 700; color: inherit; background: none; border: 1px solid currentColor; border-radius: 8px; padding: 4px 10px; min-height: 32px; cursor: pointer; }

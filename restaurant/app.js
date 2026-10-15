@@ -792,6 +792,10 @@
       b.addEventListener('click', () => {
         t.remove();
         act.run();
+        // زر الرسالة زال ومعه التركيز: إن لم ينقله run إلى ما يخصه فإلى المحتوى الرئيسي، لا إلى أول الصفحة
+        const a = document.activeElement;
+        const main = document.getElementById('main');
+        if ((!a || a === document.body) && main && !document.getElementById('modals').children.length) main.focus({ preventScroll: true });
       });
       t.append(' ', b);
       t.addEventListener('mouseenter', () => clearTimeout(timer));
@@ -800,8 +804,60 @@
       t.addEventListener('focusout', (e) => t.contains(e.relatedTarget) || t._arm(3000));
     }
     el.appendChild(t);
+    placeToasts();
     t._arm(act ? 9000 : 4200);
     return t;
+  }
+
+  // موضع الرسائل والنافذة مفتوحة: النافذة القصيرة في وسط الشاشة فأزرار أسفلها (حفظ/إلغاء) في أي ارتفاع، فلا يكفي رفع
+  // الرسائل مسافة ثابتة. تبقى في مكانها أسفل الشاشة إن اتسع لها ما تحت النافذة، وإلا فهي فوق أزرارها مباشرة (على أسفل
+  // محتواها). تُقاس مع كل رسالة، وعند فتح النافذة وإغلاقها، وتغيّر حجمها أو حجم الشاشة (bindGlobal)
+  function placeToasts() {
+    const el = document.getElementById('toast');
+    const root = document.getElementById('modals');
+    if (!el || !root) return;
+    el.style.bottom = '';
+    const top = root.lastElementChild;
+    const dlg = top && top.querySelector('.dialog');
+    const foot = dlg && dlg.querySelector('.dlg-f');
+    if (!foot || !el.children.length) return;
+    const tr = el.getBoundingClientRect();
+    if (tr.top >= dlg.getBoundingClientRect().bottom + 8) return;
+    // أسفل الشاشة = أسفل الرسائل + بُعدها عنه في CSS
+    const ft = foot.getBoundingClientRect().top;
+    el.style.bottom = Math.max(0, Math.round(tr.bottom + (parseFloat(getComputedStyle(el).bottom) || 0) - ft + 8)) + 'px';
+    // محتوى يتمرر (النافذة بأقصى ارتفاعها): مسافة في آخره بقدر ما تغطيه الرسائل، فيصل آخر حقل إلى ما فوقها. تبقى حتى
+    // تُغلق النافذة (إزالتها مع الرسالة كانت ستُنزل المحتوى الممرَّر إلى آخره)، ولا تغيّر ارتفاع النافذة
+    const body = dlg.querySelector('.dlg-b');
+    if (body && body.scrollHeight > body.clientHeight + 1) {
+      if (body._pad0 === undefined) body._pad0 = parseFloat(getComputedStyle(body).paddingBottom) || 0;
+      const need = Math.ceil(ft - el.getBoundingClientRect().top);
+      if (need > (body._padX || 0)) {
+        body._padX = need;
+        body.style.paddingBottom = body._pad0 + need + 'px';
+      }
+    }
+    toastUncover();
+  }
+  // الرسائل فوق أسفل محتوى النافذة: الحقل الذي عليه التركيز (حقل ناقص بعد «حفظ»، أو بالتنقل بـ Tab أو النقر) لا يبقى
+  // تحتها: يُمرَّر المحتوى حتى يظهر فوقها (دون أن يخرج أعلاه)، وإن لم يتمرر (نافذة قصيرة) ترتفع الرسائل فوقه
+  function toastUncover() {
+    const el = document.getElementById('toast');
+    const a = document.activeElement;
+    if (!el || !el.style.bottom || !el.children.length || !a || !a.closest) return;
+    const body = a.closest('.dlg-b');
+    const root = document.getElementById('modals');
+    if (!body || !root.lastElementChild || !root.lastElementChild.contains(body)) return;
+    const er = el.getBoundingClientRect();
+    let r = a.getBoundingClientRect();
+    if (!r.height || r.bottom <= er.top - 4) return;
+    const by = Math.min(r.bottom - er.top + 8, r.top - body.getBoundingClientRect().top - 8);
+    if (by > 0) {
+      body.scrollTop += by;
+      r = a.getBoundingClientRect();
+      if (r.bottom <= er.top - 4) return;
+    }
+    if (r.top - 8 - er.height >= 0) el.style.bottom = Math.round(er.bottom + parseFloat(el.style.bottom) - r.top + 8) + 'px';
   }
 
   // النافذة: الخلفية (الصفحة والنوافذ تحتها) معطّلة (inert) فلا يصلها Tab ولا النقر، وعند الإغلاق يعود التركيز
@@ -5264,7 +5320,19 @@
       if (!RB.isISODate(d)) return;
       if (!(await confirmBox(`تسجيل ${esc(dtText(d))} يوماً كان المطعم فيه مغلقاً؟ لن يُنبَّه بعدها إلى أنه بلا إقفال يومي. إن كانت فيه مبيعات فسجّل إقفاله بدلاً من ذلك.`, { ok: 'كان مغلقاً' }))) return;
       setClosedDay(d, true);
-      toast('سُجّل ' + dtText(d) + ' يوماً مغلقاً، فلا تنبيه له.', '', { label: 'تراجع', run: () => setClosedDay(d, false, true) });
+      toast('سُجّل ' + dtText(d) + ' يوماً مغلقاً، فلا تنبيه له.', '', {
+        label: 'تراجع',
+        run: () => {
+          setClosedDay(d, false, true);
+          // زر «تراجع» زال: التركيز إلى زر اليوم في تنبيهه العائد (أو زر التنبيه الذي يذكره)، وإلا المحتوى الرئيسي
+          const b = document.querySelector(`#page [data-act="closedDay"][data-d="${d}"]`) || document.querySelector('#page [data-act="closedDay"]');
+          if (b) b.focus();
+          else {
+            const main = document.getElementById('main');
+            if (main) main.focus({ preventScroll: true });
+          }
+        },
+      });
     },
     unclosedDay: (el) => {
       if (roBlock()) return;
@@ -6292,6 +6360,27 @@
       if (next === t) return;
       next.click();
     });
+    // موضع الرسائل فوق النافذة المفتوحة (placeToasts): يتبع تغيّر عدد الرسائل وارتفاعها، والنافذة العليا (فتحها وإغلاقها
+    // وتغيّر ارتفاعها مع حقل يظهر أو سطر يُضاف، وانتهاء حركة ظهورها)، وحجم الشاشة. والتركيز ينتقل إلى حقل تحت الرسائل: يظهر فوقها
+    const toastEl = document.getElementById('toast');
+    const modals = document.getElementById('modals');
+    if (typeof ResizeObserver === 'function') {
+      const ro = new ResizeObserver(() => placeToasts());
+      const watch = () => {
+        ro.disconnect();
+        ro.observe(toastEl);
+        const d = modals.lastElementChild && modals.lastElementChild.querySelector('.dialog');
+        if (d) ro.observe(d);
+      };
+      watch();
+      new MutationObserver(() => {
+        watch();
+        placeToasts();
+      }).observe(modals, { childList: true });
+    }
+    modals.addEventListener('animationend', placeToasts);
+    window.addEventListener('resize', placeToasts);
+    document.addEventListener('focusin', () => document.getElementById('toast').children.length && requestAnimationFrame(placeToasts));
     let rz = null;
     window.addEventListener('resize', () => {
       // اتسعت الشاشة فظهر الشريط الجانبي ثابتاً: لا درج مفتوح بعدها
