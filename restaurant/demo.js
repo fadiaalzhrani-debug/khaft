@@ -191,6 +191,9 @@
       drinks: { supplier: 'موزع المشروبات', category: 'drinks', account: 'bank', taxable: true },
     };
 
+    // عهدة نقدية للصندوق من البنك قبل الافتتاح (فكة ومشتريات نقدية)، فلا ينزل رصيد الصندوق عن الصفر في أي يوم
+    S.transfers.push({ id: id('t'), date: RB.addDays(opening, -3), from: 'bank', to: 'cash', amount: 2000, note: 'عهدة الصندوق قبل الافتتاح' });
+    cash += 2000;
     // مخزون افتتاحي قبل الافتتاح بيومين، وجرده في اليوم السابق للافتتاح: بضاعة الافتتاح لا تُحمَّل على شهر ما قبل التشغيل
     for (const sup of Object.keys(SUP)) buy(RB.addDays(opening, -2), sup, { initial: true, inv: SUP[sup] });
     // متوسط الاستهلاك اليومي يبدأ من التقدير نفسه (حد إعادة الطلب في الأيام الأولى)

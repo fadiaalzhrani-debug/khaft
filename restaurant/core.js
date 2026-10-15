@@ -358,13 +358,15 @@
     return m.status === 'running' && Math.abs(age) < RB.REPLACE_LIVE_MS ? 'running' : 'stale';
   };
 
-  // شكل الأرصدة الافتتاحية: كائن بتاريخ ومبالغ، والتطبيقات كائن بمعرّفات قنوات صالحة، والموردون قائمة؛ غيره null
+  // شكل الأرصدة الافتتاحية: كائن بتاريخ ومبالغ، والتطبيقات كائن بمعرّفات قنوات صالحة، والموردون ومخصص نهاية الخدمة
+  // لكل موظف قائمتان؛ غيره null
   RB.cleanOpening = (o) => {
     if (!isObj(o)) return null;
     const apps = {};
     if (isObj(o.apps)) for (const k of Object.keys(o.apps)) if (!PROTO.includes(k) && !/^\d+$/.test(k)) apps[k] = o.apps[k];
     const payables = (Array.isArray(o.payables) ? o.payables : []).filter(isObj).map((x) => Object.assign({}, x, { supplier: str(x.supplier) }));
-    return Object.assign({}, noNumKeys(o), { date: str(o.date), apps, payables });
+    const eosb = (Array.isArray(o.eosb) ? o.eosb : []).filter(isObj).map((x) => Object.assign({}, x, { employeeId: str(x.employeeId) }));
+    return Object.assign({}, noNumKeys(o), { date: str(o.date), apps, payables, eosb });
   };
 
   // يكمل أي حقول ناقصة (نسخ احتياطية قديمة أو بيانات منقوصة)، ويصلح شكل الإعدادات والسجلات:
@@ -652,6 +654,13 @@
     const y = startDate ? RB.daysBetween(startDate, atDate || RB.todayISO()) / 365.25 : 0;
     return r2(num(wage) / (isFinite(y) && y >= 5 ? 12 : 24));
   };
+  // ما تراكم بالمعدل نفسه عن الخدمة من startDate حتى atDate (المخصص الافتتاحي لعامل باشر قبل بدء الدفتر):
+  // نصف أجر شهر عن كل سنة من الخمس الأولى، وأجر شهر عن كل سنة بعدها، وجزء السنة بنسبته
+  RB.eosbEarned = (wage, startDate, atDate) => {
+    if (!RB.isISODate(startDate) || !RB.isISODate(atDate) || atDate <= startDate) return 0;
+    const y = RB.daysBetween(startDate, atDate) / 365.25;
+    return r2(num(wage) * (Math.min(y, 5) / 2 + Math.max(0, y - 5)));
+  };
 
   // التكلفة الشهرية الحقيقية للعامل على المطعم. ym = الشهر (للتأمينات ومدة الخدمة)؛ بدونه الشهر الحالي
   RB.employeeMonthlyCost = (emp, S, ym) => {
@@ -894,6 +903,17 @@
       }
     };
     const out = [];
+    // مطعم قائم: مخصص كل موظف عن خدمته قبل بدء الدفتر (الأرصدة الافتتاحية) يبدأ منه متراكمه، وقيده مع قيد الأرصدة
+    // الافتتاحية (لا يدخل إن لم يدخل ذلك القيد: بلا شركاء يُسجَّل صافيها حقوقاً لهم)
+    const op = RB.openingInfo(S);
+    if (op && op.eosb > 0 && (RB.openingShares(S, op.net).length || Math.abs(op.net) < 0.005)) {
+      const lines = Object.keys(op.eosbBy).map((id) => ({ employeeId: id, amount: op.eosbBy[id] }));
+      for (const l of lines) {
+        accrued[l.employeeId] = r2((accrued[l.employeeId] || 0) + l.amount);
+        seen(l.employeeId, op.date, null);
+      }
+      out.push({ kind: 'opening', date: op.date, lines, total: op.eosb });
+    }
     const runs = good(S.payroll)
       .filter((pr) => pr.date)
       .map((pr) => {
@@ -940,7 +960,7 @@
       if (!e) date = last[id];
       else if (isDay(e.endDate) && (settled[id] || e.eosbNone === true)) date = e.endDate > (last[id] || '') ? e.endDate : last[id];
       else continue;
-      out.push({ kind: 'release', date, employeeId: id, name: (e && e.name) || names[id] || '', amount: rem, ref: e ? { s: 'employees', id } : { s: 'payroll', id: lastRun[id].id } });
+      out.push({ kind: 'release', date, employeeId: id, name: (e && e.name) || names[id] || '', amount: rem, ref: e ? { s: 'employees', id } : lastRun[id] ? { s: 'payroll', id: lastRun[id].id } : { s: 'settings', id: 'opening' } });
     }
     return out;
   };
@@ -948,7 +968,7 @@
     const out = {};
     for (const ev of evs) {
       if (asOf && ev.date > asOf) continue;
-      if (ev.kind === 'accrual') for (const l of ev.lines) out[l.employeeId] = r2((out[l.employeeId] || 0) + l.amount);
+      if (ev.kind === 'accrual' || ev.kind === 'opening') for (const l of ev.lines) out[l.employeeId] = r2((out[l.employeeId] || 0) + l.amount);
       else if (ev.kind === 'release') {
         if (rel) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.amount);
       } else if (ev.employeeId) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.fromProv);
@@ -1165,15 +1185,20 @@
   // ترتيب القيود في اليوم الواحد: الأرصدة الافتتاحية أولاً، وجرد الدرج آخراً (بعد كل حركات الصندوق في يومه)
   const KIND_ORDER = { opening: -1, capital: 0, asset: 1, expense: 2, purchase: 3, advance: 4, payroll: 5, eosb: 6, sale: 7, payout: 8, transfer: 9, supplierpay: 10, vatpay: 11, withdrawal: 12, amort: 13, dep: 14, stock: 15, cashadj: 16 };
 
-  // الأرصدة الافتتاحية بأرقامها: الأصول، والالتزامات، وصافيها (حقوق الشركاء الافتتاحية)، أو null إن لم توجد أو بلا تاريخ صالح
+  // الأرصدة الافتتاحية بأرقامها: الأصول، والالتزامات (الموردون owed، ومخصص نهاية الخدمة eosb عن خدمة العمال قبل
+  // بدء الدفتر، ومجموعهما liab)، وصافيها (حقوق الشركاء الافتتاحية)، أو null إن لم توجد أو بلا تاريخ صالح.
+  // eosbBy: مخصص كل موظف (السطر بلا موظف لا يدخل: المخصص لكل موظف على حدة)
   RB.openingInfo = (S) => {
     const o = S && S.settings && S.settings.opening;
     if (!isObj(o) || !RB.isISODate(o.date)) return null;
     const apps = r2(sum(Object.values(isObj(o.apps) ? o.apps : {}), num));
     const payables = (Array.isArray(o.payables) ? o.payables : []).filter((x) => isObj(x) && num(x.amount));
     const owed = r2(sum(payables, (x) => num(x.amount)));
+    const eosbBy = {};
+    for (const x of Array.isArray(o.eosb) ? o.eosb : []) if (isObj(x) && RB.validId(x.employeeId) && num(x.amount) > 0) eosbBy[x.employeeId] = r2((eosbBy[x.employeeId] || 0) + num(x.amount));
+    const eosb = r2(sum(Object.values(eosbBy)));
     const assets = r2(num(o.cash) + num(o.bank) + apps + num(o.inventory) + Math.max(0, num(o.vatCredit)));
-    return { date: o.date, cash: num(o.cash), bank: num(o.bank), apps, appsBy: isObj(o.apps) ? o.apps : {}, inventory: num(o.inventory), vatCredit: Math.max(0, num(o.vatCredit)), payables, owed, assets, net: r2(assets - owed) };
+    return { date: o.date, cash: num(o.cash), bank: num(o.bank), apps, appsBy: isObj(o.apps) ? o.apps : {}, inventory: num(o.inventory), vatCredit: Math.max(0, num(o.vatCredit)), payables, owed, eosb, eosbBy, liab: r2(owed + eosb), assets, net: r2(assets - owed - eosb) };
   };
   // صافي الأرصدة الافتتاحية موزعاً على الشركاء حسب نسبهم (بالتساوي إن لم تُحدَّد نسب)، والأخير يأخذ فرق التقريب
   RB.openingShares = (S, net) => {
@@ -1243,6 +1268,7 @@
           ['1104', op.inventory],
           ['2102', op.vatCredit],
           ['2101', -op.owed],
+          ['2201', -op.eosb],
           ...shares.map((x) => ['cap:' + x.partnerId, -x.amount]),
         ]);
       } catch (e) {
@@ -1346,6 +1372,8 @@
       errors.push({ section: 'payroll', id: '', msg: String((e && e.message) || e) });
     }
     each('payroll', evs, (ev) => {
+      // المخصص الافتتاحي في قيد الأرصدة الافتتاحية
+      if (ev.kind === 'opening') return;
       if (ev.kind === 'release') {
         // رد ما بقي من مخصص من ترك العمل إلى المصروف
         add(ev.date, 'eosb', ev.ref, 'رد مخصص نهاية الخدمة غير المصروف — ترك العمل' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.amount], ['5203', -ev.amount]]);
@@ -1506,6 +1534,15 @@
     return out;
   };
 
+  // السنة المالية التي تخصها زكاة تُدفع في تاريخ date: السنة السابقة لسنة الدفع ({startDate, months}).
+  // إن افتُتح المطعم أثناء تلك السنة فسنته الزكوية الأولى من الافتتاح: لا يُحمَّل منها شيء على أشهر ما قبل الافتتاح
+  RB.zakatCoverage = (set, date) => {
+    const y = +(RB.isISODate(date) && date >= '2000' ? date : RB.todayISO()).slice(0, 4) - 1;
+    const open = set && set.openingDate;
+    if (RB.isISODate(open) && open > y + '-01-01' && open <= y + '-12-31') return { startDate: open, months: 13 - +open.slice(5, 7) };
+    return { startDate: y + '-01-01', months: 12 };
+  };
+
   // أرصدة الحسابات في فترة (أو حتى تاريخ إن لم تُحدد البداية)
   RB.balances = (entries, from, to) => {
     const b = {};
@@ -1629,6 +1666,88 @@
     }
     return r2(b);
   };
+  // المتوقع لجرد الدرج c ({id, date}) من الدفتر الحالي: رصيد الصندوق نهاية يومه بلا فرقه هو، ولا فروق ما بعده من جرود
+  // اليوم نفسه (بترتيب المعرّف؛ معرّف الجرد الجديد أكبر من معرّفات ما قبله). كما يُحسب عند حفظ الجرد
+  const cntBefore = (a, b) => a.date < b.date || (a.date === b.date && String(a.id) < String(b.id));
+  RB.cashCountExpected = (S, L, c) => {
+    const cs = byId(good(S.cashCounts));
+    let b = 0;
+    for (const e of L.entries) {
+      if (e.date > c.date) break;
+      if (e.ref && e.ref.s === 'cashCounts' && (String(e.ref.id) === String(c.id) || !(cs[e.ref.id] && cntBefore(cs[e.ref.id], c)))) continue;
+      for (const l of e.lines) if (l.a === '1101') b += l.v;
+    }
+    return r2(b);
+  };
+  // جرود الدرج التي تغيّر الدفتر بعدها (حركة نقدية بتاريخها أو قبله سُجّلت أو عُدّلت بعد حفظها): المتوقع المحفوظ
+  // لا يساوي المتوقع الآن، فالفرق المسجل لم يعد يجعل الصندوق = المعدود. [{count, expected (الآن)}] بترتيب التاريخ
+  RB.staleCashCounts = (S, L) => {
+    const cs = good(S.cashCounts)
+      .filter((c) => RB.isISODate(c.date))
+      .sort((a, b) => (cntBefore(a, b) ? -1 : cntBefore(b, a) ? 1 : 0));
+    if (!cs.length) return [];
+    // رصيد الصندوق بلا فروق الجرد في نهاية كل يوم فيه حركة، وفرق كل جرد كما قُيّد
+    const adj = {};
+    const days = [];
+    let run = 0;
+    for (const e of L.entries) {
+      let v = 0;
+      for (const l of e.lines) if (l.a === '1101') v += l.v;
+      if (!v) continue;
+      if (e.ref && e.ref.s === 'cashCounts') adj[e.ref.id] = (adj[e.ref.id] || 0) + v;
+      else {
+        run += v;
+        if (days.length && days[days.length - 1][0] === e.date) days[days.length - 1][1] = run;
+        else days.push([e.date, run]);
+      }
+    }
+    const out = [];
+    let i = -1;
+    let before = 0;
+    for (const c of cs) {
+      while (i + 1 < days.length && days[i + 1][0] <= c.date) i++;
+      const expected = r2((i >= 0 ? days[i][1] : 0) + before);
+      before += adj[c.id] || 0;
+      if (Math.abs(expected - num(c.expected)) >= 0.01) out.push({ count: c, expected });
+    }
+    return out;
+  };
+
+  // أول يوم ينتهي فيه رصيد الحساب acc بالسالب (أقل من −0.5) في الفترة from..to من قيود الدفتر L: بلا قيود السجل
+  // o.except ({s, id}) ومعها قيود o.extra (السجل كما في النموذج قبل حفظه). يرجع {date, balance, since, sinceBalance}
+  // أو null: date أول يوم سالب في الفترة (from نفسه إن كان سالباً قبلها) ورصيده، وsince بداية هذا السالب (قد تسبق from) ورصيده
+  RB.firstNegative = (L, acc, from, to, o) => {
+    o = o || {};
+    const ex = o.except;
+    const day = {};
+    const put = (e) => {
+      if (e.date > to) return;
+      let v = 0;
+      for (const l of e.lines) if (l.a === acc) v += l.v;
+      if (v) day[e.date] = (day[e.date] || 0) + v;
+    };
+    for (const e of L.entries) if (!(ex && e.ref && e.ref.s === ex.s && String(e.ref.id) === String(ex.id))) put(e);
+    for (const e of o.extra || []) put(e);
+    const dates = Object.keys(day).sort();
+    let bal = 0;
+    let since = '';
+    let sinceBalance = 0;
+    for (let i = 0; i < dates.length; i++) {
+      bal = r2(bal + day[dates[i]]);
+      if (bal >= -0.5) {
+        since = '';
+        continue;
+      }
+      if (!since) {
+        since = dates[i];
+        sinceBalance = bal;
+      }
+      // رصيد اليوم يبقى حتى اليوم السابق لحركة تالية: يدخل الفترة إن امتد إلى from
+      if (i + 1 < dates.length && dates[i + 1] <= from) continue;
+      return { date: dates[i] > from ? dates[i] : from, balance: bal, since, sinceBalance };
+    }
+    return null;
+  };
 
   // كشف حساب (الصندوق أو البنك أو غيرهما)
   RB.accountStatement = (S, acc, from, to, L) => {
@@ -1643,8 +1762,10 @@
         else rows.push({ date: e.date, desc: l.memo ? e.desc + ' — ' + l.memo : e.desc, kind: e.kind, ref: e.ref, in: l.v > 0 ? l.v : 0, out: l.v < 0 ? -l.v : 0 });
       }
     }
-    // في اليوم الواحد: الداخل قبل الخارج، فلا يظهر رصيد سالب وهمي أثناء اليوم (الترتيب ثابت فيما عداه)
-    rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (b.in > 0) - (a.in > 0)));
+    // في اليوم الواحد: الداخل قبل الخارج، فلا يظهر رصيد سالب وهمي أثناء اليوم (الترتيب ثابت فيما عداه)؛
+    // وجرد الدرج آخر يومه عجزاً كان أو زيادة، فرصيد سطره = المعدود
+    const adj = (r) => (r.kind === 'cashadj' ? 1 : 0);
+    rows.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : adj(a) - adj(b) || (b.in > 0) - (a.in > 0)));
     let bal = opening;
     rows.forEach((r) => {
       bal = r2(bal + r.in - r.out);
@@ -2059,8 +2180,13 @@
     // المصروف والمتبقي بالإجمالي شامل الضريبة؛ ضريبة المدخلات المستردة معلومة فقط ولا تُضاف للمتبقي.
     // المتبقي = الصندوق + البنك − المستحق للموردين قبل الافتتاح (رأس المال العامل عند الافتتاح)
     const used = r2(sum(assetList, (a) => a.amount) + preopen.expenses + preopen.purchases + preopen.payroll);
-    // منه ما بقي آجلاً على الموردين حتى الافتتاح (يُسدد من المتبقي)
-    const owedAtOpen = open ? Math.max(0, r2(-(RB.balances(L.entries, null, RB.addDays(open, -1))['2101'] || 0))) : 0;
+    // منه ما بقي آجلاً على الموردين حتى الافتتاح (يُسدد من المتبقي): رصيد الموردين في اليوم السابق للافتتاح
+    // (المشتريات والمصاريف التأسيسية قبل الافتتاح)، ومعه الأصول الآجلة بتاريخ الافتتاح نفسه (تأسيسية كذلك)
+    let owedAtOpen = 0;
+    if (open) {
+      const onOpen = sum(good(S.assets).filter((a) => a.account === 'payable' && a.date === open), (a) => RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date).gross);
+      owedAtOpen = Math.max(0, r2(-(RB.balances(L.entries, null, RB.addDays(open, -1))['2101'] || 0) + onOpen));
+    }
     return { contributions, direct, sources, assets: assetList, assetsTotal: r2(sum(assetList, (a) => a.amount)), preopen, used, remaining: r2(sources - used), open, laterAssets, vatRecoverable: r2(vatRecoverable), owedAtOpen };
   };
 
