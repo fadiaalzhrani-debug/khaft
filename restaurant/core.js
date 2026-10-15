@@ -440,7 +440,8 @@
     if (ACC[code]) return Object.assign({ code }, ACC[code]);
     const [kind, pid] = String(code).split(':');
     const p = S && (S.partners || []).find((x) => x.id === pid);
-    const pname = p ? p.name : 'شريك';
+    // حساب شريك حُذف وبقيت له قيود (بيانات قديمة): يُسمّى بذلك بدل «شريك» المبهم
+    const pname = p ? p.name : S ? 'شريك محذوف' : 'شريك';
     if (kind === 'cap') return { code, name: 'رأس مال ' + pname, type: 'E', group: 'cap', partnerId: pid };
     if (kind === 'drw') return { code, name: 'مسحوبات ' + pname, type: 'E', group: 'drw', partnerId: pid };
     return { code, name: code, type: 'X', group: 'opex' };
@@ -832,6 +833,14 @@
     const r = (list || []).find((x) => x.id === id);
     return r ? r.name : '(محذوف)';
   };
+  // أسطر الوصفة عند الحفظ: السطر بلا مكوّن أو بلا كمية يُحذف، والسطر بكمية ومكوّن غير موجود في قائمة نوعه
+  // (نوع تغيّر، أو مكوّن محذوف) يُرفض فلا يُحفظ «(محذوف)» بلا تكلفة. bad: رقم أول سطر غير صالح (من 1) أو 0
+  RB.recipeItems = (S, items) => {
+    const list = (k) => (k === 'raw' ? S.raw : k === 'comp' ? S.composites : k === 'prod' ? S.products : null) || [];
+    const all = Array.isArray(items) ? items : [];
+    const i = all.findIndex((r) => r && num(r.qty) && !list(r.kind).some((x) => x && x.id === r.id));
+    return { bad: i + 1, items: all.filter((r) => r && r.id && num(r.qty)) };
+  };
   RB.itemUnit = (S, kind, id) => {
     if (kind === 'raw') {
       const r = S.raw.find((x) => x.id === id);
@@ -918,6 +927,11 @@
     const receive = r2(gross - fee - feeVat);
     return { type, gross, net, outVat, feePct, fee, feeVat, receive, orders: num(v.orders), reg };
   };
+
+  // للشريك حركات في الدفاتر: رأس مال أو سحب، أو أي قيد على حساب رأس ماله أو مسحوباته (مصروف أو فاتورة أو سداد مورد
+  // دفعه من حسابه…)، بأي تاريخ. حذفه يترك هذه القيود على حساب بلا شريك
+  RB.partnerUsed = (S, id) =>
+    (S.capital || []).some((c) => c && c.partnerId === id) || RB.buildLedger(S, '9999-12-31').entries.some((e) => e.lines.some((l) => l.a === 'cap:' + id || l.a === 'drw:' + id));
 
   RB.saleTotal = (s) => r2(sum(Object.values(s.channels || {}), (v) => num(v.amount)));
   RB.saleOrders = (s) => sum(Object.values(s.channels || {}), (v) => num(v.orders));
@@ -1124,6 +1138,22 @@
     if (!S || !S.settings || RB.isVatReg(S.settings, date)) return p;
     const raw = (S.raw || []).find((x) => x.id === l.rawId);
     return raw && raw.taxable ? p * (1 + num(S.settings.vatRate) / 100) : p;
+  };
+  // أسطر الجرد عند الحفظ: السطر بلا مادة يُحذف، وأسطر المادة المكررة تُجمع في سطر واحد (الكميات تُجمع
+  // ويبقى سعر السطر الأول). merged: معرّفات المواد التي جُمعت أسطرها
+  RB.mergeStockLines = (lines) => {
+    const by = new Map();
+    const merged = new Set();
+    for (const l of Array.isArray(lines) ? lines : []) {
+      if (!l || !l.rawId) continue;
+      const a = by.get(l.rawId);
+      if (!a) by.set(l.rawId, Object.assign({}, l));
+      else {
+        a.qty = +(num(a.qty) + num(l.qty)).toFixed(6);
+        merged.add(l.rawId);
+      }
+    }
+    return { lines: [...by.values()], merged: [...merged] };
   };
   RB.stockValue = (c, S) => r2(sum(c.lines || [], (l) => num(l.qty) * RB.stockLinePrice(l, S, c.date)));
 

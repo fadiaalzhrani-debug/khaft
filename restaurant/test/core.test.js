@@ -1823,3 +1823,71 @@ test('مسير الشهر الأول في التجربة: خصم الأيام ق
   // الأشهر الكاملة بلا خصم
   for (const p of D.payroll.filter((x) => x !== first)) for (const l of p.lines) assert.equal(l.deductions, 0);
 });
+
+test('أسطر الوصفة: تغيير النوع بلا مكوّن صالح يُرفض برقم السطر، والفارغ يُحذف (WP4)', () => {
+  const D = RB.normalize(RB.demoState('2026-10-15'));
+  // السطر الأول تحوّل من منتج مجمّع (c_sauce) إلى مادة خام: المعرّف القديم ليس مادة خام
+  const items = [{ kind: 'raw', id: 'c_sauce', qty: 100 }, { kind: 'raw', id: 'm_beef', qty: 50 }];
+  assert.equal(RB.recipeItems(D, items).bad, 1);
+  // بعد تفريغ المكوّن (تغيير النوع يفرّغه) والكمية باقية: مرفوض أيضاً، فلا يُحفظ «(محذوف)»
+  assert.equal(RB.recipeItems(D, [{ kind: 'raw', id: 'm_beef', qty: 50 }, { kind: 'raw', id: '', qty: 100 }]).bad, 2);
+  // مكوّن محذوف بكمية، أو نوع غير معروف
+  assert.equal(RB.recipeItems(D, [{ kind: 'comp', id: 'gone', qty: 1 }]).bad, 1);
+  assert.equal(RB.recipeItems(D, [{ kind: 'x', id: 'm_beef', qty: 1 }]).bad, 1);
+  // الأسطر الفارغة (أو بلا كمية) تُحذف، والصالحة تبقى بترتيبها
+  const ok = RB.recipeItems(D, [{ kind: 'raw', id: '', qty: '' }, { kind: 'comp', id: 'c_sauce', qty: 30 }, { kind: 'raw', id: 'm_beef', qty: '' }, null, { kind: 'raw', id: 'm_bun', qty: 1 }]);
+  assert.equal(ok.bad, 0);
+  assert.deepEqual(ok.items.map((i) => i.id), ['c_sauce', 'm_bun']);
+  // وصفات التجربة كلها صالحة
+  for (const r of [...D.composites, ...D.products]) assert.equal(RB.recipeItems(D, r.items).bad, 0, r.name);
+});
+
+test('الجرد: أداة «إضافة المواد الناقصة» لا تغيّر القيمة، والمادة المكررة تُجمع في سطر واحد (WP4)', () => {
+  const D = RB.normalize(RB.demoState('2026-10-15'));
+  const c = D.stockCounts.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+  const before = RB.stockValue(c, D);
+  assert.ok(before > 0);
+  // مادة جديدة بعد الجرد: سطر صفري لها لا يغيّر قيمة الجرد
+  D.raw.push({ id: 'newmat', name: 'مادة جديدة', price: 50, packQty: 10, useUnit: 'حبة', buyUnit: 'كرتون', taxable: true });
+  const lines = c.lines.concat([{ rawId: 'newmat', qty: 0, price: 50 }]);
+  const mg = RB.mergeStockLines(lines);
+  assert.equal(mg.lines.length, c.lines.length + 1);
+  assert.deepEqual(mg.merged, []);
+  close(RB.stockValue(Object.assign({}, c, { lines: mg.lines }), D), before, 0.001);
+  // سطران لنفس المادة: الكميتان تُجمعان ويبقى سعر الأول، والسطر بلا مادة يُحذف
+  const dup = RB.mergeStockLines([{ rawId: 'a', qty: 1.1, price: 10 }, { rawId: '', qty: 5, price: 1 }, { rawId: 'b', qty: 2, price: 3 }, { rawId: 'a', qty: 2.2, price: 99 }]);
+  assert.deepEqual(dup.lines, [{ rawId: 'a', qty: 3.3, price: 10 }, { rawId: 'b', qty: 2, price: 3 }]);
+  assert.deepEqual(dup.merged, ['a']);
+  // لا يغيّر الأسطر الأصلية
+  const src = [{ rawId: 'a', qty: 1, price: 1 }, { rawId: 'a', qty: 1, price: 1 }];
+  RB.mergeStockLines(src);
+  assert.equal(src[0].qty, 1);
+});
+
+test('حذف الشريك: أي قيد على حسابه يمنعه، والحساب اليتيم يُسمّى «شريك محذوف» (WP4)', () => {
+  const S = base();
+  S.partners.push({ id: 'p3', name: 'ج', share: 0 });
+  S.capital = [{ id: 'c1', date: '2026-01-01', partnerId: 'p1', type: 'deposit', amount: 1000, account: 'bank' }];
+  // سدد الشريك ب مورداً 300 من حسابه: لا حركة رأس مال ولا أصل أو مصروف أو فاتورة باسمه
+  S.supplierPayments = [{ id: 'sp1', date: '2026-02-01', supplier: 'مورد', account: 'partner:p2', amount: 300 }];
+  assert.equal(RB.partnerUsed(S, 'p1'), true);
+  assert.equal(RB.partnerUsed(S, 'p2'), true);
+  assert.equal(RB.partnerUsed(S, 'p3'), false);
+  // بتاريخ مستقبلي كذلك
+  S.supplierPayments[0].date = '2099-01-01';
+  assert.equal(RB.partnerUsed(S, 'p2'), true);
+  // أسماء الحسابات
+  assert.equal(RB.accInfo('cap:p1', S).name, 'رأس مال أ');
+  assert.equal(RB.accInfo('cap:gone', S).name, 'رأس مال شريك محذوف');
+  assert.equal(RB.accInfo('drw:gone', S).name, 'مسحوبات شريك محذوف');
+  assert.equal(RB.accInfo('drw:gone', S).group, 'drw');
+});
+
+test('مرتجع المشتريات: إجمالي سالب ولا يغيّر سعر المادة الخام (WP4)', () => {
+  const S = base();
+  S.raw = [{ id: 'beef', name: 'لحم', price: 400, packQty: 10000, useUnit: 'جم', taxable: true }];
+  const ret = { id: 'r1', date: '2026-03-01', supplier: 'مورد', account: 'payable', taxable: true, includesVat: false, lines: [{ rawId: 'beef', desc: 'لحم', qty: -2, price: 380 }] };
+  assert.equal(RB.purchaseTotal(ret), -760);
+  assert.deepEqual(RB.rawPriceUpdates(ret, S.raw, S.settings), []);
+  assert.ok(RB.vatSplit(RB.purchaseTotal(ret), false, true, S.settings).gross < 0);
+});

@@ -1176,7 +1176,7 @@
   const vatPreview = (amount, includesVat, taxable, date) => {
     const v = RB.vatSplit(amount, includesVat, taxable, S.settings);
     const reg = RB.isVatReg(S.settings, date || today());
-    return `<div class="pv-grid"><div><span>قبل الضريبة</span>${money(v.net)}</div><div><span>الضريبة ${taxable ? pct(S.settings.vatRate, 0) : '(غير خاضعة)'}</span>${money(v.vat)}</div><div><span>الإجمالي المدفوع</span>${money(v.gross)}</div></div>${taxable && !reg ? '<p class="note">المطعم غير مسجل في الضريبة، فتُحسب الضريبة ضمن التكلفة.</p>' : ''}`;
+    return `<div class="pv-grid"><div><span>قبل الضريبة</span>${money(v.net)}</div><div><span>الضريبة ${taxable ? pct(S.settings.vatRate, 0) : '(غير خاضعة)'}</span>${money(v.vat)}</div><div><span>${v.gross < 0 ? 'المبلغ المسترد / المخصوم من المورد' : 'الإجمالي المدفوع'}</span>${money(v.gross)}</div></div>${taxable && !reg ? '<p class="note">المطعم غير مسجل في الضريبة، فتُحسب الضريبة ضمن التكلفة.</p>' : ''}`;
   };
 
   // ═════════════ الرسوم البيانية ═════════════
@@ -1351,6 +1351,14 @@
     const high = S.products.filter((p) => p.active !== false && num(p.price) > 0 && RB.productStats(S, p, C).foodCost > target + 5);
     if (high.length) out.push(['warn', `${high.length} من أصناف المنيو تكلفتها أعلى من المستهدف بأكثر من 5 نقاط: ${high.slice(0, 4).map((p) => esc(p.name)).join('، ')}${high.length > 4 ? '…' : ''}`, btn('راجع التسعير', 'go', 'data-v="products"', 'sm')]);
     if (C.errors.some((e) => e.path)) out.push(['bad', 'يوجد تداخل دائري في وصفة: منتج يحتوي نفسه. افتح المنتجات المجمّعة وصحّح المكونات.', '']);
+    // وصفة فيها مكوّن محذوف (بيانات قديمة): تكلفته لا تدخل، فتكلفة الوصفة ناقصة
+    const miss = (list) => good(list).filter((r) => RB.recipeItems(S, r.items).bad);
+    const missC = miss(S.composites);
+    const missP = miss(S.products);
+    if (missC.length || missP.length) {
+      const names = missC.concat(missP).map((r) => esc(r.name));
+      out.push(['warn', `وصفات فيها مكوّن محذوف فتكلفتها ناقصة: ${names.slice(0, 4).join('، ')}${names.length > 4 ? '…' : ''} — افتحها واحذف السطر أو اختر مكوّناً آخر.`, btn(missP.length ? 'المنيو والتسعير' : 'المنتجات المجمّعة', 'go', `data-v="${missP.length ? 'products' : 'composites'}"`, 'sm')]);
+    }
     const bal = RB.balances(ledger(asOf).entries, null, asOf);
     if ((bal['1101'] || 0) < -0.5) out.push(['bad', 'رصيد الصندوق بالسالب: سجّلت مصروفات نقدية أكثر من الكاش الموجود. راجع الإقفالات والتحويلات.', btn('كشف الصندوق', 'go', 'data-v="cash"', 'sm')]);
     if ((bal['1102'] || 0) < -0.5) out.push(['bad', 'رصيد البنك بالسالب: تأكد من تسجيل إيداعات رأس المال والتحويلات.', btn('كشف البنك', 'go', 'data-v="cash"', 'sm')]);
@@ -1838,7 +1846,8 @@
         table(
           [
             { h: 'التاريخ', f: (p) => dt(p.date) },
-            { h: 'المورد', f: (p) => `<b>${esc(p.supplier || '—')}</b>${p.invoiceNo ? `<div class="muted sm">فاتورة ${esc(p.invoiceNo)}</div>` : ''}` },
+            // المرتجع أو الإشعار الدائن (إجمالي سالب) يُميَّز عن فواتير الشراء
+            { h: 'المورد', f: (p) => `<b>${esc(p.supplier || '—')}</b>${RB.purchaseTotal(p) < 0 ? ' ' + chip('مرتجع', 'warn') : ''}${p.invoiceNo ? `<div class="muted sm">فاتورة ${esc(p.invoiceNo)}</div>` : ''}` },
             { h: 'التصنيف', f: (p) => esc(RB.purchaseCat(p.category).name) },
             { h: 'الأصناف', f: (p) => `<span class="muted sm">${esc((p.lines || []).map((l) => l.desc || RB.itemName(S, 'raw', l.rawId)).slice(0, 3).join('، '))}${(p.lines || []).length > 3 ? '…' : ''}</span>` },
             { h: 'الدفع', f: (p) => (p.account === 'payable' ? chip('آجل', 'warn') : p.account === 'cash' ? chip('الكاشير', 'mute') : p.account === 'bank' ? chip('البنك', 'mute') : chip(esc(RB.srcLabel(p.account, S)), 'accent')) },
@@ -2875,7 +2884,12 @@
   FORMS.purchases = (rec, x, opts = {}) => {
     const set = S.settings;
     const isEdit = editing(rec, opts);
-    const rawOpts = () => [['', '— بند حر —']].concat(S.raw.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name + (x.buyUnit ? ' (' + x.buyUnit + ')' : '')]));
+    // مادة حُذفت بعد الفاتورة: تظهر «(مادة محذوفة)» (الوصف يبقى باسمها) بدل «بند حر» وقيمتها باقية
+    const rawOpts = (row) =>
+      [['', '— بند حر —']].concat(
+        S.raw.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name + (x.buyUnit ? ' (' + x.buyUnit + ')' : '')]),
+        row && row.rawId && !S.raw.some((x) => x.id === row.rawId) ? [[row.rawId, '(مادة محذوفة)']] : []
+      );
     const last = S.purchases.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0];
     const payOpts = payOptions(true);
     // ما غيّره المستخدم بنفسه من هذه الإعدادات لا تغيّره ذاكرة المورد
@@ -2965,7 +2979,7 @@
             { k: 'total', label: 'المجموع', num: 1, calc: (row) => fmt(num(row.qty) * num(row.price)) },
           ],
           foot: (v) => vatPreview(RB.purchaseTotal(v), v.includesVat, v.taxable, v.date),
-          help: 'اربط السطر بالمادة الخام لتتحدث تكلفتها تلقائياً. الكمية بوحدة الشراء (كرتون، كيس…).',
+          help: 'اربط السطر بالمادة الخام لتتحدث تكلفتها تلقائياً. الكمية بوحدة الشراء (كرتون، كيس…). مرتجع أو إشعار دائن من المورد؟ أدخل الكمية بالسالب والسعر موجباً.',
         },
         { k: 'updatePrices', type: 'check', label: 'تحديث أسعار المواد الخام من هذه الفاتورة' },
         { k: 'note', label: 'ملاحظات' },
@@ -3070,10 +3084,12 @@
           k: 'lines',
           type: 'lines',
           label: 'الكميات الموجودة (بوحدة الشراء، ويمكن كسور مثل 1.5)',
-          tools: [{ id: 'all', label: 'كل المواد', run: (v, rows) => rows.splice(0, rows.length, ...all()) }],
+          // الأداة تضيف المواد التي ليس لها سطر (مادة جديدة مثلاً) بكمية صفر، ولا تمس الكميات المدخلة
+          tools: [{ id: 'all', label: 'إضافة المواد الناقصة', run: (v, rows) => all().filter((n) => !rows.some((r) => r.rawId === n.rawId)).forEach((n) => rows.push(n)) }],
           newRow: () => ({ rawId: '', qty: 0, price: 0 }),
           cols: [
-            { k: 'rawId', label: 'المادة', type: 'select', options: () => [['', '—']].concat(S.raw.map((x) => [x.id, x.name])), redraw: true, w: '12rem' },
+            // مادة حُذفت بعد الجرد: سطرها يبقى بقيمته ويظهر «(مادة محذوفة)» بدل «—»
+            { k: 'rawId', label: 'المادة', type: 'select', options: (row) => [['', '—']].concat(S.raw.map((x) => [x.id, x.name]), row.rawId && !S.raw.some((x) => x.id === row.rawId) ? [[row.rawId, '(مادة محذوفة)']] : []), redraw: true, w: '12rem' },
             { k: 'unit', label: 'الوحدة', calc: (row) => esc((S.raw.find((x) => x.id === row.rawId) || {}).buyUnit || '') },
             { k: 'qty', label: 'الكمية', type: 'num', num: 1, min: 0 },
             { k: 'price', label: 'سعر الشراء (بدون ضريبة)', type: 'num', num: 1, min: 0 },
@@ -3083,8 +3099,11 @@
         },
       ],
       onSave: (v) => {
-        v.lines = v.lines.filter((l) => l.rawId);
-        upsert('stockCounts', v);
+        // المادة المكررة في الجرد سطر واحد: تُجمع كمياتها ويبقى سعر أول سطر
+        const mg = RB.mergeStockLines(v.lines);
+        v.lines = mg.lines;
+        if (upsert('stockCounts', v) === false) return false;
+        if (mg.merged.length) toast('جُمعت أسطر المادة المكررة في سطر واحد: ' + mg.merged.map((id) => RB.itemName(S, 'raw', id)).join('، '));
       },
     });
   };
@@ -3109,7 +3128,10 @@
           options: (row, v) => {
             const list = row.kind === 'comp' ? S.composites : row.kind === 'prod' ? S.products : S.raw;
             const ok = list.filter((x) => !(row.kind === kind && x.id === (v.id || selfId)) && !(row.kind !== 'raw' && RB.wouldCycle(S, kind, v.id || selfId, row.kind, x.id)));
-            return [['', '— اختر —']].concat(ok.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name]));
+            const o = [['', '— اختر —']].concat(ok.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name]));
+            // مكوّن محفوظ لم يعد موجوداً: يظهر كما هو (لا «اختر» وقيمته باقية)، ويُرفض عند الحفظ
+            if (row.id && !list.some((x) => x.id === row.id)) o.push([row.id, '(مكوّن محذوف)']);
+            return o;
           },
         },
         { k: 'qty', label: 'الكمية', type: 'num', num: 1, min: 0 },
@@ -3120,12 +3142,24 @@
     };
   }
   const withRec = (section, v) => Object.assign({}, S, { [section]: S[section].filter((x) => x.id !== v.id).concat([v]) });
+  // تغيير نوع المكوّن في السطر يفرّغ المكوّن: المعرّف القديم لا يخص قائمة النوع الجديد (كان يُحفظ «(محذوف)»)
+  const recipeKindChange = (p, v) => {
+    const m = /^items\.(\d+)\.kind$/.exec(p);
+    if (m && v.items && v.items[+m[1]]) v.items[+m[1]].id = '';
+  };
+  // أسطر الوصفة: الفارغ يُحذف، والسطر بكمية ومكوّن غير صالح يُرفض برقمه
+  const recipeSave = (v) => {
+    const r = RB.recipeItems(S, v.items);
+    if (r.bad) return 'مكوّن غير صالح في السطر ' + r.bad;
+    v.items = r.items;
+  };
 
   FORMS.composites = (rec, x, opts = {}) =>
     formModal({
       title: editing(rec, opts) ? 'تعديل منتج مجمّع' : 'منتج مجمّع جديد',
       wide: true,
       value: rec || { id: RB.uid(), name: '', yieldQty: 1, yieldUnit: 'حبة', items: [{ kind: 'raw', id: '', qty: '' }], note: '' },
+      onChange: recipeKindChange,
       fields: [
         { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1, placeholder: 'مثال: صوص البرقر الخاص' }, { k: 'yieldQty', type: 'num', label: 'الكمية الناتجة من الوصفة', req: 1, min: 0 }, { k: 'yieldUnit', type: 'select', label: 'وحدتها', options: RB.UNITS, redraw: true }] },
         itemsField('comp', rec && rec.id, 'المكونات'),
@@ -3137,7 +3171,8 @@
         return `<div class="pv-grid"><div><span>تكلفة الوصفة كاملة</span>${money(b.total)}</div><div><span>تكلفة 1 ${esc(v.yieldUnit)}</span><b class="n">${b.perUnit.toFixed(4)}</b></div></div>`;
       },
       onSave: (v) => {
-        v.items = v.items.filter((i) => i.id && num(i.qty));
+        const bad = recipeSave(v);
+        if (bad) return bad;
         if (!(num(v.yieldQty) > 0)) return 'يجب أن تكون الكمية الناتجة أكبر من صفر.';
         upsert('composites', v);
       },
@@ -3150,6 +3185,7 @@
       title: editing(rec, opts) ? 'تعديل صنف' : 'صنف جديد في المنيو',
       wide: true,
       value: rec ? Object.assign({ competitors: [] }, rec) : { id: RB.uid(), name: '', category: 'برقر', price: '', appPrice: '', active: true, items: [{ kind: 'raw', id: '', qty: '' }], competitors: [], note: '' },
+      onChange: recipeKindChange,
       fields: [
         { type: 'row', fields: [{ k: 'name', label: 'اسم الصنف', req: 1 }, { k: 'category', type: 'select', label: 'القسم', options: RB.PRODUCT_CATS }] },
         { type: 'row', fields: [{ k: 'price', type: 'money', label: 'سعر البيع في المحل' + incl, req: 1, min: 0 }, { k: 'appPrice', type: 'money', label: 'سعره في التطبيقات' + incl, min: 0, help: 'اتركه فارغاً إن كان نفس السعر' }] },
@@ -3173,7 +3209,8 @@
         return productAnalysisHTML(tmp, v, C, true);
       },
       onSave: (v) => {
-        v.items = v.items.filter((i) => i.id && num(i.qty));
+        const bad = recipeSave(v);
+        if (bad) return bad;
         v.competitors = (v.competitors || []).filter((c) => c.name || num(c.price));
         upsert('products', v);
       },
@@ -3214,7 +3251,15 @@
     // سجل جديد من نسخة: لا قناة مخفية (موقوفة أو محذوفة) تُحسب أو تُحفظ دون أن تظهر
     if (!isEdit) for (const id of Object.keys(v0.channels)) if (!chs.some((c) => c.id === id)) delete v0.channels[id];
     chs.forEach((c) => (v0.channels[c.id] = v0.channels[c.id] || { amount: '', orders: '' }));
-    const prodOpts = () => [['', '— اختر —']].concat(S.products.filter((p) => p.active !== false).map((p) => [p.id, p.name]));
+    // الأصناف المفعّلة، وصنف السطر إن لم يعد مفعّلاً أو حُذف (الإقفال القديم يظهر كما حُفظ لا «اختر»)
+    const prodOpts = (row) => {
+      const o = [['', '— اختر —']].concat(S.products.filter((p) => p.active !== false).map((p) => [p.id, p.name]));
+      if (row && row.productId && !o.some((z) => z[0] === row.productId)) {
+        const p = S.products.find((x) => x.id === row.productId);
+        o.push([row.productId, p ? p.name + ' (غير مفعّل)' : '(صنف محذوف)']);
+      }
+      return o;
+    };
     return formModal({
       title: isEdit ? 'تعديل إقفال يومي' : 'إقفال يومي',
       wide: true,
@@ -3521,7 +3566,8 @@
     raw: (id) => S.composites.some((c) => (c.items || []).some((i) => i.kind === 'raw' && i.id === id)) || S.products.some((p) => (p.items || []).some((i) => i.kind === 'raw' && i.id === id)),
     composites: (id) => S.composites.some((c) => (c.items || []).some((i) => i.kind === 'comp' && i.id === id)) || S.products.some((p) => (p.items || []).some((i) => i.kind === 'comp' && i.id === id)),
     products: (id) => S.products.some((p) => (p.items || []).some((i) => i.kind === 'prod' && i.id === id)),
-    partners: (id) => S.capital.some((c) => c.partnerId === id) || [...S.assets, ...S.expenses, ...S.purchases].some((x) => x.account === 'partner:' + id),
+    // رأس مال، أو أي قيد على حساب الشريك في الدفاتر (أصل أو مصروف أو فاتورة أو سداد مورد دفعه من حسابه…)
+    partners: (id) => RB.partnerUsed(S, id),
     // تاريخ المباشرة وتاريخ ترك العمل يحددان مخصص نهاية الخدمة في المسيرات السابقة؛ حذفه يغيّر الدفاتر
     employees: (id) => S.payroll.some((pr) => (pr.lines || []).some((l) => l && l.employeeId === id)),
   };
@@ -3531,6 +3577,16 @@
     products: 'هذا الصنف داخل في وجبة مركّبة. احذفه منها أولاً، أو اجعله غير مفعّل.',
     partners: 'لهذا الشريك حركات رأس مال أو مدفوعات. احذفها أولاً.',
     employees: 'لهذا الموظف مسيرات رواتب؛ حدّد «تاريخ ترك العمل» وأوقفه بدلاً من حذفه.',
+  };
+
+  // حذف مادة في جرد سابق: سطرها يبقى بلا اسم بقيمته. الجرد قبل التسجيل في الضريبة يُقيَّم بضريبة المادة الخاضعة،
+  // وبحذفها لا تُعرف فتنقص قيمته؛ يُذكر ذلك بدل «القيمة لا تتغير»
+  const rawDelMsg = (id) => {
+    const without = Object.assign({}, S, { raw: S.raw.filter((x) => x.id !== id) });
+    const drops = S.stockCounts.some((c) => (c.lines || []).some((l) => l && l.rawId === id) && Math.abs(RB.stockValue(c, S) - RB.stockValue(c, without)) > 0.005);
+    return drops
+      ? 'هذه المادة موجودة في جرد سابق قبل التسجيل في الضريبة، وحذفها يُظهر سطرها في الجرد بلا اسم وتنقص قيمته بضريبة المادة. هل تحذفها؟'
+      : 'هذه المادة موجودة في جرد سابق، وحذفها يُظهر سطرها في الجرد بلا اسم (القيمة لا تتغير). هل تحذفها؟';
   };
 
   // تجهيز النسخة قبل فتحها كسجل جديد
@@ -3593,6 +3649,8 @@
       const rec = find(s, id);
       if (s === 'products' && S.sales.some((x) => (x.items || []).some((i) => i.productId === id))) {
         if (!(await confirmBox('هذا الصنف له مبيعات مسجلة، وحذفه يُسقطه من تحليل المنيو. الأفضل جعله «غير مفعّل». هل تحذفه رغم ذلك؟', { danger: true, ok: 'احذف' }))) return;
+      } else if (s === 'raw' && S.stockCounts.some((c) => (c.lines || []).some((l) => l && l.rawId === id))) {
+        if (!(await confirmBox(rawDelMsg(id), { danger: true, ok: 'احذف' }))) return;
       } else if (!(await confirmBox(`حذف «${esc((rec && (rec.name || rec.desc || rec.supplier)) || 'هذا السجل')}» نهائياً؟`, { danger: true, ok: 'احذف' }))) return;
       remove(s, id);
       render();
@@ -3651,7 +3709,8 @@
     delchannel: async (el) => {
       if (roBlock()) return;
       const id = el.dataset.id;
-      if (S.sales.some((s) => s.channels && s.channels[id])) return toast('لهذه القناة مبيعات مسجلة. أوقفها بدلاً من حذفها.', 'bad');
+      // الإقفالات والتحويلات تشير إلى القناة: حذفها يترك رصيد التطبيق وتحويلاته بلا قناة
+      if (S.sales.some((s) => s.channels && s.channels[id]) || (S.payouts || []).some((p) => p && p.channelId === id)) return toast('لهذه القناة مبيعات أو تحويلات مسجلة. أوقفها (غير مفعّلة) بدلاً من حذفها.', 'bad');
       if (!(await confirmBox('حذف قناة البيع؟', { danger: true, ok: 'احذف' }))) return;
       S.settings.channels = S.settings.channels.filter((c) => c.id !== id);
       saveSettings();
@@ -3850,10 +3909,20 @@
   }
 
   function startWizard() {
+    // نسبة الشريك الثاني تكمل الأول إلى 100% ما لم يكتبها المستخدم بنفسه
+    let s2Typed = false;
+    const twoP = (v) => !!(v.p2 && String(v.p2).trim());
     formModal({
       title: 'ابدأ ببيانات مطعمك',
       ok: 'ابدأ',
       value: { name: '', openingDate: '', vatRegistered: true, vatRegisteredFrom: '', p1: '', s1: 50, p2: '', s2: 50 },
+      // تُرسم عند مغادرة الحقل (redraw)، فلا تنقطع الكتابة
+      onChange: (p, v) => {
+        if (p === 's2') s2Typed = true;
+        const s1 = num(v.s1);
+        if (!twoP(v) || v.s1 === '' || !(s1 >= 0 && s1 <= 100)) return;
+        if (p === 's1' || (p === 'p2' && !s2Typed)) v.s2 = r2(Math.max(0, 100 - s1));
+      },
       fields: [
         { type: 'html', html: () => '<p class="note">تبدأ بدفتر فارغ (قنوات البيع والتصنيفات جاهزة). البيانات التجريبية لن تُحفظ.</p>' },
         { k: 'name', label: 'اسم المطعم', req: 1 },
@@ -3865,10 +3934,16 @@
           show: (v) => v.vatRegistered,
           help: 'اتركه فارغاً إن كان التسجيل سارياً قبل مشتريات التأسيس فتُخصم ضريبتها. العمليات قبل هذا التاريخ بلا ضريبة ولا تُسترد ضريبة مشترياتها، ويمكن تعديله لاحقاً من الإعدادات.',
         },
-        { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %' }] },
-        { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني' }, { k: 's2', type: 'num', label: 'نسبته %' }] },
+        { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %', min: 0, max: 100, redraw: true, help: 'إذا كنت الشريك الوحيد اترك الثاني فارغاً وتصبح نسبتك 100%' }] },
+        { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني', redraw: true }, { k: 's2', type: 'num', label: 'نسبته %', min: 0, max: 100 }] },
       ],
       onSave: async (v) => {
+        // شريك واحد: نسبته 100% مهما كُتب في حقلها؛ شريكان: نسبتان موجبتان مجموعهما 100%
+        const two = twoP(v);
+        const s1 = two ? num(v.s1) : 100;
+        const s2 = num(v.s2);
+        if (two && (!(s1 > 0) || !(s2 > 0))) return 'يجب أن تكون نسبة كل شريك أكبر من صفر.';
+        if (two && Math.abs(s1 + s2 - 100) > 0.01) return 'مجموع نسبتي الشريكين لازم يكون 100% (يمكن إضافة شركاء آخرين لاحقاً من صفحة الشركاء)';
         // لا يُكتب فوق دفتر محفوظ: المشترك يُفتح كما هو، وفي المتصفح يلزم تأكيد حذفه
         let existing = APP.real;
         if (!existing) {
@@ -3890,8 +3965,8 @@
         }
         const st = RB.emptyState();
         Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, vatRegisteredFrom: v.vatRegistered ? v.vatRegisteredFrom || '' : '', startedAt: new Date().toISOString() });
-        st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: num(v.s1), phone: '', note: '' });
-        if (v.p2 && v.p2.trim()) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: num(v.s2), phone: '', note: '' });
+        st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: s1, phone: '', note: '' });
+        if (two) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: s2, phone: '', note: '' });
         const ok = await replaceAll(st);
         go('partners');
         if (ok) toast('جاهز. ابدأ بتسجيل رأس المال ثم الأصول.');
