@@ -778,6 +778,8 @@ body.nav-open .nav-toggle span:last-child { transform: translateY(-3.8px) rotate
   margin: -.3rem 0 1rem;
 }
 
+.form__fallback { margin-top: .8rem; }
+
 .form__hint {
   color: var(--ink-3);
   font-size: .88rem;

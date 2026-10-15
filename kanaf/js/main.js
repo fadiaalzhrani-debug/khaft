@@ -157,7 +157,16 @@
       var notes = notesEl.value.trim();
       if (notes) lines.push('ملاحظات: ' + notes);
 
-      window.open(waLink(lines.join('\n')), '_blank', 'noopener');
+      var url = waLink(lines.join('\n'));
+      var fallback = document.getElementById('waFallback');
+      var win = null;
+      try { win = window.open(url, '_blank'); } catch (err) { win = null; }
+      if (win) { try { win.opener = null; } catch (err) {} }
+      if (fallback) {
+        fallback.href = url;
+        fallback.hidden = false;
+        if (!win) fallback.focus();
+      }
     });
 
     [nameEl, inEl, outEl].forEach(function (el) {
