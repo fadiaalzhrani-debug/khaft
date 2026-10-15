@@ -2750,3 +2750,29 @@ test('أول يوم رصيده بالسالب في الصندوق أو البن�
     assert.deepEqual(RB.staleCashCounts(D, DL), []);
   }
 });
+
+test('أسماء الأقسام بالعربية: لكل قسم اسم، فلا يظهر للمستخدم مفتاح إنجليزي في رسائل الاستيراد (المتبقيات)', () => {
+  for (const k of RB.SECTIONS) assert.ok(typeof RB.SECTION_LABELS[k] === 'string' && /[؀-ۿ]/.test(RB.SECTION_LABELS[k]), k);
+  assert.deepEqual(Object.keys(RB.SECTION_LABELS).sort(), RB.SECTIONS.slice().sort());
+  // أنواع خصومات التطبيقات: اسم مختصر لكل نوع (خيارات القائمة على الجوال)
+  for (const k of Object.keys(RB.DED_TYPES)) assert.ok(RB.DED_TYPES[k].short && RB.DED_TYPES[k].short.length <= 24, k);
+});
+
+test('ما فشل حفظه في البيانات المشتركة يبقى في الشاشة فوق لقطتها حتى يُحفظ (المتبقيات)', () => {
+  const snap = [{ id: 'c1', amount: 1001 }];
+  const failedNew = { section: 'capital', id: 'c9', rec: { id: 'c9', amount: 777 } };
+  // سجل جديد لم يُحفظ: يبقى، والسجل المحفوظ كما في اللقطة
+  assert.deepEqual(RB.withUnsaved('capital', snap, [failedNew]), [{ id: 'c1', amount: 1001 }, { id: 'c9', amount: 777 }]);
+  assert.deepEqual(snap, [{ id: 'c1', amount: 1001 }]); // اللقطة نفسها لا تتغير
+  // تعديل لم يُحفظ يحل محل نسخته في اللقطة، وحذف لم يُحفظ لا يُعيد السجل
+  assert.deepEqual(RB.withUnsaved('capital', snap, [{ section: 'capital', id: 'c1', rec: { id: 'c1', amount: 5 } }]), [{ id: 'c1', amount: 5 }]);
+  assert.deepEqual(RB.withUnsaved('capital', snap, [{ section: 'capital', id: 'c1', rec: null }]), []);
+  // قسم آخر لا يتأثر، والإعدادات تُستبدل كلها
+  assert.equal(RB.withUnsaved('expenses', snap, [failedNew]), snap);
+  assert.deepEqual(RB.withUnsaved('settings', { name: 'أ' }, [{ section: 'settings', id: 'settings', rec: { name: 'ب' } }]), { name: 'ب' });
+  // نسخة لا مرجع: تعديل الناتج لا يغيّر ما حُفظ للمحاولة
+  const out = RB.withUnsaved('capital', [], [failedNew]);
+  out[0].amount = 1;
+  assert.equal(failedNew.rec.amount, 777);
+  assert.equal(RB.withUnsaved('capital', snap, []), snap);
+});

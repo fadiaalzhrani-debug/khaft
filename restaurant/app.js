@@ -51,6 +51,9 @@
   }
   const clone = (o) => JSON.parse(JSON.stringify(o));
   const saveUI = () => lsSet(UI_KEY, JSON.stringify(ui));
+  // وقت آخر نسخة احتياطية في مفتاح وحده: نافذة أخرى تحفظ حالة واجهتها (ui) فلا تمحوه. ui.lastBackupAt من نسخة سابقة
+  const BACKUP_KEY = 'rb-restaurant-last-backup';
+  const lastBackupAt = () => Date.parse(lsGet(BACKUP_KEY) || ui.lastBackupAt || '');
   const today = () => RB.todayISO();
   const minD = (a, b) => (a < b ? a : b);
 
@@ -267,6 +270,8 @@
     // حفظ من نافذة أخرى لنفس الدفتر: تتحدث هذه النافذة (مع إبقاء تعديلاتها المنتظرة والنموذج المفتوح)
     subscribe(cb) {
       window.addEventListener('storage', (e) => {
+        // نسخة احتياطية أُخذت من نافذة أخرى: يزول تذكيرها هنا أيضاً
+        if (e.key === BACKUP_KEY) return scheduleRender();
         if (e.key !== null && e.key !== this.key) return;
         const nv = e.key === null ? lsGet(this.key) : e.newValue;
         if (nv === this.raw) return;
@@ -326,6 +331,9 @@
       this.db = db;
       this.q = {};
       this.subs = {};
+      // حفظ فشل ولم ينجح بعده (المسار ← {section, id, rec}؛ rec = null للحذف): الحالة لا تعود «محفوظ» قبل أن يُحفظ
+      // كل منها، وما في الشاشة يبقى كما أدخله المستخدم (لقطة البيانات المشتركة لا تمحوه) فتشمله النسخة الاحتياطية
+      this.bad = new Map();
     }
     async load() {
       // الإعدادات وكل المجموعات معاً لا واحدة بعد الأخرى (فتح أسرع). ولكل قراءة إعادة محاولة عند الانقطاع المؤقت
@@ -414,21 +422,22 @@
       this.q[path] = p.catch(() => {});
       return p;
     }
-    write(path, fn, section) {
+    write(path, fn, section, keep) {
       APP.save.pending++;
       updateSaveStatus();
       return this.chain(path, fn)
         .then(() => {
-          APP.save.failed = null;
+          this.bad.delete(path);
+          if (!this.bad.size) APP.save.failed = null;
           APP.savedAt = Date.now();
         })
-        .catch((e) => this.failed(e, section))
+        .catch((e) => this.failed(e, section, path, keep))
         .finally(() => {
           APP.save.pending--;
           updateSaveStatus();
         });
     }
-    failed(e, section) {
+    failed(e, section, path, keep) {
       const code = e && e.code;
       // رفض الكتابة لمن لم تحدد المنصة صلاحيته: عرض فقط بقية الزيارة، ويُعاد القسم من البيانات المشتركة (لا يبقى سجل وهمي)
       if (code === 'invalid_argument' && APP.canWrite !== true) {
@@ -438,8 +447,13 @@
         this.resync(section);
         return;
       }
+      if (path && keep) this.bad.set(path, keep);
       APP.save.failed = failCode(code || (e instanceof TypeError ? 'invalid_id' : 'error'));
       toast(dbErrMsg(e), 'bad');
+    }
+    // لقطة من البيانات المشتركة ومعها ما فشل حفظه من هذه الصفحة (كما في الشاشة)
+    overlay(section, data) {
+      return this.bad.size ? RB.withUnsaved(section, data, [...this.bad.values()]) : data;
     }
     async resync(section) {
       try {
@@ -457,14 +471,14 @@
     }
     put(section, rec) {
       const body = clone(rec);
-      return this.write(section + '/' + rec.id, () => this.db.collection(section).doc(rec.id).set(body), section);
+      return this.write(section + '/' + rec.id, () => this.db.collection(section).doc(rec.id).set(body), section, { section, id: rec.id, rec: body });
     }
     del(section, id) {
-      return this.write(section + '/' + id, () => this.db.collection(section).doc(id).delete(), section);
+      return this.write(section + '/' + id, () => this.db.collection(section).doc(id).delete(), section, { section, id, rec: null });
     }
     saveSettings(settings) {
       const body = clone(settings);
-      return this.write('config/settings', () => this.db.doc('config/settings').set(body), 'settings');
+      return this.write('config/settings', () => this.db.doc('config/settings').set(body), 'settings', { section: 'settings', id: 'settings', rec: body });
     }
     // علامة config/replace: تُكتب عند البدء وتتجدد كل 30 ثانية ما دامت العملية جارية (فيعرف الجهاز الآخر
     // أنها جارية لا متوقفة)، وتصير failed إن توقفت، وتُحذف عند الاكتمال. كتاباتها متتالية لا تتداخل
@@ -472,16 +486,17 @@
       return this.chain('config/replace', () => this.db.doc('config/replace').set({ status, at: new Date().toISOString(), by: SID }));
     }
     // استبدال الدفتر المشترك كله: العلامة أثناء العملية، ثم كتابة كل السجلات، ثم حذف القديمة،
-    // ثم الإعدادات أخيراً. أي فشل يوقف الباقي، والإعادة آمنة (تكتب نفس الشيء). يرجع {ok, failed, code, before}
+    // ثم الإعدادات أخيراً. أي فشل يوقف الباقي، والإعادة آمنة (تكتب نفس الشيء). يرجع {ok, failed, dels, code, before}:
+    // failed سجلات الدفتر المطلوب التي لم تُكتب بعد، وdels السجلات القديمة التي لم تُحذف بعد (والإعدادات آخراً)
     // before: المستندات التي كانت موجودة حين بدأت العملية أول مرة وما كتبته العملية. عند إكمال عملية فشلت
     // يُمرَّر prev = before، فلا يُحذف إلا منها: ما أضافه الشريك بعد الفشل يبقى
     async replaceAll(state, progress, prev) {
       const bad = RB.badIds(state);
-      if (bad.length) return { ok: false, failed: countRecs(state) + 1, code: 'invalid_id', badIds: bad, before: prev };
+      if (bad.length) return { ok: false, failed: countRecs(state), code: 'invalid_id', badIds: bad, before: prev };
       let marked = false;
       const fail = (e) => {
         if (marked) this.mark('failed').catch(() => {});
-        return { ok: false, failed: countRecs(state) + 1, code: (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error'), before: prev };
+        return { ok: false, failed: countRecs(state), code: (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error'), before: prev };
       };
       let plan;
       try {
@@ -526,18 +541,24 @@
         };
         await Promise.all([worker(), worker(), worker()]);
       };
+      const nSets = sets.length;
+      const nDels = dels.length;
       await phase(sets);
+      const setsDone = run.done;
       if (!run.failed) await phase(dels);
+      const delsDone = run.done - setsDone;
       if (!run.failed) await phase([['config/settings', () => this.db.doc('config/settings').set(st)]]);
       if (run.failed) {
         this.mark('failed').catch(() => {});
-        return { ok: false, failed: total - run.done, code: run.code, before };
+        return { ok: false, failed: nSets - setsDone, dels: nDels - delsDone, code: run.code, before };
       }
       try {
         await this.chain('config/replace', () => this.db.doc('config/replace').delete());
       } catch (e) {
         /* تبقى العلامة فيظهر تنبيه في الزيارة القادمة */
       }
+      // الدفتر كله حُفظ كما في الشاشة: لا يبقى تعديل سابق فشل حفظه
+      this.bad.clear();
       APP.savedAt = Date.now();
       return { ok: true, failed: 0 };
     }
@@ -777,7 +798,9 @@
         break;
       case 'num':
       case 'money':
-        inp = `<input id="${id}" type="number" inputmode="decimal" step="${f.step || 'any'}" ${f.min !== undefined ? `min="${f.min}"` : ''} ${f.max !== undefined ? `max="${f.max}"` : ''} data-type="num" data-path="${f.k}" value="${v === undefined || v === null ? '' : esc(v)}" ${ax} ${rd}>`;
+        // neg: يقبل السالب (مرتجع، استرداد). لوحة الأرقام العشرية في iPhone (inputmode=decimal) بلا علامة «−»، فيُترك
+        // للمتصفح لوحة الأرقام والرموز
+        inp = `<input id="${id}" type="number" ${f.neg ? '' : 'inputmode="decimal"'} step="${f.step || 'any'}" ${f.min !== undefined ? `min="${f.min}"` : ''} ${f.max !== undefined ? `max="${f.max}"` : ''} data-type="num" data-path="${f.k}" value="${v === undefined || v === null ? '' : esc(v)}" ${ax} ${rd}>`;
         break;
       default:
         inp = `<input id="${id}" type="${f.type || 'text'}" data-path="${f.k}" value="${esc(v)}" ${f.list ? `list="${id}l"` : ''} ${ax} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ''} ${rd}>${f.list ? `<datalist id="${id}l">${f.list(val).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>` : ''}`;
@@ -802,7 +825,7 @@
             let h;
             if (c.calc) h = `<span class="calc n" data-calc="${f.k}|${i}|${c.k}">${c.calc(r, val)}</span>`;
             else if (c.type === 'select') h = `<select data-path="${p}" ${rd} ${aria}>${optionsHTML(c.options(r, val), r[c.k])}</select>`;
-            else if (c.type === 'num') h = `<input type="number" inputmode="decimal" step="any" ${c.min !== undefined ? `min="${c.min}"` : ''} ${c.max !== undefined ? `max="${c.max}"` : ''} data-type="num" data-path="${p}" value="${r[c.k] === undefined || r[c.k] === null ? '' : esc(r[c.k])}" ${aria}>`;
+            else if (c.type === 'num') h = `<input type="number" ${c.neg ? '' : 'inputmode="decimal"'} step="any" ${c.min !== undefined ? `min="${c.min}"` : ''} ${c.max !== undefined ? `max="${c.max}"` : ''} data-type="num" data-path="${p}" value="${r[c.k] === undefined || r[c.k] === null ? '' : esc(r[c.k])}" ${aria}>`;
             else if (c.type === 'static') h = `<span>${esc(c.text ? c.text(r, val) : r[c.k])}</span>`;
             else h = `<input type="text" data-path="${p}" value="${esc(r[c.k])}" ${aria}>`;
             // extra: عناصر إضافية في الخلية تُرسم مع النموذج؛ hint: سطر توضيح يتحدث مع كل إدخال
@@ -886,8 +909,9 @@
     let redo = false;
     // حقل نصي أو تاريخ بإعادة رسم (data-redraw) لم يطلب onChange رسمه: يُرسم النموذج عند مغادرته
     let pending = false;
-    // أخطاء التحقق لكل مسار: تبقى تحت الحقل (وبعد إعادة الرسم) حتى يُعدَّل
+    // أخطاء التحقق لكل مسار: تبقى تحت الحقل (وبعد إعادة الرسم) حتى يُعدَّل. errAt: قيمة الحقل حين ظهر خطؤه
     let errs = {};
+    let errAt = {};
     function draw(again) {
       if (drawing) {
         redo = true;
@@ -913,6 +937,11 @@
         m.body.scrollTop = sc;
         upd();
         for (const p of Object.keys(errs)) {
+          // تغيّرت قيمته منذ ظهر الخطأ (عبّأها حقل آخر، كالمبلغ عند اختيار التطبيق أو الموظف): يزول خطؤه كما لو عدّله المستخدم
+          if (JSON.stringify(getPath(val, p)) !== errAt[p]) {
+            delete errs[p];
+            continue;
+          }
           const el = m.body.querySelector(pathSel(p));
           if (el) markErr(el, errs[p]);
         }
@@ -1047,8 +1076,8 @@
         if (pending) draw();
       }, 0);
     });
-    // Enter ينقل إلى الحقل التالي ولا يحفظ (آخر حقل يحفظ)، وCtrl/Cmd+Enter يحفظ من أي مكان في النموذج.
-    // القائمة المنسدلة والنص متعدد الأسطر يبقى لهما سلوكهما المعتاد
+    // Enter ينقل إلى الحقل التالي ولا يحفظ (آخر حقل يحفظ)، من خانة الكتابة أو من القائمة المغلقة (المفتوحة تأخذ
+    // Enter لاختيارها قبل الصفحة)، وCtrl/Cmd+Enter يحفظ من أي مكان في النموذج. النص متعدد الأسطر يبقى له سطره الجديد
     m.el.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
       const el = e.target;
@@ -1059,7 +1088,7 @@
         return;
       }
       const p = el.dataset && el.dataset.path;
-      if (!p || el.tagName !== 'INPUT' || el.type === 'radio') return;
+      if (!p || !(el.tagName === 'INPUT' || el.tagName === 'SELECT') || el.type === 'radio' || e.altKey) return;
       e.preventDefault();
       if (el.dataset.redraw && !discrete(el)) onField(e, true);
       else if (pending) draw();
@@ -1151,6 +1180,8 @@
       m.body.querySelectorAll('[aria-invalid="true"]').forEach(clearErr);
       const chk = validate();
       errs = chk.errs;
+      errAt = {};
+      for (const p of Object.keys(errs)) errAt[p] = JSON.stringify(getPath(val, p));
       if (chk.first) {
         for (const p of Object.keys(errs)) {
           const el = m.body.querySelector(pathSel(p));
@@ -1545,7 +1576,7 @@
   };
 
   const lastBackupText = () => {
-    const at = Date.parse(ui.lastBackupAt || '');
+    const at = lastBackupAt();
     if (!isFinite(at)) return 'لم تُؤخذ بعد';
     const d = new Date(at);
     return dtText(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')) + ' ' + TIMEF.format(d);
@@ -1553,7 +1584,7 @@
   // تذكير النسخ الاحتياطي للحفظ في المتصفح: عمر آخر نسخة بالأيام إن مضى عليها أكثر من 14 يوماً (−1: لم تُؤخذ)، وإلا null
   function backupAge() {
     if (APP.demo || !APP.backend || APP.backend.kind !== 'local' || !countRecs(S)) return null;
-    const at = Date.parse(ui.lastBackupAt || '');
+    const at = lastBackupAt();
     if (!isFinite(at)) return -1;
     return Date.now() - at > 14 * 86400000 ? Math.floor((Date.now() - at) / 86400000) : null;
   }
@@ -3742,7 +3773,7 @@
           cols: [
             { k: 'rawId', label: 'المادة الخام', type: 'select', options: rawOpts, redraw: true, w: '12rem' },
             { k: 'desc', label: 'الوصف' },
-            { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
+            { k: 'qty', label: 'الكمية', type: 'num', num: 1, neg: 1 },
             { k: 'price', label: 'سعر الوحدة', type: 'num', num: 1, min: 0 },
             { k: 'total', label: 'المجموع', num: 1, calc: (row) => fmt(num(row.qty) * num(row.price)) },
           ],
@@ -4167,7 +4198,7 @@
       fields: (v) => [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ وصول المبلغ للبنك', req: 1 }, { k: 'channelId', type: 'select', label: 'التطبيق', options: chOpts, redraw: true }] },
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ الواصل', req: 1, min: 0 }, { k: 'deductions', type: 'money', label: 'خصومات إضافية', min: 0, help: 'ما خصمه التطبيق من التحويل غير عمولته المسجلة في الإقفال: عروض أو مرتجعات، رسوم إعلان، أو غرامات' }] },
-        { k: 'dedType', type: 'select', label: 'نوع الخصم', cls: dedOff(v) ? 'off' : '', options: Object.keys(RB.DED_TYPES).map((k) => [k, RB.DED_TYPES[k].name]), help: 'يحدد معالجة الضريبة: العرض أو المرتجع يخفض المبيعات وضريبتها، والرسوم بفاتورة ضريبية تُسترد ضريبتها، والغرامة بلا ضريبة.' },
+        { k: 'dedType', type: 'select', label: 'نوع الخصم', cls: dedOff(v) ? 'off' : '', options: Object.keys(RB.DED_TYPES).map((k) => [k, RB.DED_TYPES[k].short]), help: 'يحدد معالجة الضريبة: العرض أو المرتجع يخفض المبيعات وضريبتها، والرسوم بفاتورة ضريبية تُسترد ضريبتها، والغرامة بلا ضريبة.' },
         { k: 'note', label: 'ملاحظة' },
       ],
       preview: (v) => {
@@ -4274,7 +4305,7 @@
       preview: (v) => (num(v.amount) < 0 ? `<p class="note">استرداد من الهيئة: يدخل الحساب ${fmt(-num(v.amount))} ${cur()} ويُخصم من الرصيد الدائن للإقرار فلا يُرحّل للفترة التالية. سجّله بعد وصول المبلغ.</p>` : overdrawNote('vatPayments', v)),
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: back ? 'تاريخ الاسترداد' : 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: labels, redraw: true }] },
-        { type: 'row', fields: [{ k: 'amount', type: 'money', label: back ? 'المبلغ المسترد (بالسالب)' : 'المبلغ المسدد', req: 1, help: back ? 'ما ردّته الهيئة من الرصيد الدائن، بالسالب' : 'استرداد من الهيئة؟ أدخله بالسالب' }, { k: 'account', type: 'select', label: 'من / إلى', options: payOptions(false, false) }] },
+        { type: 'row', fields: [{ k: 'amount', type: 'money', label: back ? 'المبلغ المسترد (بالسالب)' : 'المبلغ المسدد', req: 1, neg: 1, help: back ? 'ما ردّته الهيئة من الرصيد الدائن، بالسالب' : 'استرداد من الهيئة؟ أدخله بالسالب' }, { k: 'account', type: 'select', label: 'من / إلى', options: payOptions(false, false) }] },
         { k: 'note', label: 'ملاحظة' },
       ],
       onSave: (v) => upsert('vatPayments', v),
@@ -4877,7 +4908,7 @@
         before
       );
     } catch (e) {
-      res = { ok: false, failed: countRecs(S) + 1, code: (e && e.code) || 'error', before };
+      res = { ok: false, failed: countRecs(S), code: (e && e.code) || 'error', before };
     }
     t.remove();
     APP.replacing = false;
@@ -4911,7 +4942,7 @@
     }
     // الدفتر المطلوب يبقى كما هو حتى يُحفظ كاملاً: لقطات البيانات المشتركة (خليط القديم وما كُتب) لا تُطبَّق عليه،
     // وهو نفسه الدفتر في الشاشة فتدخل فيه تعديلات المستخدم بعد الفشل. «أكمل الحفظ» يكتبه هو
-    APP.replaceFailed = { n: res.failed, state: S, before: res.before };
+    APP.replaceFailed = { n: res.failed, d: res.dels || 0, state: S, before: res.before };
     APP.save.failed = failCode(res.code);
     toast(res.code === 'invalid_id' ? 'معرّف سجل غير صالح: ' + (res.badIds || []).slice(0, 5).map(shortId).join('، ') : dbErrMsg(res), 'bad');
     render();
@@ -4991,7 +5022,7 @@
         const s1 = two ? num(v.s1) : 100;
         const s2 = num(v.s2);
         if (two && (!(s1 > 0) || !(s2 > 0))) return 'يجب أن تكون نسبة كل شريك أكبر من صفر.';
-        if (two && Math.abs(s1 + s2 - 100) > 0.01) return 'مجموع نسبتي الشريكين لازم يكون 100% (يمكن إضافة شركاء آخرين لاحقاً من صفحة الشركاء)';
+        if (two && Math.abs(s1 + s2 - 100) > 0.01) return 'يجب أن يكون مجموع نسبتي الشريكين 100% (يمكن إضافة شركاء آخرين لاحقاً من صفحة الشركاء).';
         // لا يُكتب فوق دفتر محفوظ: المشترك يُفتح كما هو، وفي المتصفح يلزم تأكيد حذفه
         let existing = APP.real;
         if (!existing) {
@@ -5031,8 +5062,7 @@
   const REAL_MSG = 'صُدّرت بياناتك الحقيقية وليست البيانات التجريبية';
   // آخر نسخة احتياطية (لتذكير الحفظ في المتصفح)
   function backedUp() {
-    ui.lastBackupAt = new Date().toISOString();
-    saveUI();
+    lsSet(BACKUP_KEY, new Date().toISOString());
     render();
   }
   // الصفحة داخل إطار (Artifact): التنزيل المباشر بالرابط لا يعمل فيه
@@ -5325,7 +5355,7 @@
       }
       // الاستيراد يستبدل ولا يدمج: يُذكر عدد ما سيُحذف ويُنصح بالتصدير قبله
       const repl = hasBooks(cur) ? `ستحل محل ${APP.demo ? 'دفترك المحفوظ' : 'بياناتك الحالية'} «${esc((cur.settings && cur.settings.name) || '')}» (${countRecs(cur)} سجل) بالكامل. صدّر نسخة من بياناتك أولاً إن احتجتها.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
-      const notes = (skipped ? `<br>تم تجاهل ${skipped} سجل غير صالح.` : '') + (notList.length ? `<br>أقسام ليست قوائم تم تجاهلها: ${esc(notList.join('، '))}.` : '');
+      const notes = (skipped ? `<br>تم تجاهل ${skipped} سجل غير صالح.` : '') + (notList.length ? `<br>أقسام ليست قوائم تم تجاهلها: ${esc(notList.map((k) => RB.SECTION_LABELS[k] || k).join('، '))}.` : '');
       const demoNote = data.demo === true ? '<br><b>هذا ملف بيانات تجريبية وليس نسخة من دفترك.</b>' : '';
       if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${n} سجل؟ ${repl}${demoNote}${notes}`, { danger: true, ok: 'استورد' }))) return;
       delete data.demo;
@@ -5414,8 +5444,18 @@
     const bar = (cls, text, acts) => `<div class="banner ${cls}"><div>${text}</div>${acts ? `<div class="btn-row">${acts}</div>` : ''}</div>`;
     let h = '';
     if (APP.noStorage) h += bar('bad', '<b>هذا المتصفح لا يسمح بالحفظ (وضع خاص أو تخزين محظور) — لن تُحفظ بياناتك</b>', '');
+    // حفظ فشل بعد الفتح (امتلأت مساحة المتصفح، أو رُفض في البيانات المشتركة): شريط ظاهر على كل شاشة، لا في الشريط
+    // الجانبي وحده (مخفي في درج الجوال، وأسفل الشاشة القصيرة). لا تخزين أصلاً، وعرض فقط، والاستيراد الناقص لها أشرطتها
+    const sf = APP.save.failed;
+    if (sf && sf !== 'invalid_argument' && !APP.noStorage && !APP.replaceFailed && !APP.demo)
+      h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${APP.backend && APP.backend.kind === 'cloud' ? 'تعذّر حفظه في البيانات المشتركة' : 'تعذّر حفظه في هذا المتصفح'}. صدّر نسخة احتياطية الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.`, btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary'));
     if (APP.syncLost) h += bar('bad', 'انقطع التحديث المباشر للبيانات المشتركة، وقد لا تكون تعديلات شريكك الأخيرة ظاهرة. أعد تحميل الصفحة قبل أن تعدّل.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
-    if (APP.replaceFailed) h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (<span class="n">${APP.replaceFailed.n}</span> سجل) — البيانات في الشاشة غير محفوظة بالكامل</b>`, btn('أكمل الحفظ', 'resumereplace', '', 'sm primary'));
+    if (APP.replaceFailed) {
+      // ما بقي من العملية: سجلات الدفتر التي لم تُكتب، والقديمة التي لم تُحذف، أو الإعدادات وحدها (تُكتب آخراً)
+      const f = APP.replaceFailed;
+      const left = [f.n ? `<span class="n">${f.n}</span> سجل لم يُكتب` : '', f.d ? `<span class="n">${f.d}</span> سجل قديم لم يُحذف` : ''].filter(Boolean).join(' و');
+      h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (${left ? 'بقي ' + left : 'بقيت الإعدادات'}) — البيانات في الشاشة غير محفوظة بالكامل</b>`, btn('أكمل الحفظ', 'resumereplace', '', 'sm primary'));
+    }
     const mk = markerState();
     if (mk === 'running') h += bar('warn', '<b>يجري الآن استيراد أو مسح للبيانات المشتركة من جهاز آخر</b> — انتظر حتى ينتهي قبل أن تعدّل.', '');
     if (mk === 'stale') h += bar('warn', 'استيراد/مسح سابق لم يكتمل — أعد العملية', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
@@ -5452,6 +5492,8 @@
     else if (kind === 'cloud') h = `${dot('good')}محفوظ ومشترك${at}`;
     else if (kind === 'local') h = `${dot('good')}محفوظ في هذا المتصفح${at}`;
     el.innerHTML = h;
+    // شريط فشل الحفظ يظهر أو يزول مع الحالة (الحفظ يفشل أو ينجح بعد الرسم)
+    updateBanner();
   }
 
   let rt = null;
@@ -5607,6 +5649,8 @@
     // أثناء الاستيراد أو المسح تصل لقطات جزئية، وبعد فشله تحمل خليط القديم وما كُتب: تُتجاهل حتى يكتمل الحفظ،
     // ثم يُطابق الدفتر مع البيانات المشتركة
     if (APP.replacing || APP.replaceFailed) return false;
+    // ما فشل حفظه من هذه الصفحة يبقى في الشاشة كما أدخله المستخدم حتى يُحفظ
+    if (APP.backend && APP.backend.overlay) data = APP.backend.overlay(section, data);
     if (section === 'settings') {
       if (!RB.isObj(data)) return false;
       data = RB.normalize({ settings: data }).settings;

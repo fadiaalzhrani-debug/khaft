@@ -205,7 +205,8 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
 .nav-g a:hover { background: var(--grill-2); }
 .nav-g a.on { background: var(--grill-2); color: #fff; font-weight: 600; }
 .nav-g a.on::before { content: ''; position: absolute; inset-inline-start: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--accent); }
-.side-foot { font-size: 0.78rem; color: var(--grill-muted); padding: 12px 10px 4px; border-top: 1px solid var(--grill-2); display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+/* حالة الحفظ ثابتة أسفل الشريط الجانبي: ظاهرة دائماً ولو طالت القائمة عن ارتفاع الشاشة (تتمرر القائمة تحتها) */
+.side-foot { font-size: 0.78rem; color: var(--grill-muted); padding: 12px 10px 4px; border-top: 1px solid var(--grill-2); display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; position: sticky; bottom: -12px; margin-bottom: -12px; padding-bottom: 16px; background: var(--grill); z-index: 1; }
 .side-foot .ss-t { flex: 1 1 0; min-width: 0; color: var(--grill-ink); }
 .side-foot .btn { color: var(--grill-ink); border-color: var(--grill-muted); min-height: 28px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); flex: none; }
@@ -606,6 +607,8 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .side { position: fixed; inset-block: 0; inset-inline-start: 0; width: min(290px, 86vw); height: auto; z-index: 60; transform: translateX(100%); visibility: hidden; transition: transform 0.2s ease-out, visibility 0s linear 0.2s; padding-top: calc(18px + env(safe-area-inset-top, 0px)); padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
   body.nav-open .side { transform: none; visibility: visible; transition: transform 0.2s ease-out; box-shadow: var(--shadow-lg); }
   body.nav-open .scrim { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; }
+  /* حالة الحفظ تغطي هامش الحافة السفلية في الجوال (فلا تظهر القائمة المتمررة تحتها) */
+  .side-foot { bottom: calc(-12px - env(safe-area-inset-bottom, 0px)); margin-bottom: calc(-12px - env(safe-area-inset-bottom, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
   .icon-btn.menu-btn { display: inline-grid; }
   .topbar { padding: 8px 16px; }
   .page { padding: 16px 16px 48px; }

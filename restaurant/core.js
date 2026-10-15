@@ -232,6 +232,13 @@
     'supplierPayments', 'composites', 'products', 'sales', 'payouts', 'transfers', 'stockCounts', 'vatPayments',
     'cashCounts', 'advances',
   ];
+  // اسم كل قسم بالعربية كما يُعرض للمستخدم (رسائل الاستيراد وغيرها)
+  RB.SECTION_LABELS = {
+    partners: 'الشركاء', capital: 'حركات رأس المال', assets: 'الأصول', expenses: 'المصاريف', employees: 'الموظفون', payroll: 'مسيرات الرواتب',
+    raw: 'المواد الخام', purchases: 'فواتير المشتريات', supplierPayments: 'سداد الموردين', composites: 'المنتجات المجمّعة', products: 'أصناف المنيو',
+    sales: 'الإقفالات اليومية', payouts: 'تحويلات التطبيقات', transfers: 'التحويلات بين الصندوق والبنك', stockCounts: 'جرد المخزون',
+    vatPayments: 'مدفوعات الضريبة', cashCounts: 'جرود الصندوق', advances: 'سلف العمال',
+  };
 
   RB.emptyState = () => {
     const s = { settings: RB.defaultSettings() };
@@ -348,6 +355,22 @@
     }
     return { sets, dels, known };
   };
+  // لقطة قسم من البيانات المشتركة ومعها ما فشل حفظه من هذه الصفحة ولم يُحفظ بعده (unsaved: [{section, id, rec}]؛
+  // rec = null للحذف، وللإعدادات rec الإعدادات كلها): ما في الشاشة يبقى كما أدخله المستخدم. لا تُعدَّل data
+  RB.withUnsaved = (section, data, unsaved) => {
+    let out = data;
+    for (const u of unsaved || []) {
+      if (!isObj(u) || u.section !== section) continue;
+      if (section === 'settings') {
+        if (isObj(u.rec)) out = JSON.parse(JSON.stringify(u.rec));
+        continue;
+      }
+      out = (Array.isArray(out) ? out : []).filter((x) => !(isObj(x) && String(x.id) === String(u.id)));
+      if (isObj(u.rec)) out.push(JSON.parse(JSON.stringify(u.rec)));
+    }
+    return out;
+  };
+
   // علامة config/replace كما تُعرض لمن يفتح البيانات المشتركة: '' (لا علامة، أو كتبتها هذه الصفحة sid)،
   // running (جهاز آخر يستورد أو يمسح الآن: العلامة تتجدد كل 30 ثانية أثناء العملية فتُعد جارية ما دامت أحدث من
   // 5 دقائق، مع تسامح في فرق الساعة بين الجهازين)، stale (توقفت أو فشلت: البيانات قد تكون ناقصة)
