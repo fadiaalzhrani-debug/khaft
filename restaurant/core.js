@@ -494,6 +494,33 @@
 
   RB.purchaseTotal = (p) => r2(sum(p.lines || [], (l) => num(l.qty) * num(l.price)));
 
+  // سعر المادة الخام في سطر الفاتورة: بلا ضريبة، ويُرفع بالضريبة إن كانت الفاتورة خاضعة وأسعارها شاملة
+  RB.autoLinePrice = (raw, includesVat, taxable, settings) => (includesVat && taxable ? r2(num(raw.price) * (1 + num(settings.vatRate) / 100)) : num(raw.price));
+  // تحديث أسعار المواد الخام من فاتورة: من أسطر الشراء فقط (كمية وسعر موجبان)، فالمرتجع أو الإشعار الدائن
+  // لا يغيّر سعراً ولا يصير السعر سالباً. السعر المحفوظ بلا ضريبة. يرجع [{id, name, old, price}] لما تغيّر
+  RB.rawPriceUpdates = (p, raws, settings) => {
+    const r = num(settings.vatRate) / 100;
+    const out = new Map();
+    for (const l of p.lines || []) {
+      if (!l || !l.rawId || !(num(l.qty) > 0) || !(num(l.price) > 0)) continue;
+      const raw = (raws || []).find((x) => x && x.id === l.rawId);
+      if (!raw) continue;
+      const net = p.includesVat && p.taxable ? r2(num(l.price) / (1 + r)) : r2(num(l.price));
+      out.set(raw.id, { id: raw.id, name: raw.name, old: num(raw.price), price: net });
+    }
+    return [...out.values()].filter((x) => Math.abs(x.price - x.old) > 0.004);
+  };
+
+  // حدود الحقل الرقمي: فراغ = لا قيمة (يحكمه «مطلوب»)؛ يرجع نص الخطأ أو فراغاً
+  RB.rangeMsg = (v, min, max) => {
+    if (v === '' || v === undefined || v === null || (typeof v === 'string' && !v.trim())) return '';
+    const n = typeof v === 'number' ? v : parseFloat(v);
+    if (!isFinite(n)) return 'أدخل رقماً';
+    if (min !== undefined && min !== null && n < min) return 'القيمة لا تقل عن ' + min;
+    if (max !== undefined && max !== null && n > max) return 'القيمة لا تزيد عن ' + max;
+    return '';
+  };
+
   // ───────────── الرواتب والعمالة ─────────────
   // نظام التأمينات الاجتماعية الجديد: لمن سُجّل في التأمينات أول مرة من 3 يوليو 2024 تزيد نسبة فرع المعاشات
   // 0.5% لكل طرف كل يوليو من 2025 حتى 2028، فوق نسب الإعدادات (النظام السابق). بلا قيمة = النظام السابق

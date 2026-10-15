@@ -414,6 +414,9 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .dlg-h h3 { margin: 0; font-size: 1.1rem; }
 .dlg-b { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
 .dlg-f { display: flex; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--line-2); flex-wrap: wrap; }
+/* تلميح الحفظ بلوحة المفاتيح: لا يلزم على شاشات اللمس */
+.dlg-f .kbd-hint { align-self: center; font-size: 0.76rem; }
+@media (pointer: coarse) { .dlg-f .kbd-hint { display: none; } }
 .confirm-msg { margin: 0; font-size: 1rem; }
 @keyframes fade { from { opacity: 0; } }
 @keyframes rise { from { transform: translateY(10px); opacity: 0; } }
@@ -440,6 +443,10 @@ input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .field.invalid input, .field.invalid select { border-color: var(--bad); }
 /* قيمة تاريخ محفوظة غير صالحة: تُذكر تحت الحقل حتى يُختار تاريخ صحيح */
 .field small.bad-note { color: var(--bad); font-weight: 600; }
+/* رسالة الخطأ تحت الحقل (أو تحت خانة الجدول) حتى يُعدَّل */
+.field .err { color: var(--bad); font-size: 0.78rem; font-weight: 600; }
+.lines-tbl .err { display: block; margin-top: 2px; }
+.form [aria-invalid='true'] { border-color: var(--bad); }
 .field:not(.invalid) .bad-note { display: none; }
 .field.check { justify-content: flex-end; min-height: 38px; }
 .checkl { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9rem; padding-top: 6px; }
@@ -448,7 +455,8 @@ input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .fhtml:empty { display: none; }
 .lines { gap: 8px; }
 .lines-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.lines-h label { font-size: 0.82rem; font-weight: 600; color: var(--ink-2); flex: 1; }
+.lines-cap { font-size: 0.82rem; font-weight: 600; color: var(--ink-2); }
+.lines-h .lines-cap { flex: 1; }
 .lines-tbl { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .lines-tbl th { font-size: 0.75rem; color: var(--muted); font-weight: 600; text-align: start; padding: 4px 6px; white-space: nowrap; }
 .lines-tbl td { padding: 3px 4px; vertical-align: middle; }

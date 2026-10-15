@@ -693,44 +693,52 @@
     const v = f.get ? f.get(val) : getPath(val, f.k);
     const id = 'f' + ++FID;
     const rd = f.redraw ? 'data-redraw="1"' : '';
-    const lab = `<label for="${id}">${esc(f.label)}${f.req ? ' <b class="req">*</b>' : ''}</label>`;
+    const badDate = isDateField(f) && !dateOK(f, v);
+    // التوضيح وملاحظة القيمة غير الصالحة مربوطان بالحقل فيقرؤهما قارئ الشاشة معه
+    const desc = [badDate ? id + 'n' : '', f.help ? id + 'h' : ''].filter(Boolean).join(' ');
+    const ax = `${desc ? `aria-describedby="${desc}"` : ''} ${badDate ? 'aria-invalid="true"' : ''} ${f.req ? 'required' : ''}`;
+    const help = f.help ? `<small id="${id}h">${f.help}</small>` : '';
+    const lab = `<label for="${id}">${esc(f.label)}${f.req ? ' <b class="req" aria-hidden="true">*</b>' : ''}</label>`;
     let inp;
     switch (f.type) {
       case 'select': {
         const opts = typeof f.options === 'function' ? f.options(val) : f.options;
-        inp = `<select id="${id}" data-path="${f.k}" ${rd}>${optionsHTML(opts, v)}</select>`;
+        inp = `<select id="${id}" data-path="${f.k}" ${ax} ${rd}>${optionsHTML(opts, v)}</select>`;
         break;
       }
       case 'check':
-        return `<div class="field check ${f.cls || ''}" data-k="${f.k}" ${f.live && f.show && !f.show(val) ? 'hidden' : ''}><label class="checkl"><input id="${id}" type="checkbox" data-path="${f.k}" ${rd} ${v ? 'checked' : ''}><span>${esc(f.label)}</span></label>${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+        return `<div class="field check ${f.cls || ''}" data-k="${f.k}" ${f.live && f.show && !f.show(val) ? 'hidden' : ''}><label class="checkl"><input id="${id}" type="checkbox" data-path="${f.k}" ${f.help ? `aria-describedby="${id}h"` : ''} ${rd} ${v ? 'checked' : ''}><span>${esc(f.label)}</span></label>${help}</div>`;
       case 'textarea':
-        inp = `<textarea id="${id}" data-path="${f.k}" rows="2">${esc(v)}</textarea>`;
+        inp = `<textarea id="${id}" data-path="${f.k}" rows="2" ${ax}>${esc(v)}</textarea>`;
         break;
       case 'num':
       case 'money':
-        inp = `<input id="${id}" type="number" inputmode="decimal" step="${f.step || 'any'}" ${f.min !== undefined ? `min="${f.min}"` : ''} data-type="num" data-path="${f.k}" value="${v === undefined || v === null ? '' : esc(v)}" ${f.req ? 'required' : ''} ${rd}>`;
+        inp = `<input id="${id}" type="number" inputmode="decimal" step="${f.step || 'any'}" ${f.min !== undefined ? `min="${f.min}"` : ''} ${f.max !== undefined ? `max="${f.max}"` : ''} data-type="num" data-path="${f.k}" value="${v === undefined || v === null ? '' : esc(v)}" ${ax} ${rd}>`;
         break;
       default:
-        inp = `<input id="${id}" type="${f.type || 'text'}" data-path="${f.k}" value="${esc(v)}" ${f.list ? `list="${id}l"` : ''} ${f.req ? 'required' : ''} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ''} ${rd}>${f.list ? `<datalist id="${id}l">${f.list(val).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>` : ''}`;
+        inp = `<input id="${id}" type="${f.type || 'text'}" data-path="${f.k}" value="${esc(v)}" ${f.list ? `list="${id}l"` : ''} ${ax} ${f.placeholder ? `placeholder="${esc(f.placeholder)}"` : ''} ${rd}>${f.list ? `<datalist id="${id}l">${f.list(val).map((x) => `<option value="${esc(x)}">`).join('')}</datalist>` : ''}`;
     }
-    const badDate = isDateField(f) && !dateOK(f, v);
-    const note = badDate ? `<small class="bad-note">القيمة المحفوظة «${ltr(esc(v))}» غير صالحة — اختر ${f.type === 'month' ? 'الشهر' : 'التاريخ'} الصحيح.</small>` : '';
-    return `<div class="field ${f.cls || ''}${badDate ? ' invalid' : ''}" data-k="${f.k}">${lab}${inp}${note}${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+    const note = badDate ? `<small class="bad-note" id="${id}n">القيمة المحفوظة «${ltr(esc(v))}» غير صالحة — اختر ${f.type === 'month' ? 'الشهر' : 'التاريخ'} الصحيح.</small>` : '';
+    return `<div class="field ${f.cls || ''}${badDate ? ' invalid' : ''}" data-k="${f.k}">${lab}${inp}${note}${help}</div>`;
   }
   function linesHTML(f, val) {
     const rows = getPath(val, f.k) || [];
+    // عنوان الجدول يسمّيه لقارئ الشاشة (aria-labelledby)، والتوضيح يصفه
+    const cid = 'l' + ++FID;
     const head = f.cols.map((c) => `<th class="${c.num ? 'num' : ''} ${c.cls || ''}" ${c.w ? `style="width:${c.w}"` : ''}>${esc(c.label)}</th>`).join('');
     const body = rows
       .map((r, i) => {
+        // rowName: اسم السطر (الموظف مثلاً) يدخل في اسم كل خانة: «الأساسي — سليم» بدل «الأساسي 1»
+        const rn = f.rowName ? String(f.rowName(r, val) || '').trim() : '';
         const cells = f.cols
           .map((c) => {
             const p = `${f.k}.${i}.${c.k}`;
             const rd = c.redraw ? 'data-redraw="1"' : '';
-            const aria = `aria-label="${esc(c.label)} ${i + 1}"`;
+            const aria = `aria-label="${esc(rn ? c.label + ' — ' + rn : c.label + ' ' + (i + 1))}"`;
             let h;
             if (c.calc) h = `<span class="calc n" data-calc="${f.k}|${i}|${c.k}">${c.calc(r, val)}</span>`;
             else if (c.type === 'select') h = `<select data-path="${p}" ${rd} ${aria}>${optionsHTML(c.options(r, val), r[c.k])}</select>`;
-            else if (c.type === 'num') h = `<input type="number" inputmode="decimal" step="any" data-type="num" data-path="${p}" value="${r[c.k] === undefined || r[c.k] === null ? '' : esc(r[c.k])}" ${aria}>`;
+            else if (c.type === 'num') h = `<input type="number" inputmode="decimal" step="any" ${c.min !== undefined ? `min="${c.min}"` : ''} ${c.max !== undefined ? `max="${c.max}"` : ''} data-type="num" data-path="${p}" value="${r[c.k] === undefined || r[c.k] === null ? '' : esc(r[c.k])}" ${aria}>`;
             else if (c.type === 'static') h = `<span>${esc(c.text ? c.text(r, val) : r[c.k])}</span>`;
             else h = `<input type="text" data-path="${p}" value="${esc(r[c.k])}" ${aria}>`;
             // extra: عناصر إضافية في الخلية تُرسم مع النموذج؛ hint: سطر توضيح يتحدث مع كل إدخال
@@ -739,13 +747,13 @@
             return `<td class="${c.num ? 'num' : ''} ${c.cls || ''}">${h}</td>`;
           })
           .join('');
-        return `<tr>${cells}<td class="act"><button type="button" class="icon-btn" data-lact="del" data-lk="${f.k}" data-i="${i}" aria-label="حذف السطر ${i + 1}">✕</button></td></tr>`;
+        return `<tr>${cells}<td class="act"><button type="button" class="icon-btn" data-lact="del" data-lk="${f.k}" data-i="${i}" aria-label="${esc('حذف السطر ' + (i + 1) + (rn ? ' — ' + rn : ''))}">✕</button></td></tr>`;
       })
       .join('');
-    return `<div class="field lines ${f.cls || ''}"><div class="lines-h"><label>${esc(f.label)}</label>${(f.tools || []).map((t) => `<button type="button" class="btn ghost sm" data-ltool="${t.id}" data-lk="${f.k}">${esc(t.label)}</button>`).join('')}</div>
-      <div class="tbl-wrap"><table class="lines-tbl"><thead><tr>${head}<th></th></tr></thead><tbody>${body || `<tr><td colspan="${f.cols.length + 1}" class="empty">${esc(f.empty || 'لا توجد أسطر بعد')}</td></tr>`}</tbody></table></div>
+    return `<div class="field lines ${f.cls || ''}"><div class="lines-h"><span class="lines-cap" id="${cid}">${esc(f.label)}</span>${(f.tools || []).map((t) => `<button type="button" class="btn ghost sm" data-ltool="${t.id}" data-lk="${f.k}">${esc(t.label)}</button>`).join('')}</div>
+      <div class="tbl-wrap"><table class="lines-tbl" aria-labelledby="${cid}" ${f.help ? `aria-describedby="${cid}h"` : ''}><thead><tr>${head}<th></th></tr></thead><tbody>${body || `<tr><td colspan="${f.cols.length + 1}" class="empty">${esc(f.empty || 'لا توجد أسطر بعد')}</td></tr>`}</tbody></table></div>
       ${f.foot ? `<div class="lines-foot" data-lfoot="${f.k}">${f.foot(val)}</div>` : ''}
-      <button type="button" class="btn ghost sm add-line" data-lact="add" data-lk="${f.k}">+ ${esc(f.addLabel || 'إضافة سطر')}</button>${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+      <button type="button" class="btn ghost sm add-line" data-lact="add" data-lk="${f.k}">+ ${esc(f.addLabel || 'إضافة سطر')}</button>${f.help ? `<small id="${cid}h">${f.help}</small>` : ''}</div>`;
   }
   function flatFields(fields) {
     const out = [];
@@ -755,17 +763,72 @@
     }
     return out;
   }
+  const pathSel = (p) => `[data-path="${CSS.escape(p)}"]`;
+  // القائمة ومربع الاختيار تتغير قيمتهما دفعة واحدة (change)، والحقل النصي أو التاريخ مع كل حرف (input)
+  const discrete = (el) => el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'radio';
 
+  // o.onChange(path, val) يرجع 'redraw' إذا غيّر حقولاً أخرى فيُعاد رسم النموذج لتظهر قيمها الجديدة.
+  // o.focus: محدد CSS للحقل الذي يبدأ عنده التركيز
   function formModal(o) {
     const val = clone(o.value || {});
     const m = openModal({ title: o.title, wide: o.wide });
     const fields = () => (typeof o.fields === 'function' ? o.fields(val) : o.fields);
     let saving = false;
-    function draw() {
-      const sc = m.body.scrollTop;
-      m.body.innerHTML = `<form class="form" novalidate>${fields().map((f) => fieldHTML(f, val)).join('')}<div class="form-preview" ${o.preview ? '' : 'hidden'}></div><button type="submit" hidden></button></form>`;
-      m.body.scrollTop = sc;
-      upd();
+    // drawing يمنع رسماً داخل رسم (حدث يطلقه حذف العنصر المركَّز أثناء innerHTML)، ويُعاد الرسم بعده مرة واحدة
+    let drawing = false;
+    let redo = false;
+    // حقل نصي أو تاريخ بإعادة رسم: يُرسم النموذج عند مغادرته لا أثناء الكتابة (التاريخ يُكتب بمقاطع)
+    let pending = false;
+    // أخطاء التحقق لكل مسار: تبقى تحت الحقل (وبعد إعادة الرسم) حتى يُعدَّل
+    let errs = {};
+    function draw(again) {
+      if (drawing) {
+        redo = true;
+        return;
+      }
+      drawing = true;
+      pending = false;
+      try {
+        // الحقل الذي يُكتب فيه يعود إليه التركيز وموضع المؤشر بعد إعادة الرسم
+        const a = document.activeElement;
+        const ap = a && a !== m.body && m.body.contains(a) && a.dataset ? a.dataset.path : '';
+        let sel = null;
+        try {
+          if (ap && typeof a.selectionStart === 'number') sel = [a.selectionStart, a.selectionEnd, a.selectionDirection];
+        } catch (e) {
+          sel = null;
+        }
+        const sc = m.body.scrollTop;
+        m.body.innerHTML = `<form class="form" novalidate>${fields().map((f) => fieldHTML(f, val)).join('')}<div class="form-preview" ${o.preview ? '' : 'hidden'}></div><button type="submit" hidden></button></form>`;
+        m.body.scrollTop = sc;
+        upd();
+        for (const p of Object.keys(errs)) {
+          const el = m.body.querySelector(pathSel(p));
+          if (el) markErr(el, errs[p]);
+        }
+        const n = ap && m.body.querySelector(pathSel(ap));
+        if (n && !discrete(a) && a.tagName === n.tagName && a.type === n.type && a.value === n.value) {
+          // قيمته لم تتغير: يبقى العنصر نفسه (موضع المؤشر والتحديد، حتى في الحقل الرقمي) بخصائص الرسم الجديد
+          for (const at of [...a.attributes]) if (!n.hasAttribute(at.name)) a.removeAttribute(at.name);
+          for (const at of [...n.attributes]) a.setAttribute(at.name, at.value);
+          n.replaceWith(a);
+          a.focus({ preventScroll: true });
+        } else if (n) {
+          n.focus({ preventScroll: true });
+          try {
+            if (n.type === 'number') n.select();
+            else if (sel) n.setSelectionRange(sel[0], sel[1], sel[2] || 'none');
+          } catch (e) {
+            // حقل لا يقبل التحديد (تاريخ، قائمة)
+          }
+        }
+      } finally {
+        drawing = false;
+      }
+      if (redo) {
+        redo = false;
+        if (!again) draw(true);
+      }
     }
     // المعاينة والحسابات المساعدة لا توقف النموذج إن فشلت (سجل بتاريخ غير صالح يُفتح للتصحيح)
     const safeHTML = (f) => {
@@ -808,19 +871,93 @@
       const pv = m.body.querySelector('.form-preview');
       if (pv && o.preview) pv.innerHTML = safeHTML(() => o.preview(val));
     }
+    // خطأ الحقل: aria-invalid، وإطار أحمر، ورسالة تحته مربوطة به (aria-describedby). خانة الجدول تُعلَّم وحدها
+    function markErr(el, msg) {
+      el.setAttribute('aria-invalid', 'true');
+      const cell = el.closest('td');
+      const fe = el.closest('.field');
+      if (!cell && fe) fe.classList.add('invalid');
+      const box = cell || fe;
+      if (!msg || !box || box.querySelector('.err')) return;
+      const s = document.createElement('small');
+      s.className = 'err';
+      s.id = (el.id || 'c' + ++FID) + 'e';
+      s.textContent = msg;
+      (el.closest('.checkl') || el).insertAdjacentElement('afterend', s);
+      el.setAttribute('aria-describedby', [s.id, el.getAttribute('aria-describedby')].filter(Boolean).join(' '));
+    }
+    function clearErr(el) {
+      if (el.dataset && el.dataset.path) delete errs[el.dataset.path];
+      el.removeAttribute('aria-invalid');
+      const cell = el.closest('td');
+      const fe = el.closest('.field');
+      if (!cell && fe) fe.classList.remove('invalid');
+      const er = (cell || fe) && (cell || fe).querySelector('.err');
+      if (!er) return;
+      const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter((x) => x && x !== er.id);
+      if (ids.length) el.setAttribute('aria-describedby', ids.join(' '));
+      else el.removeAttribute('aria-describedby');
+      er.remove();
+    }
     function onField(e, isChange) {
       const el = e.target;
       const p = el.dataset && el.dataset.path;
       if (!p) return;
       setPath(val, p, readInput(el));
-      el.closest('.field') && el.closest('.field').classList.remove('invalid');
-      if (o.onChange) o.onChange(p, val);
-      if (isChange && el.dataset.redraw) draw();
-      else upd();
+      clearErr(el);
+      const want = o.onChange ? o.onChange(p, val) : undefined;
+      if ((isChange && el.dataset.redraw) || want === 'redraw') {
+        // تاريخ أثناء كتابته بمقاطعه: يُرسم عند مغادرة الحقل
+        if (!isChange && (el.type === 'date' || el.type === 'month')) {
+          pending = true;
+          upd();
+        } else draw();
+      } else upd();
     }
-    m.el.addEventListener('input', (e) => onField(e, false));
+    m.el.addEventListener('input', (e) => {
+      if (!discrete(e.target)) onField(e, false);
+    });
     m.el.addEventListener('change', (e) => {
-      if (e.target.dataset && e.target.dataset.redraw) onField(e, true);
+      const el = e.target;
+      if (!el.dataset || !el.dataset.path) return;
+      if (discrete(el)) return onField(e, true);
+      // قيمة تغيّرت بلا حدث input (نادر): تُسجَّل أولاً
+      if (getPath(val, el.dataset.path) !== readInput(el)) onField(e, false);
+      if (el.dataset.redraw) pending = true;
+    });
+    m.el.addEventListener('focusout', () => {
+      if (pending)
+        setTimeout(() => {
+          if (pending) draw();
+        }, 0);
+    });
+    // Enter ينقل إلى الحقل التالي ولا يحفظ (آخر حقل يحفظ)، وCtrl/Cmd+Enter يحفظ من أي مكان في النموذج.
+    // القائمة المنسدلة والنص متعدد الأسطر يبقى لهما سلوكهما المعتاد
+    m.el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+      const el = e.target;
+      if (!m.body.contains(el) && !(e.ctrlKey || e.metaKey)) return;
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        submit();
+        return;
+      }
+      const p = el.dataset && el.dataset.path;
+      if (!p || el.tagName !== 'INPUT' || el.type === 'radio') return;
+      e.preventDefault();
+      if (el.dataset.redraw && !discrete(el)) onField(e, true);
+      else if (pending) draw();
+      const list = [...m.body.querySelectorAll('input[data-path], select[data-path]')].filter((x) => !x.disabled && !x.readOnly && x.getClientRects().length);
+      const i = list.indexOf(m.body.querySelector(pathSel(p)));
+      if (i < 0) return;
+      if (i === list.length - 1) return submit();
+      const next = list[i + 1];
+      next.focus();
+      try {
+        if (next.tagName === 'INPUT' && /^(text|number|search|tel|url|email)$/.test(next.type)) next.select();
+      } catch (e2) {
+        // لا يدعم التحديد
+      }
     });
     m.el.addEventListener('click', (e) => {
       const b = e.target.closest('[data-lact],[data-ltool]');
@@ -835,30 +972,66 @@
         if (t) t.run(val, rows);
       }
       setPath(val, f.k, rows);
+      // أرقام الأسطر تغيّرت: أخطاؤها السابقة لا تخص السطر نفسه
+      for (const k of Object.keys(errs)) if (k.startsWith(f.k + '.')) delete errs[k];
       draw();
       if (b.dataset.lact === 'add') {
         const trs = m.body.querySelectorAll(`[data-path^="${f.k}.${rows.length - 1}."]`);
         if (trs[0]) trs[0].focus();
       }
     });
-    async function submit() {
-      if (saving) return;
-      let bad = null;
-      let msg = '';
+    // التحقق: الحقول المطلوبة، والتواريخ، وحدود الأرقام (min/max، وفي أعمدة الأسطر كذلك)، وf.check(val) لشرط خاص.
+    // كل خطأ يظهر تحت حقله، والرسالة تذكر الحقول الناقصة كلها
+    function validate() {
+      const out = {};
+      const missing = [];
+      const other = [];
+      let first = '';
+      const add = (p, inline, msg) => {
+        out[p] = inline;
+        if (msg) other.push(msg);
+        if (!first) first = p;
+      };
       for (const f of flatFields(fields())) {
-        if (!f.k || (f.show && !f.show(val))) continue;
+        if (f.show && !f.show(val)) continue;
+        if (f.type === 'lines') {
+          (getPath(val, f.k) || []).forEach((row, i) => {
+            for (const c of f.cols) {
+              if (c.type !== 'num' || (c.min === undefined && c.max === undefined)) continue;
+              const r = RB.rangeMsg(row && row[c.k], c.min, c.max);
+              if (r) add(`${f.k}.${i}.${c.k}`, r, `«${c.label}» في السطر ${i + 1}: ${r}`);
+            }
+          });
+          continue;
+        }
+        if (!f.k) continue;
         const v = getPath(val, f.k);
         const empty = v === '' || v === undefined || v === null || (typeof v === 'string' && !v.trim());
-        const m1 = f.req && empty ? 'أكمل الحقل: ' : isDateField(f) && !dateOK(f, v) ? (f.type === 'month' ? 'أدخل شهراً صحيحاً: ' : 'أدخل تاريخاً صحيحاً: ') : '';
-        if (m1) {
-          const fe = m.body.querySelector(`.field[data-k="${f.k}"]`);
-          if (fe) fe.classList.add('invalid');
-          if (!bad) [bad, msg] = [f, m1];
-        }
+        let r = '';
+        if (f.req && empty) {
+          missing.push(f.label);
+          add(f.k, 'هذا الحقل مطلوب');
+        } else if (isDateField(f) && !dateOK(f, v)) add(f.k, '', (f.type === 'month' ? 'أدخل شهراً صحيحاً: ' : 'أدخل تاريخاً صحيحاً: ') + f.label);
+        else if ((f.min !== undefined || f.max !== undefined) && (r = RB.rangeMsg(v, f.min, f.max))) add(f.k, r, `«${f.label}»: ${r}`);
+        else if (f.check && (r = f.check(val))) add(f.k, r, `«${f.label}»: ${r}`);
       }
-      if (bad) {
-        toast(msg + bad.label, 'bad');
-        const fe = m.body.querySelector(`.field[data-k="${bad.k}"] input, .field[data-k="${bad.k}"] select`);
+      const msg = [missing.length ? (missing.length > 1 ? 'أكمل الحقول: ' : 'أكمل الحقل: ') + missing.join('، ') : '', ...other].filter(Boolean).join(' · ');
+      return { errs: out, first, msg };
+    }
+    async function submit() {
+      if (saving) return;
+      // تعديل لم يُرسم بعد (تاريخ أثناء الكتابة): يظهر قبل الحفظ فيطابق المحفوظ ما على الشاشة
+      if (pending) draw();
+      m.body.querySelectorAll('[aria-invalid="true"]').forEach(clearErr);
+      const chk = validate();
+      errs = chk.errs;
+      if (chk.first) {
+        for (const p of Object.keys(errs)) {
+          const el = m.body.querySelector(pathSel(p));
+          if (el) markErr(el, errs[p]);
+        }
+        toast(chk.msg, 'bad');
+        const fe = m.body.querySelector(pathSel(chk.first));
         if (fe) fe.focus();
         return;
       }
@@ -881,10 +1054,10 @@
       e.preventDefault();
       submit();
     });
-    m.foot.innerHTML = `<button type="button" class="btn primary" data-save>${esc(o.ok || 'حفظ')}</button><button type="button" class="btn ghost" data-close>إلغاء</button>${o.extra || ''}`;
+    m.foot.innerHTML = `<button type="button" class="btn primary" data-save>${esc(o.ok || 'حفظ')}</button><small class="muted kbd-hint">Ctrl+Enter للحفظ</small><button type="button" class="btn ghost" data-close>إلغاء</button>${o.extra || ''}`;
     m.foot.querySelector('[data-save]').addEventListener('click', submit);
     draw();
-    const first = m.body.querySelector('input:not([type=checkbox]),select,textarea');
+    const first = (o.focus && m.body.querySelector(o.focus)) || m.body.querySelector('input:not([type=checkbox]),select,textarea');
     if (first && !o.noFocus) first.focus();
     return m;
   }
@@ -2191,6 +2364,7 @@
         v.lifeMonths = RB.assetCat(v.category).life;
         v.taxable = v.category !== 'deposit';
         if (!v.taxable) v.includesVat = false;
+        return 'redraw';
       },
       fields: (v) => [
         { k: 'name', label: 'اسم الأصل', req: 1, placeholder: 'مثال: شواية برقر مسطحة' },
@@ -2220,7 +2394,8 @@
     // بلا ضريبة افتراضياً: سكن العمال والرسوم الحكومية والزكاة
     const noVat = ['housing', 'gov', 'labor_gov', 'zakat'];
     // الزكاة تخص السنة المالية السابقة لسنة الدفع (بداية التغطية = أول تلك السنة)
-    const zakatStart = (d) => +(d || today()).slice(0, 4) - 1 + '-01-01';
+    // تاريخ أثناء كتابته (سنة ناقصة مثل 0002) لا ينتج بداية غير صالحة
+    const zakatStart = (d) => +(RB.isISODate(d) && d >= '2000' ? d : today()).slice(0, 4) - 1 + '-01-01';
     const empCats = ['labor_gov', 'insurance', 'staff'];
     const oneOffCats = RB.GOV_CATS.concat(['rent', 'housing']);
     const base = { id: RB.uid(), date: today(), category: cat0, desc: '', entity: '', amount: '', includesVat: true, taxable: !noVat.includes(cat0), account: 'bank', months: RB.expenseCat(cat0).months, startDate: cat0 === 'zakat' ? zakatStart(today()) : '', employeeId: '', note: '', preset: '' };
@@ -2265,9 +2440,15 @@
           Object.assign(v, { entity: pr.entity, desc: pr.desc, category: pr.category, months: pr.months, taxable: ['insurance', 'shop_insurance', 'software'].includes(pr.category), oneOff: !!pr.oneOff });
           onCategory(v);
         }
-        // تاريخ دفع الزكاة يحدد سنتها ما دامت بداية التغطية هي الافتراضية
-        if (p === 'date' && v.category === 'zakat' && v.startDate && v.startDate === v._zs) v.startDate = v._zs = zakatStart(v.date);
-        if (p === 'preset' || p === 'employeeId' || p === 'category') applyAuto(v);
+        // تاريخ دفع الزكاة يحدد سنتها ما دامت بداية التغطية هي الافتراضية (تظهر عند مغادرة حقل التاريخ)
+        if (p === 'date' && v.category === 'zakat' && v.startDate && v.startDate === v._zs) {
+          v.startDate = v._zs = zakatStart(v.date);
+          return 'redraw';
+        }
+        if (p === 'preset' || p === 'employeeId' || p === 'category') {
+          applyAuto(v);
+          return 'redraw';
+        }
       },
       fields: (v) => [
         ...(isGov && !rec ? [{ k: 'preset', type: 'select', label: 'اختر من القائمة (اختياري)', options: [['', '— بند آخر —']].concat(presetList), redraw: true }] : []),
@@ -2317,6 +2498,7 @@
         if (p === 'nationality' && v.nationality !== 'saudi' && !num(v.levyMonthly)) Object.assign(v, { levyMonthly: L.levyMonthly, iqamaAnnual: L.iqamaAnnual, workPermitAnnual: L.workPermitAnnual });
         // السعودي الجديد: النظام الجديد افتراضياً؛ السجل القائم بلا قيمة يبقى على النظام السابق
         if (p === 'nationality' && v.nationality === 'saudi' && !rec && !v.gosiSystem) v.gosiSystem = 'new';
+        if (p === 'nationality') return 'redraw';
       },
       fields: (v) => [
         { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1 }, { k: 'job', label: 'الوظيفة', placeholder: 'طباخ، كاشير، عامل نظافة…' }] },
@@ -2416,8 +2598,11 @@
       onChange: (p, v) => {
         // مسير التسوية يبقى بسطر من ترك العمل وإن تغيّر شهره
         if (p === 'month' && !rec && !settleEmp) {
+          // الشهر أثناء كتابته (سنة ناقصة مثل 0002-10، أو فارغ) لا يمسح الأسطر ولا ينتج تاريخاً غير صالح
+          if (!(RB.isISOMonth(v.month) && v.month >= '2000-01')) return;
           fill(v);
           v.date = RB.monthEnd(v.month) <= today() ? RB.monthEnd(v.month) : today();
+          return 'redraw';
         }
         const m = p.match(/^lines\.(\d+)\.employeeId$/);
         const row = m && v.lines[+m[1]];
@@ -2427,6 +2612,7 @@
           const pl = RB.isEmployeeActive(e, v.month) ? RB.payrollLine(e, S, v.month) : { basic: 0, housing: 0, allowances: 0, gosiEe: 0, gosiEr: 0 };
           row.name = e.name;
           for (const k of ['basic', 'housing', 'allowances', 'gosiEe', 'gosiEr']) row[k] = pl[k];
+          return 'redraw';
         }
       },
       fields: [
@@ -2436,6 +2622,8 @@
           type: 'lines',
           label: 'الموظفون',
           addLabel: 'إضافة موظف',
+          // اسم الموظف يدخل في اسم كل خانة لقارئ الشاشة: «الأساسي — سليم»
+          rowName: (r) => r.name || (empOf(r.employeeId) || {}).name || '',
           tools: [{ id: 'fill', label: 'تعبئة من بيانات الموظفين', run: (v, rows) => rows.splice(0, rows.length, ...S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S, v.month))) }],
           newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 0 }),
           cols: [
@@ -2510,31 +2698,75 @@
   };
 
   FORMS.purchases = (rec) => {
-    const r = S.settings.vatRate / 100;
+    const set = S.settings;
     const rawOpts = () => [['', '— بند حر —']].concat(S.raw.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name + (x.buyUnit ? ' (' + x.buyUnit + ')' : '')]));
     const last = S.purchases.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+    const payOpts = payOptions(true);
+    // ما غيّره المستخدم بنفسه من هذه الإعدادات لا تغيّره ذاكرة المورد
+    const MEM = ['category', 'account', 'taxable', 'includesVat'];
+    const touched = {};
+    const memText = {
+      category: (v) => (RB.PURCHASE_CATS.find((c) => c.id === v.category) || {}).name || v.category,
+      account: (v) => (payOpts.find((o) => o[0] === v.account) || [0, v.account])[1],
+      taxable: (v) => (v.taxable ? 'خاضعة للضريبة' : 'غير خاضعة للضريبة'),
+      includesVat: (v) => (v.includesVat ? 'المبالغ شاملة الضريبة' : 'المبالغ قبل الضريبة'),
+    };
+    // السعر المعبأ من المادة الخام (row._auto مؤقت لا يُحفظ) يتبع «خاضع» و«شامل الضريبة» ما دام لم يُعدَّل
+    const reprice = (v) => {
+      for (const row of v.lines || []) {
+        if (!row || row._auto === undefined) continue;
+        const raw = row.rawId && S.raw.find((x) => x.id === row.rawId);
+        if (raw && num(row.price) === num(row._auto)) row.price = row._auto = RB.autoLinePrice(raw, v.includesVat, v.taxable, set);
+        else delete row._auto;
+      }
+    };
     return formModal({
       title: rec ? 'تعديل فاتورة مشتريات' : 'فاتورة مشتريات',
       wide: true,
       value: rec ? Object.assign({ updatePrices: false }, rec) : { id: RB.uid(), date: today(), supplier: '', invoiceNo: '', category: 'food', account: 'bank', taxable: true, includesVat: false, lines: [{ rawId: '', desc: '', qty: 1, price: '' }], note: '', updatePrices: true },
       onChange: (p, v) => {
-        const m = p.match(/^lines\.(\d+)\.rawId$/);
+        if (MEM.includes(p)) touched[p] = true;
+        const m = p.match(/^lines\.(\d+)\.(rawId|price)$/);
         if (m) {
           const row = v.lines[+m[1]];
+          if (!row) return;
+          // سعر كتبه المستخدم لا يُحوَّل مع خيارات الضريبة
+          if (m[2] === 'price') {
+            delete row._auto;
+            return;
+          }
           const raw = S.raw.find((x) => x.id === row.rawId);
           if (raw) {
             row.desc = raw.name;
-            row.price = v.includesVat && v.taxable ? r2(raw.price * (1 + r)) : raw.price;
+            row.price = row._auto = RB.autoLinePrice(raw, v.includesVat, v.taxable, set);
+          } else delete row._auto;
+          return 'redraw';
+        }
+        let again = p === 'includesVat' || p === 'taxable';
+        if (p === 'supplier' && !rec) {
+          // ذاكرة المورد: إعدادات آخر فاتورة منه، إلا ما غيّره المستخدم بنفسه، وتظهر في النموذج قبل الحفظ
+          const name = String(v.supplier || '').trim();
+          const prev = name && S.purchases.filter((x) => String(x.supplier || '').trim() === name).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+          if (prev) {
+            const mem = { category: prev.category, account: prev.account, taxable: !!prev.taxable, includesVat: !!prev.includesVat };
+            const ok = { category: (x) => RB.PURCHASE_CATS.some((c) => c.id === x), account: (x) => payOpts.some((o) => o[0] === x), taxable: () => true, includesVat: () => true };
+            const ch = MEM.filter((k) => !touched[k] && ok[k](mem[k]) && v[k] !== mem[k]);
+            if (ch.length) {
+              ch.forEach((k) => (v[k] = mem[k]));
+              const txt = ch.filter((k) => k !== 'includesVat' || v.taxable).map((k) => memText[k](v));
+              if (txt.length) toast('طُبّقت إعدادات آخر فاتورة من هذا المورد: ' + txt.join(' · ') + ' — يمكنك تغييرها');
+              again = true;
+            }
           }
         }
-        if (p === 'supplier' && !rec) {
-          const prev = S.purchases.filter((x) => x.supplier === v.supplier).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
-          if (prev) Object.assign(v, { category: prev.category, account: prev.account, taxable: prev.taxable, includesVat: prev.includesVat });
+        if (again) {
+          reprice(v);
+          return 'redraw';
         }
       },
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'supplier', label: 'المورد', req: 1, list: () => [...new Set(S.purchases.map((p) => p.supplier).filter(Boolean))], placeholder: last ? last.supplier : '' }, { k: 'invoiceNo', label: 'رقم الفاتورة' }] },
-        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.PURCHASE_CATS.map((c) => [c.id, c.name]) }, { k: 'account', type: 'select', label: 'الدفع', options: payOptions(true), help: 'آجل = يُسدد للمورد لاحقاً' }] },
+        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.PURCHASE_CATS.map((c) => [c.id, c.name]) }, { k: 'account', type: 'select', label: 'الدفع', options: payOpts, help: 'آجل = يُسدد للمورد لاحقاً' }] },
         ...vatFields(true),
         {
           k: 'lines',
@@ -2546,7 +2778,7 @@
             { k: 'rawId', label: 'المادة الخام', type: 'select', options: rawOpts, redraw: true, w: '12rem' },
             { k: 'desc', label: 'الوصف' },
             { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
-            { k: 'price', label: 'سعر الوحدة', type: 'num', num: 1 },
+            { k: 'price', label: 'سعر الوحدة', type: 'num', num: 1, min: 0 },
             { k: 'total', label: 'المجموع', num: 1, calc: (row) => fmt(num(row.qty) * num(row.price)) },
           ],
           foot: (v) => vatPreview(RB.purchaseTotal(v), v.includesVat, v.taxable, v.date),
@@ -2558,21 +2790,19 @@
       onSave: (v) => {
         v.lines = v.lines.filter((l) => num(l.qty) || num(l.price) || l.desc || l.rawId);
         if (!v.lines.length) return 'أضف صنفاً واحداً على الأقل.';
-        const upd = v.updatePrices;
+        // السعر المعبأ تلقائياً من المادة الخام لا يحمل سعراً جديداً لها
+        const typed = v.lines.filter((l) => !(l._auto !== undefined && num(l.price) === num(l._auto)));
+        v.lines.forEach((l) => delete l._auto);
+        const updPrices = v.updatePrices;
         delete v.updatePrices;
-        upsert('purchases', v);
-        if (upd) {
-          let n = 0;
-          for (const l of v.lines) {
-            const raw = l.rawId && S.raw.find((x) => x.id === l.rawId);
-            if (!raw || !num(l.price)) continue;
-            const net = v.includesVat && v.taxable ? r2(num(l.price) / (1 + r)) : num(l.price);
-            if (Math.abs(net - num(raw.price)) > 0.004) {
-              upsert('raw', Object.assign({}, raw, { price: net, taxable: !!v.taxable }));
-              n++;
-            }
+        if (upsert('purchases', v) === false) return false;
+        if (updPrices) {
+          const ch = RB.rawPriceUpdates(Object.assign({}, v, { lines: typed }), S.raw, set);
+          for (const c of ch) {
+            const raw = S.raw.find((x) => x.id === c.id);
+            if (raw) upsert('raw', Object.assign({}, raw, { price: c.price, taxable: !!v.taxable }));
           }
-          if (n) toast(`تحدّث سعر ${n} من المواد الخام وتكلفة الوصفات المرتبطة بها.`);
+          if (ch.length) toast(`تحدّث سعر ${ch.length} من المواد الخام وتكلفة الوصفات المرتبطة بها: ` + ch.map((c) => `${c.name}: ${ltr(fmt(c.old) + ' → ' + fmt(c.price))}`).join('، '));
         }
       },
     });
@@ -2593,10 +2823,13 @@
       // تغيير المورد يغيّر المبلغ المقترح، ما لم يكتب المستخدم مبلغاً بنفسه
       onChange: (p, v) => {
         if (p !== 'supplier' || rec) return;
+        const was = v.amount;
         if (v.amount === '' || v.amount === auto) v.amount = auto = owed(v.supplier);
+        if (v.amount !== was) return 'redraw';
       },
+      // المورد بلا إعادة رسم أثناء الكتابة: المعاينة تتحدث، والمبلغ المقترح يُرسم فقط إن تغيّر
       fields: [
-        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'supplier', label: 'المورد', req: 1, list: () => bal.map((b) => b.supplier), redraw: true }] },
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'supplier', label: 'المورد', req: 1, list: () => bal.map((b) => b.supplier) }] },
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'من', options: payOptions(false) }] },
         { k: 'note', label: 'ملاحظة' },
       ],
@@ -2618,7 +2851,7 @@
         { type: 'section', label: 'كيف تشتريها وكيف تستخدمها' },
         { type: 'row', fields: [{ k: 'buyUnit', label: 'وحدة الشراء', req: 1, placeholder: 'كرتون 10 كجم' }, { k: 'price', type: 'money', label: 'سعر وحدة الشراء (بدون ضريبة)', req: 1, min: 0 }] },
         { type: 'row', fields: [{ k: 'useUnit', type: 'select', label: 'وحدة الاستخدام في الوصفات', options: RB.UNITS, redraw: true }, { k: 'packQty', type: 'num', label: 'كم وحدة استخدام في وحدة الشراء؟', req: 1, min: 0, help: 'كرتون 10 كجم بوحدة جم = 10000' }] },
-        { type: 'row', fields: [{ k: 'wastePct', type: 'num', label: 'نسبة الهدر %', min: 0, help: 'تقشير، تقطيع، تلف' }, { k: 'taxable', type: 'check', label: 'خاضعة لضريبة القيمة المضافة', help: 'حسب المورد المعتاد: أزلها فقط إذا كان المورد غير مسجل في الضريبة' }] },
+        { type: 'row', fields: [{ k: 'wastePct', type: 'num', label: 'نسبة الهدر %', min: 0, max: 95, help: 'تقشير، تقطيع، تلف' }, { k: 'taxable', type: 'check', label: 'خاضعة لضريبة القيمة المضافة', help: 'حسب المورد المعتاد: أزلها فقط إذا كان المورد غير مسجل في الضريبة' }] },
       ],
       preview: (v) => {
         const u = RB.rawUnitCost(v, S);
@@ -2641,6 +2874,7 @@
         if (m) {
           const raw = S.raw.find((x) => x.id === v.lines[+m[1]].rawId);
           if (raw) v.lines[+m[1]].price = raw.price;
+          return 'redraw';
         }
       },
       fields: [
@@ -2654,8 +2888,8 @@
           cols: [
             { k: 'rawId', label: 'المادة', type: 'select', options: () => [['', '—']].concat(S.raw.map((x) => [x.id, x.name])), redraw: true, w: '12rem' },
             { k: 'unit', label: 'الوحدة', calc: (row) => esc((S.raw.find((x) => x.id === row.rawId) || {}).buyUnit || '') },
-            { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
-            { k: 'price', label: 'سعر الشراء (بدون ضريبة)', type: 'num', num: 1 },
+            { k: 'qty', label: 'الكمية', type: 'num', num: 1, min: 0 },
+            { k: 'price', label: 'سعر الشراء (بدون ضريبة)', type: 'num', num: 1, min: 0 },
             { k: 'value', label: 'القيمة', num: 1, calc: (row, v) => fmt(num(row.qty) * RB.stockLinePrice(row, S, v.date)) },
           ],
           foot: (v) => `<div class="pv-grid"><div><span>قيمة المخزون</span>${money(RB.stockValue(v, S))}</div></div>${RB.isVatReg(S.settings, v.date) ? '' : '<p class="note">المطعم غير مسجل في الضريبة: قيمة الجرد تشمل الضريبة للمواد الخاضعة لأنها جزء من التكلفة</p>'}`,
@@ -2691,7 +2925,7 @@
             return [['', '— اختر —']].concat(ok.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name]));
           },
         },
-        { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
+        { k: 'qty', label: 'الكمية', type: 'num', num: 1, min: 0 },
         { k: 'unit', label: 'الوحدة', calc: (row) => esc(row.id ? RB.itemUnit(S, row.kind, row.id) : '') },
         { k: 'cost', label: 'التكلفة', num: 1, calc: (row) => (row.id ? fmt(costing().unit(row.kind, row.id) * num(row.qty)) : '') },
       ],
@@ -2793,16 +3027,18 @@
       title: rec ? 'تعديل إقفال يومي' : 'إقفال يومي',
       wide: true,
       value: v0,
+      // الإقفال الجديد يبدأ من مبلغ أول قناة
+      focus: rec ? '' : '[data-path^="channels."][data-path$=".amount"]',
+      // اليوم بلا إعادة رسم (يُكتب بلوحة المفاتيح بمقاطعه)، وتنبيه الإقفال الثاني لنفس اليوم في المعاينة
       fields: [
-        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'اليوم', req: 1, redraw: true }, { k: 'note', label: 'ملاحظات' }] },
-        { type: 'html', html: (v) => (!rec && S.sales.some((s) => s.date === v.date) ? `<p class="note bad">يوجد إقفال مسجل لهذا اليوم. الحفظ يضيف إقفالاً ثانياً (مثلاً وردية مسائية).</p>` : '') },
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'اليوم', req: 1 }, { k: 'note', label: 'ملاحظات' }] },
         {
           type: 'html',
           html: (v) =>
-            `<div class="field"><label>المبيعات حسب القناة (شاملة الضريبة)</label><div class="tbl-wrap"><table class="lines-tbl"><thead><tr><th>القناة</th><th class="num">المبلغ</th><th class="num">عدد الطلبات</th><th class="num">العمولة</th></tr></thead><tbody>${chs
+            `<div class="field"><span class="lines-cap" id="sales-ch-cap">المبيعات حسب القناة (شاملة الضريبة)</span><div class="tbl-wrap"><table class="lines-tbl" aria-labelledby="sales-ch-cap"><thead><tr><th>القناة</th><th class="num">المبلغ</th><th class="num">عدد الطلبات</th><th class="num">العمولة</th></tr></thead><tbody>${chs
               .map((c) => {
                 const x = v.channels[c.id] || {};
-                return `<tr><td><b>${esc(c.name)}</b></td><td class="num"><input type="number" inputmode="decimal" step="any" data-type="num" data-path="channels.${esc(c.id)}.amount" value="${x.amount === undefined ? '' : esc(x.amount)}" aria-label="مبلغ ${esc(c.name)}"></td><td class="num"><input type="number" inputmode="numeric" step="1" data-type="num" data-path="channels.${esc(c.id)}.orders" value="${x.orders === undefined ? '' : esc(x.orders)}" aria-label="طلبات ${esc(c.name)}"></td><td class="num muted">${c.type === 'cash' ? '—' : pct(x.feePct !== undefined && x.feePct !== '' ? x.feePct : c.feePct, 1)}</td></tr>`;
+                return `<tr><td><b>${esc(c.name)}</b></td><td class="num"><input type="number" inputmode="decimal" step="any" min="0" data-type="num" data-path="channels.${esc(c.id)}.amount" value="${x.amount === undefined ? '' : esc(x.amount)}" aria-label="مبلغ ${esc(c.name)}"></td><td class="num"><input type="number" inputmode="numeric" step="1" min="0" data-type="num" data-path="channels.${esc(c.id)}.orders" value="${x.orders === undefined ? '' : esc(x.orders)}" aria-label="طلبات ${esc(c.name)}"></td><td class="num muted">${c.type === 'cash' ? '—' : pct(x.feePct !== undefined && x.feePct !== '' ? x.feePct : c.feePct, 1)}</td></tr>`;
               })
               .join('')}</tbody></table></div></div>`,
         },
@@ -2815,7 +3051,7 @@
           newRow: () => ({ productId: '', qty: '' }),
           cols: [
             { k: 'productId', label: 'الصنف', type: 'select', options: prodOpts, redraw: true, w: '14rem' },
-            { k: 'qty', label: 'الكمية', type: 'num', num: 1 },
+            { k: 'qty', label: 'الكمية', type: 'num', num: 1, min: 0 },
             { k: 'val', label: 'بسعر المحل', num: 1, calc: (row) => fmt(num((S.products.find((p) => p.id === row.productId) || {}).price) * num(row.qty)) },
           ],
           empty: 'من تقرير الأصناف في جهاز الكاشير: كم بعت من كل صنف.',
@@ -2834,9 +3070,12 @@
           orders += x.orders;
         }
         const itemsVal = RB.sum(v.items || [], (row) => num((S.products.find((p) => p.id === row.productId) || {}).price) * num(row.qty));
-        return `<div class="pv-grid four"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
+        const twice = !rec && S.sales.some((s) => s.date === v.date) ? `<p class="note bad">يوجد إقفال مسجل لهذا اليوم. الحفظ يضيف إقفالاً ثانياً (مثلاً وردية مسائية).</p>` : '';
+        return `${twice}<div class="pv-grid four"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
       },
       onSave: (v) => {
+        if (Object.keys(v.channels).some((id) => num(v.channels[id].amount) < 0 || num(v.channels[id].orders) < 0)) return 'المبالغ والطلبات لا تكون سالبة';
+        if ((v.items || []).some((i) => num(i.qty) < 0)) return 'كميات الأصناف لا تكون سالبة';
         const out = {};
         for (const id of Object.keys(v.channels)) {
           const x = v.channels[id];
@@ -2894,7 +3133,9 @@
       title: rec ? 'تعديل تحويل' : x === 'bank' ? 'سحب من البنك إلى الصندوق' : 'إيداع نقدية الصندوق في البنك',
       value: rec || { id: RB.uid(), date: today(), from: x === 'bank' ? 'bank' : 'cash', to: x === 'bank' ? 'cash' : 'bank', amount: x === 'bank' ? '' : Math.max(0, Math.floor((RB.balances(ledger(today()).entries, null, today())['1101'] || 0) / 100) * 100) || '', note: '' },
       onChange: (p, v) => {
-        if (p === 'from') v.to = v.from === 'cash' ? 'bank' : 'cash';
+        if (p !== 'from') return;
+        v.to = v.from === 'cash' ? 'bank' : 'cash';
+        return 'redraw';
       },
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'from', type: 'select', label: 'من', options: [['cash', RB.PAY_LABEL.cash], ['bank', RB.PAY_LABEL.bank]], redraw: true }] },
@@ -2921,6 +3162,7 @@
         if (p !== 'period' || rec) return;
         const q = pers.find((z) => z.label === v.period);
         v.amount = q && q.remaining > 0 ? r2(q.remaining) : '';
+        return 'redraw';
       },
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: labels, redraw: true }] },
@@ -2938,7 +3180,7 @@
       value: c ? clone(c) : { id: 'ch' + Date.now().toString(36), name: '', type: 'app', feePct: 20, active: true },
       fields: [
         { k: 'name', label: 'الاسم', req: 1, placeholder: 'اسم التطبيق' },
-        { type: 'row', fields: [{ k: 'type', type: 'select', label: 'النوع', options: Object.entries(RB.CHANNEL_TYPES), redraw: true }, { k: 'feePct', type: 'num', label: 'العمولة أو الرسوم %', min: 0, show: (v) => v.type !== 'cash', help: 'نسبة من قيمة الطلب شاملة الضريبة' }] },
+        { type: 'row', fields: [{ k: 'type', type: 'select', label: 'النوع', options: Object.entries(RB.CHANNEL_TYPES), redraw: true }, { k: 'feePct', type: 'num', label: 'العمولة أو الرسوم %', min: 0, max: 100, show: (v) => v.type !== 'cash', help: 'نسبة من قيمة الطلب شاملة الضريبة' }] },
         { k: 'active', type: 'check', label: 'مفعّلة' },
       ],
       onSave: (v) => {
@@ -2958,7 +3200,13 @@
         { k: 'name', label: 'اسم المطعم', req: 1 },
         { type: 'row', fields: [{ k: 'city', label: 'المدينة' }, { k: 'crNumber', label: 'رقم السجل التجاري' }] },
         { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح', help: 'يبدأ منه إهلاك الأصول، ويفصل مصاريف ما قبل الافتتاح' }, { k: 'currency', label: 'العملة' }] },
-        { type: 'row', fields: [{ k: 'targetFoodCost', type: 'num', label: 'مستهدف تكلفة الطعام %', min: 1, help: 'شائع في مطاعم البرقر بين 28% و35%' }, { k: 'priceRounding', type: 'num', label: 'تقريب السعر المقترح لأقرب', min: 0.25, help: '1 = لأقرب ريال' }] },
+        {
+          type: 'row',
+          fields: [
+            { k: 'targetFoodCost', type: 'num', label: 'مستهدف تكلفة الطعام %', req: 1, min: 1, max: 100, help: 'شائع في مطاعم البرقر بين 28% و35%' },
+            { k: 'priceRounding', type: 'num', label: 'تقريب السعر المقترح لأقرب', req: 1, min: 0, check: (x) => (num(x.priceRounding) > 0 ? '' : 'يجب أن تكون القيمة أكبر من صفر'), help: '1 = لأقرب ريال' },
+          ],
+        },
       ],
       vat: (v) => [
         { k: 'vatRegistered', type: 'check', label: 'المطعم مسجل في ضريبة القيمة المضافة', redraw: true, help: 'التسجيل إلزامي إذا تجاوزت المبيعات الخاضعة 375,000 ر.س خلال 12 شهراً، واختياري من 187,500 ر.س' },
@@ -2970,19 +3218,19 @@
           req: !st.vatRegistered && v.vatRegistered && hasVatData() ? 1 : 0,
           help: 'اتركه فارغاً إن كان المطعم مسجلاً منذ البداية؛ العمليات قبله بلا ضريبة مخرجات ولا تُسترد ضريبة مشترياتها',
         },
-        { type: 'row', fields: [{ k: 'vatNumber', label: 'الرقم الضريبي' }, { k: 'vatRate', type: 'num', label: 'نسبة الضريبة %', min: 0 }] },
+        { type: 'row', fields: [{ k: 'vatNumber', label: 'الرقم الضريبي' }, { k: 'vatRate', type: 'num', label: 'نسبة الضريبة %', req: 1, min: 0, max: 100, check: (x) => (x.vatRegistered && !(num(x.vatRate) > 0) ? 'لا تكون صفراً والمطعم مسجل في الضريبة' : '') }] },
         { k: 'vatPeriod', type: 'select', label: 'فترة الإقرار', options: [['quarterly', 'ربع سنوية'], ['monthly', 'شهرية']] },
         { k: 'feeVat', type: 'check', label: 'عمولات التطبيقات ورسوم الشبكة عليها ضريبة قيمة مضافة' },
       ],
       labor: [
         { type: 'section', label: 'نسب التأمينات الاجتماعية من الأجر الخاضع' },
         { type: 'html', html: () => '<p class="note">الأجر الخاضع = الأساسي + بدل السكن (أو السكن العيني مقدّراً بأجر شهرين في السنة)</p>' },
-        { type: 'row', fields: [{ k: 'gosi.saudiEr', type: 'num', label: 'السعودي (النظام السابق) — حصة المنشأة %' }, { k: 'gosi.saudiEe', type: 'num', label: 'السعودي (النظام السابق) — حصة الموظف %' }] },
+        { type: 'row', fields: [{ k: 'gosi.saudiEr', type: 'num', label: 'السعودي (النظام السابق) — حصة المنشأة %', req: 1, min: 0, max: 100 }, { k: 'gosi.saudiEe', type: 'num', label: 'السعودي (النظام السابق) — حصة الموظف %', req: 1, min: 0, max: 100 }] },
         { type: 'html', html: () => '<p class="note">المشتركون الجدد (أول تسجيل من 3 يوليو 2024): تُضاف زيادة فرع المعاشات 0.5% لكل طرف كل يوليو من 2025 حتى 2028 (من يوليو 2026: المنشأة 12.75% والموظف 10.75%).</p>' },
-        { type: 'row', fields: [{ k: 'gosi.expatEr', type: 'num', label: 'غير السعودي — حصة المنشأة % (الأخطار المهنية)' }, { k: 'gosi.cap', type: 'num', label: 'الحد الأعلى للأجر الخاضع' }] },
+        { type: 'row', fields: [{ k: 'gosi.expatEr', type: 'num', label: 'غير السعودي — حصة المنشأة % (الأخطار المهنية)', req: 1, min: 0, max: 100 }, { k: 'gosi.cap', type: 'num', label: 'الحد الأعلى للأجر الخاضع', min: 0, help: 'فارغ أو 0 = بلا حد أعلى' }] },
         { type: 'section', label: 'قيم افتراضية تتعبأ عند إضافة موظف' },
-        { type: 'row', fields: [{ k: 'labor.levyMonthly', type: 'num', label: 'المقابل المالي شهرياً', help: LEVY_HELP }, { k: 'labor.iqamaAnnual', type: 'num', label: 'رسوم الإقامة سنوياً' }] },
-        { type: 'row', fields: [{ k: 'labor.workPermitAnnual', type: 'num', label: 'رخصة العمل سنوياً' }, { k: 'labor.medicalAnnual', type: 'num', label: 'التأمين الطبي سنوياً', help: MED_HELP }] },
+        { type: 'row', fields: [{ k: 'labor.levyMonthly', type: 'num', label: 'المقابل المالي شهرياً', min: 0, help: LEVY_HELP }, { k: 'labor.iqamaAnnual', type: 'num', label: 'رسوم الإقامة سنوياً', min: 0 }] },
+        { type: 'row', fields: [{ k: 'labor.workPermitAnnual', type: 'num', label: 'رخصة العمل سنوياً', min: 0 }, { k: 'labor.medicalAnnual', type: 'num', label: 'التأمين الطبي سنوياً', min: 0, help: MED_HELP }] },
       ],
     };
     formModal({
@@ -2991,10 +3239,16 @@
       fields: defs[which],
       onChange: (p, v) => {
         // تسجيل جديد ولدى المطعم عمليات سابقة: السريان من اليوم حتى لا تتغير الفترات الماضية
-        if (which === 'vat' && p === 'vatRegistered' && v.vatRegistered && !st.vatRegistered && hasVatData() && !v.vatRegisteredFrom) v.vatRegisteredFrom = today();
+        if (which === 'vat' && p === 'vatRegistered' && v.vatRegistered && !st.vatRegistered && hasVatData() && !v.vatRegisteredFrom) {
+          v.vatRegisteredFrom = today();
+          return 'redraw';
+        }
       },
       onSave: async (v) => {
         if (roBlock()) return false;
+        // الأرقام تُحفظ أرقاماً: الحقل الفارغ (الحد الأعلى للأجر مثلاً) صفر لا نص فارغ
+        const list = typeof defs[which] === 'function' ? defs[which](v) : defs[which];
+        for (const f of flatFields(list)) if (f.k && (f.type === 'num' || f.type === 'money')) setPath(v, f.k, num(getPath(v, f.k)));
         const warn = which === 'vat' ? vatHistoryChanges(st, v) : '';
         if (warn && !(await confirmBox(warn + ' متابعة؟', { danger: true }))) return false;
         S.settings = Object.assign(S.settings, v);

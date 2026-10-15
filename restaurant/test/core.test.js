@@ -1726,3 +1726,49 @@ test('علامة الاستيراد المشترك: جارٍ من جهاز آخ�
   assert.equal(st({ status: 'failed', at: at(1000), by: 's2' }, now, 's1'), 'stale');
   assert.equal(st({ status: 'running', at: 'أمس' }, now, 's1'), 'stale');
 });
+
+test('حدود الحقول الرقمية: الفراغ للمطلوب، والحد الأدنى والأعلى، والسالب حيث له معنى (WP4)', () => {
+  assert.equal(RB.rangeMsg('', 0), '');
+  assert.equal(RB.rangeMsg(undefined, 0), '');
+  assert.equal(RB.rangeMsg(null, 0, 95), '');
+  assert.equal(RB.rangeMsg(-5000, 0), 'القيمة لا تقل عن 0');
+  assert.equal(RB.rangeMsg('-5000', 0), 'القيمة لا تقل عن 0');
+  assert.equal(RB.rangeMsg(0, 0), '');
+  assert.equal(RB.rangeMsg(100, 0, 95), 'القيمة لا تزيد عن 95');
+  assert.equal(RB.rangeMsg(95, 0, 95), '');
+  assert.equal(RB.rangeMsg(0.5, 1, 100), 'القيمة لا تقل عن 1');
+  assert.equal(RB.rangeMsg('abc', 0), 'أدخل رقماً');
+  // بلا حدود (استرداد الضريبة بالسالب، كمية المرتجع بالسالب): مقبول
+  assert.equal(RB.rangeMsg(-500), '');
+  assert.equal(RB.rangeMsg(-2, undefined, undefined), '');
+});
+
+test('تحديث أسعار المواد الخام من الفاتورة: السعر بلا ضريبة، والمرتجع والسعر السالب لا يغيّران شيئاً (WP4)', () => {
+  const set = RB.defaultSettings();
+  const raws = [{ id: 'beef', name: 'لحم', price: 340 }, { id: 'bun', name: 'خبز', price: 12.5 }];
+  const inv = (lines, o) => Object.assign({ includesVat: false, taxable: true, lines }, o || {});
+  // السعر المعبأ تلقائياً يتبع «شامل الضريبة» ثم يرجع منه إلى نفس السعر
+  assert.equal(RB.autoLinePrice(raws[0], true, true, set), 391);
+  assert.equal(RB.autoLinePrice(raws[0], true, false, set), 340);
+  assert.equal(RB.autoLinePrice(raws[0], false, true, set), 340);
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 2, price: 391 }], { includesVat: true }), raws, set), []);
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 2, price: 340 }]), raws, set), []);
+  // ذهاب وإياب بالضريبة لا يغيّر أي سعر بخانتين عشريتين
+  for (const p of [0.05, 1.99, 12.5, 17.35, 340, 1234.56]) {
+    const r = { id: 'x', name: 'x', price: p };
+    assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'x', qty: 1, price: RB.autoLinePrice(r, true, true, set) }], { includesVat: true }), [r], set), [], String(p));
+  }
+  // سعر جديد بالضريبة يُحفظ بلا ضريبة
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 1, price: 414 }], { includesVat: true }), raws, set), [{ id: 'beef', name: 'لحم', old: 340, price: 360 }]);
+  // غير خاضعة: السعر كما هو حتى لو «شامل الضريبة»
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 1, price: 360 }], { includesVat: true, taxable: false }), raws, set), [{ id: 'beef', name: 'لحم', old: 340, price: 360 }]);
+  // مرتجع (كمية سالبة) أو سعر سالب أو صفر، أو مادة غير موجودة: لا تحديث
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: -2, price: 300 }]), raws, set), []);
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 2, price: -340 }]), raws, set), []);
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 2, price: 0 }, { rawId: 'gone', qty: 1, price: 5 }, { desc: 'حر', qty: 1, price: 5 }]), raws, set), []);
+  // سطران لنفس المادة: آخر سطر شراء هو السعر الجديد، وتغيير واحد يُذكر
+  const two = RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 1, price: 350 }, { rawId: 'beef', qty: -1, price: 999 }, { rawId: 'beef', qty: 3, price: 355 }, { rawId: 'bun', qty: 10, price: 13 }]), raws, set);
+  assert.deepEqual(two, [{ id: 'beef', name: 'لحم', old: 340, price: 355 }, { id: 'bun', name: 'خبز', old: 12.5, price: 13 }]);
+  // سطر بآخر سعر نفسه بين سطرين: لا يعني تغييراً إن كان الأخير مثل الحالي
+  assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 1, price: 350 }, { rawId: 'beef', qty: 1, price: 340 }]), raws, set), []);
+});
