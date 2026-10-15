@@ -414,7 +414,8 @@
     }).join('');
   }
   function fieldHTML(f, val) {
-    if (f.show && !f.show(val)) return '';
+    // live: الحقل يُرسم دائماً ويُخفى أو يظهر مع كل إدخال (بلا إعادة رسم النموذج، فلا ينقطع إدخال التاريخ بلوحة المفاتيح)
+    if (f.show && !f.show(val) && !f.live) return '';
     if (f.type === 'row') return `<div class="frow">${f.fields.map((x) => fieldHTML(x, val)).join('')}</div>`;
     if (f.type === 'html') return `<div class="fhtml">${f.html(val)}</div>`;
     if (f.type === 'section') return `<h4 class="fsec">${esc(f.label)}</h4>`;
@@ -432,7 +433,7 @@
         break;
       }
       case 'check':
-        return `<div class="field check ${f.cls || ''}"><label class="checkl"><input id="${id}" type="checkbox" data-path="${f.k}" ${rd} ${v ? 'checked' : ''}><span>${esc(f.label)}</span></label>${f.help ? `<small>${f.help}</small>` : ''}</div>`;
+        return `<div class="field check ${f.cls || ''}" data-k="${f.k}" ${f.live && f.show && !f.show(val) ? 'hidden' : ''}><label class="checkl"><input id="${id}" type="checkbox" data-path="${f.k}" ${rd} ${v ? 'checked' : ''}><span>${esc(f.label)}</span></label>${f.help ? `<small>${f.help}</small>` : ''}</div>`;
       case 'textarea':
         inp = `<textarea id="${id}" data-path="${f.k}" rows="2">${esc(v)}</textarea>`;
         break;
@@ -512,6 +513,11 @@
         });
         const ft = m.body.querySelector(`[data-lfoot="${f.k}"]`);
         if (ft && f.foot) ft.innerHTML = f.foot(val);
+      }
+      for (const f of flatFields(fields())) {
+        if (!f.live || !f.show) continue;
+        const fe = m.body.querySelector(`.field[data-k="${f.k}"]`);
+        if (fe) fe.hidden = !f.show(val);
       }
       // مربعات الاختيار المشتقة (get) تتبع الحقول التي تُشتق منها ما لم يحددها المستخدم صراحة
       for (const f of flatFields(fields())) {
@@ -811,9 +817,28 @@
     }
     const shares = RB.sum(S.partners, (p) => num(p.share));
     if (S.partners.length && Math.abs(shares - 100) > 0.01) out.push(['warn', `مجموع نسب الشركاء ${fmt(shares)}% وليس 100%.`, btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
+    out.push(...eosbAlerts(false));
     if (!out.length) return `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
-    return `<ul class="alerts">${out.map(([k, t, a]) => `<li class="al ${k}"><span class="al-dot" aria-hidden="true"></span><span class="al-t">${t}</span>${a}</li>`).join('')}</ul>`;
+    return alertsUL(out);
   }
+  const alertsUL = (out) => `<ul class="alerts">${out.map(([k, t, a]) => `<li class="al ${k}"><span class="al-dot" aria-hidden="true"></span><span class="al-t">${t}</span>${a}</li>`).join('')}</ul>`;
+  // مخصص نهاية خدمة لم يُسوَّ: من ترك العمل ولم تُسجَّل مكافأته ولا أنه لا مكافأة له (يبقى التزاماً حتى ذلك)،
+  // و(في صفحة العمال فقط: all) المتوقف بلا تاريخ ترك العمل
+  function eosbAlerts(all) {
+    return RB.eosbUnsettled(S, today())
+      .filter((u) => all || u.reason === 'pending')
+      .map((u) => {
+        const e = u.employee;
+        const edit = btn('بيانات الموظف', 'edit', `data-s="employees" data-id="${esc(e.id)}"`, 'sm ghost');
+        if (u.reason === 'noEnd') return ['warn', `${esc(e.name)} متوقف بلا «تاريخ ترك العمل»، ومخصص نهاية الخدمة له ${fmt(u.amount)} ${cur()} باقٍ في الالتزامات. إن ترك العمل فحدّد تاريخه لتُسوّى مكافأته.`, `<span class="al-a">${edit}</span>`];
+        return [
+          'warn',
+          `${esc(e.name)} ترك العمل في ${dtText(e.endDate)} ولم تُسوَّ مكافأة نهاية الخدمة: مخصصه ${fmt(u.amount)} ${cur()} باقٍ في الالتزامات. سجّل المكافأة المصروفة له، أو اختر في بياناته «لا مكافأة مستحقة».`,
+          `<span class="al-a">${btn('سجّل المكافأة', 'add', `data-s="payroll" data-x="${esc(e.id)}"`, 'sm')}${edit}</span>`,
+        ];
+      });
+  }
+  const EMP_STATUS = { active: 'على رأس العمل', left: 'ترك العمل', stopped: 'متوقف', future: 'لم يباشر بعد' };
   // زرّا متابعة التجديد: تجديد البند، أو إيقاف متابعته (رسم لن يتكرر)
   const renewActs = (r) => `<span class="al-a">${btn('تجديد', 'renew', `data-id="${esc(r.rec.id)}"`, 'sm')}${btn('إيقاف المتابعة', 'stopRenew', `data-id="${esc(r.rec.id)}"`, 'sm ghost')}</span>`;
   const empName = (id, pre) => {
@@ -1062,7 +1087,8 @@
             { h: 'العدد', num: 1, f: (p) => RB.payrollTotals(p).count },
             { h: 'إجمالي الرواتب', num: 1, f: (p) => N(RB.payrollTotals(p).gross) },
             { h: 'تأمينات (موظف + منشأة)', num: 1, f: (p) => N(RB.payrollTotals(p).gosiEe + RB.payrollTotals(p).gosiEr) },
-            { h: 'الصافي المصروف', num: 1, f: (p) => N(RB.payrollTotals(p).net) },
+            // ما خرج من الحساب للموظفين: الصافي + مكافأة نهاية الخدمة المصروفة (مسير تسوية بلا راتب يظهر بمكافأته)
+            { h: 'الصافي المصروف', num: 1, f: (p) => { const t = RB.payrollTotals(p); return N(t.net + t.eosbPaid) + (t.eosbPaid ? `<div class="muted sm">منه نهاية الخدمة<br>${N(t.eosbPaid)}</div>` : ''); } },
             { h: 'التكلفة على المطعم', num: 1, f: (p) => N(RB.payrollTotals(p).cost) },
             { h: 'من', f: (p) => `<span class="muted">${esc(RB.srcLabel(p.account, S))}</span>` },
             { h: '', f: (p) => rowActs('payroll', p.id) },
@@ -1070,15 +1096,16 @@
           runs,
           { empty: 'لا توجد مسيرات رواتب. اضغط «مسير رواتب» ليتعبأ تلقائياً من بيانات الموظفين.' }
         ),
-        { sub: 'التكلفة على المطعم = إجمالي الرواتب + حصة المنشأة في التأمينات. حصة الموظف تُخصم من راتبه وتُورّد مع حصة المنشأة.' }
+        { sub: 'التكلفة على المطعم = إجمالي الرواتب + حصة المنشأة في التأمينات. حصة الموظف تُخصم من راتبه وتُورّد مع حصة المنشأة. «الصافي المصروف» يشمل مكافأة نهاية الخدمة المصروفة، وهي من مخصصها المتراكم فلا تدخل في التكلفة.' }
       );
       return h;
     }
     // المقابل المالي 700 بدل 800 إن كان السعوديون مساوين للوافدين أو أكثر
     const expats = active.filter((e) => e.nationality !== 'saudi');
-    if (expats.length && saudi >= expats.length && expats.some((e) => num(e.levyMonthly) >= 800)) {
-      h += card('', `<ul class="alerts"><li class="al warn"><span class="al-dot" aria-hidden="true"></span><span class="al-t">عدد السعوديين ≥ الوافدين: قد يكون المقابل المالي 700 ر.س — راجع قوى.</span></li></ul>`);
-    }
+    const al = [];
+    if (expats.length && saudi >= expats.length && expats.some((e) => num(e.levyMonthly) >= 800)) al.push(['warn', 'عدد السعوديين ≥ الوافدين: قد يكون المقابل المالي 700 ر.س — راجع قوى.', '']);
+    al.push(...eosbAlerts(true));
+    if (al.length) h += card('', alertsUL(al));
     h += card(
       'الموظفون',
       table(
@@ -1091,7 +1118,7 @@
           { h: 'المقابل المالي<br>والإقامة', num: 1, f: (e) => N(RB.sum(costs[e.id].items.filter((i) => i.k === 'levy' || i.k === 'iqama'), (i) => i.v)) },
           { h: 'التكلفة الشهرية<br>الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
           { h: 'مخصص<br>نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
-          { h: 'الحالة', f: (e) => (RB.isEmployeeActive(e, ym) ? chip('على رأس العمل', 'good') : chip('متوقف', 'mute')) },
+          { h: 'الحالة', f: (e) => { const st = RB.employeeStatus(e, ym); return st === 'active' ? chip('على رأس العمل', 'good') : chip(EMP_STATUS[st], st === 'future' ? 'accent' : 'mute'); } },
           { h: '', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${e.id}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
         emps,
@@ -1887,11 +1914,29 @@
         // بلا اختيار صريح يُفترض العيني إن لم يكن له بدل سكن نقدي وله نصيب من سكن العمال
         { k: 'housingInKind', type: 'check', label: 'السكن مقدَّم عيناً من المطعم (يُحتسب للتأمينات بأجر شهرين في السنة)', get: (x) => RB.housingInKind(x) },
         { k: 'active', type: 'check', label: 'على رأس العمل' },
+        // من ترك العمل يبقى مخصصه التزاماً حتى تُسجَّل مكافأته في مسير، أو يُحدَّد هنا أنه لا مكافأة له
+        {
+          k: 'eosbNone',
+          type: 'check',
+          label: 'لا مكافأة نهاية خدمة مستحقة له (كالاستقالة قبل إكمال سنتين)',
+          show: (x) => !!x.endDate,
+          live: true,
+          help: 'يُرد مخصصه إلى المصروف بتاريخ ترك العمل. إن كانت له مكافأة فلا تختره، وسجّلها في مسير رواتب: «إضافة موظف» ثم اختره.',
+        },
         { k: 'note', type: 'textarea', label: 'ملاحظات' },
       ],
-      // المتوقف بلا تاريخ ترك العمل يبقى مخصصه قائماً: التسوية تتم بتاريخ ترك العمل
-      preview: (v) => empCostHTML(v) + (v.active === false && !v.endDate ? '<p class="note bad">حدّد «تاريخ ترك العمل» إن ترك العمل: به يُسوّى مخصص نهاية الخدمة (يُرد إلى المصروف ما بقي منه بعد صرف مكافأته).</p>' : ''),
-      onSave: (v) => upsert('employees', v),
+      // مخصص نهاية الخدمة لمن ترك العمل يبقى قائماً حتى تُسوّى مكافأته
+      preview: (v) =>
+        empCostHTML(v) +
+        (v.active === false && !v.endDate
+          ? '<p class="note bad">حدّد «تاريخ ترك العمل» إن ترك العمل، ثم سجّل مكافأة نهاية الخدمة في مسير رواتب أو اختر «لا مكافأة مستحقة» ليُسوّى مخصصه.</p>'
+          : v.endDate && !v.eosbNone
+            ? '<p class="note">يبقى مخصص نهاية الخدمة التزاماً حتى تُسجَّل مكافأته في مسير رواتب («إضافة موظف» ثم اختره)، ويُرد ما زاد منه على المكافأة إلى المصروف.</p>'
+            : ''),
+      onSave: (v) => {
+        if (!v.endDate || !v.eosbNone) delete v.eosbNone;
+        upsert('employees', v);
+      },
     });
   };
   function empCostHTML(e) {
@@ -1908,7 +1953,7 @@
       <p class="note">التأمينات ${rates} من أجر خاضع ${fmt(c.gosi.base)}. الأجر الخاضع = الأساسي + بدل السكن (أو السكن العيني مقدّراً بأجر شهرين في السنة). ${c.gosi.ee ? `يُخصم من الموظف ${fmt(c.gosi.ee)} فيصله صافي ${fmt(c.netPay)}.` : 'لا يُخصم من الموظف غير السعودي.'} تكلفته السنوية ≈ ${fmt(c.total * 12)} ${cur()}.</p>`;
   }
 
-  FORMS.payroll = (rec) => {
+  FORMS.payroll = (rec, empId) => {
     const ym = RB.ymAdd(today().slice(0, 7), today().slice(8) >= '25' ? 0 : -1);
     // نسب التأمينات حسب شهر المسير (النظام الجديد للسعودي يتغير كل يوليو)
     const fill = (v) => (v.lines = S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S, v.month)));
@@ -1916,11 +1961,23 @@
     if (!rec) fill(base);
     const nCol = (k, label) => ({ k, label, type: 'num', num: 1 });
     const empOf = (id) => (id ? S.employees.find((e) => e.id === id) : null);
-    // الموظف في السطر: كل الموظفين (ومنهم من ترك العمل لصرف مكافأته)، أو عامل غير مسجل باسم حر
+    // من تنبيه «لم تُسوَّ مكافأة نهاية الخدمة»: مسير تسوية اليوم بسطر واحد لمن ترك العمل، والمكافأة مقترحة بمقدار مخصصه
+    const settleEmp = !rec && empOf(empId);
+    if (settleEmp) {
+      const prov = Math.max(0, RB.eosbBalances(S, today(), { release: false })[settleEmp.id] || 0);
+      Object.assign(base, {
+        month: today().slice(0, 7),
+        date: today(),
+        note: 'تسوية نهاية الخدمة: ' + settleEmp.name,
+        lines: [Object.assign(RB.payrollLine(settleEmp, S, today().slice(0, 7)), { basic: 0, housing: 0, allowances: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov })],
+      });
+    }
+    // الموظف في السطر: من على رأس العمل، ثم من ترك العمل أو توقف (لصرف مكافأته)، أو عامل غير مسجل باسم حر.
+    // من لم يباشر بعد في شهر المسير لا يُعرض (إلا إن كان مختاراً في السطر)
     const empOpts = (r, v) => {
-      const on = (e) => RB.isEmployeeActive(e, v.month);
-      const list = S.employees.filter(on).concat(S.employees.filter((e) => !on(e)));
-      const o = [['', '— عامل غير مسجل —']].concat(list.map((e) => [e.id, e.name + (on(e) ? '' : ' — متوقف')]));
+      const st = (e) => RB.employeeStatus(e, v.month);
+      const list = S.employees.filter((e) => st(e) === 'active').concat(S.employees.filter((e) => st(e) === 'left' || st(e) === 'stopped' || (st(e) === 'future' && e.id === r.employeeId)));
+      const o = [['', '— عامل غير مسجل —']].concat(list.map((e) => [e.id, e.name + (st(e) === 'active' ? '' : ' — ' + EMP_STATUS[st(e)])]));
       if (r.employeeId && !empOf(r.employeeId)) o.push([r.employeeId, (r.name || 'موظف') + ' — محذوف']);
       return o;
     };
@@ -1929,14 +1986,13 @@
       const draft = Object.assign({}, v, { lines: (v.lines || []).map((l) => Object.assign({}, l, { eosbPaid: 0 })) });
       return RB.eosbBalances(Object.assign({}, S, { payroll: S.payroll.filter((p) => p.id !== v.id).concat([draft]) }), v.date, { release: false });
     };
-    // من ترك العمل حتى تاريخ الصرف: يُرد ما بقي من مخصصه بعد هذا الصرف
-    const leftBy = (e, d) => e && /^\d{4}-\d{2}-\d{2}$/.test(e.endDate || '') && e.endDate <= d;
     return formModal({
-      title: rec ? 'تعديل مسير رواتب' : 'مسير رواتب',
+      title: rec ? 'تعديل مسير رواتب' : settleEmp ? 'تسوية نهاية الخدمة' : 'مسير رواتب',
       wide: true,
       value: rec || base,
       onChange: (p, v) => {
-        if (p === 'month' && !rec) {
+        // مسير التسوية يبقى بسطر من ترك العمل وإن تغيّر شهره
+        if (p === 'month' && !rec && !settleEmp) {
           fill(v);
           v.date = RB.monthEnd(v.month) <= today() ? RB.monthEnd(v.month) : today();
         }
@@ -1989,19 +2045,25 @@
           help: '«مكافأة نهاية الخدمة المصروفة» تُكتب عند انتهاء خدمة الموظف فقط: تُخصم من مخصصه المتراكم (يظهر تحتها)، ولا تدخل في إجمالي الرواتب ولا في التأمينات. لموظف ترك العمل: «إضافة موظف» ثم اختره من القائمة.',
           foot: (v) => {
             const t = RB.payrollTotals(v);
-            // تسوية من ترك العمل: ما بقي من مخصصه بعد المصروف له يُرد إلى المصروف
+            // تسوية من ترك العمل (مسير شهر تركه أو ما بعده): بصرف مكافأته يُرد ما بقي من مخصصه إلى المصروف،
+            // وبلا مكافأة يبقى المخصص التزاماً إلا إن حُدّد في بياناته أنه لا مكافأة له
             let prov = null;
             const settle = (v.lines || [])
               .map((l) => {
                 const e = empOf(l.employeeId);
                 if (!e) return '';
                 if (e.active === false && !e.endDate) return `<li>${esc(e.name)} متوقف بلا تاريخ ترك العمل: حدّده في بياناته ليُسوّى مخصص نهاية الخدمة.</li>`;
-                if (!leftBy(e, v.date)) return '';
+                if (!RB.eosbFinalRun(e, v)) return '';
                 prov = prov || provAt(v);
                 const b = prov[e.id] || 0;
                 const p = Math.max(0, num(l.eosbPaid));
                 const rest = RB.r2(b - p);
-                return `<li>${esc(e.name)} ترك العمل في ${dtText(e.endDate)}: مخصصه <span class="n">${fmt(b)}</span>${p ? `، يُصرف منه <span class="n">${fmt(Math.min(p, b))}</span>` : ''}${rest > 0 ? `، ويُرد الباقي <span class="n">${fmt(rest)}</span> إلى المصروف (المكافأة المستحقة أقل من المخصص، كالاستقالة).` : rest < 0 ? `، والزيادة <span class="n">${fmt(-rest)}</span> مصروف في تاريخ الصرف.` : '.'}</li>`;
+                const head = `${esc(e.name)} ترك العمل في ${dtText(e.endDate)}: مخصصه <span class="n">${fmt(b)}</span>`;
+                if (!p) {
+                  if (!(b > 0)) return '';
+                  return `<li>${head}${e.eosbNone ? '، ولا مكافأة مستحقة له فيُرد إلى المصروف.' : '، ويبقى التزاماً حتى تُسجَّل مكافأته (هنا أو في مسير لاحق). إن لم تكن له مكافأة (كالاستقالة قبل سنتين) فاختر «لا مكافأة مستحقة» في بياناته.'}</li>`;
+                }
+                return `<li>${head}، يُصرف منه <span class="n">${fmt(Math.min(p, b))}</span>${rest > 0 ? `، ويُرد الباقي <span class="n">${fmt(rest)}</span> إلى المصروف (المكافأة المستحقة أقل من المخصص، كالاستقالة).` : rest < 0 ? `، والزيادة <span class="n">${fmt(-rest)}</span> مصروف في تاريخ الصرف.` : '.'}</li>`;
               })
               .join('');
             return `<div class="pv-grid four"><div><span>إجمالي الرواتب</span>${money(t.gross)}</div><div><span>الصافي للموظفين</span>${money(t.net)}</div><div><span>للتأمينات (الحصتان)</span>${money(t.gosiEe + t.gosiEr)}</div><div><span>التكلفة على المطعم</span>${money(t.cost)}</div></div>${t.eosbPaid ? `<p class="note">ويُصرف معه مكافأة نهاية الخدمة <b class="n">${fmt(t.eosbPaid)}</b> ${cur()} من المخصص المتراكم (ما زاد عليه مصروف في تاريخ الصرف).</p>` : ''}${settle ? `<ul class="note settle">${settle}</ul>` : ''}`;
@@ -2539,12 +2601,15 @@
     composites: (id) => S.composites.some((c) => (c.items || []).some((i) => i.kind === 'comp' && i.id === id)) || S.products.some((p) => (p.items || []).some((i) => i.kind === 'comp' && i.id === id)),
     products: (id) => S.products.some((p) => (p.items || []).some((i) => i.kind === 'prod' && i.id === id)),
     partners: (id) => S.capital.some((c) => c.partnerId === id) || [...S.assets, ...S.expenses, ...S.purchases].some((x) => x.account === 'partner:' + id),
+    // تاريخ المباشرة وتاريخ ترك العمل يحددان مخصص نهاية الخدمة في المسيرات السابقة؛ حذفه يغيّر الدفاتر
+    employees: (id) => S.payroll.some((pr) => (pr.lines || []).some((l) => l && l.employeeId === id)),
   };
   const refMsg = {
     raw: 'هذه المادة مستخدمة في وصفات. احذفها من الوصفات أولاً.',
     composites: 'هذا المنتج المجمّع مستخدم في منتجات أخرى. احذفه منها أولاً.',
     products: 'هذا الصنف داخل في وجبة مركّبة. احذفه منها أولاً، أو اجعله غير مفعّل.',
     partners: 'لهذا الشريك حركات رأس مال أو مدفوعات. احذفها أولاً.',
+    employees: 'لهذا الموظف مسيرات رواتب؛ حدّد «تاريخ ترك العمل» وأوقفه بدلاً من حذفه.',
   };
 
   const ACT = {

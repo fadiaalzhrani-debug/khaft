@@ -419,12 +419,15 @@
     return { salary: r2(salary), gosi, items, total: r2(sum(items, (i) => i.v)), netPay: r2(salary - gosi.ee) };
   };
 
-  RB.isEmployeeActive = (emp, ym) => {
-    if (emp.active === false) return false;
-    if (emp.startDate && emp.startDate.slice(0, 7) > ym) return false;
-    if (emp.endDate && emp.endDate.slice(0, 7) < ym) return false;
-    return true;
+  // حالة الموظف في الشهر ym: active على رأس العمل، left ترك العمل، stopped متوقف بلا تاريخ ترك العمل،
+  // future لم يباشر بعد (تاريخ المباشرة بعد الشهر)
+  RB.employeeStatus = (emp, ym) => {
+    if (emp.endDate && emp.endDate.slice(0, 7) < ym) return 'left';
+    if (emp.startDate && emp.startDate.slice(0, 7) > ym) return 'future';
+    if (emp.active === false) return emp.endDate && emp.endDate.slice(0, 7) <= ym ? 'left' : 'stopped';
+    return 'active';
   };
+  RB.isEmployeeActive = (emp, ym) => RB.employeeStatus(emp, ym) === 'active';
 
   // سطر المسير لشهر ym (نسب التأمينات حسب الشهر)؛ بدونه الشهر الحالي
   RB.payrollLine = (emp, S, ym) => {
@@ -452,16 +455,26 @@
     return { gross, gosiEe, gosiEr, net: r2(gross - gosiEe), count: lines.length, cost: r2(gross + gosiEr), eosbPaid };
   };
 
+  const isDay = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+  // مسير تسوية لمن ترك العمل: مسير شهر ترك العمل أو ما بعده، أو مصروف في تاريخ ترك العمل أو بعده
+  RB.eosbFinalRun = (emp, pr) => !!emp && isDay(emp.endDate) && !!pr && isDay(pr.date) && ((pr.month || pr.date.slice(0, 7)) >= emp.endDate.slice(0, 7) || pr.date >= emp.endDate);
+
   // مخصص نهاية الخدمة من المسيرات بترتيب تاريخ الاستحقاق: لكل مسير استحقاق (لكل موظف له سطر من أجره:
   // الأساسي + السكن + البدلات، بلا إضافي ولا خصومات) في تاريخ استحقاق الرواتب، ثم صرف المكافأة
   // (eosbPaid) في تاريخ الصرف: من المخصص المتراكم للموظف، وما زاد عليه مصروف في حينه.
-  // وعند ترك العمل (تاريخ ترك العمل): ما بقي من مخصص الموظف بعد آخر حركة له يُرد إلى المصروف (release)
+  // ومن ترك العمل يبقى مخصصه التزاماً حتى تُسوّى مكافأته، ثم يُرد ما بقي منه إلى المصروف (release)
   RB.eosbEvents = (S) => {
     const emps = byId(S.employees);
     const accrued = {};
-    const last = {}; // تاريخ آخر حركة مخصص لكل موظف
-    const seen = (id, d) => {
-      if (!last[id] || d > last[id]) last[id] = d;
+    const last = {}; // تاريخ آخر استحقاق أو صرف مكافأة لكل موظف
+    const settled = {}; // صُرفت له مكافأة في مسير التسوية بعد ترك العمل
+    const names = {};
+    const lastRun = {};
+    const seen = (id, d, pr) => {
+      if (!last[id] || d >= last[id]) {
+        last[id] = d;
+        lastRun[id] = pr;
+      }
     };
     const out = [];
     const runs = (S.payroll || [])
@@ -479,44 +492,69 @@
         const amount = RB.eosbMonthly(num(l.basic) + num(l.housing) + num(l.allowances), e.startDate, RB.monthEnd(ym));
         if (!(amount > 0)) continue;
         accrued[l.employeeId] = r2((accrued[l.employeeId] || 0) + amount);
-        seen(l.employeeId, date);
+        seen(l.employeeId, date, pr);
+        if (l.name) names[l.employeeId] = l.name;
         lines.push({ employeeId: l.employeeId, amount });
       }
       if (lines.length) out.push({ kind: 'accrual', pr, ym, date, lines, total: r2(sum(lines, (x) => x.amount)) });
       for (const l of pr.lines || []) {
         const id = (l && l.employeeId) || '';
-        // سطر موظف في مسير بعد تركه العمل (تسوية نهائية ولو بلا مكافأة) يؤخّر رد الباقي إلى تاريخ صرفه
-        if (id) seen(id, pr.date);
         const paid = r2(num(l && l.eosbPaid));
         if (!(paid > 0)) continue;
         const fromProv = id ? r2(Math.min(paid, Math.max(0, accrued[id] || 0))) : 0;
-        if (id) accrued[id] = r2((accrued[id] || 0) - fromProv);
+        if (id) {
+          accrued[id] = r2((accrued[id] || 0) - fromProv);
+          seen(id, pr.date, pr);
+          if (RB.eosbFinalRun(emps[id], pr)) settled[id] = true;
+        }
         out.push({ kind: 'payout', pr, ym, date: pr.date, employeeId: id, name: l.name || (emps[id] || {}).name || '', paid, fromProv, excess: r2(paid - fromProv) });
       }
     }
     // ترك العمل: المكافأة الفعلية قد تقل عن المخصص (الاستقالة قبل سنتين لا شيء لها، ومن سنتين إلى عشر بنصيب منقوص —
-    // المادة 85)، فيُرد الباقي من مخصص الموظف إلى المصروف في تاريخ ترك العمل، أو في تاريخ آخر حركة له إن كانت بعده
-    // (مسير التسوية النهائية). إن صُرفت له مكافأة بعد ذلك يتأخر الرد إلى تاريخ صرفها، فلا يبقى مخصص لمن ترك العمل
+    // المادة 85). يبقى المخصص التزاماً حتى تُسوّى: بصرف مكافأته في مسير شهر ترك العمل أو بعده، أو بتحديد أنه لا مكافأة
+    // له (eosbNone). عندها يُرد الباقي إلى المصروف في تاريخ ترك العمل، أو بعد آخر استحقاق أو صرف له إن كان بعده.
+    // فلا يتغير شهر ترك العمل عند تسجيل مكافأة تُصرف بعده. والموظف المحذوف (بيانات قديمة) لا يمكن تسويته، فيُرد باقيه بعد آخر حركة له
     for (const id of Object.keys(accrued)) {
       const e = emps[id];
       const rem = accrued[id];
-      if (!e || !/^\d{4}-\d{2}-\d{2}$/.test(e.endDate || '') || !(rem > 0)) continue;
-      const date = e.endDate > (last[id] || '') ? e.endDate : last[id];
-      out.push({ kind: 'release', date, employeeId: id, name: e.name || '', amount: rem });
+      if (!(rem > 0)) continue;
+      let date;
+      if (!e) date = last[id];
+      else if (isDay(e.endDate) && (settled[id] || e.eosbNone === true)) date = e.endDate > (last[id] || '') ? e.endDate : last[id];
+      else continue;
+      out.push({ kind: 'release', date, employeeId: id, name: (e && e.name) || names[id] || '', amount: rem, ref: e ? { s: 'employees', id } : { s: 'payroll', id: lastRun[id].id } });
     }
     return out;
   };
-  // المخصص المتراكم لكل موظف حتى تاريخ (مجموعها = رصيد حساب 2201).
-  // o.release === false: قبل رد الباقي عند ترك العمل (المتاح للصرف في مسير التسوية)
-  RB.eosbBalances = (S, asOf, o) => {
+  const eosbBal = (evs, asOf, rel) => {
     const out = {};
-    const rel = !(o && o.release === false);
-    for (const ev of RB.eosbEvents(S)) {
+    for (const ev of evs) {
       if (asOf && ev.date > asOf) continue;
       if (ev.kind === 'accrual') for (const l of ev.lines) out[l.employeeId] = r2((out[l.employeeId] || 0) + l.amount);
       else if (ev.kind === 'release') {
         if (rel) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.amount);
       } else if (ev.employeeId) out[ev.employeeId] = r2((out[ev.employeeId] || 0) - ev.fromProv);
+    }
+    return out;
+  };
+  // المخصص المتراكم لكل موظف حتى تاريخ (مجموعها = رصيد حساب 2201).
+  // o.release === false: قبل رد الباقي عند التسوية (المتاح للصرف في مسير التسوية)
+  RB.eosbBalances = (S, asOf, o) => eosbBal(RB.eosbEvents(S), asOf, !(o && o.release === false));
+  // مخصص لم يُسوَّ حتى asOf: من ترك العمل (pending) ولم تُسجَّل مكافأته ولم يُحدَّد أنه لا مكافأة له،
+  // والمتوقف بلا تاريخ ترك العمل (noEnd). amount = مخصصه القائم
+  RB.eosbUnsettled = (S, asOf) => {
+    asOf = asOf || RB.todayISO();
+    const evs = RB.eosbEvents(S);
+    const released = new Set(evs.filter((ev) => ev.kind === 'release').map((ev) => ev.employeeId));
+    const bal = eosbBal(evs, asOf, true);
+    const out = [];
+    for (const e of S.employees || []) {
+      if (!e) continue;
+      const amount = bal[e.id] || 0;
+      if (released.has(e.id) || !(amount > 0.005)) continue;
+      if (isDay(e.endDate)) {
+        if (e.endDate <= asOf) out.push({ employee: e, amount, reason: 'pending' });
+      } else if (e.active === false) out.push({ employee: e, amount, reason: 'noEnd' });
     }
     return out;
   };
@@ -786,7 +824,7 @@
     for (const ev of RB.eosbEvents(S)) {
       if (ev.kind === 'release') {
         // رد ما بقي من مخصص من ترك العمل إلى المصروف
-        add(ev.date, 'eosb', { s: 'employees', id: ev.employeeId }, 'رد مخصص نهاية الخدمة غير المصروف — ترك العمل' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.amount], ['5203', -ev.amount]]);
+        add(ev.date, 'eosb', ev.ref, 'رد مخصص نهاية الخدمة غير المصروف — ترك العمل' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.amount], ['5203', -ev.amount]]);
         continue;
       }
       const ref = { s: 'payroll', id: ev.pr.id };
@@ -1302,21 +1340,22 @@
     return Object.values(out).map((o) => Object.assign(o, { balance: r2(o.purchases - o.paid) }));
   };
 
-  // متابعة التجديد: آخر تغطية لكل بند حكومي أو اشتراك أو عقد يغطي 3 أشهر فأكثر (والزكاة دائماً).
-  // لا تُتابع: الرسوم لمرة واحدة (oneOff)، والبند الذي أوقف المستخدم متابعته (noRenew على آخر سجل؛
-  // تجديده لاحقاً يعيده)، ورسوم عامل غادر أو حُذف أو انتهى عمله قبل نهاية التغطية
+  // متابعة التجديد: آخر تغطية لكل بند حكومي أو اشتراك أو عقد، ويُتابع إن كان آخر سجل له يغطي 3 أشهر فأكثر
+  // (والزكاة دائماً). لا يُتابع البند إن كان آخر سجل له رسماً لمرة واحدة (oneOff) أو أوقف المستخدم متابعته
+  // (noRenew؛ تجديده لاحقاً يعيده) أو يغطي أقل من 3 أشهر، فلا يظهر سجل أقدم منه منتهياً.
+  // ولا تُتابع رسوم عامل غادر أو حُذف أو انتهى عمله قبل نهاية التغطية
   RB.renewals = (S, today) => {
     today = today || RB.todayISO();
     const groups = {};
     for (const x of S.expenses || []) {
-      if (!x || !x.date || x.oneOff) continue;
+      if (!x || !x.date) continue;
       const months = Math.round(num(x.months) || 1);
+      if (months < 1) continue;
       const zakat = x.category === 'zakat';
-      if (months < 1 || (months < 3 && !zakat)) continue;
       const key = [x.category, (x.entity || '').trim(), (x.desc || '').trim(), x.employeeId || ''].join('|');
       // الزكاة تُدفع عن سنة سابقة: التذكير سنوي من تاريخ الدفع لا من بداية السنة التي تخصها
       const end = zakat ? RB.coverageEnd(x.date, 12) : RB.coverageEnd(x.startDate || x.date, months);
-      if (!groups[key] || groups[key].end < end) groups[key] = { key, rec: x, end };
+      if (!groups[key] || groups[key].end < end) groups[key] = { key, rec: x, end, short: months < 3 && !zakat };
     }
     const emps = byId(S.employees);
     const staffGone = (g) => {
@@ -1325,7 +1364,7 @@
       return !e || e.active === false || (!!e.endDate && e.endDate <= g.end);
     };
     return Object.values(groups)
-      .filter((g) => !g.rec.noRenew && !staffGone(g))
+      .filter((g) => !g.short && !g.rec.oneOff && !g.rec.noRenew && !staffGone(g))
       .map((g) => {
         const days = RB.daysBetween(today, g.end);
         const status = days < 0 ? 'expired' : days <= 30 ? 'soon' : 'ok';

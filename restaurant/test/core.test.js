@@ -109,6 +109,7 @@ test('الرواتب والتأمينات للسعودي وغير السعودي
   assert.deepEqual(RB.gosiFor(ex, S), { base: 2000, er: 40, ee: 0 });
   const c = RB.employeeMonthlyCost(ex, S);
   close(c.total, 2000 + 40 + 800 + 750 / 12 + 2000 / 24);
+  S.employees = [sa, ex];
   S.payroll = [{ id: 'w1', month: '2026-05', date: '2026-05-31', account: 'bank', gosiAccount: 'bank', lines: [RB.payrollLine(sa, S), RB.payrollLine(ex, S)] }];
   const t = RB.payrollTotals(S.payroll[0]);
   assert.equal(t.gross, 7500);
@@ -508,6 +509,7 @@ const r2sum = (sb) => RB.r2(RB.sum(sb, (r) => r.balance));
 test('الرواتب تُحمّل على شهر الخدمة وإن صُرفت في الشهر التالي', () => {
   const S = base();
   const sa = { id: 'e1', nationality: 'saudi', basic: 4000, housing: 1000, transport: 500 };
+  S.employees = [sa];
   S.payroll = [{ id: 'w9', month: '2026-09', date: '2026-10-02', account: 'bank', gosiAccount: 'bank', lines: [RB.payrollLine(sa, S)] }];
   const L = RB.buildLedger(S, '2026-10-14');
   for (const e of L.entries) close(RB.sum(e.lines, (l) => l.v), 0, 0.001);
@@ -1029,7 +1031,7 @@ test('مخصص نهاية الخدمة يُستحق مع كل مسير، وال�
   close(RB.sum(Object.values(RB.eosbBalances(D, t))), dbs.liab.find((x) => x.code === '2201').amount);
 });
 
-test('ترك العمل: ما بقي من مخصص نهاية الخدمة بعد صرف المكافأة يُرد إلى المصروف', () => {
+test('ترك العمل: يبقى المخصص حتى تُسوّى المكافأة، ثم يُرد ما بقي منه إلى المصروف', () => {
   const S = base();
   S.capital = [{ id: 'c', date: '2026-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
   S.employees = [{ id: 'e1', name: 'سالم', nationality: 'expat', basic: 2500, housing: 0, transport: 0, otherAllow: 500, startDate: '2026-01-10' }];
@@ -1045,22 +1047,37 @@ test('ترك العمل: ما بقي من مخصص نهاية الخدمة بع�
     close(RB.incomeStatement(S, '2000-01-01', asOf, L).net, bs.retained);
     return { b: RB.balances(L.entries, null, asOf), L, rel: L.entries.filter((e) => e.kind === 'eosb' && e.ref.s === 'employees') };
   };
+  const mayLabor = () => RB.incomeStatement(S, '2026-05-01', '2026-05-31', RB.buildLedger(S, '2026-12-31')).tot.labor;
+  const pending = (d) => RB.eosbUnsettled(S, d).map((u) => [u.employee.id, u.amount, u.reason]);
   // على رأس العمل: المخصص قائم (375)
   close(check('2026-12-31').b['2201'], -375);
-  // استقال بعد أشهر (لا مكافأة — المادة 85): يُرد المخصص كله في تاريخ ترك العمل
+  const may0 = mayLabor();
+  // ترك العمل ولم تُسجَّل مكافأته (قد يكون فصلاً تُستحق له كاملة): يبقى المخصص التزاماً، ويُنبَّه عليه
   S.employees[0].endDate = '2026-05-31';
+  S.employees[0].active = false;
   let { b, rel } = check('2026-12-31');
+  close(b['2201'], -375);
+  assert.equal(rel.length, 0);
+  close(mayLabor(), may0);
+  assert.deepEqual(pending('2026-06-15'), [['e1', 375, 'pending']]);
+  assert.deepEqual(pending('2026-05-30'), []);
+  // لا مكافأة مستحقة (استقالة قبل سنتين — المادة 85): يُرد المخصص كله في تاريخ ترك العمل
+  S.employees[0].eosbNone = true;
+  ({ b, rel } = check('2026-12-31'));
   close(b['2201'] || 0, 0);
   close(b['5203'] || 0, 0);
   assert.deepEqual(rel.map((e) => e.date), ['2026-05-31']);
   assert.deepEqual(RB.eosbBalances(S, '2026-12-31'), { e1: 0 });
+  assert.deepEqual(pending('2026-06-15'), []);
   // قبل تاريخ ترك العمل يبقى المخصص
   close(check('2026-05-30').b['2201'], -250);
-  // تاريخ ترك العمل في المستقبل: لا رد حتى يحين
+  // تاريخ ترك العمل في المستقبل: لا رد حتى يحين، ولا تنبيه قبله
   S.employees[0].endDate = '2026-12-31';
   close(check('2026-10-15').b['2201'], -375);
+  assert.deepEqual(pending('2026-10-15'), []);
   S.employees[0].endDate = '2026-05-31';
-  // صُرف له 100 فقط في مسيره الأخير: يُخصم من المخصص ويُرد الباقي 275 في تاريخ الصرف، فلا يبقى في 2201 شيء
+  delete S.employees[0].eosbNone;
+  // صُرف له 100 في مسيره الأخير (شهر ترك العمل): تسوية، فيُرد الباقي 275 في تاريخ الصرف
   S.payroll[2].lines[0].eosbPaid = 100;
   ({ b, rel } = check('2026-12-31'));
   close(b['2201'] || 0, 0);
@@ -1072,27 +1089,110 @@ test('ترك العمل: ما بقي من مخصص نهاية الخدمة بع�
   // المتاح للصرف قبل رد الباقي = المتراكم بعد استحقاق المسير الأخير
   S.payroll[2].lines[0].eosbPaid = 0;
   assert.deepEqual(RB.eosbBalances(S, '2026-05-31', { release: false }), { e1: 375 });
-  assert.deepEqual(RB.eosbBalances(S, '2026-05-31'), { e1: 0 });
-  // مسير التسوية بعد ترك العمل (سطر مرتبط بالموظف بلا راتب): يُصرف من المخصص كاملاً، ويتأخر الرد إلى تاريخ الصرف
-  S.payroll.push({ id: 'wfinal', month: '2026-06', date: '2026-06-10', account: 'bank', gosiAccount: 'bank', lines: [{ employeeId: 'e1', name: 'سالم', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 300 }] });
+  assert.deepEqual(RB.eosbBalances(S, '2026-05-31'), { e1: 375 });
+  // فصل بمكافأة كاملة تُصرف في الشهر التالي: يبقى المخصص حتى الصرف، ولا يتغير شهر ترك العمل بتسجيلها
+  S.payroll.push({ id: 'wfinal', month: '2026-06', date: '2026-06-10', account: 'bank', gosiAccount: 'bank', lines: [{ employeeId: 'e1', name: 'سالم', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 375 }] });
+  ({ b, rel } = check('2026-12-31'));
+  close(b['2201'] || 0, 0);
+  close(b['5203'], 375);
+  assert.equal(rel.length, 0);
+  close(check('2026-06-05').b['2201'], -375);
+  close(mayLabor(), may0);
+  assert.deepEqual(pending('2026-06-15'), []);
+  // صُرف أقل من المخصص (استقالة بنصيب منقوص): يُرد الباقي في تاريخ الصرف، وشهر ترك العمل كما هو
+  S.payroll[3].lines[0].eosbPaid = 300;
   ({ b, rel } = check('2026-12-31'));
   close(b['2201'] || 0, 0);
   close(b['5203'], 300);
   assert.deepEqual(rel.map((e) => e.date), ['2026-06-10']);
   close(rel[0].lines.find((x) => x.a === '2201').v, 75);
-  // بين ترك العمل وصرف المكافأة يبقى المخصص قائماً
-  close(check('2026-06-05').b['2201'], -375);
-  // المكافأة تساوي المخصص أو تزيد عليه: لا رد، والزيادة مصروف
+  close(mayLabor(), may0);
+  // المكافأة تزيد على المخصص: لا رد، والزيادة مصروف
   S.payroll[3].lines[0].eosbPaid = 400;
   ({ b, rel } = check('2026-12-31'));
   assert.equal(rel.length, 0);
   close(b['2201'] || 0, 0);
   close(b['5203'], 400);
-  // بلا تاريخ ترك العمل لا رد (متوقف مؤقتاً مثلاً)
   S.payroll.pop();
+  // مكافأة صُرفت قبل شهر ترك العمل (تسوية سنوية أثناء الخدمة) ليست تسوية لترك العمل: الباقي يبقى حتى يُسوّى
+  S.payroll[0].lines[0].eosbPaid = 50;
+  ({ b, rel } = check('2026-12-31'));
+  assert.equal(rel.length, 0);
+  close(b['2201'], -325);
+  assert.deepEqual(pending('2026-06-15'), [['e1', 325, 'pending']]);
+  S.payroll[0].lines[0].eosbPaid = 0;
+  // متوقف بلا تاريخ ترك العمل: لا رد، ويُنبَّه لتحديد التاريخ
   delete S.employees[0].endDate;
-  S.employees[0].active = false;
   close(check('2026-12-31').b['2201'], -375);
+  assert.deepEqual(pending('2026-06-15'), [['e1', 375, 'noEnd']]);
+  // ولا مكافأة مستحقة بلا تاريخ ترك العمل لا يرد شيئاً (يحتاج تاريخاً للرد)
+  S.employees[0].eosbNone = true;
+  close(check('2026-12-31').b['2201'], -375);
+});
+
+test('مسير التسوية: مسير شهر ترك العمل أو ما بعده، أو المصروف في تاريخ ترك العمل أو بعده', () => {
+  const e = { id: 'e1', endDate: '2026-09-20' };
+  const F = (month, date) => RB.eosbFinalRun(e, { month, date });
+  assert.equal(F('2026-09', '2026-09-15'), true);
+  assert.equal(F('2026-10', '2026-10-05'), true);
+  assert.equal(F('2026-08', '2026-09-25'), true);
+  assert.equal(F('2026-08', '2026-09-02'), false);
+  assert.equal(RB.eosbFinalRun({ id: 'e1' }, { month: '2026-10', date: '2026-10-05' }), false);
+  assert.equal(RB.eosbFinalRun(null, { month: '2026-10', date: '2026-10-05' }), false);
+});
+
+test('البيانات التجريبية: ترك العمل لا يغيّر شهره، وتسجيل المكافأة في الشهر التالي لا يعيد كتابته', () => {
+  const t = '2026-10-15';
+  const D = RB.normalize(RB.demoState(t));
+  const e3 = D.employees.find((e) => e.id === 'e3');
+  const sep = () => {
+    const i = RB.incomeStatement(D, '2026-09-01', '2026-09-30', RB.buildLedger(D, t));
+    const bs = RB.balanceSheet(D, '2026-09-30', RB.buildLedger(D, '2026-09-30'));
+    close(bs.check, 0);
+    return [i.tot.labor, bs.liab.find((x) => x.code === '2201').amount];
+  };
+  const s0 = sep();
+  const prov = RB.eosbBalances(D, t).e3;
+  e3.endDate = '2026-09-30';
+  e3.active = false;
+  assert.deepEqual(sep(), s0);
+  assert.deepEqual(RB.eosbUnsettled(D, t).map((u) => [u.employee.id, u.amount]), [['e3', prov]]);
+  D.payroll.push({ id: 'set', month: '2026-10', date: '2026-10-05', account: 'bank', gosiAccount: 'bank', lines: [{ employeeId: 'e3', name: e3.name, basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov }] });
+  assert.deepEqual(sep(), s0);
+  assert.deepEqual(RB.eosbUnsettled(D, t), []);
+  close(RB.balances(RB.buildLedger(D, t).entries, null, t)['2201'], -(s0[1] - prov));
+});
+
+test('موظف محذوف له مسيرات (بيانات قديمة): لا يبقى مخصصه معلقاً بلا صاحب', () => {
+  const S = base();
+  S.capital = [{ id: 'c', date: '2026-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  S.employees = [{ id: 'e1', name: 'سالم', nationality: 'expat', basic: 3000, startDate: '2026-01-01' }];
+  S.payroll = ['2026-03', '2026-04'].map((ym) => ({ id: 'w' + ym, month: ym, date: RB.monthEnd(ym), account: 'bank', gosiAccount: 'bank', lines: [RB.payrollLine(S.employees[0], S, ym)] }));
+  S.employees = [];
+  const L = RB.buildLedger(S, '2026-12-31');
+  const b = RB.balances(L.entries, null, '2026-12-31');
+  close(b['2201'] || 0, 0);
+  const rel = L.entries.filter((e) => e.kind === 'eosb' && /ترك العمل/.test(e.desc));
+  assert.deepEqual(rel.map((e) => [e.date, e.ref.s, e.ref.id]), [['2026-04-30', 'payroll', 'w2026-04']]);
+  close(RB.balanceSheet(S, '2026-12-31', L).check, 0);
+  // قبل آخر مسير له يبقى المخصص كما كان
+  close(RB.balances(L.entries, null, '2026-03-31')['2201'], -125);
+  assert.deepEqual(RB.eosbUnsettled(S, '2026-12-31'), []);
+});
+
+test('حالة الموظف في الشهر: على رأس العمل، ترك العمل، متوقف، لم يباشر بعد', () => {
+  const st = (e, ym) => RB.employeeStatus(e, ym);
+  assert.equal(st({ startDate: '2026-01-01' }, '2026-10'), 'active');
+  assert.equal(st({ startDate: '2026-11-01' }, '2026-10'), 'future');
+  assert.equal(st({ startDate: '2026-10-20' }, '2026-10'), 'active');
+  assert.equal(st({ startDate: '2026-01-01', endDate: '2026-09-30' }, '2026-10'), 'left');
+  assert.equal(st({ startDate: '2026-01-01', endDate: '2026-10-31', active: false }, '2026-10'), 'left');
+  assert.equal(st({ startDate: '2026-01-01', active: false }, '2026-10'), 'stopped');
+  assert.equal(st({ startDate: '2026-01-01', endDate: '2026-12-31', active: false }, '2026-10'), 'stopped');
+  assert.equal(st({ startDate: '2026-12-01', active: false }, '2026-10'), 'future');
+  for (const [e, ym] of [[{ startDate: '2026-11-01' }, '2026-10'], [{ active: false }, '2026-10'], [{ endDate: '2026-09-01' }, '2026-10'], [{}, '2026-10']]) {
+    assert.equal(RB.isEmployeeActive(e, ym), st(e, ym) === 'active');
+  }
 });
 
 test('مكافأة من ترك العمل في مسير لاحق مرتبطة به: تُخصم من مخصصه ولا تُحمَّل مرتين', () => {
@@ -1235,6 +1335,27 @@ test('متابعة التجديد: لا رسوم لمرة واحدة ولا لع
   // عامل عاد للعمل بلا تاريخ ترك: يُتابع
   Object.assign(S.employees[1], { endDate: '' });
   assert.deepEqual(ids('2026-10-15'), ['i2', 'i3', 'l1']);
+});
+
+test('متابعة التجديد: آخر سجل للبند يقرر — «لمرة واحدة» أو أقل من 3 أشهر لا يعيد سجلاً أقدم منتهياً', () => {
+  const ex = (o) => Object.assign({ category: 'gov', entity: 'بلدي', desc: 'لوحة المحل', amount: 500, months: 12, account: 'bank', includesVat: false, taxable: false }, o);
+  const S = RB.normalize({ settings: {}, expenses: [ex({ id: 'a', date: '2025-06-01' }), ex({ id: 'b', date: '2026-06-01' })] });
+  const R = () => RB.renewals(S, '2026-10-15').map((r) => [r.rec.id, r.end, r.status]);
+  assert.deepEqual(R(), [['b', '2027-05-31', 'ok']]);
+  // «رسم لمرة واحدة» على آخر سجل: البند كله لا يُتابع، ولا يظهر السجل الأقدم منتهياً
+  S.expenses[1].oneOff = true;
+  assert.deepEqual(R(), []);
+  // «لمرة واحدة» على سجل أقدم فقط لا يوقف متابعة الأحدث
+  S.expenses[1].oneOff = false;
+  S.expenses[0].oneOff = true;
+  assert.deepEqual(R(), [['b', '2027-05-31', 'ok']]);
+  S.expenses[0].oneOff = false;
+  // آخر سجل يغطي شهراً واحداً (صار الدفع شهرياً): لا يُتابع، ولا يظهر السجل السنوي الأقدم منتهياً
+  S.expenses.push(ex({ id: 'm', date: '2027-06-05', months: 1 }));
+  assert.deepEqual(RB.renewals(S, '2027-07-15').map((r) => r.rec.id), []);
+  // وتجديد سنوي بعده يعيده
+  S.expenses.push(ex({ id: 'y', date: '2027-07-05', months: 12 }));
+  assert.deepEqual(RB.renewals(S, '2027-07-15').map((r) => r.rec.id), ['y']);
 });
 
 test('قوالب الرسوم الحكومية: رسوم لمرة واحدة ومبالغ تتعبأ من بيانات العامل', () => {

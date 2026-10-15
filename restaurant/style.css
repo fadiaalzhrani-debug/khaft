@@ -440,9 +440,11 @@ input[type='date'], input[type='month'] { direction: ltr; text-align: end; }
 .lines-tbl .calc { display: inline-block; min-width: 60px; color: var(--ink-2); }
 .lines-tbl .empty { color: var(--muted); text-align: center; padding: 10px; }
 .lines-tbl input.sub { margin-top: 4px; }
-.lines-tbl td.emp select, .lines-tbl td.emp input { min-width: 8.5rem; }
+.lines-tbl td.emp select, .lines-tbl td.emp input { min-width: 8rem; }
 .lines-tbl th.wrap { white-space: normal; }
-.lines-tbl .lhint { display: block; margin-top: 2px; font-size: 0.72rem; white-space: nowrap; }
+/* التوضيح تحت الخانة: سطر واحد لرصيد حتى 9,999.99، وما زاد ينكسر قبل الرقم بدل أن يتجاوز الجدول عرض النافذة */
+.lines-tbl .lhint { display: block; margin-top: 2px; font-size: 0.72rem; min-width: 7.8em; }
+.lines-tbl .lhint .n { white-space: nowrap; }
 .lines-tbl .lhint:empty { display: none; }
 .add-line { align-self: flex-start; }
 .form-preview { background: var(--surface-2); border-radius: var(--r-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
