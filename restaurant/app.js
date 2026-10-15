@@ -2191,11 +2191,13 @@
     // أعلى من المستهدف، ومنها ما يزيد عليه بأكثر من 3 نقاط (شارته حمراء ويظهر في التنبيهات)
     const above = act.filter((r) => fcLevel(r.st.foodCost, target) !== 'good').length;
     const far = act.filter((r) => fcLevel(r.st.foodCost, target) === 'bad').length;
+    // بلا صنف مفعّل مسعّر: لا متوسط ولا «كل الأصناف ضمن المستهدف»
+    const noAct = rows.length ? 'يظهر حين يوجد صنف مفعّل له سعر' : 'يظهر بعد إضافة أصناف المنيو';
     let h = pageHead('المنيو والتسعير', 'تكلفة كل صنف وسعر بيعه، ومقارنته بأسعار السوق المحلي وبصافي ربحه في تطبيقات التوصيل', btn('+ صنف في المنيو', 'add', 'data-s="products"', 'primary'));
     h += `<div class="kpis small">
       ${kpi('أصناف المنيو', `<span class="n">${act.length}</span>`, `${rows.length - act.length} غير مفعّل`)}
-      ${kpi('متوسط تكلفة الطعام', pct(avgFc), `المستهدف ${pct(target, 0)}`, act.length ? fcLevel(avgFc, target) : '')}
-      ${kpi('أعلى من المستهدف', `<span class="n">${above}</span>`, above ? `منها ${far} بفارق أكثر من 3 نقاط` : 'كل الأصناف ضمن المستهدف', far ? 'bad' : above ? 'warn' : act.length ? 'good' : '')}
+      ${kpi('متوسط تكلفة الطعام', act.length ? pct(avgFc) : '<span class="n">—</span>', act.length ? `المستهدف ${pct(target, 0)}` : noAct, act.length ? fcLevel(avgFc, target) : '')}
+      ${kpi('أعلى من المستهدف', `<span class="n">${above}</span>`, !act.length ? noAct : above ? `منها ${far} بفارق أكثر من 3 نقاط` : 'كل الأصناف ضمن المستهدف', far ? 'bad' : above ? 'warn' : act.length ? 'good' : '')}
       ${kpi('متوسط عمولة التطبيقات', pct(RB.appChannels(S).length ? RB.sum(RB.appChannels(S), (c) => num(c.feePct)) / RB.appChannels(S).length : 0), 'تعدّلها من الإعدادات')}
     </div>`;
     // الصنف غير المفعّل لا يدخل في المؤشرات ولا التنبيهات: شارته باهتة

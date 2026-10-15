@@ -2071,3 +2071,24 @@ test('خطوات البداية: دفتر جديد بعد المعالج كل خ
   S.expenses.push({ id: 'g', date: '2026-10-02', category: 'gov', amount: 300 });
   assert.ok(RB.setupSteps(S).steps.find((x) => x.id === 'fixed').done);
 });
+
+test('خطوات البداية: دفتر فيه إقفالات بلا reviewedAt (حُفظ قبل هذه النسخة) لا يعرض القائمة (مراجعة WP5)', () => {
+  // دفتر مستخدم كامل لم يُحفظ فيه reviewedAt قط: مراجعة الإعدادات مطلوبة «قبل أول إقفال» وقد مضى
+  const D = RB.normalize(RB.demoState('2026-10-15'));
+  assert.equal(D.settings.reviewedAt, undefined);
+  let st = RB.setupSteps(D);
+  assert.ok(st.steps.find((x) => x.id === 'settings').done);
+  assert.equal(st.pending, false);
+  assert.equal(st.done, st.steps.length);
+  // الإقفال المعيب لا يُعد، فتبقى الخطوة الأولى معلّقة في دفتر لا إقفال سليم فيه
+  const S = RB.emptyState();
+  S.sales.push({ id: 's', date: 'x', _bad: ['date'], lines: [] });
+  st = RB.setupSteps(S);
+  assert.equal(st.steps.find((x) => x.id === 'settings').done, false);
+  assert.equal(st.steps.find((x) => x.id === 'sales').done, false);
+  // أول إقفال سليم يكمل الخطوتين معاً ولو لم تُحفظ الإعدادات
+  S.sales.push({ id: 's2', date: '2026-10-15', lines: [] });
+  st = RB.setupSteps(S);
+  assert.deepEqual(st.steps.filter((x) => x.done).map((x) => x.id), ['settings', 'sales']);
+  assert.equal(st.pending, true);
+});

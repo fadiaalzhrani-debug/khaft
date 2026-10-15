@@ -1713,13 +1713,14 @@
   };
 
   // خطوات البداية لدفتر جديد بالترتيب، وكل منها مكتملة إن سُجّل في قسمها شيء. مراجعة الإعدادات تكتمل بحفظ
-  // أي نموذج إعدادات أو قناة بيع (settings.reviewedAt). optional: لا تُبقي القائمة ظاهرة وحدها.
+  // أي نموذج إعدادات أو قناة بيع (settings.reviewedAt)، أو بوجود إقفال يومي: هي مطلوبة قبل أول إقفال، والدفتر
+  // المستخدم قبل وجود reviewedAt فيه إقفالات. optional: لا تُبقي القائمة ظاهرة وحدها.
   // pending: خطوة مطلوبة لم تكتمل بعد
   RB.setupSteps = (S) => {
     const has = (k, f) => good(S[k]).some(f || (() => true));
     const fixed = (x) => x.category === 'rent' || x.category === 'housing' || RB.GOV_CATS.includes(x.category);
     const steps = [
-      { id: 'settings', done: !!(S.settings && S.settings.reviewedAt) },
+      { id: 'settings', done: !!(S.settings && S.settings.reviewedAt) || has('sales') },
       { id: 'capital', done: has('capital', (c) => c.type !== 'withdrawal') },
       { id: 'assets', done: has('assets') },
       { id: 'fixed', done: has('expenses', fixed) },
