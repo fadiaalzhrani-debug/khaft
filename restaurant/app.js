@@ -14,11 +14,12 @@
   // save: حالة الحفظ الفعلية (pending عمليات لم تُؤكَّد بعد، failed رمز آخر فشل). readOnly: عرض فقط بلا صلاحية تعديل.
   // syncLost: انقطع التحديث المباشر. replacing: استيراد أو مسح جارٍ في البيانات المشتركة من هذه الصفحة.
   // replaceFailed: لم يكتمل ذلك (state: الدفتر المطلوب حفظه). replaceMarker: علامة config/replace كما في البيانات المشتركة.
-  // retrying: إعادة حفظ ما لم يُحفظ جارية (زر «أعد المحاولة»)
+  // retrying: إعادة حفظ ما لم يُحفظ جارية (زر «أعد المحاولة»). revoked: توقف الوصول إلى البيانات المشتركة (نهائي لهذه
+  // الزيارة، وسببه لا تذكره المنصة: صلاحية أو مشاركة أو إتاحة) فلا تعديل ولا «أعد المحاولة» بعده
   const APP = {
     mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false,
     save: { pending: 0, failed: null }, canWrite: null, readOnly: false, syncLost: false, noStorage: false,
-    replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false, retrying: false,
+    replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false, retrying: false, revoked: false,
   };
   // معرّف هذه الزيارة: يميّز علامة الاستيراد التي كتبتها هذه الصفحة عن علامة جهاز آخر
   const SID = Math.random().toString(36).slice(2, 10);
@@ -71,6 +72,17 @@
   };
   const pctT = (n, d) => (isFinite(n) ? (Number(n) || 0).toFixed(d === undefined ? 1 : d) : '—') + '%';
   const pct = (n, d) => `<span class="n">${pctT(n, d)}</span>`;
+  // نسبة محفوظة كما أدخلها المستخدم (عمولة، تأمينات): حتى منزلتين بلا أصفار زائدة — 0.75% و20% و11.75%،
+  // لا 0.8% في الإقفال و0.80% في الإعدادات للنسبة نفسها. pct للنسب المحسوبة (هامش، تكلفة طعام…)
+  const rate = (n) => `<span class="n">${+num(n).toFixed(2)}%</span>`;
+  // العدد والمعدود (RB.countText): «3 أيام»، «12 يوماً»، «يومان». o.gen بعد حرف جر أو مضاف («خلال يومين»)،
+  // o.wrap: وسم الرقم (مثل <span class="n">). الناتج نص عادي ما لم يُعطَ wrap
+  const W = RB.WORDS;
+  const cnt = (n, forms, o) => {
+    o = o || {};
+    return RB.countText(n, forms, { gen: o.gen, fmt: (x) => (o.wrap ? o.wrap(fmt0(x)) : fmt0(x)) });
+  };
+  const numSpan = (s) => `<span class="n">${s}</span>`;
   const esc = (s) => String(s === undefined || s === null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const N = (n, cls) => `<span class="n ${cls || ''} ${r2(n) < 0 ? 'neg' : ''}">${fmt(n)}</span>`;
   const N0 = (n) => `<span class="n">${fmt0(n)}</span>`;
@@ -306,15 +318,16 @@
   function dbErrMsg(e) {
     if (e instanceof TypeError) return 'معرّف سجل غير صالح';
     switch (e && e.code) {
+      // لا يُقترح حذف سجلات قديمة: كل رصيد في الدفتر تراكمي من بدايته، فحذفها يغيّر الأرصدة كلها
       case 'quota_exceeded':
-        return 'امتلأت مساحة البيانات المشتركة. صدّر نسخة احتياطية واحذف سجلات قديمة.';
+        return 'امتلأت مساحة البيانات المشتركة فلم يُحفظ هذا التعديل. صدّر نسخة احتياطية الآن ففيها ما لم يُحفظ، ولا تحذف سجلات قديمة لتفريغ المساحة: حذفها يغيّر أرصدة الصندوق والبنك والمخزون والضريبة وحقوق الشركاء.';
       case 'invalid_argument':
       case 'transform_error':
         return APP.readOnly ? 'ليست لديك صلاحية تعديل هذه البيانات.' : 'تعذّر الحفظ: السجل غير صالح أو أكبر من الحجم المسموح.';
       case 'invalid_id':
         return 'معرّف سجل غير صالح';
       case 'revoked':
-        return 'توقف الوصول إلى البيانات المشتركة. أعد تحميل الصفحة.';
+        return LOST_MSG;
       case 'not_granted':
       case 'capability_disabled':
       case 'capability_removed':
@@ -393,16 +406,22 @@
       s.tries++;
       if (DB_TERMINAL.includes(code) || s.tries > 5) {
         s.dead = true;
+        if (code === 'revoked') return this.lost();
         // كل المستمعين قد ينقطعون معاً: يُعاد الرسم مرة واحدة لكل تغيّر في الحالة
-        const ro = code === 'revoked' && !APP.readOnly;
-        if (APP.syncLost && !ro) return;
+        if (APP.syncLost) return;
         APP.syncLost = true;
-        if (ro) APP.readOnly = true;
         render();
         return;
       }
       clearTimeout(s.timer);
       s.timer = setTimeout(() => this.listen(key), 1000 * s.tries + Math.random() * 1500);
+    }
+    // توقف الوصول (revoked، من مستمع أو من كتابة): عرض فقط بقية الزيارة بلا «أعد المحاولة» (لن ينجح)، وما لم يُحفظ
+    // يبقى في الشاشة وفي النسخة الاحتياطية. مرة واحدة لكل المستمعين والكتابات
+    lost() {
+      if (APP.revoked) return;
+      APP.revoked = APP.syncLost = APP.readOnly = true;
+      render();
     }
     async retry(fn) {
       for (let i = 0; ; i++) {
@@ -453,9 +472,13 @@
         this.resync(section);
         return;
       }
+      // توقف الوصول: نهائي (لا «أعد المحاولة»)، وينبَّه له مرة واحدة لا لكل كتابة
+      const again = code === 'revoked' && APP.revoked;
+      if (code === 'revoked') this.lost();
       // تلتها كتابة أحدث للمستند نفسه (تعديل أو حذف بعدها): تلك هي التي تقرر ما يُحفظ وما يُنبَّه له
       if (!this.bad.fail(path, n, keep)) return;
       APP.save.failed = failCode(code || (e instanceof TypeError ? 'invalid_id' : 'error'));
+      if (again) return;
       if (onErr) onErr(e);
       else toast(dbErrMsg(e), 'bad');
     }
@@ -608,9 +631,12 @@
   }
   // عرض فقط: لا يتغير شيء في الدفتر (وضع التجربة مستثنى لأنه لا يُحفظ)
   const RO_MSG = 'عرض فقط — ليست لديك صلاحية تعديل دفتر المطعم';
+  // توقف الوصول (revoked): لا يُدّعى أن السبب الصلاحية (قد يكون المشاركة أو الإتاحة)
+  const LOST_MSG = 'توقف الوصول إلى البيانات المشتركة فلا يمكن التعديل الآن — صدّر نسخة احتياطية ثم أعد تحميل الصفحة';
+  const roMsg = () => (APP.revoked ? LOST_MSG : RO_MSG);
   function roBlock() {
     if (!APP.readOnly || APP.demo) return false;
-    toast(RO_MSG, 'bad');
+    toast(roMsg(), 'bad');
     return true;
   }
 
@@ -620,19 +646,22 @@
   }
   // السجل بمعرّفه في قسم (الإعدادات ليست قائمة سجلات: لا شيء)
   const find = (section, id) => (Array.isArray(S[section]) ? S[section].find((x) => String(x.id) === String(id)) : undefined);
+  // ما حفظه النموذج المفتوح (أول سجل: فاتورة المشتريات قبل أسعار موادها): ليُعرف بعد الحفظ أظاهر هو في الصفحة أم لا
+  let saveLog = null;
   function upsert(section, rec) {
     if (roBlock()) return false;
-    // العلامة تُحسب من جديد: السجل المصحح يخرج من «سجلات تحتاج تصحيح»
+    // العلامة تُحسب من جديد: السجل المصحح يخرج من «سجلات تحتاج إلى تصحيح»
     delete rec._bad;
     // المصروف المحفوظ بالتصنيفات الحالية: لا يُعاد تصنيفه عند التحميل (RB.migrateExpense للسجلات الأقدم فقط)
     if (section === 'expenses' && RB.isObj(rec)) rec.catV = RB.EXPENSE_CAT_V;
     rec = RB.sanitizeRecord(section, rec) || rec;
-    // حقل معيب ليس في النموذج (بيانات منقولة): حُفظ لكنه باقٍ في «سجلات تحتاج تصحيح»
-    if (rec._bad) toast('حُفظ، لكن السجل ما زال يحتاج تصحيح: ' + badWhy(section, rec), 'bad');
+    // حقل معيب ليس في النموذج (بيانات منقولة): حُفظ لكنه باقٍ في «سجلات تحتاج إلى تصحيح»
+    if (rec._bad) toast('حُفظ، لكن السجل ما زال يحتاج إلى تصحيح: ' + badWhy(section, rec), 'bad');
     const arr = S[section];
     const i = arr.findIndex((x) => String(x.id) === String(rec.id));
     if (i >= 0) arr[i] = rec;
     else arr.push(rec);
+    if (saveLog && !saveLog.length) saveLog.push({ section, rec });
     bump();
     persistPut(section, rec);
   }
@@ -649,15 +678,47 @@
   }
 
   // ═════════════ أدوات الواجهة ═════════════
-  function toast(msg, kind) {
+  // act: زر في الرسالة {label, run} (مثل «اعرضه» أو «تراجع»): تبقى أطول، ولا تختفي ما دام المؤشر أو التركيز عليها.
+  // الرسالة نفسها مكررة (الضغط على «حفظ» مرات بنموذج ناقص): تتجدد مدتها ولا تتكدس فوق النافذة
+  function toast(msg, kind, act) {
     const el = document.getElementById('toast');
     if (!el) return;
+    const k = 'toast ' + (kind || '');
+    const last = el.lastElementChild;
+    if (!act && last && last.className === k && last.textContent === msg && last._arm) {
+      last._arm(4200);
+      return last;
+    }
     const t = document.createElement('div');
-    t.className = 'toast ' + (kind || '');
+    t.className = k;
     t.textContent = msg;
+    let timer = null;
+    t._arm = (ms) => {
+      clearTimeout(timer);
+      t.classList.remove('out');
+      timer = setTimeout(() => {
+        t.classList.add('out');
+        timer = setTimeout(() => t.remove(), 500);
+      }, ms);
+    };
+    if (act) {
+      t.classList.add('has-act');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'toast-a';
+      b.textContent = act.label;
+      b.addEventListener('click', () => {
+        t.remove();
+        act.run();
+      });
+      t.append(' ', b);
+      t.addEventListener('mouseenter', () => clearTimeout(timer));
+      t.addEventListener('focusin', () => clearTimeout(timer));
+      t.addEventListener('mouseleave', () => t.contains(document.activeElement) || t._arm(3000));
+      t.addEventListener('focusout', (e) => t.contains(e.relatedTarget) || t._arm(3000));
+    }
     el.appendChild(t);
-    setTimeout(() => t.classList.add('out'), 4200);
-    setTimeout(() => t.remove(), 4700);
+    t._arm(act ? 9000 : 4200);
     return t;
   }
 
@@ -755,11 +816,15 @@
     });
   }
 
+  // التركيز داخل النافذة على محتواها (منطقة تتمرر): يُعلَن عنوانها لقارئ الشاشة، وتمرّرها الأسهم وPageDown،
+  // ولا يُغلقها Enter مستمر من زر ⓘ (كان التركيز يسقط إلى الصفحة الخاملة خلفها)
   function infoBox(title, html, wide) {
     const m = openModal({ title, wide });
     m.body.innerHTML = html;
     m.foot.innerHTML = `<button type="button" class="btn ghost" data-close>إغلاق</button>`;
     afterRender(m.body);
+    m.body.tabIndex = -1;
+    m.body.focus({ preventScroll: true });
     return m;
   }
 
@@ -922,12 +987,14 @@
   // ويرجع 'redraw' إن غيّر شيئاً. o.focus: محدد CSS للحقل الذي يبدأ عنده التركيز
   function formModal(o) {
     const val = clone(o.value || {});
-    // dirty: أدخل المستخدم شيئاً (حقلاً أو سطراً)، فالإغلاق بلا حفظ يُسأل عنه أولاً
-    let dirty = false;
+    // تغيّرت بيانات النموذج عما فُتح به (لقطة بعد أول رسم)، فالإغلاق بلا حفظ يُسأل عنه أولاً. ما عُدّل ثم أُعيد
+    // كما كان لا يُسأل عنه
+    let snap = null;
+    const dirty = () => snap !== null && JSON.stringify(val) !== snap;
     const m = openModal({
       title: o.title,
       wide: o.wide,
-      beforeClose: () => !dirty || confirmBox('لم تُحفظ البيانات التي أدخلتها. هل تريد تجاهلها وإغلاق النموذج؟', { danger: true, ok: 'تجاهل وإغلاق' }),
+      beforeClose: () => !dirty() || confirmBox('لم تُحفظ البيانات التي أدخلتها. هل تريد تجاهلها وإغلاق النموذج؟', { danger: true, ok: 'تجاهل وإغلاق' }),
     });
     const fields = () => (typeof o.fields === 'function' ? o.fields(val) : o.fields);
     let saving = false;
@@ -939,6 +1006,8 @@
     // أخطاء التحقق لكل مسار: تبقى تحت الحقل (وبعد إعادة الرسم) حتى يُعدَّل. errAt: قيمة الحقل حين ظهر خطؤه
     let errs = {};
     let errAt = {};
+    // أخطاء رفض الحفظ (onSave) بمساراتها: لا يزيلها إعادة التحقق، بل تعديل الحقل نفسه
+    let saveErrs = new Set();
     function draw(again) {
       if (drawing) {
         redo = true;
@@ -1071,13 +1140,25 @@
       const p = el.dataset && el.dataset.path;
       if (!p) return;
       const nv = readInput(el);
-      if (getPath(val, p) !== nv) dirty = true;
       setPath(val, p, nv);
       clearErr(el);
       const want = o.onChange ? o.onChange(p, val) : undefined;
       // ما غيّره onChange يظهر فوراً، حتى أثناء كتابة التاريخ بمقاطعه (الحقل نفسه يبقى في مكانه فلا تنقطع كتابته)
       if ((isChange && el.dataset.redraw) || want === 'redraw') draw();
       else upd();
+      recheck();
+    }
+    // خطأ ظاهر زال سببه بتغيير حقل آخر (المورد لم يعد مطلوباً حين لم يعد الدفع آجلاً): يزول من تحت حقله
+    function recheck() {
+      const keys = Object.keys(errs).filter((k) => !saveErrs.has(k));
+      if (!keys.length) return;
+      const now = validate().errs;
+      for (const k of keys) {
+        if (now[k] !== undefined) continue;
+        const el = m.body.querySelector(pathSel(k));
+        if (el) clearErr(el);
+        else delete errs[k];
+      }
     }
     m.el.addEventListener('input', (e) => {
       if (!discrete(e.target)) onField(e, false);
@@ -1137,7 +1218,6 @@
       const f = flatFields(fields()).find((x) => x.k === b.dataset.lk);
       if (!f) return;
       const rows = getPath(val, f.k) || [];
-      dirty = true;
       if (b.dataset.lact === 'add') rows.push(f.newRow ? f.newRow(val) : {});
       else if (b.dataset.lact === 'del') rows.splice(+b.dataset.i, 1);
       else {
@@ -1148,10 +1228,17 @@
       // أرقام الأسطر تغيّرت: أخطاؤها السابقة لا تخص السطر نفسه
       for (const k of Object.keys(errs)) if (k.startsWith(f.k + '.')) delete errs[k];
       draw();
-      if (b.dataset.lact === 'add') {
-        const trs = m.body.querySelectorAll(`[data-path^="${f.k}.${rows.length - 1}."]`);
-        if (trs[0]) trs[0].focus();
-      }
+      // الزر المضغوط استُبدل بإعادة الرسم، فلا يسقط التركيز إلى أول النموذج: إلى أول خانة في السطر الجديد، أو إلى ✕
+      // السطر الذي حلّ محل المحذوف (أو الذي قبله، أو «+ إضافة سطر» إن فرغ الجدول)، أو إلى زر الأداة نفسه
+      const q = (sel) => m.body.querySelector(sel);
+      const lk = CSS.escape(f.k);
+      let to = null;
+      if (b.dataset.lact === 'add') to = q(`[data-path^="${CSS.escape(f.k + '.' + (rows.length - 1) + '.')}"]`);
+      else if (b.dataset.lact === 'del') {
+        const dels = m.body.querySelectorAll(`[data-lact="del"][data-lk="${lk}"]`);
+        to = dels[Math.min(+b.dataset.i, dels.length - 1)] || q(`[data-lact="add"][data-lk="${lk}"]`);
+      } else to = q(`[data-ltool="${CSS.escape(b.dataset.ltool)}"][data-lk="${lk}"]`);
+      if (to) to.focus();
     });
     // التحقق: الحقول المطلوبة، والتواريخ، وحدود الأرقام (min/max، وفي أعمدة الأسطر كذلك)، وf.check(val) لشرط خاص.
     // كل خطأ يظهر تحت حقله، والرسالة تذكر الحقول الناقصة كلها
@@ -1205,6 +1292,7 @@
         }
       }
       m.body.querySelectorAll('[aria-invalid="true"]').forEach(clearErr);
+      saveErrs = new Set();
       const chk = validate();
       errs = chk.errs;
       errAt = {};
@@ -1220,20 +1308,34 @@
         return;
       }
       saving = true;
+      let log = null;
       try {
         // onSave يعمل على نسخة: الحفظ المرفوض (رسالة خطأ أو إلغاء التأكيد) لا يغيّر بيانات النموذج المفتوح،
-        // فتبقى الأسطر على الشاشة هي البيانات نفسها (كان حذف السطر الفارغ قبل الرفض يزيح أرقام الأسطر)
+        // فتبقى الأسطر على الشاشة هي البيانات نفسها (كان حذف السطر الفارغ قبل الرفض يزيح أرقام الأسطر).
+        // الرفض نص (رسالة)، أو {msg, path, inline}: الخطأ تحت حقله (aria-invalid) والتركيز إليه كأخطاء التحقق
+        saveLog = log = [];
         const res = await o.onSave(clone(val));
-        if (typeof res === 'string') {
-          toast(res, 'bad');
+        saveLog = null;
+        if (typeof res === 'string' || (res && typeof res === 'object' && res.msg)) {
+          const r = typeof res === 'string' ? { msg: res } : res;
+          const el = r.path && m.body.querySelector(pathSel(r.path));
+          if (el) {
+            errs[r.path] = r.inline || r.msg;
+            errAt[r.path] = JSON.stringify(getPath(val, r.path));
+            saveErrs.add(r.path);
+            markErr(el, errs[r.path]);
+            el.focus();
+          }
+          toast(r.msg, 'bad');
           return;
         }
         if (res === false) return; // ألغى المستخدم التأكيد: يبقى النموذج مفتوحاً
         m.close();
         render();
-        if (o.done) toast(o.done);
+        savedHint(log, o.done);
       } finally {
         saving = false;
+        if (saveLog === log) saveLog = null;
       }
     }
     m.el.addEventListener('submit', (e) => {
@@ -1243,9 +1345,68 @@
     m.foot.innerHTML = `<button type="button" class="btn primary" data-save>${esc(o.ok || 'حفظ')}</button><small class="muted kbd-hint">Ctrl+Enter للحفظ</small><button type="button" class="btn ghost" data-close>إلغاء</button>${o.extra || ''}`;
     m.foot.querySelector('[data-save]').addEventListener('click', submit);
     draw();
+    snap = JSON.stringify(val);
     const first = (o.focus && m.body.querySelector(o.focus)) || m.body.querySelector('input:not([type=checkbox]),select,textarea');
     if (first && !o.noFocus) first.focus();
     return m;
+  }
+
+  // بعد حفظ نموذج: السجل الظاهر في الصفحة يكفيه سطره (يُبرَز لحظة). وغير الظاهر يُقال لماذا مع زر يُظهره: تاريخه خارج
+  // الفترة المعروضة، أو يخفيه فلتر التصنيف؛ وإلا «تم الحفظ.» (صفحة لا تعرض هذا القسم)، فلا يُدخَل السجل مرة ثانية.
+  // done: رسالة النموذج نفسه (الإقفال، الأرصدة الافتتاحية)
+  const CAT_FILTER = { expenses: ['expenses', 'expCat', (id) => RB.expenseCat(id).name], purchases: ['purchases', 'purCat', (id) => RB.purchaseCat(id).name] };
+  function savedRow(section, id) {
+    const sel = `[data-act="edit"][data-s="${CSS.escape(section)}"][data-id="${CSS.escape(String(id))}"]`;
+    const page = document.getElementById('page');
+    return page ? [...page.querySelectorAll(sel)].find((b) => b.getClientRects().length) : null;
+  }
+  function flashRow(b) {
+    const row = b && b.closest('tr, li, .card');
+    if (!row) return;
+    row.classList.remove('just-saved');
+    void row.offsetWidth;
+    row.classList.add('just-saved');
+    setTimeout(() => row.classList.remove('just-saved'), 2000);
+  }
+  function savedHint(log, done) {
+    const x = log && log[0];
+    if (!x || !x.rec) return done ? toast(done) : undefined;
+    const { section, rec } = x;
+    const b = savedRow(section, rec.id);
+    if (b) {
+      flashRow(b);
+      if (done) toast(done);
+      return;
+    }
+    // بعد زر الرسالة: السطر نفسه يُبرَز ويأخذ التركيز (زر الرسالة زال)
+    const reveal = (fn) => () => {
+      fn();
+      resetRows();
+      saveUI();
+      render();
+      const r = savedRow(section, rec.id);
+      if (r) {
+        flashRow(r);
+        r.focus();
+      } else focusPageTitle();
+    };
+    const say = (body, act) => toast((done || 'حُفظ.') + ' ' + body, '', act);
+    const f = CAT_FILTER[section];
+    const hidCat = !!f && ui.page === f[0] && !!ui[f[1]] && rec.category !== ui[f[1]];
+    if (RB.isISODate(rec.date) && !inRange(rec.date)) {
+      const ym = rec.date.slice(0, 7);
+      return say(`تاريخه ${dtText(rec.date)} خارج الفترة المعروضة (${periodLabel()}).`, {
+        label: 'اعرض ' + RB.monthName(ym),
+        run: reveal(() => {
+          ui.period = 'custom';
+          ui.from = ym + '-01';
+          ui.to = RB.monthEnd(ym);
+          if (hidCat) ui[f[1]] = '';
+        }),
+      });
+    }
+    if (hidCat) return say(`تصنيفه «${f[2](rec.category)}» يخفيه الفلتر المختار.`, { label: 'اعرض كل التصنيفات', run: reveal(() => (ui[f[1]] = '')) });
+    toast(done || 'تم الحفظ.');
   }
 
   // ─── جداول وأقسام ───
@@ -1471,6 +1632,7 @@
   // ─── خطوات البداية: دفتر جديد ما زالت فيه خطوة مطلوبة، حتى تكتمل أو تُخفى ───
   // لكل خطوة زر يفتح نموذجها أو صفحتها (k: نوع الزر، باهت للمكتملة)
   const SETUP_STEPS = {
+    partners: { t: 'الشركاء ونسبهم', note: 'قبل رأس المال والأرصدة الافتتاحية — تُسجَّل حقوقاً لهم حسب نسبهم', b: (k) => btn('+ شريك', 'add', 'data-s="partners"', k) + btn('الشركاء', 'go', 'data-v="partners"', 'sm ghost') },
     settings: { t: 'راجع الإعدادات (الضريبة، التأمينات، عمولات التطبيقات)', note: 'قبل أول إقفال — العمولة تُحفظ مع كل إقفال', b: (k) => btn('الإعدادات', 'go', 'data-v="settings"', k) },
     capital: { t: 'إيداع رأس المال', b: (k) => btn('+ إيداع رأس مال', 'add', 'data-s="capital" data-x="contribution"', k) },
     assets: { t: 'الأصول والأثاث', b: (k) => btn('+ أصل', 'add', 'data-s="assets"', k) },
@@ -1557,7 +1719,7 @@
     let h = pageHead('لوحة المتابعة', `${esc(S.settings.name)} · ${periodLabel()}`, btn('+ إقفال يومي', 'add', 'data-s="sales"', 'primary') + btn('+ فاتورة مشتريات', 'add', 'data-s="purchases"') + btn('+ مصروف', 'add', 'data-s="expenses"'));
     if (setup) h += setupCard();
     h += `<div class="kpis">
-      ${kpi('المبيعات شاملة الضريبة', money(sales.total.gross), `${fmt0(sales.total.orders)} طلب · متوسط الفاتورة ${fmt(sales.total.avgTicket)}`)}
+      ${kpi('المبيعات شاملة الضريبة', money(sales.total.gross), `${cnt(sales.total.orders, W.order)} · متوسط الفاتورة ${fmt(sales.total.avgTicket)}`)}
       ${kpi('صافي الربح', money(k.net), (inc.revenue ? `هامش ${pct(k.ratios.netMargin)} من المبيعات بدون الضريبة` : 'هامش الربح: ' + noRev) + estTag, k.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
       ${kpi('تكلفة المواد', inc.revenue ? pct(inc.ratios.foodCost) : dash, inc.revenue ? `المستهدف ${pct(target, 0)} · ${fmt(inc.tot.cogs)} ${cur()}` : noRev, fcState)}
       ${kpi('التكلفة الأساسية', inc.revenue ? pct(k.ratios.prime) : dash, (inc.revenue ? `المواد + العمالة${est ? ` (العمالة ${pct(k.ratios.labor)})` : ''} · الأفضل أقل من 60%` : noRev) + estTag, primeState)}
@@ -1614,27 +1776,29 @@
     if (!isFinite(at)) return -1;
     return Date.now() - at > 14 * 86400000 ? Math.floor((Date.now() - at) / 86400000) : null;
   }
-  // setup: خطوات البداية ظاهرة فوق التنبيهات، فلا «كل شيء تمام» لدفتر لم يُجهَّز بعد
+  // setup: خطوات البداية ظاهرة فوق التنبيهات، فلا «كل شيء على ما يرام» لدفتر لم يُجهَّز بعد
   function alertsHTML(asOf, setup) {
     const out = [];
     const bad = badRecords();
-    if (bad.length) out.push(['bad', `سجلات تحتاج تصحيح: <span class="n">${bad.length}</span> — لا تدخل في الحسابات حتى تُصحَّح${fixList(bad, true)}`, '']);
+    if (bad.length) out.push(['bad', `سجلات تحتاج إلى تصحيح: <span class="n">${bad.length}</span> — لا تدخل في الحسابات حتى تُصحَّح${fixList(bad, true)}`, '']);
     const bk = backupAge();
-    if (bk !== null) out.push(['warn', `${bk < 0 ? 'لم تُؤخذ نسخة احتياطية بعد' : `آخر نسخة احتياطية قبل <span class="n">${bk}</span> يوم`} — مسح بيانات المتصفح يمسح الدفتر`, btn('صدّر الآن', 'backup', '', 'sm')]);
+    if (bk !== null) out.push(['warn', `${bk < 0 ? 'لم تُؤخذ نسخة احتياطية بعد' : `آخر نسخة احتياطية قبل ${cnt(bk, W.day, { gen: true, wrap: numSpan })}`} — مسح بيانات المتصفح يمسح الدفتر`, btn('صدّر الآن', 'backup', '', 'sm')]);
     // أيام بلا إقفال يومي، وأشهر بلا مسير رواتب (الربح يظهر أعلى من الحقيقة)
     const noClose = missingClosings();
     if (noClose.length) {
       const d0 = esc(noClose[0]);
-      out.push(['warn', `لا يوجد إقفال يومي لـ <span class="n">${noClose.length}</span> يوم: ${noClose.slice(0, 5).map(dt).join('، ')}${noClose.length > 5 ? '…' : ''}`, `<span class="al-a">${btn('سجّل إقفال ' + dt(noClose[0]), 'add', `data-s="sales" data-x="${d0}"`, 'sm')}${btn('كان مغلقاً', 'closedDay', `data-d="${d0}"`, 'sm ghost')}</span>`]);
+      out.push(['warn', `لا يوجد إقفال يومي في ${cnt(noClose.length, W.day, { gen: true, wrap: numSpan })}: ${noClose.slice(0, 5).map(dt).join('، ')}${noClose.length > 5 ? '…' : ''}`, `<span class="al-a">${btn('سجّل إقفال ' + dt(noClose[0]), 'add', `data-s="sales" data-x="${d0}"`, 'sm')}${btn('كان مغلقاً ' + dt(noClose[0]), 'closedDay', `data-d="${d0}"`, 'sm ghost')}</span>`]);
     }
     for (const ym of missingPayroll()) {
-      const late = today() > RB.ymAdd(ym, 1) + '-15';
-      out.push([late ? 'bad' : 'warn', `لم يُسجَّل مسير رواتب ${esc(RB.monthName(ym))} — الأرباح لهذا الشهر أعلى من الحقيقة. اصرف الرواتب عبر البنك وارفع ملف «مدد»، وسدّد التأمينات قبل يوم 15.`, btn('مسير الرواتب', 'add', `data-s="payroll" data-x="${esc(ym)}"`, 'sm')]);
+      // اشتراكات التأمينات تُسدَّد خلال أول 15 يوماً من الشهر التالي: يوم 15 نفسه في الموعد، والتأخير من 16
+      const due = RB.ymAdd(ym, 1) + '-15';
+      const late = today() > due;
+      out.push([late ? 'bad' : 'warn', `لم يُسجَّل مسير رواتب ${esc(RB.monthName(ym))} — الأرباح لهذا الشهر أعلى من الحقيقة. اصرف الرواتب عبر البنك وارفع ملف «مدد»${late ? `. فات موعد سداد اشتراكات التأمينات عنه (${dtText(due)})، والتأخير عليه غرامة.` : `، وآخر موعد لسداد اشتراكات التأمينات عنه ${dtText(due)}.`}`, btn('مسير الرواتب', 'add', `data-s="payroll" data-x="${esc(ym)}"`, 'sm')]);
     }
     for (const r of RB.renewals(S, today())) {
       if (r.status === 'ok') continue;
       const name = (r.rec.desc || RB.expenseCat(r.rec.category).name) + (r.rec.entity ? ' — ' + r.rec.entity : '') + empName(r.rec.employeeId, ' · ');
-      out.push([r.status === 'expired' ? 'bad' : 'warn', r.status === 'expired' ? `انتهى: ${esc(name)} منذ ${-r.days} يوم` : `يحتاج تجديد: ${esc(name)} خلال ${r.days} يوم (${dtText(r.end)})`, renewActs(r)]);
+      out.push([r.status === 'expired' ? 'bad' : 'warn', r.status === 'expired' ? `انتهى: ${esc(name)} منذ ${cnt(-r.days, W.day, { gen: true })}` : r.days ? `يحتاج إلى تجديد: ${esc(name)} خلال ${cnt(r.days, W.day, { gen: true })} (${dtText(r.end)})` : `يحتاج إلى تجديد: ${esc(name)} — ينتهي اليوم (${dtText(r.end)})`, renewActs(r)]);
     }
     // إقرارات الضريبة: كل فترة منتهية لم تُسدد وفات موعدها، وآخر فترة منتهية ما زال موعدها قائماً
     if (S.settings.vatRegistered) {
@@ -1653,13 +1817,13 @@
       const last = ended[ended.length - 1];
       if (last && deadline(last) >= t) {
         if (!last.settled) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: المستحق ${fmt(last.remaining)} ${cur()} — آخر موعد ${dtText(deadline(last))}`, payBtn(last)]);
-        else if (last.credit > 0) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(last.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار قبل ${dtText(deadline(last))}.`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm')]);
+        else if (last.credit > 0) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(last.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار في موعد أقصاه ${dtText(deadline(last))}.`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm')]);
       }
     } else {
       // غير المسجل: حد التسجيل من مبيعات آخر 12 شهراً أو المتوقعة لسنة إن كان التشغيل أقل من سنة
       const th = RB.vatThreshold(S, today());
       const vatBtn = btn('إعدادات الضريبة', 'settings', 'data-v="vat"', 'sm');
-      if (th && th.level === 'mandatory') out.push(['bad', 'مبيعاتك (آخر 12 شهراً أو المتوقعة للـ12 شهراً القادمة) ' + fmt(th.est) + ' ر.س تجاوزت حد التسجيل الإلزامي في ضريبة القيمة المضافة (375,000 ر.س) — يجب التسجيل لدى هيئة الزكاة والضريبة والجمارك خلال 30 يوماً، ثم فعّل التسجيل في الإعدادات مع تاريخ السريان.', vatBtn]);
+      if (th && th.level === 'mandatory') out.push(['bad', 'مبيعاتك (في آخر 12 شهراً، أو المتوقعة خلال الاثني عشر شهراً القادمة) ' + fmt(th.est) + ' ر.س تجاوزت حد التسجيل الإلزامي في ضريبة القيمة المضافة (375,000 ر.س) — يجب التسجيل لدى هيئة الزكاة والضريبة والجمارك خلال 30 يوماً، ثم فعّل التسجيل في الإعدادات مع تاريخ السريان.', vatBtn]);
       else if (th && th.level === 'voluntary') out.push(['warn', 'تجاوزت حد التسجيل الاختياري (187,500 ر.س) — يمكنك التسجيل واسترداد ضريبة المشتريات.', vatBtn]);
     }
     const C = costing();
@@ -1699,10 +1863,10 @@
     const staleCnt = RB.staleCashCounts(S, ledger());
     if (staleCnt.length) {
       const x = staleCnt[0];
-      out.push(['warn', `جرد الصندوق في ${dtText(x.count.date)} لم يعد مطابقاً للدفتر: سُجّلت أو عُدّلت بعده حركة نقدية بتاريخه أو قبله، فالمتوقع الآن ${fmt(x.expected)} لا ${fmt(x.count.expected)}، وفرقه المسجل (${fmt(x.count.diff)}) لم يعد صحيحاً. افتح الجرد واحفظه ليتحدّث الفرق${staleCnt.length > 1 ? `، ثم راجع ${staleCnt.length - 1} جرد بعده` : ''}.`, btn('افتح الجرد', 'edit', `data-s="cashCounts" data-id="${esc(x.count.id)}"`, 'sm')]);
+      out.push(['warn', `جرد الصندوق في ${dtText(x.count.date)} لم يعد مطابقاً للدفتر: سُجّلت أو عُدّلت بعده حركة نقدية بتاريخه أو قبله، فالمتوقع الآن ${fmt(x.expected)} لا ${fmt(x.count.expected)}، وفرقه المسجل (${fmt(x.count.diff)}) لم يعد صحيحاً. افتح الجرد واحفظه ليتحدّث الفرق${staleCnt.length > 1 ? `، ثم راجع ما بعده (${cnt(staleCnt.length - 1, W.count)})` : ''}.`, btn('افتح الجرد', 'edit', `data-s="cashCounts" data-id="${esc(x.count.id)}"`, 'sm')]);
     }
     for (const a of RB.appReceivables(S, asOf)) {
-      if (a.balance > 1 && (!a.lastPayout || RB.daysBetween(a.lastPayout, asOf) > 14)) out.push(['warn', `${esc(a.name)}: مستحقات ${fmt(a.balance)} ${cur()} ولم يُسجَّل تحويل منذ ${a.lastPayout ? RB.daysBetween(a.lastPayout, asOf) + ' يوم' : 'البداية'}`, btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${esc(a.id)}"`, 'sm')]);
+      if (a.balance > 1 && (!a.lastPayout || RB.daysBetween(a.lastPayout, asOf) > 14)) out.push(['warn', `${esc(a.name)}: مستحقات ${fmt(a.balance)} ${cur()} ولم يُسجَّل تحويل منذ ${a.lastPayout ? cnt(RB.daysBetween(a.lastPayout, asOf), W.day, { gen: true }) : 'البداية'}`, btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${esc(a.id)}"`, 'sm')]);
     }
     const shares = RB.sum(S.partners, (p) => num(p.share));
     if (S.partners.length && Math.abs(shares - 100) > 0.01) out.push(['warn', `مجموع نسب الشركاء ${fmt(shares)}% وليس 100%.`, btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
@@ -1717,7 +1881,7 @@
     if (ledger().errors.some((e) => e.section === 'settings' && e.id === 'opening')) out.push(['bad', 'الأرصدة الافتتاحية لم تدخل في الحسابات: أضف الشركاء ونسبهم ليُسجَّل صافيها حقوقاً لهم.', btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
     out.push(...advanceAlerts());
     out.push(...eosbAlerts(false));
-    if (!out.length) return setup ? `<div class="empty-box">لا تنبيهات بعد — أكمل خطوات البداية أعلاه.</div>` : `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
+    if (!out.length) return setup ? `<div class="empty-box">لا تنبيهات بعد — أكمل خطوات البداية أعلاه.</div>` : `<div class="empty-box ok">لا توجد تنبيهات حالياً — كل شيء على ما يرام.</div>`;
     return alertsUL(out);
   }
   // أيام بلا إقفال يومي حتى أمس: من آخر 30 يوماً، ولا قبل الافتتاح أو أول إقفال مسجل، إلا الأيام المعلَّمة
@@ -1791,7 +1955,7 @@
     }
     return out;
   }
-  // ─── سجلات تحتاج تصحيح: تاريخ ناقص أو غير صالح (_bad)، أو فشل حسابها في الدفتر أو التكلفة ───
+  // ─── سجلات تحتاج إلى تصحيح: تاريخ ناقص أو غير صالح (_bad)، أو فشل حسابها في الدفتر أو التكلفة ───
   const SECTION_NAME = {
     partners: 'شريك', capital: 'حركة رأس مال', assets: 'أصل', expenses: 'مصروف', employees: 'موظف', payroll: 'مسير رواتب',
     raw: 'مادة خام', purchases: 'فاتورة مشتريات', supplierPayments: 'سداد مورد', composites: 'منتج مجمّع', products: 'صنف في المنيو',
@@ -1832,14 +1996,14 @@
         case 'payroll': {
           const t = RB.payrollTotals(x);
           add(RB.isISOMonth(x.month) ? 'رواتب ' + RB.monthName(x.month) : '');
-          add(t.count ? t.count + ' موظف' : 'بلا موظفين');
+          add(t.count ? cnt(t.count, W.emp) : 'بلا موظفين');
           add(t.count ? 'الصافي ' + fmt(t.net) : '');
           add(x.note);
           break;
         }
         case 'stockCounts': {
           const n = (x.lines || []).length;
-          add(n ? n + ' صنف' : 'بلا أصناف');
+          add(n ? cnt(n, W.item) : 'بلا أصناف');
           add(n ? 'القيمة ' + fmt(RB.stockValue(x, S)) : '');
           add(x.note);
           break;
@@ -1913,11 +2077,11 @@
     `<ul class="fix-list">${list
       .slice(0, 30)
       .map((b) => `<li><span>${withSection ? `<b>${esc(SECTION_NAME[b.section] || b.section)}</b>: ` : ''}${esc(recLabel(b.section, b.rec))} — ${esc(b.why)}</span><span class="al-a">${btn('تصحيح', 'edit', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm')}${btn('حذف', 'del', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm ghost')}</span></li>`)
-      .join('')}</ul>${list.length > 30 ? `<p class="note">و${list.length - 30} سجل آخر.</p>` : ''}`;
-  // صندوق «بحاجة لتصحيح» في صفحة القسم
+      .join('')}</ul>${list.length > 30 ? `<p class="note">وغيرها: ${cnt(list.length - 30, W.rec)}.</p>` : ''}`;
+  // صندوق «بحاجة إلى تصحيح» في صفحة القسم
   const fixCard = (section) => {
     const list = badRecords().filter((b) => b.section === section);
-    return list.length ? card('بحاجة لتصحيح', fixList(list, false), { cls: 'fix', sub: 'سجلات بتاريخ ناقص أو غير صالح: لا تدخل في الحسابات ولا في القوائم حتى تصححها أو تحذفها.' }) : '';
+    return list.length ? card('بحاجة إلى تصحيح', fixList(list, false), { cls: 'fix', sub: 'سجلات بتاريخ ناقص أو غير صالح: لا تدخل في الحسابات ولا في القوائم حتى تصححها أو تحذفها.' }) : '';
   };
   const alertsUL = (out) => `<ul class="alerts">${out.map(([k, t, a]) => `<li class="al ${k}"><span class="al-dot" aria-hidden="true"></span><span class="al-t">${t}</span>${a}</li>`).join('')}</ul>`;
   // مخصص نهاية خدمة لم يُسوَّ: من ترك العمل ولم تُسجَّل مكافأته ولا أنه لا مكافأة له (يبقى التزاماً حتى ذلك)،
@@ -2030,9 +2194,9 @@
     const ordersPerMonth = sales.total.orders / months;
     let h = pageHead('الأصول والأثاث', 'معدات المطبخ والأثاث والأدوات والديكور، وتوزيع تكلفتها على أشهر التشغيل (الإهلاك)', btn('+ أصل جديد', 'add', 'data-s="assets"', 'primary'));
     h += `<div class="kpis small">
-      ${kpi('تكلفة الأصول', money(RB.sum(catRows, (c) => c.cost)), `${rows.length} أصل`)}
+      ${kpi('تكلفة الأصول', money(RB.sum(catRows, (c) => c.cost)), cnt(rows.length, W.asset))}
       ${kpi('الإهلاك الشهري الحالي', money(monthlyDep), 'يُحمّل على مصاريف كل شهر')}
-      ${kpi('نصيب الطلب الواحد', money(ordersPerMonth ? monthlyDep / ordersPerMonth : 0), ordersPerMonth ? `على أساس ${fmt0(ordersPerMonth)} طلب شهرياً` : 'يظهر بعد تسجيل المبيعات')}
+      ${kpi('نصيب الطلب الواحد', money(ordersPerMonth ? monthlyDep / ordersPerMonth : 0), ordersPerMonth ? `على أساس ${cnt(ordersPerMonth, W.order, { gen: true })} شهرياً` : 'يظهر بعد تسجيل المبيعات')}
       ${kpi('القيمة الدفترية الحالية', money(RB.sum(catRows, (c) => c.book)), 'التكلفة − الإهلاك المتراكم')}
     </div>`;
     h += fixCard('assets');
@@ -2059,7 +2223,7 @@
           { h: 'التصنيف', f: (r) => esc(RB.assetCat(r.a.category).name) },
           { h: 'تاريخ الشراء', f: (r) => dt(r.a.date) },
           { h: 'التكلفة', num: 1, f: (r) => N(r.sch.cost) },
-          { h: 'العمر', num: 1, f: (r) => (r.sch.life ? `${r.sch.life} شهر` : 'لا يُستهلك') },
+          { h: 'العمر', num: 1, f: (r) => (r.sch.life ? cnt(r.sch.life, W.month) : 'لا يُستهلك') },
           { h: 'الإهلاك الشهري', num: 1, f: (r) => N(r.sch.monthly) },
           { h: 'المتراكم', num: 1, f: (r) => N(r.accum) },
           { h: 'القيمة الدفترية', num: 1, f: (r) => N(r.book) },
@@ -2069,7 +2233,7 @@
         rows.sort((a, b) => (a.a.date < b.a.date ? 1 : -1)),
         { cards: 1 }
       ),
-      { sub: `الإهلاك المتراكم حتى ${dtText(asOf)}. الأصول المشتراة قبل الافتتاح يبدأ إهلاكها من تاريخ الافتتاح.` }
+      { sub: `الإهلاك المتراكم حتى ${dtText(asOf)}. الأصول المشتراة قبل الافتتاح يبدأ إهلاكها من تاريخ الافتتاح، وما بعده من شهر شرائه.` }
     );
     return h;
   };
@@ -2128,7 +2292,7 @@
           { h: 'البيان', f: (x) => `${esc(x.desc || '')}${x.entity ? `<div class="muted sm">${esc(x.entity)}${empName(x.employeeId, ' · ')}</div>` : empName(x.employeeId, '<div class="muted sm">') }` },
           { h: 'المبلغ', num: 1, f: (x) => N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross) },
           { h: 'الضريبة', num: 1, f: (x) => (x.taxable ? N(RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).vat) : chip('غير خاضع', 'mute')) },
-          { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${num(x.months)} شهر<div class="muted sm">حتى ${dtText(RB.expenseCoverageEnd(x))}</div>` : 'شهر واحد' + (x.startDate && x.startDate.slice(0, 7) !== x.date.slice(0, 7) ? `<div class="muted sm">${esc(RB.monthName(x.startDate.slice(0, 7)))}</div>` : '')) },
+          { h: 'التغطية', f: (x) => (num(x.months) > 1 ? `${cnt(x.months, W.month)}<div class="muted sm">حتى ${dtText(RB.expenseCoverageEnd(x))}</div>` : 'شهر واحد' + (x.startDate && x.startDate.slice(0, 7) !== x.date.slice(0, 7) ? `<div class="muted sm">${esc(RB.monthName(x.startDate.slice(0, 7)))}</div>` : '')) },
           { h: 'الدفع من', f: (x) => `<span class="muted">${esc(RB.srcLabel(x.account, S))}</span>` },
           { h: '', cls: 'acts', f: (x) => rowActs('expenses', x.id) },
         ],
@@ -2140,22 +2304,24 @@
 
   // ─── الرسوم الحكومية ───
   PAGES.gov = () => {
-    const rn = RB.renewals(S, today()).filter((r) => RB.GOV_CATS.includes(r.rec.category) || ['rent', 'housing'].includes(r.rec.category));
+    // كل ما يُتابع تجديده (RB.renewals: كل بند متكرر يغطي 3 أشهر فأكثر) — القائمة نفسها التي تنبّه لها لوحة المتابعة،
+    // فلا يظهر تنبيه لبند (عقد نظافة أو صيانة) لا تجده هنا ولا يختلف العدّاد عن التنبيهات
+    const rn = RB.renewals(S, today());
     // التكلفة السنوية للبنود المتكررة (المنتهية منها باقية): تكلفة آخر دفعة بدون الضريبة المستردة، محوّلة لسنة
     const annual = RB.sum(rn.filter((r) => RB.GOV_CATS.includes(r.rec.category)), (r) => (RB.costSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings, r.rec.date).cost * 12) / Math.max(1, num(r.rec.months)));
     const list = good(S.expenses).filter((x) => RB.GOV_CATS.includes(x.category) && inRange(x.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
     let h = pageHead('الرسوم الحكومية والاشتراكات', 'السجل التجاري والبلدية والدفاع المدني والغرفة التجارية، ورسوم العمالة (قوى ومقيم)، والتأمين، والزكاة، واشتراكات الأنظمة، مع تنبيه قبل انتهاء كل منها — التأمينات الاجتماعية تُحسب من مسير الرواتب', btn('+ رسم أو اشتراك', 'add', 'data-s="expenses" data-x="gov"', 'primary'));
     const soon = rn.filter((r) => r.status !== 'ok').length;
     h += `<div class="kpis small">
-      ${kpi('التكلفة السنوية التقديرية', money(annual), 'للبنود المتكررة')}
+      ${kpi('التكلفة السنوية التقديرية', money(annual), 'للرسوم والاشتراكات المتكررة')}
       ${kpi('ما يعادل شهرياً', money(annual / 12), 'يُوزّع على أشهر التغطية')}
-      ${kpi('بنود تحتاج تجديد', `<span class="n">${soon}</span>`, 'منتهية أو تنتهي خلال 30 يوماً', soon ? 'warn' : 'good')}
+      ${kpi('بنود تحتاج إلى تجديد', `<span class="n">${soon}</span>`, 'منتهية أو تنتهي خلال 30 يوماً', soon ? 'warn' : 'good')}
     </div>`;
     h += card(
       'متابعة التجديد',
       table(
         [
-          { h: 'الحالة', f: (r) => (r.status === 'expired' ? chip('منتهي', 'bad') : r.status === 'soon' ? chip(`باقي ${r.days} يوم`, 'warn') : chip('ساري', 'good')) },
+          { h: 'الحالة', f: (r) => (r.status === 'expired' ? chip('منتهي', 'bad') : r.status === 'soon' ? chip(r.days ? 'متبقٍّ ' + cnt(r.days, W.day) : 'ينتهي اليوم', 'warn') : chip('ساري', 'good')) },
           { h: 'البند', f: (r) => `<b>${esc(r.rec.desc || RB.expenseCat(r.rec.category).name)}</b><div class="muted sm">${esc(RB.expenseCat(r.rec.category).name)}</div>` },
           { h: 'الجهة', f: (r) => esc(r.rec.entity || '—') + empName(r.rec.employeeId, '<div class="muted sm">') },
           { h: 'آخر دفعة', f: (r) => dt(r.rec.date) },
@@ -2166,7 +2332,7 @@
         rn,
         { empty: 'لا توجد رسوم أو اشتراكات مسجلة. أضف السجل التجاري ورخصة البلدية وشهادة السلامة ورسوم العمالة.', rowCls: (r) => r.status }
       ),
-      { sub: 'آخر تغطية لكل بند. الإيجارات وسكن العمال تظهر هنا أيضاً لمتابعة مواعيدها.' }
+      { sub: 'آخر تغطية لكل بند متكرر يغطي 3 أشهر فأكثر: الرسوم والاشتراكات والإيجار وسكن العمال وعقود النظافة والصيانة وغيرها، وهي نفسها تنبيهات التجديد في لوحة المتابعة. الرسوم لمرة واحدة وما يغطي أقل من 3 أشهر لا يُتابع.' }
     );
     h += card('مدفوعات الفترة', expensesTable(list));
     return h;
@@ -2310,7 +2476,7 @@
           : 'ضريبة المدخلات تُخصم من ضريبة المبيعات في الإقرار.';
     let h = pageHead('المشتريات التشغيلية', 'فواتير المواد الخام والتغليف والمستهلكات — من البنك أو من الكاشير أو آجل، خاضعة للضريبة أو غير خاضعة', btn('سداد مورد', 'add', 'data-s="supplierPayments"') + btn('+ فاتورة مشتريات', 'add', 'data-s="purchases"', 'primary'));
     h += `<div class="kpis small">
-      ${kpi('إجمالي المشتريات', money(taxable + exempt), `${all.length} فاتورة في الفترة`)}
+      ${kpi('إجمالي المشتريات', money(taxable + exempt), `${cnt(all.length, W.invoice)} في الفترة`)}
       ${kpi('من البنك', money(bySrc.bank || 0), '')}
       ${kpi('من الكاشير', money(bySrc.cash || 0), '')}
       ${kpi('آجل على الموردين', money(bySrc.payable || 0), '')}
@@ -2575,6 +2741,15 @@
     cols.push({ h: 'الطلبات', num: 1, f: (s) => N0(RB.saleOrders(s)) });
     cols.push({ h: '', cls: 'acts', f: (s) => rowActs('sales', s.id) });
     h += card('الإقفالات اليومية', table(cols, limitRows(days), { cards: 1, empty: 'لا توجد إقفالات في هذه الفترة. اضغط «إقفال يومي» وأدخل مبيعات كل قناة.' }) + moreRows(days.length), { actions: btn('تصدير CSV', 'csv', 'data-v="sales"', 'sm ghost'), sub: 'المبالغ شاملة الضريبة.' });
+    // الأيام المعلَّمة «كان مغلقاً» في مدة تنبيه الأيام بلا إقفال (آخر 30 يوماً): «إلغاء» يعيد تنبيه اليوم إن عُلّم خطأً
+    const lo = RB.addDays(today(), -31);
+    const closed = (S.settings.closedDays || []).filter((d) => RB.isISODate(d) && d >= lo).sort().reverse();
+    if (closed.length)
+      h += card(
+        'أيام كان المطعم فيها مغلقاً',
+        `<ul class="closed-days">${closed.map((d) => `<li>${dt(d)} ${btn('إلغاء', 'unclosedDay', `data-d="${esc(d)}" aria-label="${esc('إلغاء علامة «كان مغلقاً» عن ' + dtText(d))}"`, 'sm ghost')}</li>`).join('')}</ul>`,
+        { cls: 'closed-card', sub: 'لا يُنبَّه إلى أنها بلا إقفال يومي. «إلغاء» يعيد التنبيه لليوم إن عُلّم خطأً.' }
+      );
     return h;
   };
 
@@ -2820,7 +2995,7 @@
     const bA = e.basisFrom.slice(0, 7);
     const bB = e.basisTo.slice(0, 7);
     const nM = Math.round(e.months);
-    const basis = e.estimate ? `${dtText(e.basisFrom)} — ${dtText(e.basisTo)}` : bA === bB ? RB.monthName(bA) : `${RB.monthName(bA)} — ${RB.monthName(bB)} (${nM === 2 ? 'شهران' : nM <= 10 ? nM + ' أشهر' : nM + ' شهراً'})`;
+    const basis = e.estimate ? `${dtText(e.basisFrom)} — ${dtText(e.basisTo)}` : bA === bB ? RB.monthName(bA) : `${RB.monthName(bA)} — ${RB.monthName(bB)} (${cnt(nM, W.month)})`;
     const adj = [];
     // الدفتر بدأ بعد الافتتاح (مطعم قائم): بداية التشغيل في الحساب أول يوم مبيعات مسجل
     const late = e.startBy === 'sales' && !!S.settings.openingDate;
@@ -2852,6 +3027,13 @@
     ].filter((x) => x.v);
     return card('نقطة التعادل', body, { sub: esc(e.estimate ? `تقدير من فترة جزئية: ${basis}` : `محسوبة من الأشهر الكاملة: ${basis}`) }) + card('المصاريف الثابتة الشهرية', hbars(parts, { total: e.fixedMonthly }), { sub: esc(basis) });
   };
+  // تفسير الفرق بين التكلفة الفعلية والنظرية حسب إشارته: الهدر غير المسجل والسرقة لا يفسران فعلية أقل من النظرية
+  // (الهدر المتوقع داخل النظرية أصلاً). vp: الفرق نسبةً من النظرية
+  function varianceWhy(vp) {
+    if (Math.abs(vp) < 1) return 'الفرق صغير (أقل من 1% من النظرية) — الوصفات والجرد متسقان تقريباً.';
+    if (vp > 0) return 'الهدر المتوقع محسوب أصلاً في التكلفة النظرية عبر «نسبة الهدر %» لكل مادة؛ الزيادة المتبقية من هدر غير مسجل، وجبات العمال، حصص أكبر من الوصفة، أو نقص/سرقة.';
+    return 'الفعلية أقل من النظرية: غالباً جرد نهاية الفترة أكبر من الواقع أو جرد بدايتها ناقص، أو مشتريات لم تُسجَّل بعد، أو كميات الوصفات أو «نسبة الهدر %» أكبر من الفعلي، أو ارتفعت أسعار المواد (النظرية بأسعار المواد الحالية).';
+  }
   REPORT.menu = () => {
     const [from, asOf] = rangeToDate();
     const m = RB.menuAnalysis(S, from, asOf, ledger());
@@ -2873,9 +3055,10 @@
       ),
       { sub: `متوسط ربح الحبة ${fmt(m.avgProfit)} ${cur()}. «مطلوب» = كميته أعلى من 70% من متوسط حصة الصنف.` }
     );
+    const vp = m.theoretical ? (m.variance / m.theoretical) * 100 : 0;
     h += card(
       'التكلفة النظرية مقابل الفعلية',
-      `<div class="pv-grid"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق غير المفسَّر</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">الهدر المتوقع محسوب أصلاً في التكلفة النظرية عبر «نسبة الهدر %» لكل مادة؛ الفرق المتبقي من هدر غير مسجل، وجبات العمال، حصص أكبر، أو نقص/سرقة. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة. التكلفة النظرية محسوبة بأسعار المواد الحالية.</p>`
+      `<div class="pv-grid"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق غير المفسَّر</span>${money(m.variance)}<small>${pct(vp)} من النظرية</small></div></div><p class="note">${varianceWhy(vp)} تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة. التكلفة النظرية محسوبة بأسعار المواد الحالية.</p>`
     );
     h += card(
       'الاستهلاك النظري للمواد الخام',
@@ -2946,7 +3129,7 @@
         (e) => `<tr class="jh"><td>${dt(e.date)}</td><td colspan="2">${esc(e.desc)}</td></tr>${e.lines.map((l) => `<tr><td></td><td class="ind">${l.v > 0 ? '' : '&emsp;'}${esc(RB.accInfo(l.a, S).name)}${l.memo ? ` <span class="muted sm">— ${esc(l.memo)}</span>` : ''}</td><td class="num">${l.v > 0 ? N(l.v) : ''}</td><td class="num">${l.v < 0 ? N(-l.v) : ''}</td></tr>`).join('')}`
       )
       .join('');
-    return card('دفتر اليومية', es.length ? `<div class="tbl-wrap"><table class="tbl journal"><thead><tr><th>التاريخ</th><th>الحساب</th><th class="num">مدين</th><th class="num">دائن</th></tr></thead><tbody>${body}</tbody></table></div>${es.length > 300 ? `<p class="note">يظهر آخر 300 قيد من ${es.length}. صدّر الكل بصيغة CSV.</p>` : ''}` : `<div class="empty-box">لا قيود في هذه الفترة.</div>`, { sub: `${es.length} قيد · تُنشأ تلقائياً` });
+    return card('دفتر اليومية', es.length ? `<div class="tbl-wrap"><table class="tbl journal"><thead><tr><th>التاريخ</th><th>الحساب</th><th class="num">مدين</th><th class="num">دائن</th></tr></thead><tbody>${body}</tbody></table></div>${es.length > 300 ? `<p class="note">يظهر آخر 300 قيد من ${fmt0(es.length)}. صدّر الكل بصيغة CSV.</p>` : ''}` : `<div class="empty-box">لا قيود في هذه الفترة.</div>`, { sub: `${cnt(es.length, W.entry)} · تُنشأ تلقائياً` });
   };
 
   // ─── الإعدادات ───
@@ -2959,14 +3142,14 @@
     h += `<div class="grid2">`;
     h += card('بيانات المطعم', kv('الاسم', esc(st.name)) + kv('المدينة', esc(st.city || '—')) + kv('السجل التجاري', esc(st.crNumber || '—')) + kv('تاريخ الافتتاح', st.openingDate ? dtText(st.openingDate) : '—') + kv('مستهدف تكلفة الطعام', pct(st.targetFoodCost, 0)) + kv('تقريب السعر المقترح', fmt(st.priceRounding) + ' ' + cur()), { actions: btn('تعديل', 'settings', 'data-v="general"', 'sm') });
     h += card('ضريبة القيمة المضافة', kv('مسجل في الضريبة', st.vatRegistered ? 'نعم' : 'لا') + (st.vatRegistered ? kv('سريان التسجيل', st.vatRegisteredFrom ? dtText(st.vatRegisteredFrom) : 'منذ البداية') : '') + kv('الرقم الضريبي', esc(st.vatNumber || '—')) + kv('النسبة', pct(st.vatRate, 0)) + kv('فترة الإقرار', st.vatPeriod === 'monthly' ? 'شهرية' : 'ربع سنوية') + kv('ضريبة على العمولات والرسوم', st.feeVat ? 'نعم' : 'لا'), { actions: btn('تعديل', 'settings', 'data-v="vat"', 'sm') });
-    h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي (النظام السابق) — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي (النظام السابق) — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('السعودي (النظام الجديد)', '<span class="n">+0.5%</span> لكل طرف كل يوليو 2025–2028') + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)) + kv('التأمين الطبي سنوياً (افتراضي)', fmt(st.labor.medicalAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
+    h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي (النظام السابق) — حصة المنشأة', rate(st.gosi.saudiEr)) + kv('السعودي (النظام السابق) — حصة الموظف', rate(st.gosi.saudiEe)) + kv('السعودي (النظام الجديد)', '<span class="n">+0.5%</span> لكل طرف كل يوليو 2025–2028') + kv('غير السعودي — حصة المنشأة', rate(st.gosi.expatEr)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)) + kv('التأمين الطبي سنوياً (افتراضي)', fmt(st.labor.medicalAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
     // مطعم قائم بدأ دفتره بعد تشغيله: ما كان له وعليه في تاريخ البدء
     const op = RB.openingInfo(S);
     h += card(
       'أرصدة افتتاحية',
       op
         ? kv('تاريخ بدء الدفتر', dtText(op.date)) + kv('الصندوق', fmt(op.cash)) + kv('البنك', fmt(op.bank)) + kv('مستحقات التطبيقات', fmt(op.apps)) + kv('المخزون', fmt(op.inventory)) + (op.vatPayable ? kv('ضريبة مستحقة من إقرار سابق', fmt(op.vatPayable)) : kv('رصيد ضريبة دائن', fmt(op.vatCredit))) + kv('مستحق للموردين', fmt(op.owed)) + (op.eosb ? kv('مخصص نهاية الخدمة', fmt(op.eosb)) : '') + kv('الصافي (حقوق الشركاء)', fmt(op.net))
-        : '<p class="note">للمطعم الشغّال قبل بدء الدفتر: سجّل ما في الصندوق والبنك والمخزون وما عند التطبيقات وما عليه للموردين ولعماله (مكافأة نهاية الخدمة) في تاريخ البدء، فتبدأ الأرصدة والتقارير صحيحة.</p>',
+        : '<p class="note">للمطعم القائم قبل بدء الدفتر: سجّل ما في الصندوق والبنك والمخزون وما عند التطبيقات وما عليه للموردين ولعماله (مكافأة نهاية الخدمة) في تاريخ البدء، فتبدأ الأرصدة والتقارير صحيحة.</p>',
       { actions: btn(op ? 'تعديل' : 'إضافة', 'opening', '', 'sm') + (op ? btn('حذف', 'delopening', '', 'sm ghost') : ''), sub: 'لمطعم قائم يبدأ دفتره بعد تشغيله' }
     );
     h += card(
@@ -2982,7 +3165,7 @@
         [
           { h: 'القناة', f: (c) => `<b>${esc(c.name)}</b>` },
           { h: 'النوع', f: (c) => esc(RB.CHANNEL_TYPES[c.type] || c.type) },
-          { h: 'العمولة / الرسوم', num: 1, f: (c) => (c.type === 'cash' ? '—' : pct(c.feePct, 2)) },
+          { h: 'العمولة / الرسوم', num: 1, f: (c) => (c.type === 'cash' ? '—' : rate(c.feePct)) },
           { h: 'الحالة', f: (c) => (c.active === false ? chip('موقوفة', 'mute') : chip('مفعّلة', 'good')) },
           { h: '', cls: 'acts', f: (c) => `<div class="row-acts"><button type="button" class="icon-btn" data-act="channel" data-id="${esc(c.id)}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn danger" data-act="delchannel" data-id="${esc(c.id)}" aria-label="حذف" title="حذف">✕</button></div>` },
         ],
@@ -3037,7 +3220,11 @@
     });
 
   FORMS.capital = (rec, x, opts = {}) => {
-    if (!S.partners.length) return toast('أضف الشركاء أولاً.', 'bad');
+    // بلا شركاء (دفتر قديم مُسح، أو نسخة مستوردة بلا شركاء): نموذج الشريك نفسه بدل رسالة بلا مخرج
+    if (!S.partners.length) {
+      toast('أضف الشركاء ونسبهم أولاً: رأس المال يُسجَّل باسم شريك.', 'bad');
+      return FORMS.partners();
+    }
     const type = rec ? rec.type : x;
     const isEdit = editing(rec, opts);
     // المتاح من أرباح الشريك (نصيبه من الأرباح المتراكمة − مسحوباته) ورصيدا البنك والصندوق في تاريخ السحب،
@@ -3085,10 +3272,16 @@
     });
   };
 
+  // الأصل القائم قبل بدء الدفتر: لا ضريبة مدخلات تُسترد عليه الآن، وقيمته الدفترية من تكلفته كما دُفعت — بدون الضريبة
+  // إن استردها المطعم عند الشراء، وشاملة الضريبة إن لم يستردها (غير مسجل، أو اشتراه قبل تسجيله)
+  const openingAssetNote = (x) =>
+    RB.isVatReg(S.settings, RB.isISODate(x.date) ? x.date : today())
+      ? 'أصل كان يملكه المطعم قبل بدء الدفتر: يُسجَّل بقيمته الدفترية كما في دفاترك، ولا تُسترد عليه ضريبة الآن — من تكلفته بدون الضريبة إن استرددتها عند شرائه، وشاملة الضريبة إن اشتريته قبل تسجيل المطعم فيها. وتُضاف قيمته لحقوق الشركاء حسب نسبهم.'
+      : 'أصل كان يملكه المطعم قبل بدء الدفتر: المطعم غير مسجل في الضريبة فلم يستردها، فيُسجَّل بقيمته الدفترية من تكلفته شاملة الضريبة، ولا تُحتسب عليه ضريبة مدخلات. وتُضاف قيمته لحقوق الشركاء حسب نسبهم.';
   FORMS.assets = (rec, x, opts = {}) => {
     const isEdit = editing(rec, opts);
     // التأمين المسترد لا ضريبة عليه: يُفرض «غير خاضع» عند اختيار التصنيف وعند فتح سجل محفوظ أو حفظه،
-    // وكذلك الأصل القائم قبل بدء الدفتر (ضريبته استُردّت عند شرائه)
+    // وكذلك الأصل القائم قبل بدء الدفتر (لا ضريبة مدخلات تُسترد عليه الآن؛ قيمته الدفترية تشمل ضريبته إن لم تُسترد عند شرائه)
     const noVat = (v) => Object.assign(v, { taxable: false, includesVat: false });
     const value = Object.assign({}, rec || { id: RB.uid(), date: today(), name: '', category: 'kitchen', amount: '', includesVat: false, taxable: true, account: 'bank', lifeMonths: 60, salvage: 0, supplier: '', note: '' });
     if (value.category === 'deposit' || RB.isOpeningAsset(value)) noVat(value);
@@ -3106,6 +3299,11 @@
       const c = assetCost(x);
       return num(x.salvage) >= c ? 'تكون أقل من تكلفة الأصل (' + fmt(c) + ') وإلا لا يُستهلك منه شيء' : '';
     };
+    // ما حدده المستخدم بنفسه (أو حُفظ مع السجل، أو نُسخ) لا يغيّره تغيير التصنيف: العمر الإنتاجي و«خاضع». التأمين
+    // المسترد يُفرض عمره صفراً وبلا ضريبة دائماً، والخروج منه يعيد افتراضي التصنيف الجديد
+    // moved: غيّر المستخدم التصنيف فبقي العمر الذي حدده، فيُذكر افتراضي التصنيف الجديد تحت الحقل
+    const touched = { lifeMonths: !!rec, taxable: !!rec, moved: false };
+    let cat0 = value.category;
     // اختيار المستخدم للضريبة («خاضع» و«شامل الضريبة») قبل التحول إلى «أصل قائم»: يعود كما كان عند الرجوع منه
     let vat0 = null;
     const setAcc = (v, a) => {
@@ -3126,6 +3324,7 @@
       title: isEdit ? 'تعديل أصل' : 'أصل جديد',
       value,
       onChange: (p, v) => {
+        if (p === 'lifeMonths' || p === 'taxable') touched[p] = true;
         if (p === 'account') {
           accTouched = true;
           setAcc(v, v.account);
@@ -3140,9 +3339,13 @@
           return 'redraw';
         }
         if (p !== 'category') return;
-        v.lifeMonths = RB.assetCat(v.category).life;
-        v.taxable = v.category !== 'deposit' && !RB.isOpeningAsset(v);
+        const dep = v.category === 'deposit' || cat0 === 'deposit';
+        if (!touched.lifeMonths || dep) v.lifeMonths = RB.assetCat(v.category).life;
+        if (v.category === 'deposit' || RB.isOpeningAsset(v)) v.taxable = false;
+        else if (!touched.taxable || cat0 === 'deposit') v.taxable = true;
         if (!v.taxable) v.includesVat = false;
+        cat0 = v.category;
+        touched.moved = true;
         return 'redraw';
       },
       fields: (v) => {
@@ -3151,21 +3354,21 @@
           { k: 'name', label: 'اسم الأصل', req: 1, placeholder: 'مثال: شواية برقر مسطحة' },
           { type: 'row', fields: [{ k: 'category', type: 'select', label: 'تصنيف الأصل', options: RB.ASSET_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: old ? 'تاريخ بدء الدفتر' : 'تاريخ الشراء', req: 1 }] },
           { type: 'html', html: (x) => `<p class="note">${esc(RB.assetCat(x.category).hint)}</p>` },
-          { type: 'row', fields: [{ k: 'amount', type: 'money', label: old ? 'القيمة الدفترية' : 'المبلغ', req: 1, min: 0, help: old ? 'التكلفة − ما استُهلك منها حتى بدء الدفتر' : '' }, { k: 'account', type: 'select', label: 'دُفع من', options: accOpts }] },
+          { type: 'row', fields: [{ k: 'amount', type: 'money', label: old ? 'القيمة الدفترية' : 'المبلغ', req: 1, min: 0, help: old ? 'التكلفة (شاملة الضريبة إن لم تُسترد عند الشراء) − ما استُهلك منها حتى بدء الدفتر' : '' }, { k: 'account', type: 'select', label: 'دُفع من', options: accOpts }] },
           ...(old
-            ? [{ type: 'html', html: () => '<p class="note">أصل كان يملكه المطعم قبل بدء الدفتر: يُسجَّل بقيمته الدفترية بلا ضريبة (ضريبته استُردّت عند شرائه)، وتُضاف قيمته لحقوق الشركاء حسب نسبهم.</p>' }]
+            ? [{ type: 'html', html: (x) => `<p class="note">${openingAssetNote(x)}</p>` }]
             : v.category === 'deposit'
               ? [{ type: 'html', html: () => '<p class="note">التأمين المسترد لا تُحتسب عليه ضريبة القيمة المضافة</p>' }]
               : vatFields()),
-          { type: 'row', fields: [{ k: 'lifeMonths', type: 'num', label: old ? 'العمر المتبقي (بالأشهر)' : 'العمر الإنتاجي (بالأشهر)', min: 0, help: '0 = لا يُستهلك (مثل التأمين المسترد)' }, { k: 'salvage', type: 'money', label: 'القيمة المتبقية في النهاية', min: 0, check: salvageCheck }] },
-          { k: 'supplier', label: 'المورد' },
+          { type: 'row', fields: [{ k: 'lifeMonths', type: 'num', label: old ? 'العمر المتبقي (بالأشهر)' : 'العمر الإنتاجي (بالأشهر)', min: 0, help: '0 = لا يُستهلك (مثل التأمين المسترد)' + (touched.moved && num(v.lifeMonths) !== RB.assetCat(v.category).life && v.category !== 'deposit' ? ` · الافتراضي لهذا التصنيف ${cnt(RB.assetCat(v.category).life, W.month)}` : '') }, { k: 'salvage', type: 'money', label: 'القيمة المتبقية في النهاية', min: 0, check: salvageCheck }] },
+          { k: 'supplier', label: 'المورد', check: (x) => (x.account === 'payable' && !String(x.supplier || '').trim() ? 'مطلوب للشراء الآجل' : '') },
           { k: 'note', type: 'textarea', label: 'ملاحظات' },
         ];
       },
       preview: (v) => {
         const sch = RB.depSchedule(Object.assign({}, v, { date: v.date || today() }), S);
         const dep = sch.monthly
-          ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>`
+          ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${cnt(sch.life, W.month, { gen: true })}، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>`
           : salvageCheck(v)
             ? `<p class="note bad">لا يُستهلك: القيمة المتبقية (${fmt(num(v.salvage))}) ليست أقل من تكلفته (${fmt(sch.cost)}).</p>`
             : `<p class="note">لا يُستهلك هذا الأصل.</p>`;
@@ -3178,8 +3381,7 @@
         return early + vatPreview(v.amount, v.includesVat, RB.assetTaxable(v), v.date) + dep + overdrawNote('assets', v);
       },
       onSave: (v) => {
-        if (v.account === 'payable' && !(v.supplier || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';
-        if (RB.isOpeningAsset(v) && !S.partners.length) return 'أضف الشركاء أولاً: قيمة الأصل القائم تُسجَّل حقوقاً لهم حسب نسبهم.';
+        if (RB.isOpeningAsset(v) && !S.partners.length) return { msg: 'أضف الشركاء أولاً: قيمة الأصل القائم تُسجَّل حقوقاً لهم حسب نسبهم.', path: 'account', inline: 'أضف الشركاء أولاً' };
         if (v.category === 'deposit' || RB.isOpeningAsset(v)) noVat(v);
         upsert('assets', v);
       },
@@ -3235,6 +3437,10 @@
     };
     // نسخة أو تجديد للزكاة: بداية السنة التي تخصها تتبع تاريخ الدفع ما دامت الافتراضية
     const value = rec ? Object.assign({ preset: '' }, rec) : base;
+    // ما حدده المستخدم بنفسه (أو حُفظ مع السجل، أو نُسخ أو جُدّد) لا يغيّره تغيير التصنيف: «كم شهراً يغطي» و«خاضع»
+    // (الزكاة تُفرض بلا ضريبة دائماً). القالب الجاهز اختيار صريح فيعبّئهما
+    // moved: غيّر المستخدم التصنيف فبقيت الأشهر التي حددها، فيُذكر افتراضي التصنيف الجديد تحت الحقل
+    const touched = { months: !!rec, taxable: !!rec, moved: false };
     if (!isEdit && rec && value.category === 'zakat') {
       const z = zakatCov(value.date);
       if (!value.startDate) zakatSet(value);
@@ -3247,9 +3453,11 @@
       title: isEdit ? 'تعديل مصروف' : opts.mode === 'renew' ? 'تجديد: ' + (rec.desc || RB.expenseCat(rec.category).name) : isGov ? 'رسم حكومي أو اشتراك' : 'مصروف تشغيلي',
       value,
       onChange: (p, v) => {
+        if (p === 'months' || p === 'taxable') touched[p] = true;
         if (p === 'category') {
-          v.months = RB.expenseCat(v.category).months;
-          v.taxable = !noVat.includes(v.category);
+          if (!touched.months) v.months = RB.expenseCat(v.category).months;
+          if (!touched.taxable) v.taxable = !noVat.includes(v.category);
+          touched.moved = true;
           onCategory(v);
         }
         if (p === 'preset' && v.preset !== '') {
@@ -3272,20 +3480,20 @@
       fields: (v) => [
         ...(isGov && !isEdit ? [{ k: 'preset', type: 'select', label: 'اختر من القائمة (اختياري)', options: [['', '— بند آخر —']].concat(presetList), redraw: true }] : []),
         { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.EXPENSE_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الدفع', req: 1, redraw: v.category === 'zakat' }] },
-        ...(v.category === 'zakat' ? [{ type: 'html', html: () => '<p class="note">يُقدَّم إقرار الزكاة ويُسدَّد خلال 120 يوماً من نهاية السنة المالية؛ الزكاة 2.5% من الوعاء الزكوي، وتُحمَّل على السنة التي تخصها.</p>' }] : []),
+        ...(v.category === 'zakat' ? [{ type: 'html', html: () => '<p class="note">يُقدَّم إقرار الزكاة ويُسدَّد خلال 120 يوماً من نهاية السنة المالية. الزكاة 2.5% من الوعاء الزكوي عن سنة هجرية (354 يوماً)، وللسنة الميلادية التي يستخدمها البرنامج بنسبة أيامها (نحو 2.58% لسنة كاملة)، والمبلغ الفعلي ما يحدده الإقرار؛ وتُحمَّل على السنة التي تخصها.</p>' }] : []),
         ...(v.category === 'insurance' ? [{ type: 'html', html: () => '<p class="note">اشتراكات التأمينات الاجتماعية (GOSI) تُحسب وتُسجَّل تلقائياً من مسير الرواتب — لا تسجّل فاتورة سداد التأمينات هنا حتى لا تُحسب مرتين.</p>' }] : []),
-        { type: 'row', fields: [{ k: 'desc', label: 'البيان', req: 1, placeholder: 'مثال: فاتورة الكهرباء' }, { k: 'entity', label: v.category === 'rent' || v.category === 'housing' ? 'المؤجر' : 'الجهة / المورد', list: () => [...new Set(S.expenses.map((e) => e.entity).filter(Boolean))] }] },
+        { type: 'row', fields: [{ k: 'desc', label: 'البيان', req: 1, placeholder: 'مثال: فاتورة الكهرباء' }, { k: 'entity', label: v.category === 'rent' || v.category === 'housing' ? 'المؤجر' : 'الجهة / المورد', list: () => [...new Set(S.expenses.map((e) => e.entity).filter(Boolean))], check: (x) => (x.account === 'payable' && !String(x.entity || '').trim() ? 'مطلوب للشراء الآجل' : '') }] },
         ...(empCats.includes(v.category) ? [{ k: 'employeeId', type: 'select', label: 'العامل (اختياري)', options: empOptions, redraw: true }] : []),
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'دُفع من', options: payOptions(true) }] },
         ...vatFields(),
         {
           type: 'row',
           fields: [
-            { k: 'months', type: 'num', label: 'يغطي كم شهر؟', min: 1, step: 1, check: (x) => (Number.isInteger(num(x.months)) ? '' : 'عدد صحيح من الأشهر'), help: 'مثال: إيجار 6 أشهر، رخصة سنة = 12' },
+            { k: 'months', type: 'num', label: 'كم شهراً يغطي؟', min: 1, step: 1, check: (x) => (Number.isInteger(num(x.months)) ? '' : 'عدد صحيح من الأشهر'), help: 'مثال: إيجار 6 أشهر، رخصة سنة = 12' + (touched.moved && v.category !== 'zakat' && num(v.months) !== RB.expenseCat(v.category).months ? ` · الافتراضي لهذا التصنيف ${cnt(RB.expenseCat(v.category).months, W.month)}` : '') },
             v.category === 'zakat' ? { k: 'startDate', type: 'date', label: 'بداية السنة المالية التي تخصها', help: 'تُحمَّل الزكاة على هذه السنة لا على سنة الدفع. السنة الأولى تبدأ من الافتتاح، فأشهرها ما بقي من تلك السنة' } : { k: 'startDate', type: 'date', label: 'بداية التغطية', help: 'إن اختلفت عن تاريخ الدفع' },
           ],
         },
-        ...(oneOffCats.includes(v.category) ? [{ k: 'oneOff', type: 'check', label: 'رسم لمرة واحدة (لا يحتاج تجديد)' }] : []),
+        ...(oneOffCats.includes(v.category) ? [{ k: 'oneOff', type: 'check', label: 'رسم لمرة واحدة (لا يحتاج إلى تجديد)' }] : []),
         ...(rec && rec.noRenew ? [{ k: 'noRenew', type: 'check', label: 'أوقفت متابعة تجديده' }] : []),
         { k: 'note', type: 'textarea', label: 'ملاحظات' },
       ],
@@ -3294,10 +3502,9 @@
         const c = RB.costSplit(v.amount, v.includesVat, v.taxable, S.settings, v.date || today());
         const sym = (v.startDate || v.date || today()).slice(0, 7);
         const one = months === 1 && sym !== (v.date || today()).slice(0, 7) ? `<p class="note">يُحمَّل على شهر ${esc(RB.monthName(sym))}.</p>` : '';
-        return vatPreview(v.amount, v.includesVat, v.taxable, v.date) + one + (months > 1 ? `<p class="note">يُوزّع على ${months} شهر: <b class="n">${fmt(c.cost / months)}</b> ${cur()} شهرياً، والتغطية حتى ${dtText(RB.expenseCoverageEnd({ category: v.category, startDate: v.startDate || v.date || today(), months }))}.</p>` : '') + overdrawNote('expenses', v);
+        return vatPreview(v.amount, v.includesVat, v.taxable, v.date) + one + (months > 1 ? `<p class="note">يُوزّع على ${cnt(months, W.month, { gen: true })}: <b class="n">${fmt(c.cost / months)}</b> ${cur()} شهرياً، والتغطية حتى ${dtText(RB.expenseCoverageEnd({ category: v.category, startDate: v.startDate || v.date || today(), months }))}.</p>` : '') + overdrawNote('expenses', v);
       },
       onSave: (v) => {
-        if (v.account === 'payable' && !(v.entity || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';
         delete v.preset;
         delete v._auto;
         delete v._zs;
@@ -3382,10 +3589,9 @@
     const ym = today().slice(0, 7);
     const c = RB.employeeMonthlyCost(e, S, ym);
     // النسب الفعلية لهذا الشهر (السعودي في النظام الجديد تزيد نسبته كل يوليو)
-    const rp = (x) => `<span class="n">${+num(x).toFixed(2)}%</span>`;
     const saudi = e.nationality === 'saudi';
     const r = saudi ? RB.gosiSaudiRates(e, S, ym) : { er: S.settings.gosi.expatEr, ee: 0 };
-    const rates = saudi ? `بنسبة ${rp(r.er)} على المنشأة و${rp(r.ee)} على الموظف (${e.gosiSystem === 'new' ? 'النظام الجديد' : 'النظام السابق'})` : `بنسبة ${rp(r.er)} على المنشأة`;
+    const rates = saudi ? `بنسبة ${rate(r.er)} على المنشأة و${rate(r.ee)} على الموظف (${e.gosiSystem === 'new' ? 'النظام الجديد' : 'النظام السابق'})` : `بنسبة ${rate(r.er)} على المنشأة`;
     // التأمين الطبي إلزامي: يظهر دائماً، وبلا قسط يُنبَّه عليه
     const row = (i) => `<tr><td>${esc(i.label)}${i.k === 'medical' && !i.v ? '<div class="note bad">لم يُدخل قسط التأمين الطبي (إلزامي)</div>' : ''}</td><td class="num">${N(i.v)}</td></tr>`;
     return `<div class="tbl-wrap"><table class="tbl mini"><tbody>${c.items.filter((i) => i.v || i.k === 'medical').map(row).join('')}<tr class="total"><td>التكلفة الشهرية الحقيقية</td><td class="num">${N(c.total)}</td></tr></tbody></table></div>
@@ -3662,20 +3868,20 @@
       // نظام حماية الأجور (مدد) وموعد سداد التأمينات
       preview: (v) =>
         (v.account === 'cash' || v.gosiAccount === 'cash' ? '<p class="note bad">نظام حماية الأجور يتطلب صرف رواتب العمال عبر الحساب البنكي ورفع ملف الأجور في منصة «مدد» شهرياً؛ الصرف النقدي قد يُعدّ عدم التزام ويعرّض المنشأة لإيقاف خدمات قوى.</p>' : '') +
-        '<p class="note">اشتراكات التأمينات الاجتماعية تُسدَّد قبل يوم 15 من الشهر التالي.</p>' +
+        '<p class="note">اشتراكات التأمينات الاجتماعية تُسدَّد خلال أول 15 يوماً من الشهر التالي (آخر موعد يوم 15)، وبعده غرامة تأخير.</p>' +
         overdrawNote('payroll', v),
       onSave: async (v) => {
         if (!v.lines.length) return 'المسير فارغ.';
-        // السطر المكرر لموظف يضاعف استحقاق مخصصه
-        const ids = v.lines.map((l) => l.employeeId).filter(Boolean);
-        const dup = ids.find((id, i) => ids.indexOf(id) !== i);
-        if (dup) return 'الموظف مكرر في المسير: ' + ((empOf(dup) || {}).name || '') + '. اجمع ما له في سطر واحد.';
+        // السطر المكرر لموظف يضاعف استحقاق مخصصه (الخطأ تحت موظف السطر المكرر)
+        const ids = v.lines.map((l) => l.employeeId || '');
+        const di = ids.findIndex((id, i) => id && ids.indexOf(id) !== i);
+        if (di >= 0) return { msg: 'الموظف مكرر في المسير: ' + ((empOf(ids[di]) || {}).name || '') + '. اجمع ما له في سطر واحد.', path: `lines.${di}.employeeId`, inline: 'مكرر في المسير' };
         // سطر راتب سالب (خصومات أكبر من الأجر) يقيّد رواتب سالبة ومالاً داخلاً للبنك
         const neg = v.lines.findIndex((l) => RB.payrollLineGross(l) < 0);
-        if (neg >= 0) return `الخصومات أكبر من الراتب في السطر ${neg + 1}${v.lines[neg].name ? ' (' + v.lines[neg].name + ')' : ''}.`;
+        if (neg >= 0) return { msg: `الخصومات أكبر من الراتب في السطر ${neg + 1}${v.lines[neg].name ? ' (' + v.lines[neg].name + ')' : ''}.`, path: `lines.${neg}.deductions`, inline: 'أكبر من الراتب' };
         // استقطاع السلفة مما يُصرف له (صافي الراتب ومكافأة نهاية الخدمة)، وأكبر من رصيد سلفه يُؤكَّد (السلفة لم تُسجَّل بعد مثلاً)
         const over = v.lines.findIndex((l) => num(l.advance) > RB.payrollLineGross(l) - num(l.gosiEe) + Math.max(0, num(l.eosbPaid)) + 0.005);
-        if (over >= 0) return `استقطاع السلفة أكبر مما يُصرف للموظف في السطر ${over + 1}${v.lines[over].name ? ' (' + v.lines[over].name + ')' : ''}.`;
+        if (over >= 0) return { msg: `استقطاع السلفة أكبر مما يُصرف للموظف في السطر ${over + 1}${v.lines[over].name ? ' (' + v.lines[over].name + ')' : ''}.`, path: `lines.${over}.advance`, inline: 'أكبر مما يُصرف له' };
         // وأكبر مما بقي من سلفه من تاريخ الصرف فصاعداً (بعد ما استُقطع منها في مسير لاحق أو سُدّد) يجعل رصيده سالباً
         const out = advOut(v);
         const more = v.lines.filter((l) => num(l.advance) > Math.max(0, out[l.employeeId || ''] || 0) + 0.005);
@@ -3728,7 +3934,7 @@
       value,
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'employeeId', type: 'select', label: 'الموظف', options: empOpts }] },
-        { type: 'row', fields: [{ k: 'kind', type: 'select', label: 'النوع', options: [['give', 'صرف سلفة للعامل'], ['repay', 'سداد نقدي من العامل']] }, { k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'من / إلى', options: [['cash', RB.PAY_LABEL.cash], ['bank', RB.PAY_LABEL.bank]] }] },
+        { type: 'row', fields: [{ k: 'kind', type: 'select', label: 'النوع', options: [['give', 'صرف سلفة للعامل'], ['repay', 'سداد نقدي من العامل']] }, { k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0, check: (x) => (!(num(x.amount) > 0) ? 'أدخل مبلغاً أكبر من صفر' : x.kind === 'repay' && num(x.amount) > bal(x) + 0.005 ? `أكبر من رصيد سلفه المستحق (${fmt(Math.max(0, bal(x)))})` : '') }, { k: 'account', type: 'select', label: 'من / إلى', options: [['cash', RB.PAY_LABEL.cash], ['bank', RB.PAY_LABEL.bank]] }] },
         { k: 'note', label: 'ملاحظة' },
       ],
       preview: (v) => {
@@ -3737,11 +3943,9 @@
         return `<p class="note">رصيد سلفه قبل هذه العملية: <b class="n">${fmt(b)}</b> · بعدها: <b class="n">${fmt(after)}</b> ${cur()}</p><p class="note">السلفة ليست مصروفاً: تُستقطع من راتبه في مسير الرواتب (عمود «استقطاع سلفة») فيبقى مصروف الرواتب كاملاً.</p>` + overdrawNote('advances', v);
       },
       onSave: (v) => {
-        if (!(num(v.amount) > 0)) return 'أدخل مبلغاً أكبر من صفر.';
-        if (v.kind === 'repay' && num(v.amount) > bal(v) + 0.005) return `السداد أكبر من رصيد سلفه المستحق (${fmt(Math.max(0, bal(v)))}).`;
         v.amount = num(v.amount);
         const block = advanceGuard(S.advances.filter((a) => a && a.id !== v.id).concat([v]), [v.employeeId, rec && rec.employeeId]);
-        if (block) return block;
+        if (block) return { msg: block, path: 'amount', inline: 'استُقطعت في مسير الرواتب' };
         upsert('advances', v);
       },
     });
@@ -3855,7 +4059,7 @@
       preview: (v) => overdrawNote('purchases', v),
       onSave: (v) => {
         v.lines = v.lines.filter((l) => num(l.qty) || num(l.price) || l.desc || l.rawId);
-        if (!v.lines.length) return 'أضف صنفاً واحداً على الأقل.';
+        if (!v.lines.length) return { msg: 'أضف صنفاً واحداً على الأقل.', path: 'lines.0.rawId', inline: 'اختر المادة أو اكتب الوصف' };
         // السعر المعبأ تلقائياً من المادة الخام لا يحمل سعراً جديداً لها
         const typed = v.lines.filter((l) => !(l._auto !== undefined && num(l.price) === num(l._auto)) && !(l._copy !== undefined && num(l.price) === num(l._copy)));
         v.lines.forEach((l) => {
@@ -3879,7 +4083,7 @@
           }
           const msg = [];
           if (ch.length) msg.push(`تحدّث سعر ${ch.length} من المواد الخام وتكلفة الوصفات المرتبطة بها: ` + ch.map((c) => `${c.name}: ${ltr(fmt(c.old) + ' → ' + fmt(c.price))}`).join('، '));
-          if (older.length) msg.push(`لم يُحدَّث سعر ${older.length} مادة لأن الفاتورة أقدم من آخر سعر مسجل`);
+          if (older.length) msg.push(`لم يُحدَّث سعر ${cnt(older.length, W.material, { gen: true })} لأن الفاتورة أقدم من آخر سعر مسجل`);
           if (msg.length) toast(msg.join(' · '));
         }
       },
@@ -3929,17 +4133,14 @@
         { k: 'supplier', label: 'المورد المعتاد', list: () => [...new Set(S.purchases.map((p) => p.supplier).filter(Boolean))] },
         { type: 'section', label: 'كيف تشتريها وكيف تستخدمها' },
         { type: 'row', fields: [{ k: 'buyUnit', label: 'وحدة الشراء', req: 1, placeholder: 'كرتون 10 كجم' }, { k: 'price', type: 'money', label: 'سعر وحدة الشراء (بدون ضريبة)', req: 1, min: 0 }] },
-        { type: 'row', fields: [{ k: 'useUnit', type: 'select', label: 'وحدة الاستخدام في الوصفات', options: RB.UNITS, redraw: true }, { k: 'packQty', type: 'num', label: 'كم وحدة استخدام في وحدة الشراء؟', req: 1, min: 0, help: 'كرتون 10 كجم بوحدة جم = 10000' }] },
+        { type: 'row', fields: [{ k: 'useUnit', type: 'select', label: 'وحدة الاستخدام في الوصفات', options: RB.UNITS, redraw: true }, { k: 'packQty', type: 'num', label: 'كم وحدة استخدام في وحدة الشراء؟', req: 1, min: 0, check: (x) => (num(x.packQty) > 0 ? '' : 'يجب أن تكون أكبر من صفر'), help: 'كرتون 10 كجم بوحدة جم = 10000' }] },
         { type: 'row', fields: [{ k: 'wastePct', type: 'num', label: 'نسبة الهدر %', min: 0, max: 95, help: 'تقشير، تقطيع، تلف' }, { k: 'taxable', type: 'check', label: 'خاضعة لضريبة القيمة المضافة', help: 'حسب المورد المعتاد: أزلها فقط إذا كان المورد غير مسجل في الضريبة' }] },
       ],
       preview: (v) => {
         const u = RB.rawUnitCost(v, S);
         return `<div class="pv-grid"><div><span>تكلفة 1 ${esc(v.useUnit)}</span><b class="n">${u.toFixed(4)}</b></div><div><span>تكلفة 100 ${esc(v.useUnit)}</span><b class="n">${fmt(u * 100)}</b></div><div><span>تكلفة 1000 ${esc(v.useUnit)}</span><b class="n">${fmt(u * 1000)}</b></div></div>`;
       },
-      onSave: (v) => {
-        if (!(num(v.packQty) > 0)) return 'يجب أن تكون كمية وحدة الشراء أكبر من صفر.';
-        upsert('raw', v);
-      },
+      onSave: (v) => upsert('raw', v),
     });
 
   FORMS.stockCounts = (rec, x, opts = {}) => {
@@ -4026,10 +4227,10 @@
     const m = /^items\.(\d+)\.kind$/.exec(p);
     if (m && v.items && v.items[+m[1]]) v.items[+m[1]].id = '';
   };
-  // أسطر الوصفة: الفارغ يُحذف، والسطر بكمية ومكوّن غير صالح يُرفض برقمه
+  // أسطر الوصفة: الفارغ يُحذف، والسطر بكمية ومكوّن غير صالح يُرفض برقمه (والخطأ تحت مكوّنه)
   const recipeSave = (v) => {
     const r = RB.recipeItems(S, v.items);
-    if (r.bad) return 'مكوّن غير صالح في السطر ' + r.bad;
+    if (r.bad) return { msg: 'مكوّن غير صالح في السطر ' + r.bad, path: `items.${r.bad - 1}.id`, inline: 'اختر مكوّناً' };
     v.items = r.items;
   };
 
@@ -4040,7 +4241,7 @@
       value: rec || { id: RB.uid(), name: '', yieldQty: 1, yieldUnit: 'حبة', items: [{ kind: 'raw', id: '', qty: '' }], note: '' },
       onChange: recipeKindChange,
       fields: [
-        { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1, placeholder: 'مثال: صوص البرقر الخاص' }, { k: 'yieldQty', type: 'num', label: 'الكمية الناتجة من الوصفة', req: 1, min: 0 }, { k: 'yieldUnit', type: 'select', label: 'وحدتها', options: RB.UNITS, redraw: true }] },
+        { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1, placeholder: 'مثال: صوص البرقر الخاص' }, { k: 'yieldQty', type: 'num', label: 'الكمية الناتجة من الوصفة', req: 1, min: 0, check: (x) => (num(x.yieldQty) > 0 ? '' : 'يجب أن تكون أكبر من صفر') }, { k: 'yieldUnit', type: 'select', label: 'وحدتها', options: RB.UNITS, redraw: true }] },
         itemsField('comp', rec && rec.id, 'المكونات'),
         { k: 'note', label: 'ملاحظات' },
       ],
@@ -4050,7 +4251,6 @@
         return `<div class="pv-grid"><div><span>تكلفة الوصفة كاملة</span>${money(b.total)}</div><div><span>تكلفة 1 ${esc(v.yieldUnit)}</span><b class="n">${b.perUnit.toFixed(4)}</b></div></div>`;
       },
       onSave: (v) => {
-        if (!(num(v.yieldQty) > 0)) return 'يجب أن تكون الكمية الناتجة أكبر من صفر.';
         const bad = recipeSave(v);
         if (bad) return bad;
         upsert('composites', v);
@@ -4106,7 +4306,7 @@
     if (st.avgApp) tips.push(`في التطبيقات بسعر ${fmt(st.appPrice)}: ربح الحبة ${fmt(st.avgApp.profit)} بعد العمولة. للحفاظ على نفس ربح المحل يلزم ${fmt(st.avgApp.keepPrice)}.`);
     if (tips.length) h += `<ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul>`;
     if (short) return h;
-    if (st.apps.length) h += `<h3 class="sub-h">ربح الصنف في كل تطبيق</h3>` + table([{ h: 'التطبيق', f: (a) => esc(a.name) }, { h: 'العمولة', num: 1, f: (a) => pct(a.feePct, 1) }, { h: 'العمولة بالريال', num: 1, f: (a) => N(a.commission) }, { h: 'ربح الحبة', num: 1, f: (a) => N(a.profit) }, { h: 'الهامش', num: 1, f: (a) => pct(a.margin, 0) }, { h: 'السعر المكافئ لربح المحل', num: 1, f: (a) => N(a.keepPrice) }], st.apps);
+    if (st.apps.length) h += `<h3 class="sub-h">ربح الصنف في كل تطبيق</h3>` + table([{ h: 'التطبيق', f: (a) => esc(a.name) }, { h: 'العمولة', num: 1, f: (a) => rate(a.feePct) }, { h: 'العمولة بالريال', num: 1, f: (a) => N(a.commission) }, { h: 'ربح الحبة', num: 1, f: (a) => N(a.profit) }, { h: 'الهامش', num: 1, f: (a) => pct(a.margin, 0) }, { h: 'السعر المكافئ لربح المحل', num: 1, f: (a) => N(a.keepPrice) }], st.apps);
     return h;
   }
   function breakdownHTML(St, rec, kind, C, depth) {
@@ -4159,7 +4359,7 @@
             `<div class="field"><span class="lines-cap" id="sales-ch-cap">المبيعات حسب القناة (شاملة الضريبة)</span><div class="tbl-wrap"><table class="lines-tbl" aria-labelledby="sales-ch-cap"><thead><tr><th>القناة</th><th class="num">المبلغ</th><th class="num">عدد الطلبات</th><th class="num">العمولة</th></tr></thead><tbody>${chs
               .map((c) => {
                 const x = v.channels[c.id] || {};
-                return `<tr><td><b>${esc(c.name)}</b></td><td class="num"><input type="number" inputmode="decimal" step="any" min="0" data-type="num" data-path="channels.${esc(c.id)}.amount" value="${x.amount === undefined ? '' : esc(x.amount)}" aria-label="مبلغ ${esc(c.name)}"></td><td class="num"><input type="number" inputmode="numeric" step="1" min="0" data-type="num" data-path="channels.${esc(c.id)}.orders" value="${x.orders === undefined ? '' : esc(x.orders)}" aria-label="طلبات ${esc(c.name)}"></td><td class="num muted">${c.type === 'cash' ? '—' : pct(x.feePct !== undefined && x.feePct !== '' ? x.feePct : c.feePct, 1)}</td></tr>`;
+                return `<tr><td><b>${esc(c.name)}</b></td><td class="num"><input type="number" inputmode="decimal" step="any" min="0" data-type="num" data-path="channels.${esc(c.id)}.amount" value="${x.amount === undefined ? '' : esc(x.amount)}" aria-label="مبلغ ${esc(c.name)}"></td><td class="num"><input type="number" inputmode="numeric" step="1" min="0" data-type="num" data-path="channels.${esc(c.id)}.orders" value="${x.orders === undefined ? '' : esc(x.orders)}" aria-label="طلبات ${esc(c.name)}"></td><td class="num muted">${c.type === 'cash' ? '—' : rate(x.feePct !== undefined && x.feePct !== '' ? x.feePct : c.feePct)}</td></tr>`;
               })
               .join('')}</tbody></table></div></div>`,
         },
@@ -4195,7 +4395,9 @@
         return `${twice}<div class="pv-grid"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
       },
       onSave: (v) => {
-        if (Object.keys(v.channels).some((id) => num(v.channels[id].amount) < 0 || num(v.channels[id].orders) < 0)) return 'المبالغ والطلبات لا تكون سالبة';
+        // خانات القنوات ليست حقولاً في النموذج (جدول مرسوم): خطؤها تحت خانتها هنا
+        for (const id of Object.keys(v.channels))
+          for (const k of ['amount', 'orders']) if (num(v.channels[id][k]) < 0) return { msg: 'المبالغ والطلبات لا تكون سالبة', path: `channels.${id}.${k}`, inline: 'لا تكون سالبة' };
         if ((v.items || []).some((i) => num(i.qty) < 0)) return 'كميات الأصناف لا تكون سالبة';
         const out = {};
         for (const id of Object.keys(v.channels)) {
@@ -4204,7 +4406,7 @@
           const c = RB.channelOf(S, id) || {};
           // قناة حُذفت من الإعدادات والنموذج مفتوح (من جهاز الشريك): لا تُعرف عمولتها ولا نوعها، فلا تُحفظ مبيعاتها
           // نقداً في الصندوق بلا عمولة. سطر الإقفال المحفوظ (بنوع قناته ونسبتها، أو بيانات قديمة كما هي) يبقى قابلاً للتعديل
-          if (!c.id && !x.type && !(isEdit && rec.channels && RB.isObj(rec.channels[id]))) return 'قناة البيع «' + ((chs.find((z) => z.id === id) || {}).name || id) + '» حُذفت من الإعدادات (غالباً من جهاز الشريك)، فلا تُعرف عمولتها ولا نوعها. امسح مبلغها وطلباتها ثم احفظ، أو أعد إضافة القناة من الإعدادات ثم افتح الإقفال من جديد.';
+          if (!c.id && !x.type && !(isEdit && rec.channels && RB.isObj(rec.channels[id]))) return { msg: 'قناة البيع «' + ((chs.find((z) => z.id === id) || {}).name || id) + '» حُذفت من الإعدادات (غالباً من جهاز الشريك)، فلا تُعرف عمولتها ولا نوعها. امسح مبلغها وطلباتها ثم احفظ، أو أعد إضافة القناة من الإعدادات ثم افتح الإقفال من جديد.', path: `channels.${id}.amount`, inline: 'القناة حُذفت من الإعدادات' };
           // نسبة العمولة وضريبتها تُحفظ مع الإقفال، فتعديل الإعدادات لاحقاً لا يغيّر الأيام السابقة؛
           // الإقفال الجديد (ومنه النسخة) يأخذها من الإعدادات الحالية
           const keep = isEdit || !c.id;
@@ -4216,7 +4418,7 @@
             feeVat: keep && x.feeVat !== undefined ? !!x.feeVat : !!S.settings.feeVat,
           };
         }
-        if (!Object.keys(out).length) return 'أدخل مبيعات قناة واحدة على الأقل.';
+        if (!Object.keys(out).length) return { msg: 'أدخل مبيعات قناة واحدة على الأقل.', path: chs.length ? `channels.${chs[0].id}.amount` : '', inline: 'أدخل مبيعات قناة واحدة على الأقل' };
         v.channels = out;
         v.items = (v.items || []).filter((i) => i.productId && num(i.qty));
         upsert('sales', v);
@@ -4345,7 +4547,8 @@
         v.diff = r2(v.counted - v.expected);
         upsert('cashCounts', v);
         const d = v.diff;
-        toast(Math.abs(d) < 0.01 ? 'الصندوق مطابق للدفتر.' : `${d < 0 ? 'عجز' : 'زيادة'} في الصندوق ${fmt(Math.abs(d))} ${S.settings.currency || ''} — سُجّل الفرق.`, Math.abs(d) < 0.01 ? '' : 'bad');
+        // العجز بلون الخطأ، والزيادة والمطابقة عادية (الزيادة «جيدة» في المعاينة وقائمة الجرد)
+        toast(Math.abs(d) < 0.01 ? 'الصندوق مطابق للدفتر.' : `${d < 0 ? 'عجز' : 'زيادة'} في الصندوق ${fmt(Math.abs(d))} ${S.settings.currency || ''} — سُجّل الفرق.`, d < -0.005 ? 'bad' : '');
       },
     });
   };
@@ -4433,7 +4636,7 @@
       wide: true,
       value: val,
       fields: (v) => [
-        { type: 'html', html: () => '<p class="note">للمطعم الشغّال قبل بدء الدفتر: ما في الصندوق والبنك والمخزون، وما للمطعم عند التطبيقات، وما عليه للموردين ولعماله (مكافأة نهاية الخدمة) في تاريخ البدء. صافيها يُسجَّل حقوقاً للشركاء حسب نسبهم.</p><p class="note">الأصول الموجودة (المعدات والأثاث والديكور) سجّلها بعد حفظ هذه الأرصدة من صفحة الأصول: بقيمتها الدفترية وعمرها المتبقي وبتاريخ بدء الدفتر، واختر في «دُفع من»: «أصل قائم قبل بدء الدفتر». لا تُحتسب عليها ضريبة (استُردّت عند شرائها)، وتُضاف قيمتها لحقوق الشركاء حسب نسبهم.</p>' },
+        { type: 'html', html: () => '<p class="note">للمطعم القائم قبل بدء الدفتر: ما في الصندوق والبنك والمخزون، وما للمطعم عند التطبيقات، وما عليه للموردين ولعماله (مكافأة نهاية الخدمة) في تاريخ البدء. صافيها يُسجَّل حقوقاً للشركاء حسب نسبهم.</p><p class="note">الأصول الموجودة (المعدات والأثاث والديكور) سجّلها بعد حفظ هذه الأرصدة من صفحة الأصول: بقيمتها الدفترية وعمرها المتبقي وبتاريخ بدء الدفتر، واختر في «دُفع من»: «أصل قائم قبل بدء الدفتر». لا تُسترد عليها ضريبة الآن: قيمتها الدفترية بدون الضريبة إن استرددتها عند شرائها، وشاملة الضريبة إن لم تستردها (غير مسجل في الضريبة حينها)، وتُضاف قيمتها لحقوق الشركاء حسب نسبهم.</p>' },
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ بدء الدفتر', req: 1, redraw: true, help: 'الأرصدة كما هي صباح هذا اليوم' }, { k: 'cash', type: 'money', label: 'النقد في الصندوق', min: 0 }, { k: 'bank', type: 'money', label: 'رصيد الحساب البنكي', min: 0 }] },
         // قيمة المخزون كما يُقيَّم الجرد في ذلك التاريخ: غير المسجل في الضريبة يقيّم المواد الخاضعة شاملة ضريبتها (جزء من تكلفتها)
         // الضريبة من إقرار سابق: لصالح المطعم (رصيد دائن يُخصم من أول إقرار) أو عليه (مستحق للهيئة لم يُسدَّد بعد)
@@ -4515,12 +4718,15 @@
         if (roBlock()) return false;
         if (!S.partners.length) return 'أضف الشركاء أولاً: صافي الأرصدة الافتتاحية يُسجَّل حقوقاً لهم.';
         const c = clean(v);
-        if (c.payables.some((x) => !x.supplier)) return 'اكتب اسم المورد لكل مبلغ مستحق.';
-        if (c.vatCredit > 0 && c.vatPayable > 0) return 'أدخل الضريبة من الإقرار السابق مرة واحدة: رصيداً دائناً لصالح المطعم أو مستحقاً عليه للهيئة، بالصافي.';
-        if (c.eosb.some((x) => !x.employeeId)) return 'اختر الموظف لكل مبلغ في مخصص نهاية الخدمة.';
-        const ids = c.eosb.map((x) => x.employeeId);
-        const dup = ids.find((id, i) => ids.indexOf(id) !== i);
-        if (dup) return 'الموظف مكرر في مخصص نهاية الخدمة: ' + ((empOf(dup) || {}).name || '') + '. اجمع مخصصه في سطر واحد.';
+        // الخطأ تحت خانته: أرقام الأسطر من النموذج نفسه (قبل حذف الأسطر الفارغة)
+        const pi = (v.payables || []).findIndex((x) => x && num(x.amount) && !String(x.supplier || '').trim());
+        if (pi >= 0) return { msg: 'اكتب اسم المورد لكل مبلغ مستحق.', path: `payables.${pi}.supplier`, inline: 'اكتب اسم المورد' };
+        if (c.vatCredit > 0 && c.vatPayable > 0) return { msg: 'أدخل الضريبة من الإقرار السابق مرة واحدة: رصيداً دائناً لصالح المطعم أو مستحقاً عليه للهيئة، بالصافي.', path: 'vatPayable', inline: 'رصيد دائن أو مستحق، لا الاثنان' };
+        const ei = (v.eosb || []).findIndex((x) => x && num(x.amount) && !x.employeeId);
+        if (ei >= 0) return { msg: 'اختر الموظف لكل مبلغ في مخصص نهاية الخدمة.', path: `eosb.${ei}.employeeId`, inline: 'اختر الموظف' };
+        const ids = (v.eosb || []).map((x) => (x && (x.employeeId || num(x.amount)) ? String(x.employeeId || '') : ''));
+        const di = ids.findIndex((id, i) => id && ids.indexOf(id) !== i);
+        if (di >= 0) return { msg: 'الموظف مكرر في مخصص نهاية الخدمة: ' + ((empOf(ids[di]) || {}).name || '') + '. اجمع مخصصه في سطر واحد.', path: `eosb.${di}.employeeId`, inline: 'مكرر' };
         S.settings.opening = c;
         saveSettings();
       },
@@ -4697,6 +4903,15 @@
     },
   };
 
+  // علامة «كان مغلقاً» ليوم أو إلغاؤها (say: رسالة بالإلغاء)
+  function setClosedDay(d, on, say) {
+    if (roBlock()) return;
+    const rest = (S.settings.closedDays || []).filter((x) => x !== d);
+    S.settings.closedDays = on ? rest.concat([d]).sort().slice(-60) : rest;
+    saveSettings();
+    render();
+    if (!on && say) toast('أُلغيت علامة «كان مغلقاً» عن ' + dtText(d) + '، فيعود تنبيه إقفاله.');
+  }
   const ACT = {
     go: (el) => go(el.dataset.v),
     add: (el) => FORMS[el.dataset.s] && FORMS[el.dataset.s](null, el.dataset.x),
@@ -4821,16 +5036,34 @@
       S.settings.channels = S.settings.channels.filter((c) => c.id !== id);
       saveSettings();
       render();
+      toast('تم الحذف.');
     },
-    // يوم بلا إقفال لأن المطعم كان مغلقاً: لا يُنبَّه عليه (آخر 60 يوماً معلَّماً)
-    closedDay: (el) => {
+    // يوم بلا إقفال لأن المطعم كان مغلقاً: لا يُنبَّه عليه (آخر 60 يوماً معلَّماً). يُسأل أولاً (العلامة تُسقط التنبيه
+    // الوحيد على يوم ربما كانت فيه مبيعات)، و«تراجع» في الرسالة، والأيام المعلَّمة في صفحة المبيعات مع «إلغاء».
+    // بعد التأكيد يعود التركيز إلى زر اليوم التالي (أو المحتوى الرئيسي إن زال التنبيه)
+    closedDay: async (el) => {
       if (roBlock()) return;
       const d = el.dataset.d;
       if (!RB.isISODate(d)) return;
-      S.settings.closedDays = (S.settings.closedDays || []).filter((x) => x !== d).concat([d]).sort().slice(-60);
-      saveSettings();
-      render();
-      toast('سُجّل ' + dtText(d) + ' يوماً مغلقاً، فلا تنبيه له.');
+      if (!(await confirmBox(`تسجيل ${esc(dtText(d))} يوماً كان المطعم فيه مغلقاً؟ لن يُنبَّه بعدها إلى أنه بلا إقفال يومي. إن كانت فيه مبيعات فسجّل إقفاله بدلاً من ذلك.`, { ok: 'كان مغلقاً' }))) return;
+      setClosedDay(d, true);
+      toast('سُجّل ' + dtText(d) + ' يوماً مغلقاً، فلا تنبيه له.', '', { label: 'تراجع', run: () => setClosedDay(d, false, true) });
+    },
+    unclosedDay: (el) => {
+      if (roBlock()) return;
+      const d = el.dataset.d;
+      if (!RB.isISODate(d)) return;
+      // التركيز إلى زر «إلغاء» التالي في القائمة، أو عنوان البطاقة إن فرغت
+      const list = [...document.querySelectorAll('#page [data-act="unclosedDay"]')];
+      const i = list.indexOf(el);
+      setClosedDay(d, false, true);
+      const next = document.querySelectorAll('#page [data-act="unclosedDay"]');
+      const h = document.querySelector('#page .closed-card h2') || document.querySelector('#page h1');
+      const to = next[Math.min(i, next.length - 1)] || h;
+      if (to) {
+        if (to === h) to.tabIndex = -1;
+        to.focus();
+      }
     },
     opening: () => {
       if (roBlock()) return;
@@ -4916,11 +5149,14 @@
       bump();
       render();
     },
+    // يبقى اسم المطعم والشركاء ونسبهم (لا سجلات تتبعهم بعد المسح): بدونهم لا يُسجَّل رأس مال ولا أرصدة افتتاحية،
+    // ومعالج البداية لا يُعرض لدفتر بدأ (ولا يُعاد فتحه: في البيانات المشتركة يفتح الدفتر القائم ولا يضيف الشركاء)
     wipe: async () => {
       if (roBlock()) return;
-      if (!(await confirmBox('مسح كل بيانات المطعم نهائياً؟ صدّر نسخة احتياطية قبلها إن احتجت.', { danger: true, ok: 'امسح الكل' }))) return;
+      if (!(await confirmBox('مسح كل بيانات المطعم نهائياً؟ يبقى اسم المطعم والشركاء ونسبهم فقط، وتعود الإعدادات إلى قيمها الافتراضية. صدّر نسخة احتياطية قبلها إن احتجت.', { danger: true, ok: 'امسح الكل' }))) return;
       const fresh = RB.emptyState();
       fresh.settings = Object.assign(RB.defaultSettings(), { name: S.settings.name, startedAt: new Date().toISOString() });
+      fresh.partners = good(S.partners).map(clone);
       if (await replaceAll(fresh)) toast('تم مسح البيانات.');
     },
     reload: () => location.reload(),
@@ -4997,7 +5233,7 @@
   // before: عند إكمال عملية فشلت، المستندات التي كانت قبلها (لا يُحذف غيرها)
   async function replaceAll(state, before) {
     if (APP.readOnly) {
-      toast(RO_MSG, 'bad');
+      toast(roMsg(), 'bad');
       return false;
     }
     S = RB.normalize(state);
@@ -5060,6 +5296,8 @@
     // وهو نفسه الدفتر في الشاشة فتدخل فيه تعديلات المستخدم بعد الفشل. «أكمل الحفظ» يكتبه هو
     APP.replaceFailed = { n: res.failed, d: res.dels || 0, state: S, before: res.before };
     APP.save.failed = failCode(res.code);
+    // توقف الوصول أثناء العملية: لا «أكمل الحفظ» (لن ينجح)، والدفتر المطلوب في الشاشة وفي النسخة الاحتياطية
+    if (res.code === 'revoked' && APP.backend.lost) APP.backend.lost();
     toast(res.code === 'invalid_id' ? 'معرّف سجل غير صالح: ' + (res.badIds || []).slice(0, 5).map(shortId).join('، ') : dbErrMsg(res), 'bad');
     render();
     return false;
@@ -5130,7 +5368,7 @@
         },
         { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %', min: 0, max: 100, redraw: true, help: 'إذا كنت الشريك الوحيد اترك الثاني فارغاً وتصبح نسبتك 100%' }] },
         { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني', redraw: true }, { k: 's2', type: 'num', label: 'نسبته %', min: 0, max: 100 }] },
-        { k: 'existing', type: 'check', label: 'المطعم شغّال من قبل — أبدأ الدفتر بأرصدة افتتاحية', help: 'بعد البدء يُفتح نموذج الأرصدة الافتتاحية: ما في الصندوق والبنك والمخزون، وما عند التطبيقات، وما عليك للموردين' },
+        { k: 'existing', type: 'check', label: 'المطعم يعمل من قبل — أبدأ الدفتر بأرصدة افتتاحية', help: 'بعد البدء يُفتح نموذج الأرصدة الافتتاحية: ما في الصندوق والبنك والمخزون، وما عند التطبيقات، وما عليك للموردين' },
       ],
       onSave: async (v) => {
         // شريك واحد: نسبته 100% مهما كُتب في حقلها؛ شريكان: نسبتان موجبتان مجموعهما 100%
@@ -5156,7 +5394,7 @@
             return;
           }
           const name = (existing.settings && existing.settings.name) || '';
-          if (!(await confirmBox('يوجد دفتر محفوظ «' + esc(name) + '» فيه ' + countRecs(existing) + ' سجل وسيُحذف نهائياً. صدّر نسخة احتياطية أولاً إن احتجت.', { danger: true, ok: 'احذف وابدأ من جديد' }))) return false;
+          if (!(await confirmBox('يوجد دفتر محفوظ «' + esc(name) + '» فيه ' + cnt(countRecs(existing), W.rec) + '، وسيُحذف نهائياً. صدّر نسخة احتياطية أولاً إن احتجت.', { danger: true, ok: 'احذف وابدأ من جديد' }))) return false;
         }
         const st = RB.emptyState();
         Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, vatRegisteredFrom: v.vatRegistered ? v.vatRegisteredFrom || '' : '', startedAt: new Date().toISOString() });
@@ -5448,7 +5686,7 @@
       const data = safeJSON(fr.result);
       const isObj = RB.isObj;
       if (!isObj(data) || (data.settings != null && !isObj(data.settings)) || (!isObj(data.settings) && !RB.SECTIONS.some((k) => Array.isArray(data[k])))) return toast('الملف ليس نسخة احتياطية صالحة من دفتر المطعم.', 'bad');
-      if (APP.readOnly) return toast(RO_MSG, 'bad');
+      if (APP.readOnly) return toast(roMsg(), 'bad');
       // معرّف يكسر الصفحة أو مسار البيانات المشتركة: يُرفض الملف كله (لا تُغيَّر المعرّفات لأن السجلات مرتبطة بها)
       const badIds = RB.badIds(data);
       if (badIds.length) return toast(`لم يُستورد الملف: فيه معرّفات سجلات غير صالحة (${badIds.slice(0, 5).map(shortId).join('، ')}${badIds.length > 5 ? '…' : ''}).`, 'bad');
@@ -5474,10 +5712,10 @@
         }
       }
       // الاستيراد يستبدل ولا يدمج: يُذكر عدد ما سيُحذف ويُنصح بالتصدير قبله
-      const repl = hasBooks(cur) ? `ستحل محل ${APP.demo ? 'دفترك المحفوظ' : 'بياناتك الحالية'} «${esc((cur.settings && cur.settings.name) || '')}» (${countRecs(cur)} سجل) بالكامل. صدّر نسخة من بياناتك أولاً إن احتجتها.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
-      const notes = (skipped ? `<br>تم تجاهل ${skipped} سجل غير صالح.` : '') + (notList.length ? `<br>أقسام ليست قوائم تم تجاهلها: ${esc(notList.map((k) => RB.SECTION_LABELS[k] || k).join('، '))}.` : '');
+      const repl = hasBooks(cur) ? `ستحل محل ${APP.demo ? 'دفترك المحفوظ' : 'بياناتك الحالية'} «${esc((cur.settings && cur.settings.name) || '')}» (${cnt(countRecs(cur), W.rec)}) بالكامل. صدّر نسخة من بياناتك أولاً إن احتجتها.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
+      const notes = (skipped ? `<br>تم تجاهل سجلات غير صالحة: ${cnt(skipped, W.rec)}.` : '') + (notList.length ? `<br>أقسام ليست قوائم تم تجاهلها: ${esc(notList.map((k) => RB.SECTION_LABELS[k] || k).join('، '))}.` : '');
       const demoNote = data.demo === true ? '<br><b>هذا ملف بيانات تجريبية وليس نسخة من دفترك.</b>' : '';
-      if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${n} سجل؟ ${repl}${demoNote}${notes}`, { danger: true, ok: 'استورد' }))) return;
+      if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${cnt(n, W.rec)}؟ ${repl}${demoNote}${notes}`, { danger: true, ok: 'استورد' }))) return;
       delete data.demo;
       data.settings = Object.assign({}, data.settings, { startedAt: (data.settings && data.settings.startedAt) || new Date().toISOString() });
       if (await replaceAll(data)) toast('تم الاستيراد.');
@@ -5502,7 +5740,7 @@
           <div class="period">
             <label for="periodSel" class="vh">الفترة</label>
             <select id="periodSel">${PERIODS.map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select>
-            <span class="custom-range" id="customRange"><input type="date" id="pFrom" aria-label="من تاريخ"><span>—</span><input type="date" id="pTo" aria-label="إلى تاريخ"></span>
+            <span class="custom-range" id="customRange"><input type="date" id="pFrom" aria-label="من تاريخ" min="${P_MIN}" max="${P_MAX}"><span>—</span><input type="date" id="pTo" aria-label="إلى تاريخ" min="${P_MIN}" max="${P_MAX}"></span>
           </div>
         </header>
         <div id="banner"></div>
@@ -5524,11 +5762,14 @@
     document.getElementById('periodSel').value = ui.period;
     const cr = document.getElementById('customRange');
     cr.hidden = ui.period !== 'custom';
-    // الفترة المخصصة: الحقلان يعرضان المحفوظ نفسه، فلا يظهر شهر غير المستخدم في الحساب
+    // الفترة المخصصة: الحقلان يعرضان المحفوظ نفسه، فلا يظهر شهر غير المستخدم في الحساب. الحقل الذي يُكتب فيه
+    // الآن لا يُلمس (إعادة رسم أثناء كتابة التاريخ بمقاطعه لا تُرجعه إلى قيمته السابقة)
     const [a, b] = range();
     const custom = ui.period === 'custom';
-    document.getElementById('pFrom').value = custom && RB.isISODate(ui.from) ? ui.from : a;
-    document.getElementById('pTo').value = custom && RB.isISODate(ui.to) ? ui.to : b;
+    const pf = document.getElementById('pFrom');
+    const pt = document.getElementById('pTo');
+    if (periodFocus !== pf) pf.value = custom && RB.isISODate(ui.from) ? ui.from : a;
+    if (periodFocus !== pt) pt.value = custom && RB.isISODate(ui.to) ? ui.to : b;
     document.body.classList.toggle('readonly', !!APP.readOnly);
     updateBanner();
     try {
@@ -5568,24 +5809,34 @@
     // الجانبي وحده (مخفي في درج الجوال، وأسفل الشاشة القصيرة). لا تخزين أصلاً، وعرض فقط، والاستيراد الناقص لها أشرطتها
     // في البيانات المشتركة: «أعد المحاولة» يعيد حفظ كل ما فشل حفظه أو حذفه (الحذف الفاشل يُخفي السجل فلا يمكن فتحه
     // وحذفه ثانية، فلا مخرج من الحالة الحمراء بغير هذا الزر)
+    // امتلاء المساحة أو سجل مرفوض (غير صالح أو كبير): إعادة المحاولة لا تنجح غالباً، فالتصدير هو الزر الأول
+    // ويبقى «أعد المحاولة» ثانوياً (المخرج الوحيد من الحالة الحمراء إن فرغت مساحة أو عُدّل السجل)
     const sf = APP.save.failed;
-    if (sf && sf !== 'invalid_argument' && !APP.noStorage && !APP.replaceFailed && !APP.demo) {
+    const failBar = sf && sf !== 'invalid_argument' && !APP.noStorage && !APP.replaceFailed && !APP.demo;
+    if (failBar) {
       const cloud = APP.backend && APP.backend.kind === 'cloud';
       const retry = cloud && !APP.readOnly && APP.backend.bad.size > 0;
-      const acts = (retry ? btn(APP.retrying ? 'جاري إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm primary') : '') + btn('صدّر نسخة احتياطية', 'backup', '', retry ? 'sm' : 'sm primary');
-      h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${cloud ? 'تعذّر حفظه أو حذفه في البيانات المشتركة' : 'تعذّر حفظه في هذا المتصفح'}. ${retry ? 'اضغط «أعد المحاولة»، وإن تكرر الفشل فصدّر' : 'صدّر'} نسخة احتياطية الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.`, acts);
+      const stuck = sf === 'quota_exceeded' || sf === 'invalid';
+      const first = retry && !stuck;
+      const acts = (first ? btn(APP.retrying ? 'جاري إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm primary') : '') + btn('صدّر نسخة احتياطية', 'backup', '', first ? 'sm' : 'sm primary') + (retry && stuck ? btn(APP.retrying ? 'جاري إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm ghost') : '');
+      const why = !cloud ? 'تعذّر حفظه في هذا المتصفح' : sf === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة' : 'تعذّر حفظه أو حذفه في البيانات المشتركة';
+      const todo = first ? 'اضغط «أعد المحاولة»، وإن تكرر الفشل فصدّر نسخة احتياطية' : 'صدّر نسخة احتياطية';
+      h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${why}. ${todo} الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.${sf === 'quota_exceeded' ? ' لا تحذف سجلات قديمة لتفريغ المساحة: حذفها يغيّر الأرصدة كلها.' : ''}`, acts);
     }
-    if (APP.syncLost) h += bar('bad', 'انقطع التحديث المباشر للبيانات المشتركة، وقد لا تكون تعديلات شريكك الأخيرة ظاهرة. أعد تحميل الصفحة قبل أن تعدّل.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
+    // توقف الوصول: شريط واحد بلا ادعاء سبب (لا «انقطع التحديث» ولا «ليست لديك صلاحية» معه)
+    const hasBackupBtn = failBar || (APP.revoked && APP.replaceFailed);
+    if (APP.revoked) h += bar('bad', `<b>${LOST_MSG}</b>`, (hasBackupBtn ? '' : btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary')) + btn('إعادة تحميل الصفحة', 'reload', '', hasBackupBtn ? 'sm primary' : 'sm'));
+    else if (APP.syncLost) h += bar('bad', 'انقطع التحديث المباشر للبيانات المشتركة، وقد لا تكون تعديلات شريكك الأخيرة ظاهرة. أعد تحميل الصفحة قبل أن تعدّل.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
     if (APP.replaceFailed) {
       // ما بقي من العملية: سجلات الدفتر التي لم تُكتب، والقديمة التي لم تُحذف، أو الإعدادات وحدها (تُكتب آخراً)
       const f = APP.replaceFailed;
-      const left = [f.n ? `<span class="n">${f.n}</span> سجل لم يُكتب` : '', f.d ? `<span class="n">${f.d}</span> سجل قديم لم يُحذف` : ''].filter(Boolean).join(' و');
-      h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (${left ? 'بقي ' + left : 'بقيت الإعدادات'}) — البيانات في الشاشة غير محفوظة بالكامل</b>`, btn('أكمل الحفظ', 'resumereplace', '', 'sm primary'));
+      const left = [f.n ? 'لم يُكتب: ' + cnt(f.n, W.rec, { wrap: numSpan }) : '', f.d ? 'لم يُحذف من القديم: ' + cnt(f.d, W.rec, { wrap: numSpan }) : ''].filter(Boolean).join('، و');
+      h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (${left || 'بقيت الإعدادات'}) — البيانات في الشاشة غير محفوظة بالكامل</b>`, APP.revoked ? btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary') : btn('أكمل الحفظ', 'resumereplace', '', 'sm primary'));
     }
     const mk = markerState();
     if (mk === 'running') h += bar('warn', '<b>يجري الآن استيراد أو مسح للبيانات المشتركة من جهاز آخر</b> — انتظر حتى ينتهي قبل أن تعدّل.', '');
     if (mk === 'stale') h += bar('warn', 'استيراد/مسح سابق لم يكتمل — أعد العملية', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
-    if (APP.readOnly && !APP.demo) h += bar('info', RO_MSG, '');
+    if (APP.readOnly && !APP.demo && !APP.revoked) h += bar('info', RO_MSG, '');
     if (APP.demo)
       h += bar(
         'demo',
@@ -5617,6 +5868,7 @@
     if (APP.demo) h = `${dot('warn')}وضع التجربة — لا يُحفظ`;
     else if (f === 'replace') h = `${dot('bad')}<span class="ss-t">لم يكتمل الحفظ في البيانات المشتركة</span>`;
     else if (f && f !== 'invalid_argument') h = `${dot('bad')}<span class="ss-t">لم يُحفظ آخر تعديل — صدّر نسخة احتياطية</span>${btn('تصدير', 'backup', '', 'sm ghost')}`;
+    else if (APP.revoked) h = `${dot('bad')}توقف الوصول إلى البيانات المشتركة`;
     else if (APP.syncLost) h = `${dot('bad')}غير متزامن`;
     else if (APP.readOnly || f === 'invalid_argument') h = `${dot(f ? 'bad' : 'warn')}عرض فقط — لا تملك صلاحية التعديل`;
     else if (APP.save.pending > 0) h = `${dot('warn')}جاري الحفظ…`;
@@ -5631,6 +5883,43 @@
   function scheduleRender() {
     clearTimeout(rt);
     rt = setTimeout(render, 80);
+  }
+
+  // حقلا الفترة المخصصة. كتابة التاريخ بلوحة المفاتيح تمر بقيم وسيطة صالحة الشكل (السنة 0002 ثم 0020 ثم 0202 ثم 2025،
+  // والشهر 01 قبل 10): typing = الحقل ما زال مركَّزاً، فتُتجاهل السنة قبل 2000، ولا يُغيَّر الطرف الآخر أبداً — القيمة
+  // التي تجعل «إلى» قبل «من» تنتظر حتى مغادرة الحقل أو Enter، وعندها فقط يُعدَّل الطرف الآخر إلى نهاية شهر «من» أو
+  // أول شهر «إلى» مع تنبيه. حقل فارغ أو تاريخ غير صالح عند المغادرة يعود إلى قيمته
+  const P_MIN = '2000-01-01';
+  const P_MAX = '2099-12-31';
+  // الحقل الذي فيه التركيز (من focusin إلى focusout): document.activeElement يصير body لحظة الانتقال بين مقاطع التاريخ
+  // (الشهر ثم اليوم)، فلا يُعتمد عليه لمعرفة أن الكتابة جارية. وكتابة القيمة في الحقل أثناء ذلك تمحو المقطع الجاري
+  let periodFocus = null;
+  function periodField(t, typing) {
+    const isFrom = t.id === 'pFrom';
+    const v = t.value;
+    // الطرف الآخر كما يظهر في الشاشة إن لم يكن محفوظاً
+    const [a, b] = range();
+    const from0 = RB.isISODate(ui.from) ? ui.from : a;
+    const to0 = RB.isISODate(ui.to) ? ui.to : b;
+    const own = isFrom ? from0 : to0;
+    if (!RB.isISODate(v) || v < P_MIN || v > P_MAX) {
+      if (!typing) t.value = own;
+      return;
+    }
+    let from = isFrom ? v : from0;
+    let to = isFrom ? to0 : v;
+    if (to < from) {
+      if (typing) return;
+      if (isFrom) to = RB.monthEnd(from.slice(0, 7));
+      else from = to.slice(0, 7) + '-01';
+      toast(isFrom ? 'عُدّل تاريخ «إلى» ليأتي بعد «من»' : 'عُدّل تاريخ «من» ليأتي قبل «إلى»');
+    }
+    if (from === ui.from && to === ui.to) return;
+    ui.from = from;
+    ui.to = to;
+    resetRows();
+    saveUI();
+    render();
   }
 
   function bindGlobal() {
@@ -5657,36 +5946,45 @@
         saveUI();
         render();
       } else if (t.id === 'pFrom' || t.id === 'pTo') {
-        // حقل فارغ أو تاريخ غير صالح يعيد القيمة السابقة. وإن صار «من» بعد «إلى» يُعدَّل الطرف الآخر إلى نهاية شهر «من» أو أول شهر «إلى»
-        const v = t.value;
-        if (!RB.isISODate(v)) {
-          t.value = t.id === 'pFrom' ? ui.from : ui.to;
-          return;
-        }
-        // الطرف الآخر كما يظهر في الشاشة إن لم يكن محفوظاً
-        const [a, b] = range();
-        if (!RB.isISODate(ui.from)) ui.from = a;
-        if (!RB.isISODate(ui.to)) ui.to = b;
-        if (t.id === 'pFrom') {
-          ui.from = v;
-          if (ui.to < ui.from) {
-            ui.to = RB.monthEnd(ui.from.slice(0, 7));
-            toast('عُدّل تاريخ «إلى» ليأتي بعد «من»');
-          }
-        } else {
-          ui.to = v;
-          if (ui.to < ui.from) {
-            ui.from = ui.to.slice(0, 7) + '-01';
-            toast('عُدّل تاريخ «من» ليأتي قبل «إلى»');
-          }
-        }
-        resetRows();
-        saveUI();
-        render();
+        // أثناء الكتابة (الحقل مركَّز): تاريخ اختير من التقويم يُطبَّق فوراً
+        periodField(t, periodFocus === t);
       } else if (t.id === 'importFile' && t.files && t.files[0]) {
         importFile(t.files[0]);
         t.value = '';
       }
+    });
+    // خانات الأرقام (data-type=num): الأرقام العربية أو الفارسية وفاصلتها العشرية «٫» تُكتب أو تُلصق بالأرقام
+    // اللاتينية — حقل الأرقام في المتصفح يُسقطها بصمت فيبقى فارغاً (أو يمحو الرقم المحدد ولا يكتب بدله).
+    // insertText يكتب في موضع المؤشر ويطلق input، فيأخذه محرك النماذج كأي إدخال
+    document.addEventListener(
+      'beforeinput',
+      (e) => {
+        const el = e.target;
+        if (!el || !el.dataset || el.dataset.type !== 'num' || !e.cancelable) return;
+        const d = e.data !== null && e.data !== undefined ? e.data : e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+        if (!d) return;
+        if (RB.latinDigits(d) === d) return;
+        // مع الأرقام العربية: الفاصلة اللاتينية فاصلة آلاف (العشرية «٫»)
+        const n = RB.latinDigits(d).replace(/[,\s]/g, '');
+        e.preventDefault();
+        if (n) document.execCommand('insertText', false, n);
+      },
+      true
+    );
+    // مغادرة حقل الفترة أو Enter فيه: انتهت الكتابة، فيُطبَّق ما فيه (ويُصحَّح ترتيب الطرفين إن لزم)
+    document.addEventListener('focusin', (e) => {
+      const t = e.target;
+      if (t && (t.id === 'pFrom' || t.id === 'pTo')) periodFocus = t;
+    });
+    document.addEventListener('focusout', (e) => {
+      const t = e.target;
+      if (!t || (t.id !== 'pFrom' && t.id !== 'pTo')) return;
+      if (periodFocus === t) periodFocus = null;
+      periodField(t, false);
+    });
+    document.addEventListener('keydown', (e) => {
+      const t = e.target;
+      if (e.key === 'Enter' && t && (t.id === 'pFrom' || t.id === 'pTo')) periodField(t, false);
     });
     window.addEventListener('hashchange', () => {
       const p = location.hash.slice(1);

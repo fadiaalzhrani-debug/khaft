@@ -2239,15 +2239,16 @@ test('خطوات البداية: دفتر جديد بعد المعالج كل خ
   Object.assign(S.settings, { name: 'مطعم', startedAt: '2026-10-15T00:00:00Z' });
   S.partners = [{ id: 'p1', name: 'أ', share: 50 }, { id: 'p2', name: 'ب', share: 50 }];
   let st = RB.setupSteps(S);
-  assert.deepEqual(st.steps.map((x) => x.id), ['settings', 'capital', 'assets', 'fixed', 'staff', 'raw', 'composites', 'products', 'sales']);
-  assert.equal(st.done, 0);
+  assert.deepEqual(st.steps.map((x) => x.id), ['partners', 'settings', 'capital', 'assets', 'fixed', 'staff', 'raw', 'composites', 'products', 'sales']);
+  // الشريكان من المعالج: الخطوة الأولى مكتملة
+  assert.equal(st.done, 1);
   assert.equal(st.pending, true);
-  // حفظ الإعدادات يكمل الخطوة الأولى، وسحب الشريك ليس إيداعاً، والسجل المعيب لا يُعد
+  // حفظ الإعدادات يكمل خطوتها، وسحب الشريك ليس إيداعاً، والسجل المعيب لا يُعد
   S.settings.reviewedAt = '2026-10-15T08:00:00Z';
   S.capital.push({ id: 'w', date: '2026-10-01', partnerId: 'p1', type: 'withdrawal', amount: 10, account: 'bank' });
   S.expenses.push({ id: 'r', date: 'x', _bad: ['date'], category: 'rent', amount: 100 });
   st = RB.setupSteps(S);
-  assert.deepEqual(st.steps.filter((x) => x.done).map((x) => x.id), ['settings']);
+  assert.deepEqual(st.steps.filter((x) => x.done).map((x) => x.id), ['partners', 'settings']);
   // كل الخطوات المطلوبة مكتملة: لا شيء معلّق ولو لم توجد منتجات مجمّعة
   const D = RB.normalize(RB.demoState('2026-10-14'));
   D.settings.reviewedAt = '2026-10-15T08:00:00Z';
@@ -2258,6 +2259,63 @@ test('خطوات البداية: دفتر جديد بعد المعالج كل خ
   // رسوم حكومية وحدها تكمل خطوة «الإيجار والسكن والرسوم الحكومية»
   S.expenses.push({ id: 'g', date: '2026-10-02', category: 'gov', amount: 300 });
   assert.ok(RB.setupSteps(S).steps.find((x) => x.id === 'fixed').done);
+});
+
+test('خطوات البداية: دفتر بلا شركاء (مُسح في نسخة سابقة أو مستورد بلا شركاء) خطوته الأولى «الشركاء ونسبهم» (مراجعة الواجهة 1)', () => {
+  const S = RB.emptyState();
+  Object.assign(S.settings, { name: 'مطعم', startedAt: '2026-10-15T00:00:00Z' });
+  let st = RB.setupSteps(S);
+  assert.equal(st.steps[0].id, 'partners');
+  assert.equal(st.steps[0].done, false);
+  assert.equal(st.pending, true);
+  // الشريك المعيب لا يكمل الخطوة، والسليم يكملها
+  S.partners.push({ id: 'x', name: 'أ', share: 'x', _bad: ['share'] });
+  assert.equal(RB.setupSteps(S).steps[0].done, false);
+  S.partners.push({ id: 'p1', name: 'أ', share: 100 });
+  st = RB.setupSteps(S);
+  assert.equal(st.steps[0].done, true);
+  assert.equal(st.done, 1);
+});
+
+test('العدد والمعدود: الواحد والاثنان كلمة، و3–10 جمع، و11–99 مفرد منصوب، وغيرها مفرد بآخر رقمين (مراجعة النصوص 1)', () => {
+  const t = (n, o) => RB.countText(n, 'day', o);
+  assert.equal(t(1), 'يوم واحد');
+  assert.equal(t(2), 'يومان');
+  assert.equal(t(2, { gen: true }), 'يومين');
+  assert.equal(t(3), '3 أيام');
+  assert.equal(t(10), '10 أيام');
+  assert.equal(t(11), '11 يوماً');
+  assert.equal(t(99), '99 يوماً');
+  assert.equal(t(100), '100 يوم');
+  assert.equal(t(0), '0 يوم');
+  assert.equal(t(103), '103 أيام');
+  assert.equal(t(111), '111 يوماً');
+  assert.equal(t(-9), '9 أيام');
+  assert.equal(t(2.4), 'يومان');
+  assert.equal(RB.countText(6, RB.WORDS.month), '6 أشهر');
+  assert.equal(RB.countText(2, 'month', { gen: true }), 'شهرين');
+  assert.equal(RB.countText(36, 'month'), '36 شهراً');
+  assert.equal(RB.countText(1753, 'order', { fmt: (n) => n.toLocaleString('en-US') }), '1,753 طلباً');
+  assert.equal(RB.countText(1227, 'entry'), '1227 قيداً');
+  assert.equal(RB.countText(14, 'asset'), '14 أصلاً');
+  assert.equal(RB.countText(204, 'invoice'), '204 فواتير');
+  assert.equal(RB.countText(200, 'invoice'), '200 فاتورة');
+  assert.equal(RB.countText(26, 'invoice'), '26 فاتورة');
+  assert.equal(RB.countText(1, 'invoice'), 'فاتورة واحدة');
+  assert.equal(RB.countText(5, 'invoice'), '5 فواتير');
+  for (const k of Object.keys(RB.WORDS)) assert.equal(RB.WORDS[k].length, 6, k);
+});
+
+test('الأرقام العربية والفارسية وفاصلتها العشرية تُحوَّل إلى أرقام لاتينية لخانات الأرقام (مراجعة الواجهة 1)', () => {
+  assert.equal(RB.latinDigits('١٢٥٠'), '1250');
+  assert.equal(RB.latinDigits('۱۲۵۰'), '1250');
+  assert.equal(RB.latinDigits('١٢٥٠٫٥'), '1250.5');
+  assert.equal(RB.latinDigits('١٬٢٥٠٫٧٥'), '1250.75');
+  assert.equal(RB.latinDigits('−٣'), '-3');
+  assert.equal(RB.latinDigits('1,250.00'), '1,250.00');
+  assert.equal(RB.latinDigits('42'), '42');
+  assert.equal(RB.latinDigits(undefined), '');
+  assert.equal(parseFloat(RB.latinDigits('٣٤٥٠')), 3450);
 });
 
 test('خطوات البداية: دفتر فيه إقفالات بلا reviewedAt (حُفظ قبل هذه النسخة) لا يعرض القائمة (مراجعة WP5)', () => {
@@ -2277,6 +2335,7 @@ test('خطوات البداية: دفتر فيه إقفالات بلا reviewedA
   // أول إقفال سليم يكمل الخطوتين معاً ولو لم تُحفظ الإعدادات
   S.sales.push({ id: 's2', date: '2026-10-15', lines: [] });
   st = RB.setupSteps(S);
+  // بلا شركاء: خطوتهم معلّقة
   assert.deepEqual(st.steps.filter((x) => x.done).map((x) => x.id), ['settings', 'sales']);
   assert.equal(st.pending, true);
 });
