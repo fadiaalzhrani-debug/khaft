@@ -123,7 +123,7 @@
     const mixW = { p_combo: 0.3, p_classic: 0.14, p_double: 0.19, p_spicy: 0.1, p_fries: 0.1, p_cfries: 0.08, p_soda: 0.06, p_water: 0.03 };
 
     // ─── المصاريف قبل الافتتاح ───
-    const exp = (o) => S.expenses.push(Object.assign({ id: id('x'), includesVat: false, taxable: true, account: 'bank', months: 1, startDate: '', entity: '', employeeId: '', note: '' }, o));
+    const exp = (o) => S.expenses.push(Object.assign({ id: id('x'), includesVat: false, taxable: true, account: 'bank', months: 1, startDate: '', entity: '', employeeId: '', note: '', catV: RB.EXPENSE_CAT_V }, o));
     exp({ date: RB.addDays(pre, 2), category: 'rent', desc: 'إيجار المحل — دفعة 6 أشهر', entity: 'المؤجر', amount: 36000, months: 6, startDate: pre });
     exp({ date: RB.addDays(pre, 1), category: 'gov', desc: 'السجل التجاري (تأكيد سنوي)', entity: 'وزارة التجارة', amount: 200, taxable: false, months: 12 });
     exp({ date: RB.addDays(pre, 1), category: 'gov', desc: 'اشتراك الغرفة التجارية', entity: 'الغرفة التجارية', amount: 800, taxable: false, months: 12 });

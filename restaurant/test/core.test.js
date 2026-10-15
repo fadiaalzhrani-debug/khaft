@@ -429,6 +429,75 @@ test('إقرارات الضريبة: سداد لفترة قبل بداية ال�
   assert.deepEqual(re.before.map((x) => x.id), ['e']);
 });
 
+test('أرصدة افتتاحية: ضريبة مستحقة من إقرار سابق التزام يسدده سداد فترتها، ورصيد حساب الضريبة يطابق الإقرارات', () => {
+  // مطعم قائم بدأ دفتره 1 أبريل وعليه ضريبة الربع الأول 4,000 يسددها في أبريل؛ مبيعات أبريل 23,000 شاملة (ضريبتها 3,000)
+  const mk = (pays, opening) => {
+    const S = base();
+    S.settings.vatPeriod = 'quarterly';
+    S.settings.opening = Object.assign({ date: '2026-04-01', cash: 2000, bank: 30000, inventory: 0, vatCredit: 0, vatPayable: 4000, apps: {}, payables: [], eosb: [] }, opening || {});
+    S.sales = [{ id: 's1', date: '2026-04-10', channels: { cash: { amount: 23000, orders: 500, type: 'cash', feePct: 0, feeVat: true } } }];
+    S.vatPayments = pays.map((x, i) => Object.assign({ id: 'v' + i, account: 'bank' }, x));
+    return S;
+  };
+  const op = RB.openingInfo(mk([]));
+  assert.deepEqual([op.vatPayable, op.liab, op.net], [4000, 4000, 28000]);
+  assert.deepEqual(RB.openingShares(mk([]), op.net).map((x) => x.amount), [16800, 11200]);
+  const T = '2026-06-30';
+  // (أ) سُدد كاملاً: يُنسب للمستحق الافتتاحي لا لأي إقرار، والميزانية تُظهر ضريبة الربع الثاني وحدها التزاماً
+  const A = mk([{ date: '2026-04-28', period: 'الربع الأول 2026', amount: 4000 }]);
+  const ra = RB.vatReturns(A, T);
+  assert.deepEqual(ra.map((r) => [r.key, r.due, r.paid, r.remaining]), [['2026-Q2', 3000, 0, 3000]]);
+  assert.deepEqual([ra.opening.label, ra.opening.payable, ra.opening.paid, ra.opening.remaining, ra.opening.over, ra.opening.settled, ra.opening.deadline], ['الربع الأول 2026', 4000, 4000, 0, 0, true, '2026-04-30']);
+  assert.deepEqual(ra.before.map((x) => [x.id, x.opening]), [['v0', true]]);
+  assert.equal(RB.vatBalanceAt(A, T), 3000);
+  const bs = RB.balanceSheet(A, T);
+  assert.deepEqual(bs.liab.map((x) => x.amount), [3000]);
+  assert.ok(!bs.cur.some((x) => /ضريبة/.test(x.name)));
+  close(bs.check, 0);
+  close(bs.tEq, 28000 + 20000);
+  // رصيد حساب الضريبة = متبقي الإقرارات − الرصيد الدائن + المتبقي الافتتاحي − الزائد عنه
+  const inv = (S, at) => {
+    const r = RB.vatReturns(S, at);
+    const last = r[r.length - 1];
+    return RB.r2(RB.sum(r, (x) => x.remaining) - (last ? last.credit : 0) + (r.opening ? r.opening.remaining - r.opening.over : 0));
+  };
+  close(RB.vatBalanceAt(A, T), inv(A, T));
+  // قبل السداد: المستحق الافتتاحي كله متبقٍ، وفي الميزانية مع ضريبة أبريل
+  const r0 = RB.vatReturns(A, '2026-04-20');
+  assert.deepEqual([r0.opening.paid, r0.opening.remaining, r0.opening.settled], [0, 4000, false]);
+  assert.equal(RB.vatBalanceAt(A, '2026-04-20'), 7000);
+  close(RB.vatBalanceAt(A, '2026-04-20'), inv(A, '2026-04-20'));
+  // (ب) سداد جزئي: الباقي يبقى التزاماً
+  const B = mk([{ date: '2026-04-28', period: 'الربع الأول 2026', amount: 2500 }]);
+  const rb = RB.vatReturns(B, T);
+  assert.deepEqual([rb.opening.paid, rb.opening.remaining], [2500, 1500]);
+  assert.equal(RB.vatBalanceAt(B, T), 4500);
+  close(RB.vatBalanceAt(B, T), inv(B, T));
+  // (ج) دفعة زائدة: الزائد لا يُخصم من الربع الثاني ويبقى في رصيد الحساب؛ وسداد قبل تاريخ البدء داخل في الرصيد الافتتاحي
+  const C = mk([
+    { date: '2026-04-28', period: 'الربع الأول 2026', amount: 4500 },
+    { date: '2026-03-20', period: 'الربع الرابع 2025', amount: 900 },
+  ]);
+  const rc = RB.vatReturns(C, T);
+  assert.deepEqual([rc.opening.paid, rc.opening.over, rc.opening.remaining, rc[0].remaining], [4500, 500, 0, 3000]);
+  assert.deepEqual(rc.before.map((x) => [x.id, !!x.opening]), [['v0', true], ['v1', false]]);
+  close(RB.vatBalanceAt(C, T), inv(C, T) - 900);
+  // (د) سريان التسجيل من تاريخ البدء: لا فترة إقرار قبله، فاسم ثابت يُسدَّد به ولا يُنسب لأي إقرار
+  const D = mk([{ date: '2026-07-10', period: 'ضريبة مستحقة عند بدء الدفتر', amount: 4000 }]);
+  D.settings.vatRegisteredFrom = '2026-04-01';
+  const rd = RB.vatReturns(D, '2026-07-31');
+  assert.deepEqual([rd.opening.label, rd.opening.deadline, rd.opening.paid], ['ضريبة مستحقة عند بدء الدفتر', '', 4000]);
+  assert.deepEqual(rd.map((r) => [r.key, r.paid, r.remaining]), [['2026-Q2', 0, 3000], ['2026-Q3', 0, 0]]);
+  // بلا مستحق افتتاحي: لا شيء يتغير (السداد للعلم فقط)
+  const E = mk([{ date: '2026-04-28', period: 'الربع الأول 2026', amount: 4000 }], { vatPayable: 0 });
+  const re = RB.vatReturns(E, T);
+  assert.equal(re.opening, null);
+  assert.equal(RB.openingInfo(E).net, 32000);
+  assert.equal(RB.vatBalanceAt(E, T), -1000);
+  // رصيد سالب في الحقل لا يُعتمد
+  assert.equal(RB.openingInfo(mk([], { vatPayable: -50 })).vatPayable, 0);
+});
+
 test('إقرارات البيانات التجريبية: المستحق والرصيد الدائن كما في رصيد حساب الضريبة', () => {
   for (const today of ['2026-10-14', '2027-02-17', '2026-12-31']) {
     const S = RB.demoState(today);
@@ -820,6 +889,45 @@ test('خصومات التحويل من التطبيق: معالجة الضريب
   close(plain.sales.vat - withType.sales.vat, expected, 0.05);
 });
 
+test('خانات الإقرار: مرتجع المشتريات واسترداد المصروف يخفضان المدخلات ولا يدخلان في المبيعات', () => {
+  const S = base();
+  S.settings.vatPeriod = 'monthly';
+  S.sales = [{ id: 's1', date: '2026-03-05', channels: { cash: { amount: 1150, orders: 10, type: 'cash' } } }];
+  S.purchases = [
+    { id: 'b1', date: '2026-03-06', supplier: 'مورد', category: 'food', account: 'cash', taxable: true, includesVat: false, lines: [{ qty: 10, price: 100 }] },
+    // مرتجع في فاتورة منفصلة (كمية بالسالب كما يشرح النموذج)
+    { id: 'b2', date: '2026-03-07', supplier: 'مورد', category: 'food', account: 'cash', taxable: true, includesVat: false, lines: [{ qty: -2, price: 100 }] },
+  ];
+  const box = (v) => [v.sales.base, v.sales.vat, v.inBase, v.inVat, v.net];
+  const v = RB.vatReport(S, '2026-03-01', '2026-03-31');
+  assert.deepEqual(box(v), [1000, 150, 800, 120, 30]);
+  assert.deepEqual(v.inputs['المشتريات'], { base: 800, vat: 120 });
+  // المرتجع نفسه داخل الفاتورة يعطي الخانات نفسها
+  const S2 = JSON.parse(JSON.stringify(S));
+  S2.purchases = [{ id: 'b1', date: '2026-03-06', supplier: 'مورد', category: 'food', account: 'cash', taxable: true, includesVat: false, lines: [{ qty: 10, price: 100 }, { qty: -2, price: 100 }] }];
+  assert.deepEqual(box(RB.vatReport(S2, '2026-03-01', '2026-03-31')), box(v));
+  // فترة فيها المرتجع وحده: تعديل سالب على المدخلات، والمبيعات صفر
+  S.purchases[1].date = '2026-04-07';
+  S.sales.push({ id: 's2', date: '2026-04-05', channels: { cash: { amount: 1150, orders: 10, type: 'cash' } } });
+  assert.deepEqual(box(RB.vatReport(S, '2026-04-01', '2026-04-30')), [1000, 150, -200, -30, 180]);
+  // استرداد مصروف (مبلغ بالسالب) كذلك
+  const S3 = base();
+  S3.sales = [{ id: 's1', date: '2026-03-05', channels: { cash: { amount: 1150, orders: 10, type: 'cash' } } }];
+  S3.expenses = [
+    { id: 'x1', date: '2026-03-06', category: 'maintenance', desc: 'صيانة', amount: 1000, includesVat: false, taxable: true, account: 'cash' },
+    { id: 'x2', date: '2026-03-08', category: 'maintenance', desc: 'استرداد من المقاول', amount: -200, includesVat: false, taxable: true, account: 'cash' },
+  ];
+  const v3 = RB.vatReport(S3, '2026-03-01', '2026-03-31');
+  assert.deepEqual(box(v3), [1000, 150, 800, 120, 30]);
+  // كل خانة ضريبتها ≈ أساسها × النسبة
+  for (const x of [v, v3]) {
+    close(x.sales.vat, x.sales.base * 0.15);
+    close(x.inVat, x.inBase * 0.15);
+  }
+  // الإقرار والرصيد لم يتغيرا: صافي الفترة كما في حساب الضريبة
+  close(RB.vatBalanceAt(S3, '2026-03-31'), 30);
+});
+
 test('أين ذهب رأس المال التأسيسي: الأصول التأسيسية فقط، والضريبة المستردة للعلم', () => {
   const t = '2026-10-14';
   const S = RB.demoState(t);
@@ -1039,6 +1147,62 @@ test('مخصص نهاية الخدمة يُستحق مع كل مسير، وال�
   close(dbs.check, 0);
   close(dbs.liab.find((x) => x.code === '2201').amount, -RB.balances(DL.entries, null, t)['2201']);
   close(RB.sum(Object.values(RB.eosbBalances(D, t))), dbs.liab.find((x) => x.code === '2201').amount);
+});
+
+test('مخصص نهاية الخدمة عن أيام الخدمة في الشهر: المباشرة وترك العمل أثناءه، وشهر بدء الدفتر بلا حساب مرتين', () => {
+  const run = (S, ym, date) => ({ id: 'w' + ym, month: ym, date: date || RB.monthEnd(ym), account: 'bank', gosiAccount: 'bank', lines: S.employees.map((e) => RB.payrollLine(e, S, ym)).filter((l) => RB.payrollLineGross(l) > 0) });
+  // (أ) باشر 25 يناير بأجر 2,400: خصم 23 يوماً من راتبه، ومخصص 7 أيام (100 × 7/30) لا شهر كامل
+  const A = base();
+  A.employees = [{ id: 'e1', name: 'جديد', nationality: 'expat', basic: 2400, startDate: '2026-01-25', active: true }];
+  A.payroll = ['2026-01', '2026-02', '2026-03'].map((ym) => run(A, ym));
+  assert.equal(A.payroll[0].lines[0].deductions, 1840);
+  assert.equal(RB.eosbServiceShare(A.employees[0], '2026-01'), 7 / 30);
+  assert.equal(RB.eosbServiceShare(A.employees[0], '2026-02'), 1);
+  const evA = RB.eosbEvents(A).filter((e) => e.kind === 'accrual');
+  assert.deepEqual(evA.map((e) => e.total), [23.33, 100, 100]);
+  // قريب من نظام العمل حتى 1 أبريل (الفرق من نظام 30 يوماً)
+  close(RB.eosbBalances(A, '2026-03-31').e1, RB.eosbEarned(2400, '2026-01-25', '2026-04-01'), 7);
+  close(-RB.balances(RB.buildLedger(A, '2026-03-31').entries, null, '2026-03-31')['2201'], 223.33);
+  // (ب) ترك العمل 10 مارس: مخصص مارس عن 10 أيام
+  A.employees[0].endDate = '2026-03-10';
+  A.payroll[2] = run(A, '2026-03');
+  assert.equal(RB.eosbEvents(A).filter((e) => e.kind === 'accrual').pop().total, 33.33);
+  // (ج) مطعم قائم بدأ دفتره 20 مارس، وعامل منذ 2018 بأجر 4,800 مخصصه الافتتاحي بنظام العمل حتى تاريخ البدء:
+  // مسير مارس يستحق 12 يوماً بمعدل ما بعد الخمس سنوات (4,800 ÷ 12 × 12/30 = 160)
+  const mkC = (withEosb) => {
+    const C = base();
+    C.employees = [{ id: 'e1', name: 'قديم', nationality: 'expat', basic: 4800, startDate: '2018-03-01', active: true }];
+    const opE = RB.eosbEarned(4800, '2018-03-01', '2026-03-20');
+    C.settings.opening = { date: '2026-03-20', cash: 0, bank: 50000, inventory: 0, vatCredit: 0, apps: {}, payables: [], eosb: withEosb ? [{ employeeId: 'e1', amount: opE }] : [] };
+    C.payroll = [run(C, '2026-03'), run(C, '2026-04')];
+    return C;
+  };
+  const C = mkC(true);
+  assert.deepEqual(RB.eosbEvents(C).filter((e) => e.kind === 'accrual').map((e) => e.total), [160, 400]);
+  close(RB.eosbBalances(C, '2026-03-31').e1, RB.eosbEarned(4800, '2018-03-01', '2026-04-01'), 3);
+  // الشهر الكامل أجر ÷ 12 (لا بأيامه الفعلية من 365.25 يوماً): فرق أيام قليلة لا تراكم شهر
+  close(RB.eosbBalances(C, '2026-04-30').e1, RB.eosbEarned(4800, '2018-03-01', '2026-05-01'), 10);
+  const lab = RB.incomeStatement(C, '2026-03-20', '2026-03-31').groups.labor.find((x) => x.code === '5203');
+  assert.equal(lab.amount, 160);
+  // بلا مخصص افتتاحي له: خدمته قبل الدفتر لم تُحسب، فيبقى مارس شهراً كاملاً
+  assert.deepEqual(RB.eosbEvents(mkC(false)).filter((e) => e.kind === 'accrual').map((e) => e.total), [400, 400]);
+  // (هـ) الشهر الذي تكتمل فيه خمس سنوات (15 أكتوبر 2025 لمن باشر 14 أكتوبر 2020): 14 يوماً بمعدل ÷ 24 و17 بمعدل ÷ 12
+  const F = base();
+  F.employees = [{ id: 'e1', name: 'قديم', nationality: 'expat', basic: 4300, startDate: '2020-10-14', active: true }];
+  assert.deepEqual(['2025-09', '2025-10', '2025-11'].map((ym) => RB.eosbLineAccrual(RB.payrollLine(F.employees[0], F, ym), F.employees[0], ym)), [179.17, 277.42, 358.33]);
+  F.settings.opening = { date: '2025-09-01', cash: 0, bank: 50000, inventory: 0, vatCredit: 0, apps: {}, payables: [], eosb: [{ employeeId: 'e1', amount: RB.eosbEarned(4300, '2020-10-14', '2025-09-01') }] };
+  F.payroll = ['2025-09', '2025-10', '2025-11', '2025-12'].map((ym) => run(F, ym));
+  close(RB.eosbBalances(F, '2025-12-31').e1, RB.eosbEarned(4300, '2020-10-14', '2026-01-01'), 15);
+  // (د) البيانات التجريبية: الموظفون باشروا 11 يونيو، فمخصص كل منهم قريب من نظام العمل حتى نهاية آخر مسير
+  const t = '2026-10-14';
+  const D = RB.demoState(t);
+  const lastYm = D.payroll.map((p) => p.month).sort().pop();
+  const bal = RB.eosbBalances(D, RB.monthEnd(lastYm));
+  for (const e of D.employees) {
+    if (!bal[e.id]) continue;
+    const wage = RB.num(e.basic) + RB.num(e.housing) + RB.num(e.transport) + RB.num(e.otherAllow);
+    close(bal[e.id], RB.eosbEarned(wage, e.startDate, RB.addDays(RB.monthEnd(lastYm), 1)), 0.03 * bal[e.id]);
+  }
 });
 
 test('ترك العمل: يبقى المخصص حتى تُسوّى المكافأة، ثم يُرد ما بقي منه إلى المصروف', () => {
@@ -1309,6 +1473,30 @@ test('تأمين المحل مصروف تشغيلي والتأمين الطبي 
     ],
   });
   assert.deepEqual(n.expenses.map((x) => x.category), ['shop_insurance', 'shop_insurance', 'insurance', 'insurance']);
+});
+
+test('تصنيف المصروف المحفوظ بالتصنيفات الحالية يبقى كما هو بعد التحميل، والقديم وحده يُنقل', () => {
+  const S = base();
+  S.sales = [{ id: 's1', date: '2026-02-05', channels: { cash: { amount: 11500, orders: 10, type: 'cash' } } }];
+  const v = RB.EXPENSE_CAT_V;
+  S.expenses = [
+    { id: 'g', date: '2026-02-05', category: 'gov', desc: 'رسوم إصدار شهادة الزكاة', amount: 1100, taxable: false, account: 'bank', catV: v },
+    { id: 'p', date: '2026-02-05', category: 'gov', desc: 'غرامة هيئة الزكاة والضريبة', amount: 300, taxable: false, account: 'bank', catV: v },
+    { id: 'i', date: '2026-02-05', category: 'insurance', desc: 'تأمين عمال المحل', amount: 2200, taxable: false, account: 'bank', catV: v },
+    // محفوظ قبل التصنيفات الجديدة (بلا catV): يُنقل مرة عند التحميل
+    { id: 'o', date: '2026-02-05', category: 'gov', desc: 'زكاة 2025', amount: 500, taxable: false, account: 'bank' },
+  ];
+  const n = RB.normalize(JSON.parse(JSON.stringify(S)));
+  assert.deepEqual(n.expenses.map((x) => x.category), ['gov', 'gov', 'insurance', 'zakat']);
+  // التحميل مرة ثانية لا يغيّر شيئاً، والدفتر نفسه قبل الحفظ وبعده (ما عدا السجل القديم المنقول)
+  assert.deepEqual(RB.normalize(JSON.parse(JSON.stringify(n))).expenses, n.expenses);
+  const S2 = JSON.parse(JSON.stringify(S));
+  S2.expenses = S2.expenses.filter((x) => x.catV);
+  assert.deepEqual(RB.buildLedger(S2, '2026-12-31'), RB.buildLedger(RB.normalize(JSON.parse(JSON.stringify(S2))), '2026-12-31'));
+  const inc = RB.incomeStatement(n, '2026-02-01', '2026-02-28');
+  assert.deepEqual([inc.tot.opex, inc.tot.labor, inc.tot.zakat], [1400, 2200, 500]);
+  // البيانات التجريبية محفوظة بالتصنيفات الحالية
+  assert.ok(RB.demoState('2026-10-14').expenses.every((x) => x.catV === v));
 });
 
 test('متابعة التجديد: لا رسوم لمرة واحدة ولا لعامل غادر، وإيقاف المتابعة حتى التجديد', () => {
@@ -2252,7 +2440,8 @@ test('الشركاء: الأرباح المتاحة للسحب = نصيب الأ
     const L = RB.buildLedger(D, today);
     const p = RB.partnersReport(D, '2000-01-01', today, L);
     close(p.undistributedTotal, RB.r2(p.retained - RB.sum(p.rows, (r) => r.drawings)));
-    close(RB.sum(p.rows, (r) => r.undistributed), p.undistributedTotal, 0.02);
+    // الأسطر تجمع إلى المجموع بالضبط (فرق التقريب لآخر شريك له نسبة)
+    assert.equal(RB.r2(RB.sum(p.rows, (r) => r.undistributed)), p.undistributedTotal);
     for (const r of p.rows) close(r.undistributed, RB.r2(r.profitAll - r.drawings));
   }
   const S = base();
@@ -2263,6 +2452,46 @@ test('الشركاء: الأرباح المتاحة للسحب = نصيب الأ
   close(p.rows[1].undistributed, -200);
   close(p.rows[0].undistributed, 600);
   close(p.undistributedTotal, 400);
+});
+
+test('الشركاء: أسطر الأرباح والحقوق تجمع إلى ربح الفترة والأرباح المتراكمة والميزانية بلا فرق تقريب', () => {
+  const check = (S, from, to) => {
+    const p = RB.partnersReport(S, from, to);
+    const bs = RB.balanceSheet(S, to);
+    const tot = (f) => RB.r2(RB.sum(p.rows, f));
+    assert.equal(tot((r) => r.profitAll), p.retained);
+    assert.equal(tot((r) => r.profitPeriod), p.net);
+    assert.equal(tot((r) => r.undistributed), p.undistributedTotal);
+    assert.equal(tot((r) => r.equity), bs.tEq);
+    assert.equal(tot((r) => r.required), p.totalCap);
+    return p;
+  };
+  // شريكان 50/50 ومصروف 100.01: −50.01 و−50.00
+  const S = RB.emptyState();
+  S.partners = [{ id: 'a', name: 'أ', share: 50 }, { id: 'b', name: 'ب', share: 50 }];
+  S.capital = S.partners.map((x) => ({ id: 'c' + x.id, date: '2026-02-01', partnerId: x.id, type: 'contribution', account: 'bank', amount: 50000 }));
+  S.expenses = [{ id: 'x', date: '2026-02-05', category: 'maintenance', desc: 'صيانة', amount: 100.01, taxable: false, account: 'bank' }];
+  const p = check(S, '2026-02-01', '2026-02-28');
+  assert.deepEqual(p.rows.map((r) => r.profitAll), [-50.01, -50]);
+  // شريك ثالث بنسبة صفر (خرج من الشراكة) في آخر القائمة لا يأخذ فرق التقريب
+  S.partners.push({ id: 'c', name: 'ج', share: 0 });
+  const p0 = check(S, '2026-02-01', '2026-02-28');
+  assert.deepEqual(p0.rows.map((r) => r.profitAll), [-50.01, -50, 0]);
+  // ثلاثة متساوون وخسارة 100
+  const T = RB.emptyState();
+  T.partners = ['a', 'b', 'c'].map((id) => ({ id, name: id, share: 1 }));
+  T.capital = T.partners.map((x) => ({ id: 'c' + x.id, date: '2026-02-01', partnerId: x.id, type: 'contribution', account: 'bank', amount: 33333.33 }));
+  T.expenses = [{ id: 'x', date: '2026-02-05', category: 'maintenance', desc: 'صيانة', amount: 100, taxable: false, account: 'bank' }];
+  assert.deepEqual(check(T, '2026-02-01', '2026-02-28').rows.map((r) => r.profitAll), [-33.33, -33.33, -33.34]);
+  // بلا نسب: لا أرباح لأحد كما كان
+  T.partners.forEach((x) => (x.share = 0));
+  assert.ok(RB.partnersReport(T, '2026-02-01', '2026-02-28').rows.every((r) => r.profitAll === 0 && r.profitPeriod === 0));
+  // البيانات التجريبية في نهايات أشهر مختلفة
+  for (const today of ['2026-08-31', '2026-09-30', '2026-10-14', '2027-02-17']) {
+    const D = RB.demoState(today);
+    check(D, today.slice(0, 8) + '01', today);
+    check(D, '2000-01-01', today);
+  }
 });
 
 test('تاريخ أسعار المادة الخام: بلا ضريبة، الأحدث أولاً، وأسطر الشراء فقط (WP6)', () => {
@@ -2491,6 +2720,31 @@ test('تعبئة المسير: استقطاع السلفة التلقائي (_au
   // ما كتبه المستخدم (200) يبقى
   sep[0].advance = 200;
   close(RB.payrollFill(S, '2026-08', JSON.parse(JSON.stringify(sep)), '2026-09')[0].advance, 200);
+});
+
+test('استقطاع السلفة المقترح حتى تاريخ صرف المسير: سلفة أُعطيت بعده لا تُستقطع قبل أن تُعطى', () => {
+  const S = base();
+  S.employees = [{ id: 'e1', name: 'عبدالله', nationality: 'expat', basic: 3000, housing: 0, startDate: '2025-01-01', active: true }];
+  S.advances = [{ id: 'a1', date: '2026-03-28', employeeId: 'e1', amount: 900, account: 'cash', kind: 'give' }];
+  const e = S.employees[0];
+  // بلا تاريخ صرف: آخر الشهر كما كان
+  assert.equal(RB.payrollLine(e, S, '2026-03').advance, 900);
+  assert.equal(RB.payrollLine(e, S, '2026-03', '2026-03-31').advance, 900);
+  assert.equal(RB.payrollFill(S, '2026-03')[0].advance, 900);
+  // صرف 25 مارس قبل السلفة: لا استقطاع، والتلقائي صفر
+  const fill = RB.payrollFill(S, '2026-03', [], '2026-03', '2026-03-25');
+  assert.deepEqual([fill[0].advance, fill[0]._autoAdv], [0, 0]);
+  S.payroll = [{ id: 'w3', month: '2026-03', date: '2026-03-25', account: 'bank', gosiAccount: 'bank', lines: fill }];
+  assert.deepEqual(RB.advanceLow(S, 'e1'), { min: 0, date: '' });
+  assert.equal(RB.advanceBalances(S, '2026-03-31').e1, 900);
+  // مسير أبريل يستقطعها
+  assert.equal(RB.payrollFill(S, '2026-04', [], '2026-04', '2026-04-25')[0].advance, 900);
+  // مسير مارس مصروف 5 أبريل بعد سلفة 2 أبريل: تُقترح من تاريخ الصرف
+  const T = base();
+  T.employees = S.employees;
+  T.advances = [{ id: 'a2', date: '2026-04-02', employeeId: 'e1', amount: 400, account: 'cash', kind: 'give' }];
+  assert.equal(RB.payrollLine(e, T, '2026-03').advance, 0);
+  assert.equal(RB.payrollLine(e, T, '2026-03', '2026-04-05').advance, 400);
 });
 
 test('التجريبي: المخزون المحسوب لا يصير سالباً، وبضاعة الافتتاح تكفي حتى أول توريد (مراجعة WP6)', () => {
