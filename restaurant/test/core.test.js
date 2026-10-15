@@ -498,6 +498,84 @@ test('أرصدة افتتاحية: ضريبة مستحقة من إقرار سا�
   assert.equal(RB.openingInfo(mk([], { vatPayable: -50 })).vatPayable, 0);
 });
 
+test('أرصدة افتتاحية: دفتر بدأ أثناء الربع — ضريبة أيامه قبل البدء تدخل في إقراره فيسدده سداده كاملاً بلا رصيد دائن وهمي', () => {
+  // بدأ الدفتر 15 أغسطس؛ ضريبة 1 يوليو – 14 أغسطس 3,000 لم يُقدَّم إقرارها، وضريبة المبيعات في الدفتر 1,500؛
+  // الإقرار الحقيقي للربع الثالث 4,500 يُسدَّد 20 أكتوبر باسمه
+  const mk = (opening, pays, sales) => {
+    const S = base();
+    S.settings.vatPeriod = 'quarterly';
+    S.settings.opening = Object.assign({ date: '2026-08-15', cash: 10000, bank: 50000, inventory: 0, vatCredit: 0, vatPayable: 0, vatCurrent: 3000, apps: {}, payables: [], eosb: [] }, opening || {});
+    S.sales = (sales || [['2026-09-01', 11500]]).map(([date, amount], i) => ({ id: 's' + i, date, channels: { cash: { amount, orders: 10, type: 'cash', feePct: 0, feeVat: true } } }));
+    S.vatPayments = (pays || []).map((x, i) => Object.assign({ id: 'v' + i, account: 'bank' }, x));
+    return S;
+  };
+  const inv = (S, at) => {
+    const r = RB.vatReturns(S, at);
+    const last = r[r.length - 1];
+    return RB.r2(RB.sum(r, (x) => x.remaining) - (last ? last.credit : 0) + (r.opening ? r.opening.remaining - r.opening.over : 0));
+  };
+  // فترتا البدء: آخر إقرار انتهى قبله (الربع الثاني) والجارية التي بدأ أثناءها (أيامها قبل البدء)
+  const vp = RB.vatOpeningPeriod(mk());
+  assert.deepEqual([vp.label, vp.deadline], ['الربع الثاني 2026', '2026-07-31']);
+  assert.deepEqual(vp.cur, { key: '2026-Q3', label: 'الربع الثالث 2026', from: '2026-07-01', to: '2026-08-14', end: '2026-09-30', deadline: '2026-10-31' });
+  const op = RB.openingInfo(mk());
+  assert.deepEqual([op.vatCurrent, op.liab, op.net], [3000, 3000, 57000]);
+  // قبل السداد: مستحق الربع الثالث = ضريبة الدفتر + ما قبل البدء، ويطابق رصيد حساب الضريبة
+  const A0 = mk();
+  const r0 = RB.vatReturns(A0, '2026-10-10');
+  assert.deepEqual(r0.map((r) => [r.key, r.net, r.pre, r.due, r.remaining, r.credit]), [['2026-Q3', 1500, 3000, 4500, 4500, 0], ['2026-Q4', 0, 0, 0, 0, 0]]);
+  assert.equal(r0.opening, null);
+  assert.equal(RB.vatBalanceAt(A0, '2026-10-10'), 4500);
+  close(RB.vatBalanceAt(A0, '2026-10-10'), inv(A0, '2026-10-10'));
+  // سداد الإقرار الحقيقي كاملاً باسمه: مسدد، بلا رصيد دائن يُرحّل للربع الرابع، والميزانية بلا ضريبة
+  const A = mk({}, [{ date: '2026-10-20', period: 'الربع الثالث 2026', amount: 4500 }]);
+  const T = '2026-10-25';
+  const ra = RB.vatReturns(A, T);
+  assert.deepEqual(ra.map((r) => [r.key, r.due, r.paid, r.remaining, r.credit, r.over, r.settled]), [['2026-Q3', 4500, 4500, 0, 0, 0, true], ['2026-Q4', 0, 0, 0, 0, 0, true]]);
+  assert.equal(ra[1].carried, 0);
+  assert.equal(ra.opening, null);
+  assert.equal(RB.vatBalanceAt(A, T), 0);
+  close(RB.vatBalanceAt(A, T), inv(A, T));
+  const bs = RB.balanceSheet(A, T);
+  close(bs.check, 0);
+  assert.ok(!bs.liab.concat(bs.cur).some((x) => /ضريبة/.test(x.name)));
+  // بلا أي عملية فيها ضريبة بعد: الإقرار الجاري يبدأ من ضريبة ما قبل البدء
+  const B = mk({}, [], []);
+  const rb = RB.vatReturns(B, '2026-10-05');
+  assert.deepEqual(rb.map((r) => [r.key, r.pre, r.due]), [['2026-Q3', 3000, 3000], ['2026-Q4', 0, 0]]);
+  close(RB.vatBalanceAt(B, '2026-10-05'), inv(B, '2026-10-05'));
+  // بالسالب (مدخلات تلك الأيام أكبر): أصل لصالح المطعم يخفض مستحق الإقرار
+  const C = mk({ vatCurrent: -400 });
+  const oc = RB.openingInfo(C);
+  assert.deepEqual([oc.assets, oc.liab, oc.net], [60400, 0, 60400]);
+  const rc = RB.vatReturns(C, '2026-10-10');
+  assert.deepEqual([rc[0].pre, rc[0].due], [-400, 1100]);
+  close(RB.vatBalanceAt(C, '2026-10-10'), inv(C, '2026-10-10'));
+  // الحالتان معاً (بدء 15 أكتوبر): الربع الثالث لم يُسدَّد بعد (موعده 31 أكتوبر) وضريبة 1–14 أكتوبر 700؛
+  // كل منهما يسدده سداده باسمه
+  const D = mk({ date: '2026-10-15', vatPayable: 4500, vatCurrent: 700 }, [
+    { date: '2026-10-20', period: 'الربع الثالث 2026', amount: 4500 },
+    { date: '2027-01-20', period: 'الربع الرابع 2026', amount: 2200 },
+  ], [['2026-11-01', 11500]]);
+  const vd = RB.vatOpeningPeriod(D);
+  assert.deepEqual([vd.label, vd.deadline, vd.cur.label, vd.cur.from, vd.cur.to], ['الربع الثالث 2026', '2026-10-31', 'الربع الرابع 2026', '2026-10-01', '2026-10-14']);
+  const rd = RB.vatReturns(D, '2027-01-25');
+  assert.deepEqual([rd.opening.label, rd.opening.paid, rd.opening.settled], ['الربع الثالث 2026', 4500, true]);
+  assert.deepEqual(rd.map((r) => [r.key, r.pre, r.due, r.paid, r.remaining, r.credit]), [['2026-Q4', 700, 2200, 2200, 0, 0], ['2027-Q1', 0, 0, 0, 0, 0]]);
+  assert.equal(RB.vatBalanceAt(D, '2027-01-25'), 0);
+  close(RB.vatBalanceAt(D, '2027-01-25'), inv(D, '2027-01-25'));
+  // بدء في أول يوم من الربع، أو بسريان التسجيل من تاريخ البدء: لا أيام قبله في الفترة الجارية
+  assert.equal(RB.vatOpeningPeriod(mk({ date: '2026-10-01' })).cur, null);
+  const E = mk();
+  E.settings.vatRegisteredFrom = '2026-08-15';
+  assert.equal(RB.vatOpeningPeriod(E).cur, null);
+  E.settings.vatRegisteredFrom = '2026-08-01';
+  assert.deepEqual([RB.vatOpeningPeriod(E).cur.from, RB.vatOpeningPeriod(E).cur.to], ['2026-08-01', '2026-08-14']);
+  const F = mk();
+  F.settings.vatRegistered = false;
+  assert.equal(RB.vatOpeningPeriod(F).cur, null);
+});
+
 test('إقرارات البيانات التجريبية: المستحق والرصيد الدائن كما في رصيد حساب الضريبة', () => {
   for (const today of ['2026-10-14', '2027-02-17', '2026-12-31']) {
     const S = RB.demoState(today);
@@ -1710,6 +1788,15 @@ test('تكلفة الطعام والسعر المقترح حسب التسجيل 
 test('تنظيف السجل: التاريخ الناقص أو غير الصالح يُعلَّم ولا يُحذف، والأشكال الخاطئة تُصحَّح بلا تغيير الأصل', () => {
   const ok = { id: 'x1', date: '2026-03-15', category: 'rent', amount: 100 };
   assert.equal(RB.sanitizeRecord('expenses', ok), ok); // السليم يرجع كما هو
+  // قسم صنف المنيو «حلى» القديم ← «حلويات» (خيار «القسم» الحالي)، في التحميل وفي اللقطة المشتركة، دون تغيير الأصل
+  assert.ok(RB.PRODUCT_CATS.includes('حلويات') && !RB.PRODUCT_CATS.includes('حلى'));
+  const sweet = { id: 'p1', name: 'كيكة', category: 'حلى', price: 8 };
+  assert.deepEqual(RB.sanitizeRecord('products', sweet), { id: 'p1', name: 'كيكة', category: 'حلويات', price: 8 });
+  assert.equal(sweet.category, 'حلى');
+  assert.equal(RB.normalize({ products: [sweet] }).products[0].category, 'حلويات');
+  const burger = { id: 'p2', name: 'برقر', category: 'برقر' };
+  assert.equal(RB.sanitizeRecord('products', burger), burger);
+  assert.equal(RB.sanitizeRecord('raw', { id: 'r1', name: 'مادة', category: 'حلى' }).category, 'حلى');
   assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', amount: 1 })._bad, ['date']);
   assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', date: '15/03/2026' })._bad, ['date']);
   assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', date: '2026-13-45' })._bad, ['date']);

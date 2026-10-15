@@ -1910,6 +1910,16 @@
     return Date.now() - at > 14 * 86400000 ? Math.floor((Date.now() - at) / 86400000) : null;
   }
   // setup: خطوات البداية ظاهرة فوق التنبيهات، فلا «كل شيء على ما يرام» لدفتر لم يُجهَّز بعد
+  // دفعة زائدة على إقرار الفترة التي بدأ الدفتر أثناءها، ولا ضريبة افتتاحية لأيامها قبل البدء: غالباً سُدِّد الإقرار
+  // الحقيقي كاملاً (يشمل تلك الأيام) فظهر رصيد دائن لا وجود له. يرجع نص التنبيه أو ''
+  function preVatHint(label) {
+    const op = RB.openingInfo(S);
+    const c = op && !op.vatCurrent && op.date <= today() ? (RB.vatOpeningPeriod(S, op) || {}).cur : null;
+    if (!c || c.label !== label) return '';
+    // ومن أدخلها من قبل في «ضريبة مستحقة من إقرار سابق» (مستحق لإقرار سابق لم يُسدَّد) ينقلها منه
+    const moved = op.vatPayable > 0 ? ' وإن كنت أدخلتها في «ضريبة مستحقة من إقرار سابق» فانقلها منه.' : '';
+    return `إن كان إقرار «${esc(c.label)}» الذي سددته يشمل ضريبة ${dtText(c.from)} – ${dtText(c.to)} قبل بدء الدفتر فأدخلها في الأرصدة الافتتاحية («ضريبة الفترة الجارية حتى بدء الدفتر») لتُضاف لمستحقه؛ وإلا فالزائد رصيد دائن لك.${moved}`;
+  }
   function alertsHTML(asOf, setup) {
     const out = [];
     const bad = badRecords();
@@ -1944,13 +1954,16 @@
       const opv = rets.opening;
       if (opv && !opv.settled) {
         const late = opv.deadline && opv.deadline < t;
-        out.push([late ? 'bad' : 'warn', `ضريبة مستحقة عند بدء الدفتر (${esc(opv.label)}): المتبقي ${fmt(opv.remaining)} ${cur()}${opv.deadline ? (late ? ' — فات موعدها' : ' — آخر موعد ' + dtText(opv.deadline)) : ''}`, payBtn(opv)]);
+        out.push([late ? 'bad' : 'warn', `ضريبة مستحقة عند بدء الدفتر (${esc(opv.label)}): المتبقي ${fmt(opv.remaining)} ${cur()}${opv.deadline ? (late ? ` — فات موعدها (${dtText(opv.deadline)})` : ' — آخر موعد ' + dtText(opv.deadline)) : ''}`, payBtn(opv)]);
       }
       for (const p of ended) if (!p.settled && deadline(p) < t) out.push(['bad', `إقرار ${esc(p.label)}: المتبقي ${fmt(p.remaining)} ${cur()} — فات موعده`, payBtn(p)]);
       const last = ended[ended.length - 1];
       if (last && deadline(last) >= t) {
         if (!last.settled) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: المستحق ${fmt(last.remaining)} ${cur()} — آخر موعد ${dtText(deadline(last))}`, payBtn(last)]);
-        else if (last.credit > 0) out.push(['warn', `إقرار ضريبة ${esc(last.label)}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(last.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار في موعد أقصاه ${dtText(deadline(last))}.`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm')]);
+        else if (last.credit > 0) {
+          const hint = last.over > 0.005 ? preVatHint(last.label) : '';
+          out.push(['warn', `إقرار ضريبة ${esc(last.label)}: لا يوجد مبلغ للسداد، ولك رصيد دائن ${fmt(last.credit)} ${cur()} يُرحّل أو يُطلب استرداده. قدّم الإقرار في موعد أقصاه ${dtText(deadline(last))}.${hint ? ' ' + hint : ''}`, btn('تقرير الضريبة', 'report', 'data-v="vat"', 'sm') + (hint ? btn('الأرصدة الافتتاحية', 'opening', '', 'sm ghost') : '')]);
+        }
       }
     } else {
       // غير المسجل: حد التسجيل من مبيعات آخر 12 شهراً أو المتوقعة لسنة إن كان التشغيل أقل من سنة
@@ -3048,6 +3061,15 @@
       const over = opv.over > 0.005 ? ` ${chip('دفعة زائدة ' + fmt(opv.over), 'warn')} الزائد لا يُخصم من أي إقرار هنا ويبقى في رصيد حساب الضريبة بالميزانية.` : '';
       preNote += `<p class="note">ضريبة مستحقة عند بدء الدفتر من إقرار سابق (${esc(opv.label)}): <b class="n">${fmt(opv.payable)}</b> ${cur()} من الأرصدة الافتتاحية. ${st}${over}${opv.settled ? '' : ' ' + btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(opv.label)}"`, 'sm')}</p>`;
     }
+    // ضريبة أيام الفترة الجارية قبل بدء الدفتر (الأرصدة الافتتاحية): جزء من إقرار تلك الفترة يُسدَّد معه
+    const opc = RB.openingInfo(S);
+    const vc = opc && opc.vatCurrent ? (RB.vatOpeningPeriod(S, opc) || {}).cur : null;
+    for (const p of pers) {
+      if (Math.abs(p.pre) >= 0.005)
+        preNote += `<p class="note">إقرار «${esc(p.label)}» يشمل ${p.pre > 0 ? 'ضريبة' : 'رصيداً لصالحك من'} ${vc && vc.key === p.key ? `${dtText(vc.from)} – ${dtText(vc.to)}` : 'الأيام'} قبل بدء الدفتر: <b class="n">${fmt(Math.abs(p.pre))}</b> ${cur()} من الأرصدة الافتتاحية (في «مرحّل من قبل»)، فسدِّد الإقرار كاملاً باسمه.</p>`;
+      const hint = p.over > 0.005 ? preVatHint(p.label) : '';
+      if (hint) preNote += `<p class="note">${chip('دفعة زائدة ' + fmt(p.over), 'warn')} ${hint}</p>`;
+    }
     const pre = (all.before || []).filter((x) => !x.opening);
     if (pre.length)
       preNote += `<p class="note">${pre.length > 1 ? 'مدفوعات لفترات' : 'سداد لفترة'} قبل بداية الإقرارات في الدفتر: ${pre.map(payX).join('، ')}. ${pre.length > 1 ? 'لا تُخصم من أي إقرار هنا لأن ضريبة تلك الفترات ليست مسجلة في الدفتر، لكنها تدخل' : 'لا يُخصم من أي إقرار هنا لأن ضريبة تلك الفترة ليست مسجلة في الدفتر، لكنه يدخل'} في رصيد حساب الضريبة بالميزانية${opv ? '' : '. إن كانت الضريبة مستحقة عند بدء الدفتر فأدخلها في الأرصدة الافتتاحية («ضريبة مستحقة من إقرار سابق») ليُسدَّد منها'}.</p>`;
@@ -3076,7 +3098,12 @@
           { h: 'ضريبة المبيعات', num: 1, f: (p) => N(p.report.sales.vat) },
           { h: 'ضريبة المدخلات', num: 1, f: (p) => N(p.report.inVat) },
           { h: 'صافي الفترة', num: 1, f: (p) => N(p.net) },
-          { h: 'مرحّل من قبل', num: 1, f: (p) => (p.carried < -0.005 ? `${N(p.carried)}<div class="muted sm">رصيد دائن لك</div>` : '—') },
+          // ضريبة أيام الفترة قبل بدء الدفتر (الأرصدة الافتتاحية) والرصيد الدائن المرحّل من الإقرارات السابقة
+          {
+            h: 'مرحّل من قبل',
+            num: 1,
+            f: (p) => (Math.abs(p.pre) >= 0.005 ? `${N(p.pre)}<div class="muted sm">${p.pre > 0 ? 'ضريبة ما قبل بدء الدفتر' : 'لك من قبل بدء الدفتر'}</div>` : '') + (p.carried < -0.005 ? `${N(p.carried)}<div class="muted sm">رصيد دائن لك</div>` : '') || '—',
+          },
           { h: 'المستحق للسداد', num: 1, f: (p) => `<b>${N(p.due)}</b>${p.credit ? `<div class="muted sm">رصيد دائن ${fmt(p.credit)}</div>` : ''}` },
           { h: 'آخر موعد', f: (p) => dt(RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1))) },
           {
@@ -3287,7 +3314,7 @@
     h += card(
       'أرصدة افتتاحية',
       op
-        ? kv('تاريخ بدء الدفتر', dtText(op.date)) + kv('الصندوق', fmt(op.cash)) + kv('البنك', fmt(op.bank)) + kv('مستحقات التطبيقات', fmt(op.apps)) + kv('المخزون', fmt(op.inventory)) + (op.vatPayable ? kv('ضريبة مستحقة من إقرار سابق', fmt(op.vatPayable)) : kv('رصيد ضريبة دائن', fmt(op.vatCredit))) + kv('مستحق للموردين', fmt(op.owed)) + (op.eosb ? kv('مخصص نهاية الخدمة', fmt(op.eosb)) : '') + kv('الصافي (حقوق الشركاء)', fmt(op.net))
+        ? kv('تاريخ بدء الدفتر', dtText(op.date)) + kv('الصندوق', fmt(op.cash)) + kv('البنك', fmt(op.bank)) + kv('مستحقات التطبيقات', fmt(op.apps)) + kv('المخزون', fmt(op.inventory)) + (op.vatPayable ? kv('ضريبة مستحقة من إقرار سابق', fmt(op.vatPayable)) : kv('رصيد ضريبة دائن', fmt(op.vatCredit))) + (op.vatCurrent ? kv('ضريبة الفترة الجارية حتى بدء الدفتر', fmt(op.vatCurrent)) : '') + kv('مستحق للموردين', fmt(op.owed)) + (op.eosb ? kv('مخصص نهاية الخدمة', fmt(op.eosb)) : '') + kv('الصافي (حقوق الشركاء)', fmt(op.net))
         : '<p class="note">للمطعم القائم قبل بدء الدفتر: سجّل ما في الصندوق والبنك والمخزون وما عند التطبيقات وما عليه للموردين ولعماله (مكافأة نهاية الخدمة) في تاريخ البدء، فتبدأ الأرصدة والتقارير صحيحة.</p>',
       { actions: btn(op ? 'تعديل' : 'إضافة', 'opening', '', 'sm') + (op ? btn('حذف', 'delopening', '', 'sm ghost') : ''), sub: 'لمطعم قائم يبدأ دفتره بعد تشغيله' }
     );
@@ -4730,7 +4757,13 @@
         v.amount = auto(pers.find((z) => z.label === v.period));
         return 'redraw';
       },
-      preview: (v) => (num(v.amount) < 0 ? `<p class="note">استرداد من الهيئة: يدخل الحساب ${fmt(-num(v.amount))} ${cur()} ويُخصم من الرصيد الدائن للإقرار فلا يُرحّل للفترة التالية. سجّله بعد وصول المبلغ.</p>` : overdrawNote('vatPayments', v)),
+      preview: (v) => {
+        if (num(v.amount) < 0) return `<p class="note">استرداد من الهيئة: يدخل الحساب ${fmt(-num(v.amount))} ${cur()} ويُخصم من الرصيد الدائن للإقرار فلا يُرحّل للفترة التالية. سجّله بعد وصول المبلغ.</p>`;
+        // سداد جديد أكبر من متبقي إقرار الفترة التي بدأ الدفتر أثناءها: قد يشمل ضريبة أيامها قبل البدء
+        const q = isEdit ? null : pers.find((z) => z.label === v.period);
+        const hint = q && num(v.amount) > r2(q.remaining) + 0.005 ? preVatHint(q.label) : '';
+        return overdrawNote('vatPayments', v) + (hint ? `<p class="note">المبلغ أكبر من المتبقي على الإقرار في الدفتر (${fmt(q.remaining)} ${cur()}). ${hint}</p>` : '');
+      },
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: back ? 'تاريخ الاسترداد' : 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: labels, redraw: true }] },
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: back ? 'المبلغ المسترد (بالسالب)' : 'المبلغ المسدد', req: 1, neg: 1, help: back ? 'ما ردّته الهيئة من الرصيد الدائن، بالسالب' : 'استرداد من الهيئة؟ أدخله بالسالب' }, { k: 'account', type: 'select', label: 'من / إلى', options: payOptions(false, false) }] },
@@ -4743,7 +4776,7 @@
   // الأرصدة الافتتاحية لمطعم قائم (settings.opening): الأصول والالتزامات في تاريخ بدء الدفتر، وصافيها حقوق للشركاء
   function openingForm() {
     const o = S.settings.opening;
-    const val = RB.isObj(o) ? clone(o) : { date: today(), cash: '', bank: '', inventory: '', vatCredit: '', vatPayable: '', apps: {}, payables: [], eosb: [] };
+    const val = RB.isObj(o) ? clone(o) : { date: today(), cash: '', bank: '', inventory: '', vatCredit: '', vatPayable: '', vatCurrent: '', apps: {}, payables: [], eosb: [] };
     val.apps = RB.isObj(val.apps) ? val.apps : {};
     if (!Array.isArray(val.payables)) val.payables = [];
     if (!Array.isArray(val.eosb)) val.eosb = [];
@@ -4763,14 +4796,13 @@
       if (r.employeeId && !empOf(r.employeeId)) opts.push([r.employeeId, 'موظف محذوف']);
       return opts;
     };
-    // الضريبة المستحقة عند البدء: تُسدَّد من «سداد الضريبة» باسم آخر فترة إقرار انتهت قبل تاريخ البدء
-    const vatPayableHelp = (d) => {
-      const q = RB.isISODate(d) ? RB.vatOpeningPeriod(S, { date: d }) : null;
-      return 'التزام للهيئة؛ سجّل سداده من «سداد الضريبة»' + (q && q.to ? ' باسم «' + esc(q.label) + '»' : '');
-    };
+    // فترات الضريبة حول تاريخ البدء: آخر إقرار انتهى قبله (ضريبته المستحقة تُسدَّد من «سداد الضريبة» باسمه)،
+    // والفترة الجارية إن بدأ الدفتر أثناءها (cur: ضريبة أيامها قبل البدء تُضاف لإقرارها فتُسدَّد معه)
+    const vatPer = (d) => (RB.isISODate(d) ? RB.vatOpeningPeriod(S, { date: d }) : null);
+    const vatPayableHelp = (q) => (q && q.to ? `إقرار «${esc(q.label)}» أو ما قبله؛ سجّل سداده من «سداد الضريبة» باسمه` : 'التزام للهيئة؛ سجّل سداده من «سداد الضريبة»');
     // ما يُحفظ: أرقام، والموردون بأسماء ومبالغ، ومخصص نهاية الخدمة بالموظف
     const clean = (v) => {
-      const out = { date: v.date, cash: num(v.cash), bank: num(v.bank), inventory: num(v.inventory), vatCredit: num(v.vatCredit), vatPayable: num(v.vatPayable), apps: {}, payables: [], eosb: [] };
+      const out = { date: v.date, cash: num(v.cash), bank: num(v.bank), inventory: num(v.inventory), vatCredit: num(v.vatCredit), vatPayable: num(v.vatPayable), vatCurrent: num(v.vatCurrent), apps: {}, payables: [], eosb: [] };
       for (const id of Object.keys(v.apps || {})) if (num(v.apps[id])) out.apps[id] = num(v.apps[id]);
       out.payables = (v.payables || []).filter((x) => x && (String(x.supplier || '').trim() || num(x.amount))).map((x) => ({ supplier: String(x.supplier || '').trim(), amount: num(x.amount) }));
       out.eosb = (v.eosb || []).filter((x) => x && (x.employeeId || num(x.amount))).map((x) => ({ employeeId: String(x.employeeId || ''), amount: num(x.amount) }));
@@ -4780,82 +4812,104 @@
       title: 'أرصدة افتتاحية',
       wide: true,
       value: val,
-      fields: (v) => [
-        { type: 'html', html: () => '<p class="note">للمطعم القائم قبل بدء الدفتر: ما في الصندوق والبنك والمخزون، وما للمطعم عند التطبيقات، وما عليه للموردين ولعماله (مكافأة نهاية الخدمة) في تاريخ البدء. صافيها يُسجَّل حقوقاً للشركاء حسب نسبهم.</p><p class="note">الأصول الموجودة (المعدات والأثاث والديكور) سجّلها بعد حفظ هذه الأرصدة من صفحة الأصول: بقيمتها الدفترية وعمرها المتبقي وبتاريخ بدء الدفتر، واختر في «دُفع من»: «أصل قائم قبل بدء الدفتر». لا تُسترد عليها ضريبة الآن: قيمتها الدفترية بدون الضريبة إن استرددتها عند شرائها، وشاملة الضريبة إن لم تستردها (غير مسجل في الضريبة حينها)، وتُضاف قيمتها لحقوق الشركاء حسب نسبهم.</p>' },
-        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ بدء الدفتر', req: 1, redraw: true, help: 'الأرصدة كما هي صباح هذا اليوم' }, { k: 'cash', type: 'money', label: 'النقد في الصندوق', min: 0 }, { k: 'bank', type: 'money', label: 'رصيد الحساب البنكي', min: 0 }] },
-        // قيمة المخزون كما يُقيَّم الجرد في ذلك التاريخ: غير المسجل في الضريبة يقيّم المواد الخاضعة شاملة ضريبتها (جزء من تكلفتها)
-        // الضريبة من إقرار سابق: لصالح المطعم (رصيد دائن يُخصم من أول إقرار) أو عليه (مستحق للهيئة لم يُسدَّد بعد)
-        {
-          type: 'row',
-          fields: [
-            { k: 'inventory', type: 'money', label: 'قيمة المخزون من جرد افتتاحي', min: 0, help: RB.isVatReg(S.settings, RB.isISODate(v.date) ? v.date : today()) ? 'الكميات × سعر الشراء بدون الضريبة' : 'الكميات × سعر الشراء شاملاً الضريبة (غير مسجل في الضريبة)' },
-            { k: 'vatCredit', type: 'money', label: 'رصيد ضريبة دائن من إقرار سابق', min: 0, help: 'لصالح المطعم: يُخصم من أول إقرار في الدفتر' },
-            { k: 'vatPayable', type: 'money', label: 'ضريبة مستحقة من إقرار سابق لم تُسدَّد', min: 0, help: vatPayableHelp(v.date) },
-          ],
-        },
-        ...(apps.length ? [{ type: 'section', label: 'مستحقات التطبيقات (مبيعات لم تُحوَّل للبنك بعد)' }, { type: 'row', fields: apps.map(([id, name]) => ({ k: 'apps.' + id, type: 'money', label: name, min: 0 })) }] : []),
-        {
-          k: 'payables',
-          type: 'lines',
-          label: 'مستحق للموردين (فواتير آجلة لم تُسدَّد)',
-          addLabel: 'إضافة مورد',
-          newRow: () => ({ supplier: '', amount: '' }),
-          cols: [
-            { k: 'supplier', label: 'المورد' },
-            { k: 'amount', label: 'المبلغ شامل الضريبة', type: 'num', num: 1, min: 0 },
-          ],
-          empty: 'لا مستحقات للموردين',
-          help: 'سدادها لاحقاً من «سداد مورد» باسم المورد نفسه.',
-        },
-        {
-          k: 'eosb',
-          type: 'lines',
-          label: 'مخصص نهاية الخدمة عن خدمة العمال قبل بدء الدفتر',
-          addLabel: 'إضافة موظف',
-          rowName: (r) => (empOf(r.employeeId) || {}).name || '',
-          tools: [
-            {
-              id: 'eosbfill',
-              label: 'احسب من بيانات الموظفين',
-              run: (v2, rows) => {
-                if (!RB.isISODate(v2.date)) return toast('اختر تاريخ بدء الدفتر أولاً.', 'bad');
-                const list = S.employees.filter((e) => e && atStart(e, v2.date));
-                // موظف بلا تاريخ مباشرة لا تُعرف مدة خدمته: يُذكر ليُكمل بياناته أو يُدخل مخصصه يدوياً
-                const noStart = S.employees.filter((e) => e && !RB.isISODate(e.startDate) && !(RB.isISODate(e.endDate) && e.endDate < v2.date));
-                if (noStart.length) toast('بلا تاريخ مباشرة فلم يُقدَّر مخصصه: ' + noStart.map((e) => e.name).join('، ') + '. أدخله من صفحة العمال أو اكتب مخصصه يدوياً.', 'bad');
-                if (!list.length) return noStart.length ? undefined : toast('لا يوجد موظف باشر قبل تاريخ بدء الدفتر. أضف الموظفين بتواريخ مباشرتهم من صفحة العمال أولاً.', 'bad');
-                // أسطر من باشر قبل البدء تُحسب من جديد، وما سواها (موظف أُضيف يدوياً) يبقى
-                const keep = rows.filter((r) => r && (r.employeeId || num(r.amount)) && !list.some((e) => e.id === r.employeeId));
-                rows.splice(0, rows.length, ...list.map((e) => ({ employeeId: e.id, amount: est(e, v2.date) })), ...keep);
+      fields: (v) => {
+        const vp = vatPer(v.date);
+        const vcur = vp && vp.cur;
+        return [
+          { type: 'html', html: () => '<p class="note">للمطعم القائم قبل بدء الدفتر: ما في الصندوق والبنك والمخزون، وما للمطعم عند التطبيقات، وما عليه للموردين ولعماله (مكافأة نهاية الخدمة) في تاريخ البدء. صافيها يُسجَّل حقوقاً للشركاء حسب نسبهم.</p><p class="note">الأصول الموجودة (المعدات والأثاث والديكور) سجّلها بعد حفظ هذه الأرصدة من صفحة الأصول: بقيمتها الدفترية وعمرها المتبقي وبتاريخ بدء الدفتر، واختر في «دُفع من»: «أصل قائم قبل بدء الدفتر». لا تُسترد عليها ضريبة الآن: قيمتها الدفترية بدون الضريبة إن استرددتها عند شرائها، وشاملة الضريبة إن لم تستردها (غير مسجل في الضريبة حينها)، وتُضاف قيمتها لحقوق الشركاء حسب نسبهم.</p>' },
+          {
+            type: 'row',
+            fields: [
+              { k: 'date', type: 'date', label: 'تاريخ بدء الدفتر', req: 1, redraw: true, help: 'الأرصدة كما هي صباح هذا اليوم' },
+              { k: 'cash', type: 'money', label: 'النقد في الصندوق', min: 0 },
+              { k: 'bank', type: 'money', label: 'رصيد الحساب البنكي', min: 0 },
+              // قيمة المخزون كما يُقيَّم الجرد في ذلك التاريخ: غير المسجل في الضريبة يقيّم المواد الخاضعة شاملة ضريبتها (جزء من تكلفتها)
+              { k: 'inventory', type: 'money', label: 'قيمة المخزون من جرد افتتاحي', min: 0, help: RB.isVatReg(S.settings, RB.isISODate(v.date) ? v.date : today()) ? 'الكميات × سعر الشراء بدون الضريبة' : 'الكميات × سعر الشراء شاملاً الضريبة (غير مسجل في الضريبة)' },
+            ],
+          },
+          // الضريبة من إقرار سابق: لصالح المطعم (رصيد دائن يُخصم من أول إقرار) أو عليه (مستحق للهيئة لم يُسدَّد بعد)؛
+          // وإن بدأ الدفتر أثناء فترة إقرار: صافي ضريبة أيامها قبل البدء، يُضاف لإقرار تلك الفترة فيُسدَّد معه باسمه
+          {
+            type: 'row',
+            fields: [
+              { k: 'vatCredit', type: 'money', label: 'رصيد ضريبة دائن من إقرار سابق', min: 0, help: 'لصالح المطعم: يُخصم من أول إقرار في الدفتر' },
+              { k: 'vatPayable', type: 'money', label: 'ضريبة مستحقة من إقرار سابق لم تُسدَّد', min: 0, help: vatPayableHelp(vp) },
+              {
+                k: 'vatCurrent',
+                type: 'money',
+                label: 'ضريبة الفترة الجارية حتى بدء الدفتر',
+                neg: 1,
+                show: (x) => !!vcur || !!num(x.vatCurrent),
+                help: vcur
+                  ? `صافي ضريبة ${dtText(vcur.from)} – ${dtText(vcur.to)} (المبيعات ناقص المدخلات): يُضاف لمستحق إقرار «${esc(vcur.label)}» فيُسدَّد معه باسمه. بالسالب إن كانت المدخلات أكبر`
+                  : 'لا أيام من فترة الإقرار قبل تاريخ البدء: امسح المبلغ، أو أدخله في «ضريبة مستحقة من إقرار سابق» إن كان من إقرار سابق',
               },
-            },
-          ],
-          newRow: () => ({ employeeId: '', amount: '' }),
-          cols: [
-            { k: 'employeeId', label: 'الموظف', type: 'select', options: empOpts, redraw: true },
-            {
-              k: 'amount',
-              label: 'المخصص حتى تاريخ البدء',
-              type: 'num',
-              num: 1,
-              min: 0,
-              hint: (r, v2) => {
-                const e = empOf(r.employeeId);
-                if (!e || !RB.isISODate(v2.date)) return '';
-                if (!RB.isISODate(e.startDate)) return 'أدخل «تاريخ المباشرة» في بيانات الموظف ليُقدَّر';
-                return atStart(e, v2.date) ? `بنظام العمل <span class="n">${fmt(est(e, v2.date))}</span>` : 'لم يكن على رأس العمل في تاريخ البدء';
+            ],
+          },
+          ...(apps.length ? [{ type: 'section', label: 'مستحقات التطبيقات (مبيعات لم تُحوَّل للبنك بعد)' }, { type: 'row', fields: apps.map(([id, name]) => ({ k: 'apps.' + id, type: 'money', label: name, min: 0 })) }] : []),
+          {
+            k: 'payables',
+            type: 'lines',
+            label: 'مستحق للموردين (فواتير آجلة لم تُسدَّد)',
+            addLabel: 'إضافة مورد',
+            newRow: () => ({ supplier: '', amount: '' }),
+            cols: [
+              { k: 'supplier', label: 'المورد' },
+              { k: 'amount', label: 'المبلغ شامل الضريبة', type: 'num', num: 1, min: 0 },
+            ],
+            empty: 'لا مستحقات للموردين',
+            help: 'سدادها لاحقاً من «سداد مورد» باسم المورد نفسه.',
+          },
+          {
+            k: 'eosb',
+            type: 'lines',
+            label: 'مخصص نهاية الخدمة عن خدمة العمال قبل بدء الدفتر',
+            addLabel: 'إضافة موظف',
+            rowName: (r) => (empOf(r.employeeId) || {}).name || '',
+            tools: [
+              {
+                id: 'eosbfill',
+                label: 'احسب من بيانات الموظفين',
+                run: (v2, rows) => {
+                  if (!RB.isISODate(v2.date)) return toast('اختر تاريخ بدء الدفتر أولاً.', 'bad');
+                  const list = S.employees.filter((e) => e && atStart(e, v2.date));
+                  // موظف بلا تاريخ مباشرة لا تُعرف مدة خدمته: يُذكر ليُكمل بياناته أو يُدخل مخصصه يدوياً
+                  const noStart = S.employees.filter((e) => e && !RB.isISODate(e.startDate) && !(RB.isISODate(e.endDate) && e.endDate < v2.date));
+                  if (noStart.length) toast('بلا تاريخ مباشرة فلم يُقدَّر مخصصه: ' + noStart.map((e) => e.name).join('، ') + '. أدخله من صفحة العمال أو اكتب مخصصه يدوياً.', 'bad');
+                  if (!list.length) return noStart.length ? undefined : toast('لا يوجد موظف باشر قبل تاريخ بدء الدفتر. أضف الموظفين بتواريخ مباشرتهم من صفحة العمال أولاً.', 'bad');
+                  // أسطر من باشر قبل البدء تُحسب من جديد، وما سواها (موظف أُضيف يدوياً) يبقى
+                  const keep = rows.filter((r) => r && (r.employeeId || num(r.amount)) && !list.some((e) => e.id === r.employeeId));
+                  rows.splice(0, rows.length, ...list.map((e) => ({ employeeId: e.id, amount: est(e, v2.date) })), ...keep);
+                },
               },
-            },
-          ],
-          empty: 'لا مخصص افتتاحي',
-          help: 'ما استحقه كل عامل عن خدمته قبل تاريخ البدء (نصف أجر شهر عن كل سنة من الخمس الأولى، وأجر شهر عن كل سنة بعدها). «احسب من بيانات الموظفين» يقدّره من تاريخ المباشرة والراتب. يُسجَّل التزاماً يُخصم من حقوق الشركاء، ويُضاف إليه ما يُستحق مع كل مسير، وتُصرف منه مكافأة العامل حين يترك العمل.',
-        },
-      ],
+            ],
+            newRow: () => ({ employeeId: '', amount: '' }),
+            cols: [
+              { k: 'employeeId', label: 'الموظف', type: 'select', options: empOpts, redraw: true },
+              {
+                k: 'amount',
+                label: 'المخصص حتى تاريخ البدء',
+                type: 'num',
+                num: 1,
+                min: 0,
+                hint: (r, v2) => {
+                  const e = empOf(r.employeeId);
+                  if (!e || !RB.isISODate(v2.date)) return '';
+                  if (!RB.isISODate(e.startDate)) return 'أدخل «تاريخ المباشرة» في بيانات الموظف ليُقدَّر';
+                  return atStart(e, v2.date) ? `بنظام العمل <span class="n">${fmt(est(e, v2.date))}</span>` : 'لم يكن على رأس العمل في تاريخ البدء';
+                },
+              },
+            ],
+            empty: 'لا مخصص افتتاحي',
+            help: 'ما استحقه كل عامل عن خدمته قبل تاريخ البدء (نصف أجر شهر عن كل سنة من الخمس الأولى، وأجر شهر عن كل سنة بعدها). «احسب من بيانات الموظفين» يقدّره من تاريخ المباشرة والراتب. يُسجَّل التزاماً يُخصم من حقوق الشركاء، ويُضاف إليه ما يُستحق مع كل مسير، وتُصرف منه مكافأة العامل حين يترك العمل.',
+          },
+        ];
+      },
       preview: (v) => {
         const info = RB.openingInfo({ settings: { opening: clean(v) } });
         if (!info) return '';
         const sh = RB.openingShares(S, info.net);
-        const parts = [['الموردون', info.owed], ['نهاية الخدمة', info.eosb], ['الضريبة', info.vatPayable]].filter((x, i) => !i || x[1]);
+        const parts = [['الموردون', info.owed], ['نهاية الخدمة', info.eosb], ['الضريبة', RB.r2(info.vatPayable + Math.max(0, info.vatCurrent))]].filter((x, i) => !i || x[1]);
         const liab = parts.length > 1 ? `<small>${parts.map((x) => `${x[0]} ${fmt(x[1])}`).join(' + ')}</small>` : '';
         return `<div class="pv-grid"><div><span>الأصول</span>${money(info.assets)}</div><div><span>الالتزامات</span>${money(info.liab)}${liab}</div><div><span>الصافي (حقوق الشركاء)</span>${money(info.net)}</div></div>${sh.length ? `<p class="note">${sh.map((x) => `${esc((S.partners.find((p) => p.id === x.partnerId) || {}).name || '')}: <b class="n">${fmt(x.amount)}</b>`).join(' · ')}</p>` : '<p class="note bad">أضف الشركاء أولاً: الصافي يُسجَّل حقوقاً لهم.</p>'}`;
       },
@@ -4867,6 +4921,8 @@
         const pi = (v.payables || []).findIndex((x) => x && num(x.amount) && !String(x.supplier || '').trim());
         if (pi >= 0) return { msg: 'اكتب اسم المورد لكل مبلغ مستحق.', path: `payables.${pi}.supplier`, inline: 'اكتب اسم المورد' };
         if (c.vatCredit > 0 && c.vatPayable > 0) return { msg: 'أدخل الضريبة من الإقرار السابق مرة واحدة: رصيداً دائناً لصالح المطعم أو مستحقاً عليه للهيئة، بالصافي.', path: 'vatPayable', inline: 'رصيد دائن أو مستحق، لا الاثنان' };
+        // ضريبة الفترة الجارية لتاريخ بدء في أول يوم من فترة الإقرار (أو قبل سريان التسجيل): لا أيام لها قبل البدء
+        if (c.vatCurrent && !(vatPer(c.date) || {}).cur) return { msg: 'تاريخ البدء أول يوم في فترة الإقرار (أو قبل سريان التسجيل)، فلا ضريبة للفترة الجارية قبله. امسح المبلغ، أو أدخله في «ضريبة مستحقة من إقرار سابق» إن كان من إقرار سابق.', path: 'vatCurrent', inline: 'لا أيام قبل البدء في هذه الفترة' };
         const ei = (v.eosb || []).findIndex((x) => x && num(x.amount) && !x.employeeId);
         if (ei >= 0) return { msg: 'اختر الموظف لكل مبلغ في مخصص نهاية الخدمة.', path: `eosb.${ei}.employeeId`, inline: 'اختر الموظف' };
         const ids = (v.eosb || []).map((x) => (x && (x.employeeId || num(x.amount)) ? String(x.employeeId || '') : ''));
@@ -5806,9 +5862,9 @@
         const opv = rets.opening;
         if (pers.length || opv) {
           rows.push([]);
-          rows.push(['الإقرار', 'من', 'إلى', 'ضريبة المبيعات', 'ضريبة المدخلات', 'صافي الفترة', 'مرحّل من قبل', 'المستحق للسداد', 'المسدد', 'المسترد', 'المتبقي', 'آخر موعد', 'الحالة']);
-          if (opv) rows.push([opv.label + ' (مستحق عند بدء الدفتر)', opv.from, opv.to, '', '', '', '', opv.payable, opv.paid, '', opv.remaining, opv.deadline, opv.settled ? 'مسدد' : 'غير مسدد']);
-          pers.forEach((p) => rows.push([p.label, p.from, p.to, p.report.sales.vat, p.report.inVat, p.net, p.carried, p.due, p.paid, p.refund, p.remaining, RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1)), p.to >= t ? 'الفترة جارية' : p.settled ? 'مسدد' : 'غير مسدد']));
+          rows.push(['الإقرار', 'من', 'إلى', 'ضريبة المبيعات', 'ضريبة المدخلات', 'صافي الفترة', 'قبل بدء الدفتر', 'مرحّل من قبل', 'المستحق للسداد', 'المسدد', 'المسترد', 'المتبقي', 'آخر موعد', 'الحالة']);
+          if (opv) rows.push([opv.label + ' (مستحق عند بدء الدفتر)', opv.from, opv.to, '', '', '', '', '', opv.payable, opv.paid, '', opv.remaining, opv.deadline, opv.settled ? 'مسدد' : 'غير مسدد']);
+          pers.forEach((p) => rows.push([p.label, p.from, p.to, p.report.sales.vat, p.report.inVat, p.net, p.pre, p.carried, p.due, p.paid, p.refund, p.remaining, RB.monthEnd(RB.ymAdd(p.to.slice(0, 7), 1)), p.to >= t ? 'الفترة جارية' : p.settled ? 'مسدد' : 'غير مسدد']));
         }
       } else if (rep === 'breakeven') {
         // الأساس نفسه الذي تعرضه الشاشة (أشهر التشغيل الكاملة)

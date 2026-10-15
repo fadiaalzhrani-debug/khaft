@@ -148,7 +148,9 @@
 
   RB.RAW_CATS = ['لحوم', 'خبز', 'أجبان', 'خضار', 'صوصات', 'بهارات', 'بطاطس', 'زيوت', 'مشروبات', 'تغليف', 'أخرى'];
   RB.UNITS = ['جم', 'كجم', 'مل', 'لتر', 'حبة', 'شريحة', 'حصة', 'علبة', 'كيس', 'كرتون'];
-  RB.PRODUCT_CATS = ['برقر', 'وجبات', 'بطاطس وجانبي', 'مشروبات', 'صوصات وإضافات', 'حلى', 'أخرى'];
+  RB.PRODUCT_CATS = ['برقر', 'وجبات', 'بطاطس وجانبي', 'مشروبات', 'صوصات وإضافات', 'حلويات', 'أخرى'];
+  // أسماء أقسام قديمة في أصناف محفوظة ← اسمها الحالي في RB.PRODUCT_CATS (RB.sanitizeRecord عند التحميل)
+  RB.PRODUCT_CAT_RENAMED = { حلى: 'حلويات' };
 
   // قوالب جاهزة للرسوم الحكومية والاشتراكات (المبالغ يحددها المستخدم).
   // oneOff = رسم لمرة واحدة لا يحتاج تجديداً. auto = مبلغ يتعبأ من بيانات العامل المختار:
@@ -245,8 +247,10 @@
     feeVat: true, // عمولات التطبيقات ورسوم الشبكة عليها ضريبة قيمة مضافة
     openingDate: '',
     // أرصدة افتتاحية لمطعم قائم بدأ الدفتر بعد تشغيله (RB.openingInfo): null أو
-    // {date, cash, bank, inventory, vatCredit, vatPayable, apps: {قناة: مبلغ}, payables: [{supplier, amount}], eosb: [{employeeId, amount}]}
-    // vatCredit: رصيد دائن من إقرار سابق لصالح المطعم، vatPayable: ضريبة مستحقة للهيئة من إقرار سابق لم تُسدَّد بعد
+    // {date, cash, bank, inventory, vatCredit, vatPayable, vatCurrent, apps: {قناة: مبلغ}, payables: [{supplier, amount}], eosb: [{employeeId, amount}]}
+    // vatCredit: رصيد دائن من إقرار سابق لصالح المطعم، vatPayable: ضريبة مستحقة للهيئة من إقرار سابق لم تُسدَّد بعد،
+    // vatCurrent: صافي ضريبة الأيام من بداية فترة الإقرار الجارية حتى اليوم السابق لبدء الدفتر (موجب مستحق للهيئة،
+    // سالب لصالح المطعم)، يدخل في إقرار تلك الفترة (RB.vatReturns)
     opening: null,
     // أيام بلا إقفال لأن المطعم كان مغلقاً (لا يُنبَّه عليها)
     closedDays: [],
@@ -334,6 +338,8 @@
       if (v === undefined || (Array.isArray(v) && v.every(isObj))) continue;
       set(f, Array.isArray(v) ? v.filter(isObj) : []);
     }
+    // قسم صنف المنيو باسمه القديم يُنقل لاسمه الحالي فيطابق خيارات «القسم»
+    if (section === 'products' && typeof x.category === 'string' && Object.prototype.hasOwnProperty.call(RB.PRODUCT_CAT_RENAMED, x.category)) set('category', RB.PRODUCT_CAT_RENAMED[x.category]);
     if (section === 'sales') {
       const ch = x.channels;
       const okCh = (k) => isObj(ch[k]) && !PROTO.includes(k);
@@ -1405,8 +1411,9 @@
   const KIND_ORDER = { opening: -1, capital: 0, asset: 1, expense: 2, purchase: 3, advance: 4, payroll: 5, eosb: 6, sale: 7, payout: 8, transfer: 9, supplierpay: 10, vatpay: 11, withdrawal: 12, amort: 13, dep: 14, stock: 15, cashadj: 16 };
 
   // الأرصدة الافتتاحية بأرقامها: الأصول، والالتزامات (الموردون owed، ومخصص نهاية الخدمة eosb عن خدمة العمال قبل
-  // بدء الدفتر، والضريبة المستحقة من إقرار سابق لم تُسدَّد vatPayable، ومجموعها liab)، وصافيها (حقوق الشركاء
-  // الافتتاحية)، أو null إن لم توجد أو بلا تاريخ صالح.
+  // بدء الدفتر، والضريبة المستحقة من إقرار سابق لم تُسدَّد vatPayable، وضريبة الفترة الجارية حتى بدء الدفتر vatCurrent
+  // إن كانت مستحقة، ومجموعها liab)، وصافيها (حقوق الشركاء الافتتاحية)، أو null إن لم توجد أو بلا تاريخ صالح.
+  // vatCurrent بإشارتها: السالب (مدخلات تلك الأيام أكبر من مخرجاتها) أصل لصالح المطعم في assets.
   // eosbBy: مخصص كل موظف (السطر بلا موظف لا يدخل: المخصص لكل موظف على حدة)
   RB.openingInfo = (S) => {
     const o = S && S.settings && S.settings.opening;
@@ -1417,10 +1424,11 @@
     const eosbBy = {};
     for (const x of Array.isArray(o.eosb) ? o.eosb : []) if (isObj(x) && RB.validId(x.employeeId) && num(x.amount) > 0) eosbBy[x.employeeId] = r2((eosbBy[x.employeeId] || 0) + num(x.amount));
     const eosb = r2(sum(Object.values(eosbBy)));
-    const assets = r2(num(o.cash) + num(o.bank) + apps + num(o.inventory) + Math.max(0, num(o.vatCredit)));
+    const vatCurrent = r2(num(o.vatCurrent));
+    const assets = r2(num(o.cash) + num(o.bank) + apps + num(o.inventory) + Math.max(0, num(o.vatCredit)) + Math.max(0, -vatCurrent));
     const vatPayable = r2(Math.max(0, num(o.vatPayable)));
-    const liab = r2(owed + eosb + vatPayable);
-    return { date: o.date, cash: num(o.cash), bank: num(o.bank), apps, appsBy: isObj(o.apps) ? o.apps : {}, inventory: num(o.inventory), vatCredit: Math.max(0, num(o.vatCredit)), vatPayable, payables, owed, eosb, eosbBy, liab, assets, net: r2(assets - liab) };
+    const liab = r2(owed + eosb + vatPayable + Math.max(0, vatCurrent));
+    return { date: o.date, cash: num(o.cash), bank: num(o.bank), apps, appsBy: isObj(o.apps) ? o.apps : {}, inventory: num(o.inventory), vatCredit: Math.max(0, num(o.vatCredit)), vatPayable, vatCurrent, payables, owed, eosb, eosbBy, liab, assets, net: r2(assets - liab) };
   };
   // صافي الأرصدة الافتتاحية موزعاً على الشركاء حسب نسبهم (بالتساوي إن لم تُحدَّد نسب)، والأخير يأخذ فرق التقريب
   RB.openingShares = (S, net) => {
@@ -1490,8 +1498,9 @@
           ['1102', op.bank],
           ['1103', op.apps],
           ['1104', op.inventory],
-          // الرصيد الدائن من إقرار سابق مدين في حساب الضريبة، والمستحق للهيئة منه دائن (التزام يسدده سداد تلك الفترة)
-          ['2102', op.vatCredit - op.vatPayable],
+          // الرصيد الدائن من إقرار سابق مدين في حساب الضريبة، والمستحق للهيئة منه دائن (التزام يسدده سداد تلك الفترة)،
+          // وضريبة الفترة الجارية قبل بدء الدفتر بإشارتها (تُسدَّد مع إقرار تلك الفترة)
+          ['2102', op.vatCredit - op.vatPayable - op.vatCurrent],
           ['2101', -op.owed],
           ['2201', -op.eosb],
           ...shares.map((x) => ['cap:' + x.partnerId, -x.amount]),
@@ -2100,6 +2109,9 @@
   // والضريبة المستحقة عند بدء الدفتر من إقرار سابق (RB.openingInfo.vatPayable، التزام في القيد الافتتاحي) يسددها
   // ما دُفع من out.before بتاريخ بدء الدفتر أو بعده (ما قبله داخل في الرصيد الافتتاحي نفسه): out.opening
   // {date, label, payable, paid, over, remaining} أو null، وسدادها معلَّم في out.before بـ opening: true.
+  // وضريبة الفترة الجارية حتى بدء الدفتر (RB.openingInfo.vatCurrent، لمن بدأ دفتره أثناء فترة إقرار) جزء من إقرار
+  // تلك الفترة: تُضاف لصافيها في pre (أول إقرار ينتهي في تاريخ البدء أو بعده، كالرصيد الدائن الافتتاحي)، فسداد
+  // الإقرار كاملاً باسمه يسدد الجزأين ولا يصير رصيداً دائناً وهمياً.
   // رصيد حساب الضريبة = متبقي الإقرارات − الرصيد الدائن المرحّل + المتبقي الافتتاحي − الزائد عنه (وما سواه من out.before)
   RB.vatReturns = (S, upTo, L) => {
     L = L || RB.buildLedger(S, upTo);
@@ -2112,11 +2124,14 @@
         break;
       }
     }
+    const op = RB.openingInfo(S);
+    // ضريبة الفترة الجارية قبل بدء الدفتر تبدأ إقرارها ولو لم تُسجَّل بعد عملية فيها ضريبة
+    let opPre = op && Math.abs(op.vatCurrent) >= 0.005 && op.date <= upTo ? op.vatCurrent : 0;
+    if (opPre && (!start || op.date < start)) start = op.date;
     const regFrom = S.settings.vatRegisteredFrom;
     if (start && regFrom && regFrom > start) start = regFrom;
     const pers = start ? RB.vatPeriodsBetween(S, start, upTo) : [];
     const firstFrom = pers.length ? pers[0].from : '';
-    const op = RB.openingInfo(S);
     const opv = op && op.vatPayable > 0 && op.date <= upTo ? RB.vatOpeningPeriod(S, op) : null;
     const own = pers.map(() => []);
     const loose = [];
@@ -2172,10 +2187,16 @@
         credit = r2(credit + opCredit);
         opCredit = 0;
       }
+      // ضريبة أيام هذه الفترة قبل بدء الدفتر: جزء من مستحق إقرارها (أو من رصيده الدائن إن كانت سالبة)
+      let pre = 0;
+      if (opPre && q.to >= op.date) {
+        pre = opPre;
+        opPre = 0;
+      }
       // الفترة الجارية حتى upTo فقط: الدفتر المعطى قد يمتد بعده (دفتر واحد لكل نسخة من البيانات)
       const report = RB.vatReport(S, q.from, q.to < upTo ? q.to : upTo, L);
       const carried = credit ? -credit : 0;
-      const x = r2(report.net - credit);
+      const x = r2(report.net + pre - credit);
       const due = Math.max(0, x);
       let paid = r2(sum(own[i].filter((a) => a > 0)));
       let refund = r2(-sum(own[i].filter((a) => a < 0)));
@@ -2199,19 +2220,25 @@
       const bal = r2(Math.max(0, -x) + paid - refund - due);
       credit = Math.max(0, bal);
       const remaining = Math.max(0, -bal);
-      out.push(Object.assign({}, q, { report, net: report.net, carried, due, credit, paid, refund, over: Math.max(0, r2(paid - refund - due)), remaining, settled: remaining <= 0.01 }));
+      out.push(Object.assign({}, q, { report, net: report.net, pre, carried, due, credit, paid, refund, over: Math.max(0, r2(paid - refund - due)), remaining, settled: remaining <= 0.01 }));
     });
     return out;
   };
   // فترة الضريبة المستحقة عند بدء الدفتر (RB.openingInfo.vatPayable): آخر فترة إقرار انتهت قبل تاريخ البدء،
-  // ومنها اسمها ومهلة سدادها (نهاية الشهر التالي لها)؛ وبلا فترة قبله (سريان التسجيل بعده) اسم ثابت بلا مهلة
+  // ومنها اسمها ومهلة سدادها (نهاية الشهر التالي لها)؛ وبلا فترة قبله (سريان التسجيل بعده) اسم ثابت بلا مهلة.
+  // cur: الفترة الجارية في تاريخ البدء إن بدأ الدفتر أثناءها وبعد سريان التسجيل (لضريبة أيامها قبل البدء،
+  // RB.openingInfo.vatCurrent): اسمها و from..to أيامها قبل البدء، و end نهايتها، و deadline مهلة إقرارها؛ وإلا null
   RB.vatOpeningPeriod = (S, op) => {
     op = op || RB.openingInfo(S);
-    if (!op) return null;
+    if (!op || !RB.isISODate(op.date)) return null;
     const q = RB.vatPeriodsBetween(S, RB.addDays(op.date, -400), RB.addDays(op.date, -1))
       .filter((p) => p.to < op.date)
       .pop();
-    return q ? { date: op.date, label: q.label, from: q.from, to: q.to, deadline: RB.monthEnd(RB.ymAdd(q.to.slice(0, 7), 1)) } : { date: op.date, label: 'ضريبة مستحقة عند بدء الدفتر', from: '', to: '', deadline: '' };
+    const set = S.settings;
+    const c = set.vatRegistered ? RB.vatPeriodsBetween(S, op.date, op.date)[0] : null;
+    const a = c ? (set.vatRegisteredFrom && set.vatRegisteredFrom > c.from ? set.vatRegisteredFrom : c.from) : '';
+    const cur = c && a < op.date ? { key: c.key, label: c.label, from: a, to: RB.addDays(op.date, -1), end: c.to, deadline: RB.monthEnd(RB.ymAdd(c.to.slice(0, 7), 1)) } : null;
+    return q ? { date: op.date, label: q.label, from: q.from, to: q.to, deadline: RB.monthEnd(RB.ymAdd(q.to.slice(0, 7), 1)), cur } : { date: op.date, label: 'ضريبة مستحقة عند بدء الدفتر', from: '', to: '', deadline: '', cur };
   };
   // المستحق لفترة إقرار مع ترحيل الرصيد الدائن من الفترات السابقة
   RB.vatDue = (S, p, L) => {
@@ -2219,7 +2246,7 @@
     const row = RB.vatReturns(S, p.to, L).find((r) => r.key === p.key);
     if (row) return row;
     const report = { sales: { base: 0, vat: 0 }, inputs: {}, inBase: 0, inVat: 0, paid: 0, net: 0 };
-    return Object.assign({}, p, { report, net: 0, carried: 0, due: 0, credit: 0, paid: 0, refund: 0, over: 0, remaining: 0, settled: true });
+    return Object.assign({}, p, { report, net: 0, pre: 0, carried: 0, due: 0, credit: 0, paid: 0, refund: 0, over: 0, remaining: 0, settled: true });
   };
 
   // ملخص مبيعات القنوات في فترة
