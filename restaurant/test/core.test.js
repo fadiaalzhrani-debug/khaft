@@ -2333,7 +2333,81 @@ test('سلفة من ترك العمل تُستقطع من مكافأة نهاي�
   close(b['1106'] || 0, 0);
   // من البنك: السلفة 300، ثم صافي التسوية 450 − 300 = 150
   close(b['1102'], 50000 - 300 - 150);
-  assert.ok(L.entries.some((e) => e.kind === 'payroll' && e.lines.some((l) => l.a === '1106')));
+  // السلفة أكبر من راتب السطر (صفر): تُستقطع من المكافأة في قيد صرفها، فلا صافي رواتب سالب (مال داخل للبنك)
+  // (بلا مسيرات سابقة لا مخصص له: المكافأة كلها مصروف 5203 في تاريخ الصرف)
+  const eo = L.entries.find((e) => e.kind === 'eosb' && e.lines.some((l) => l.a === '5203' && l.v > 0));
+  close(eo.lines.find((l) => l.a === '1106').v, -300);
+  close(eo.lines.find((l) => l.a === '1102').v, -150);
+  assert.ok(!L.entries.some((e) => e.kind === 'payroll' && e.lines.some((l) => l.a === '1102' && l.v > 0)));
+});
+
+test('مسير تسوية يستقطع السلفة كلها من المكافأة: لا حركة في البنك، ومسير مختلط يبقى صافي رواتبه كما هو (مراجعة WP6)', () => {
+  const S = base();
+  S.capital = [{ id: 'c', date: '2026-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  S.employees = [
+    { id: 'e1', name: 'سليم', nationality: 'expat', basic: 2400, housing: 0, startDate: '2024-01-01', endDate: '2026-10-10', active: false },
+    { id: 'e2', name: 'ماهر', nationality: 'expat', basic: 3000, housing: 0, startDate: '2024-01-01', active: true },
+  ];
+  S.advances = [{ id: 'a1', date: '2026-10-02', employeeId: 'e1', amount: 700, account: 'cash', kind: 'give' }];
+  const settle = Object.assign(RB.payrollLine(S.employees[0], S, '2026-10'), { basic: 0, housing: 0, allowances: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 450, advance: 450 });
+  close(RB.payrollLineAdvEosb(settle), 450);
+  S.payroll = [{ id: 'st', month: '2026-10', date: '2026-10-15', account: 'bank', gosiAccount: 'bank', lines: [settle] }];
+  let { L, b } = tbBalanced(S, '2026-10-31');
+  // لم يتحرك مال: لا سطر للبنك في قيدي المسير والمكافأة، والسلفة الباقية 250
+  const own = L.entries.filter((e) => e.ref && e.ref.id === 'st');
+  assert.ok(own.length > 0);
+  assert.ok(!own.some((e) => e.lines.some((l) => l.a === '1102')));
+  close(b['1102'], 50000);
+  close(b['1106'], 250);
+  close(RB.advanceBalances(S, '2026-10-31').e1, 250);
+  const st = RB.accountStatement(S, '1102', '2026-10-15', '2026-10-15', L);
+  assert.equal(st.rows.length, 0);
+  // مسير مختلط: سطر راتب لماهر وسطر التسوية لسليم — صافي الرواتب لماهر وحده، والمكافأة بلا صرف من البنك
+  const t2 = RB.payrollLine(S.employees[1], S, '2026-10');
+  S.payroll = [{ id: 'mx', month: '2026-10', date: '2026-10-15', account: 'bank', gosiAccount: 'bank', lines: [t2, settle] }];
+  ({ L, b } = tbBalanced(S, '2026-10-31'));
+  const t = RB.payrollTotals(S.payroll[0]);
+  close(t.advEosb, 450);
+  const pay = L.entries.find((e) => e.kind === 'payroll' && e.ref.id === 'mx');
+  const net2 = RB.payrollLineGross(t2) - t2.gosiEe;
+  close(pay.lines.find((l) => l.a === '1102' && l.memo === 'صافي الرواتب').v, -net2);
+  assert.ok(!pay.lines.some((l) => l.a === '1106'));
+  const eo = L.entries.find((e) => e.kind === 'eosb' && e.ref.id === 'mx' && e.lines.some((l) => l.a === '1106'));
+  assert.ok(!eo.lines.some((l) => l.a === '1102'));
+  close(b['1106'], 250);
+  // مجموع ما خرج من البنك = صافي ماهر + تأميناته وتأمينات المنشأة، والمكافأة لم يُدفع منها شيء
+  close(b['1102'], 50000 - net2 - t.gosiEe - t.gosiEr);
+});
+
+test('مسير شهر فات تسجيله: لا يُقترح استقطاع سلفة استقطعها مسير لاحق أو سُدّدت بعده (مراجعة WP6)', () => {
+  const S = base();
+  S.employees = [{ id: 'e1', name: 'سليم', nationality: 'expat', basic: 2000, housing: 0, startDate: '2025-01-01', active: true }];
+  S.advances = [{ id: 'a1', date: '2026-07-10', employeeId: 'e1', amount: 500, account: 'cash', kind: 'give' }];
+  const run = (ym, adv) => ({ id: 'w' + ym, month: ym, date: RB.monthEnd(ym), account: 'bank', gosiAccount: 'bank', lines: [Object.assign(RB.payrollLine(S.employees[0], S, ym), { advance: adv })] });
+  // مسير سبتمبر استقطع السلفة كلها، ولا مسير ليوليو
+  S.payroll = [run('2026-09', 500)];
+  close(RB.advanceBalances(S, '2026-07-31').e1, 500);
+  close(RB.advanceRoom(S, '2026-07-31').e1, 0);
+  close(RB.payrollLine(S.employees[0], S, '2026-07').advance, 0);
+  assert.equal(RB.payrollFill(S, '2026-07')[0].advance, 0);
+  // استقطع سبتمبر 200 فقط: يوليو يقترح الباقي 300، وبعد حفظه لا رصيد سالب في أي يوم
+  S.payroll = [run('2026-09', 200)];
+  close(RB.payrollLine(S.employees[0], S, '2026-07').advance, 300);
+  S.payroll.push(run('2026-07', 300));
+  close(RB.advanceLow(S, 'e1').min, 0);
+  close(RB.advanceBalances(S, '2026-12-31').e1, 0);
+  // سداد نقدي بعد يوليو: لا يُستقطع ما سُدّد
+  S.payroll = [];
+  S.advances.push({ id: 'r1', date: '2026-08-15', employeeId: 'e1', amount: 500, account: 'cash', kind: 'repay' });
+  close(RB.payrollLine(S.employees[0], S, '2026-07').advance, 0);
+  // سلفة صُرفت بعد الشهر لا تُستقطع فيه: تُستقطع في الشهر التالي
+  S.advances = [{ id: 'a2', date: '2026-08-05', employeeId: 'e1', amount: 400, account: 'cash', kind: 'give' }];
+  close(RB.payrollLine(S.employees[0], S, '2026-07').advance, 0);
+  close(RB.payrollLine(S.employees[0], S, '2026-08').advance, 400);
+  // رصيد سالب لاحقاً (بيانات قديمة): لا اقتراح سالب
+  S.payroll = [run('2026-09', 900)];
+  close(RB.advanceRoom(S, '2026-08-31').e1, -500);
+  close(RB.payrollLine(S.employees[0], S, '2026-08').advance, 0);
 });
 
 test('أصل قائم قبل بدء الدفتر: بلا ضريبة مدخلات، وقيمته حقوق للشركاء حسب نسبهم لا دفعاً من شريك واحد (مراجعة WP6)', () => {

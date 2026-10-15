@@ -723,8 +723,9 @@
         l.note = 'أيام عمل ' + w;
       }
     }
-    // السلفة المستحقة عليه في نهاية الشهر تُستقطع بقدر ما يتسع له صافي راتبه
-    const owed = (S.advances || []).length ? RB.advanceBalances(S, RB.monthEnd(RB.isISOMonth(ym) ? ym : RB.todayISO().slice(0, 7)))[emp.id] || 0 : 0;
+    // السلفة الباقية عليه من نهاية الشهر تُستقطع بقدر ما يتسع له صافي راتبه: أدنى رصيد لسلفه من ذلك اليوم فصاعداً،
+    // فما استُقطع منها في مسير لاحق (أو سدّده) لا يُقترح استقطاعه ثانية في مسير شهر فات تسجيله
+    const owed = (S.advances || []).length ? RB.advanceRoom(S, RB.monthEnd(RB.isISOMonth(ym) ? ym : RB.todayISO().slice(0, 7)))[emp.id] || 0 : 0;
     if (owed > 0.005) l.advance = r2(Math.max(0, Math.min(owed, RB.payrollLineGross(l) - num(l.gosiEe))));
     return l;
   };
@@ -748,7 +749,15 @@
     // adv: سلف مستقطعة من المسير؛ netPaid: ما يُحوَّل للموظفين فعلاً (الصافي − السلف)
     const adv = r2(sum(lines, (l) => Math.max(0, num(l.advance))));
     const net = r2(gross - gosiEe);
-    return { gross, gosiEe, gosiEr, net, adv, netPaid: r2(net - adv), count: lines.length, cost: r2(gross + gosiEr), eosbPaid };
+    // advEosb: ما استُقطع من مكافأة نهاية الخدمة (لا من الراتب) من تلك السلف — يُقيَّد مع صرف المكافأة
+    const advEosb = r2(sum(lines, RB.payrollLineAdvEosb));
+    return { gross, gosiEe, gosiEr, net, adv, netPaid: r2(net - adv), advEosb, count: lines.length, cost: r2(gross + gosiEr), eosbPaid };
+  };
+  // استقطاع سلفة السطر الزائد على صافي راتبه يؤخذ من مكافأة نهاية الخدمة المصروفة في السطر (مسير التسوية بلا راتب)
+  RB.payrollLineAdvEosb = (l) => {
+    if (!l) return 0;
+    const salary = Math.max(0, RB.payrollLineGross(l) - num(l.gosiEe));
+    return r2(Math.min(Math.max(0, num(l.eosbPaid)), Math.max(0, Math.max(0, num(l.advance)) - salary)));
   };
   // أرصدة سلف العمال حتى تاريخ لكل موظف: السلف المصروفة − ما سدّده نقداً − ما استُقطع في مسيرات صُرفت حتى التاريخ.
   // مجموعها = رصيد حساب 1106 (المفتاح '' لاستقطاع في سطر بلا موظف مسجل)
@@ -762,6 +771,34 @@
     for (const pr of good(S.payroll)) {
       if (!pr.date || (asOf && pr.date > asOf)) continue;
       for (const l of pr.lines || []) if (l && num(l.advance) > 0) add(l.employeeId, -num(l.advance));
+    }
+    return out;
+  };
+  // ما يمكن استقطاعه من سلف كل موظف في مسير بتاريخ from: أدنى رصيد لسلفه في نهاية ذلك اليوم وكل يوم بعده.
+  // استقطاع في from ينقص رصيده في كل ما بعده، فلا يُستقطع في مسير أقدم (شهر فات تسجيل مسيره) ما استُقطع أو سُدّد
+  // بعده؛ وسلفة صُرفت بعد from لا تُستقطع قبل صرفها. بالسالب: رصيده دائن في يوم ما بعده
+  RB.advanceRoom = (S, from) => {
+    const ev = {};
+    const add = (id, d, v) => {
+      const m = ev[id || ''] || (ev[id || ''] = {});
+      const k = !d || d <= from ? '' : d;
+      m[k] = (m[k] || 0) + v;
+    };
+    for (const a of good(S.advances)) add(a.employeeId, a.date, a.kind === 'repay' ? -num(a.amount) : num(a.amount));
+    for (const pr of good(S.payroll)) {
+      if (!pr.date) continue;
+      for (const l of pr.lines || []) if (l && num(l.advance) > 0) add(l.employeeId, pr.date, -num(l.advance));
+    }
+    const out = {};
+    for (const id of Object.keys(ev)) {
+      const m = ev[id];
+      let bal = r2(m[''] || 0);
+      let min = bal;
+      for (const d of Object.keys(m).filter(Boolean).sort()) {
+        bal = r2(bal + m[d]);
+        if (bal < min) min = bal;
+      }
+      out[id] = min;
     }
     return out;
   };
@@ -884,7 +921,8 @@
           seen(id, pr.date, pr);
           if (RB.eosbFinalRun(emps[id], pr)) settled[id] = true;
         }
-        out.push({ kind: 'payout', pr, ym, date: pr.date, employeeId: id, name: l.name || (emps[id] || {}).name || '', paid, fromProv, excess: r2(paid - fromProv) });
+        // adv: ما استُقطع من هذه المكافأة لسلفة لم يتسع لها راتبه (RB.payrollLineAdvEosb): لا يُصرف نقداً
+        out.push({ kind: 'payout', pr, ym, date: pr.date, employeeId: id, name: l.name || (emps[id] || {}).name || '', paid, fromProv, excess: r2(paid - fromProv), adv: RB.payrollLineAdvEosb(l) });
       }
     }
     // ترك العمل: المكافأة الفعلية قد تقل عن المخصص (الاستقالة قبل سنتين لا شيء لها، ومن سنتين إلى عشر بنصيب منقوص —
@@ -1270,10 +1308,12 @@
       const ref = { s: 'payroll', id: pr.id };
       const ym = pr.month || pr.date.slice(0, 7);
       const desc = 'رواتب ' + RB.monthName(ym);
-      // ما يُحوَّل للموظفين = الصافي − السلف المستقطعة (تُسدّد رصيد سلفهم ولا تغيّر مصروف الرواتب)
+      // ما يُحوَّل للموظفين = الصافي − السلف المستقطعة (تُسدّد رصيد سلفهم ولا تغيّر مصروف الرواتب).
+      // سلفة أكبر من صافي راتب صاحبها تُستقطع من مكافأة نهاية الخدمة المصروفة له (advEosb): تُقيَّد مع صرف المكافأة،
+      // فلا يظهر صافي رواتب سالب (مال داخل للبنك) يقابله صرف مكافأة لم يُدفع منها شيء
       const pay = [
-        [RB.srcAcc(pr.account), -t.netPaid, undefined, 'صافي الرواتب'],
-        ['1106', -t.adv, undefined, 'استقطاع سلف العمال'],
+        [RB.srcAcc(pr.account), -(t.netPaid + t.advEosb), undefined, 'صافي الرواتب'],
+        ['1106', -(t.adv - t.advEosb), undefined, 'استقطاع سلف العمال'],
         [RB.srcAcc(pr.gosiAccount || pr.account), -(t.gosiEe + t.gosiEr), undefined, 'التأمينات الاجتماعية (حصة العامل والمنشأة)'],
       ];
       if (pr.date.slice(0, 7) === ym) {
@@ -1310,7 +1350,7 @@
       }
       const ref = { s: 'payroll', id: ev.pr.id };
       if (ev.kind === 'accrual') add(ev.date, 'eosb', ref, 'مخصص نهاية الخدمة — ' + RB.monthName(ev.ym), [['5203', ev.total], ['2201', -ev.total]]);
-      else add(ev.date, 'eosb', ref, 'صرف مكافأة نهاية الخدمة' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.fromProv], ['5203', ev.excess], [RB.srcAcc(ev.pr.account), -ev.paid]]);
+      else add(ev.date, 'eosb', ref, 'صرف مكافأة نهاية الخدمة' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.fromProv], ['5203', ev.excess], ['1106', -ev.adv, undefined, 'استقطاع سلفة من المكافأة'], [RB.srcAcc(ev.pr.account), -(ev.paid - ev.adv)]]);
     });
 
     // المبيعات اليومية لكل قناة

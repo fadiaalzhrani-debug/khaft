@@ -632,7 +632,7 @@
     const wrap = document.createElement('div');
     wrap.className = 'overlay';
     const tid = 'dlg-t-' + ++DLG;
-    wrap.innerHTML = `<div class="dialog ${o.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${tid}"><header class="dlg-h"><h2 id="${tid}">${esc(o.title)}</h2><button type="button" class="icon-btn" data-close aria-label="إغلاق">✕</button></header><div class="dlg-b"></div><footer class="dlg-f"></footer></div>`;
+    wrap.innerHTML = `<div class="dialog ${o.wide ? 'wide' : ''}${o.wide === 'x' ? ' xwide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${tid}"><header class="dlg-h"><h2 id="${tid}">${esc(o.title)}</h2><button type="button" class="icon-btn" data-close aria-label="إغلاق">✕</button></header><div class="dlg-b"></div><footer class="dlg-f"></footer></div>`;
     for (const w of root.children) w.inert = true;
     const shell = document.querySelector('.shell');
     if (shell) shell.inert = true;
@@ -979,6 +979,8 @@
       }
       const pv = m.body.querySelector('.form-preview');
       if (pv && o.preview) pv.innerHTML = safeHTML(() => o.preview(val));
+      // جدول أسطر أعرض من النافذة (شاشة أضيق من 1240 للمسير، والجوال): ظل على الحافة التي بقيت خلفها أعمدة
+      m.body.querySelectorAll('.tbl-wrap').forEach(scrollCue);
     }
     // خطأ الحقل: aria-invalid، وإطار أحمر، ورسالة تحته مربوطة به (aria-describedby). خانة الجدول تُعلَّم وحدها
     function markErr(el, msg) {
@@ -1437,7 +1439,9 @@
   // ─── لوحة المتابعة ───
   // الشهر الجاري قبل تسجيل مسيره: الرواتب لم تُحمَّل بعد، والإيجار والمدفوع مقدماً والإهلاك محمّلة للشهر كاملاً من أوله،
   // فيظهر الربح أعلى من الحقيقة. تقدير «حتى اليوم» لمؤشرات اللوحة فقط (التقارير على الدفاتر الفعلية):
-  // التحميل الشهري بنسبة الأيام المنقضية f، ومسير الشهر المتوقع من بيانات الموظفين (مع مخصص نهاية الخدمة) × f.
+  // f = أيام الشهر الجاري التي تشملها الفترة حتى اليوم ÷ أيام الشهر (للشهر كله: الأيام المنقضية). تحميل الشهر من
+  // الإيجار والمدفوع مقدماً والإهلاك (ولو كان قيده قبل بداية فترة تبدأ أثناء الشهر) بنسبة f، ومسير الشهر المتوقع من
+  // بيانات الموظفين (مع مخصص نهاية الخدمة) × f؛ ففترة من 10 إلى 14 لا تُحمَّل رواتب 14 يوماً على مبيعات 5 أيام.
   // null إن لم تشمل الفترة اليوم، أو للشهر مسير، أو لا موظف له راتب فيه
   function mtdEstimate(from, asOf, L, inc) {
     const t = today();
@@ -1445,16 +1449,19 @@
     if (asOf !== t || from > t || paidMonths().has(ym)) return null;
     const emps = S.employees.filter((e) => e && RB.isEmployeeActive(e, ym));
     if (!emps.length) return null;
-    const f = +t.slice(8, 10) / +RB.monthEnd(ym).slice(8, 10);
+    const ms = ym + '-01';
+    const lo = from > ms ? from : ms;
+    const f = (RB.daysBetween(lo, t) + 1) / +RB.monthEnd(ym).slice(8, 10);
     const tot = Object.assign({}, inc.tot);
-    const lo = from > ym + '-01' ? from : ym + '-01';
     for (const e of L.entries) {
-      if ((e.kind !== 'amort' && e.kind !== 'dep') || e.date < lo || e.date > t) continue;
+      if ((e.kind !== 'amort' && e.kind !== 'dep') || e.date < ms || e.date > t) continue;
+      // في الفترة: محمّل كاملاً فيبقى منه f؛ قبل بدايتها (أول الشهر): غير محمّل فيُضاف منه f
+      const inR = e.date >= from;
       for (const l of e.lines) {
         const info = RB.accInfo(l.a, S);
         if (info.type !== 'X') continue;
         const g = tot[info.group] !== undefined ? info.group : 'opex';
-        tot[g] = r2(tot[g] - l.v * (1 - f));
+        tot[g] = r2(tot[g] + l.v * f - (inR ? l.v : 0));
       }
     }
     const lines = emps.map((e) => RB.payrollLine(e, S, ym));
@@ -1482,7 +1489,7 @@
     // مؤشرات الربح والتكلفة الأساسية: تقدير الشهر الجاري حتى اليوم إن لم يُسجَّل مسيره بعد
     const est = mtdEstimate(from, asOf, L, inc);
     const k = est || inc;
-    const estTag = est ? `<span class="kpi-est" title="الإيجار والإهلاك بنسبة الأيام المنقضية من الشهر، والرواتب مقدّرة من بيانات الموظفين حتى يُسجَّل مسير الشهر">${EST_LABEL}</span>` : '';
+    const estTag = est ? `<span class="kpi-est" title="الإيجار والإهلاك والرواتب (مقدّرة من بيانات الموظفين حتى يُسجَّل مسير الشهر) بنسبة أيام الشهر التي تشملها الفترة حتى اليوم">${EST_LABEL}</span>` : '';
     const fcState = !inc.revenue ? '' : fcLevel(inc.ratios.foodCost, target);
     const primeState = !inc.revenue ? '' : k.ratios.prime > 65 ? 'bad' : k.ratios.prime > 60 ? 'warn' : 'good';
     const vatBal = -(bal['2102'] || 0);
@@ -1652,13 +1659,15 @@
     for (let d = start, y = RB.addDays(t, -1); d <= y; d = RB.addDays(d, 1)) if (!has.has(d) && !closed.has(d)) out.push(d);
     return out;
   }
-  // أشهر منتهية (آخر 3 أشهر) فيها موظف له راتب ولا مسير رواتب لها: من شهر الافتتاح وأول مباشرة لموظف
+  // أشهر منتهية (آخر 3 أشهر) فيها موظف له راتب ولا مسير رواتب لها: من شهر الافتتاح وأول مباشرة لموظف وبداية الدفتر
   // (وتاريخ الأرصدة الافتتاحية لمطعم قائم بدأ دفتره بعد تشغيله)
   function missingPayroll() {
     const emps = S.employees.filter(Boolean);
     if (!emps.length) return [];
     const thisYm = today().slice(0, 7);
     const lows = [RB.ymAdd(thisYm, -3)];
+    const bs = booksStartYm();
+    if (bs) lows.push(bs);
     if (S.settings.openingDate) lows.push(S.settings.openingDate.slice(0, 7));
     const starts = emps.map((e) => (RB.isISODate(e.startDate) ? e.startDate.slice(0, 7) : '')).filter(Boolean).sort();
     if (starts.length) lows.push(starts[0]);
@@ -1669,6 +1678,21 @@
     const out = [];
     for (let ym = lo; ym < thisYm; ym = RB.ymAdd(ym, 1)) if (!paid.has(ym) && emps.some((e) => RB.isEmployeeActive(e, ym))) out.push(ym);
     return out;
+  }
+  // شهر بداية الدفتر: أول حركة تشغيل مسجلة (إقفال، مصروف، مشتريات، مسير، سداد مورد، تحويل…)، وبلا حركات: شهر
+  // إنشاء الدفتر (settings.startedAt). مطعم قائم بدأ دفتره اليوم بلا أرصدة افتتاحية لا تُطلب منه مسيرات أشهر لم
+  // يسجّل فيها شيئاً. رأس المال والأصول لا تُحسب: قد تُسجَّل بتواريخها الأصلية قبل بدء الدفتر بمدة
+  function booksStartYm() {
+    let lo = '';
+    for (const k of ['sales', 'expenses', 'purchases', 'supplierPayments', 'payouts', 'transfers', 'cashCounts', 'advances'])
+      for (const r of good(S[k])) if (RB.isISODate(r.date) && (!lo || r.date < lo)) lo = r.date;
+    for (const p of good(S.payroll)) {
+      const m = runMonth(p);
+      if (RB.isISOMonth(m) && (!lo || m + '-01' < lo)) lo = m + '-01';
+    }
+    if (lo) return lo.slice(0, 7);
+    const st = S.settings.startedAt ? new Date(S.settings.startedAt) : null;
+    return st && isFinite(st) ? st.getFullYear() + '-' + String(st.getMonth() + 1).padStart(2, '0') : '';
   }
   // من ترك العمل أو توقف وما زالت عليه سلفة
   // واستقطاع سلفة من مسير أكثر من سلف الموظف (رصيد سالب: سلفة حُذفت أو لم تُسجَّل، أو استقطاع لعامل غير مسجل)
@@ -3211,8 +3235,8 @@
     const settleEmp = !rec && !monthX && empOf(empId);
     if (settleEmp) {
       const prov = Math.max(0, RB.eosbBalances(S, today(), { release: false })[settleEmp.id] || 0);
-      // سلفة باقية عليه تُستقطع من مكافأته (بقدرها)
-      const owe = Math.max(0, RB.advanceBalances(S, today())[settleEmp.id] || 0);
+      // سلفة باقية عليه تُستقطع من مكافأته (بقدرها)، بلا ما سُدّد منها بعد اليوم
+      const owe = Math.max(0, RB.advanceRoom(S, today())[settleEmp.id] || 0);
       const line = Object.assign(RB.payrollLine(settleEmp, S, today().slice(0, 7)), { basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov, advance: r2(Math.min(owe, prov)), _autoDed: 0 });
       line._autoAdv = line.advance;
       delete line.note;
@@ -3237,8 +3261,12 @@
       const draft = Object.assign({}, v, { lines: (v.lines || []).map((l) => Object.assign({}, l, { eosbPaid: 0 })) });
       return RB.eosbBalances(Object.assign({}, S, { payroll: S.payroll.filter((p) => p.id !== v.id).concat([draft]) }), v.date, { release: false });
     };
-    // رصيد سلف كل موظف في تاريخ الصرف، بلا استقطاع هذا المسير نفسه
-    const advOut = (v) => RB.advanceBalances(withoutRun(v.id), RB.isISODate(v.date) ? v.date : today());
+    // ما يمكن استقطاعه من سلف كل موظف في تاريخ الصرف، بلا استقطاع هذا المسير نفسه: أدنى رصيد لسلفه من تاريخ
+    // الصرف فصاعداً (RB.advanceRoom)، فمسير شهر فات تسجيله لا يستقطع ثانية سلفة استقطعها مسير لاحق.
+    // advBal: رصيد سلفه في تاريخ الصرف نفسه (للتوضيح تحت الخانة)
+    const payDate = (v) => (RB.isISODate(v.date) ? v.date : today());
+    const advOut = (v) => RB.advanceRoom(withoutRun(v.id), payDate(v));
+    const advBal = (v) => RB.advanceBalances(withoutRun(v.id), payDate(v));
     // خصم الأيام التلقائي لموظف السطر في الشهر (0 لعامل غير مسجل أو لمن ليس له راتب فيه)
     const autoDed = (id, ym2) => {
       const e = empOf(id);
@@ -3268,7 +3296,8 @@
     const otherRun = (v) => !settleEmp && RB.isISOMonth(v.month) && paidMonths(v.id).has(v.month);
     return formModal({
       title: isEdit ? 'تعديل مسير رواتب' : settleEmp ? 'تسوية نهاية الخدمة' : 'مسير رواتب',
-      wide: true,
+      // أعرض من بقية النماذج: 12 عموداً، فيظهر «المحوَّل فعلياً» وزر حذف السطر بلا تمرير أفقي على 1280
+      wide: 'x',
       value,
       onChange: (p, v) => {
         if (p === 'month') {
@@ -3297,7 +3326,7 @@
           if (!num(row.deductions) || (row._autoDed !== undefined && Math.abs(num(row.deductions) - num(row._autoDed)) < 0.005)) row.deductions = d;
           row._autoDed = d;
         };
-        // استقطاع السلفة يخص الموظف: رصيد سلف الجديد في تاريخ الصرف (بلا هذا المسير) بقدر ما يُصرف له
+        // استقطاع السلفة يخص الموظف: ما بقي من سلف الجديد من تاريخ الصرف (بلا هذا المسير) بقدر ما يُصرف له
         // (كما في RB.payrollLine). عامل غير مسجل أو بلا سلف: صفر؛ وما كتبه المستخدم يبقى لموظف عليه سلف
         const adv = () => {
           const b = row.employeeId ? advOut(v)[row.employeeId] || 0 : 0;
@@ -3385,13 +3414,16 @@
                 return b > 0 || num(r.eosbPaid) > 0 ? `مخصصه <span class="n">${fmt(b)}</span>` : '';
               },
             }),
-            // السلفة لا تغيّر الراتب ولا التأمينات: تُخصم مما يُحوَّل له، ورصيد سلفه تحتها
+            // السلفة لا تغيّر الراتب ولا التأمينات: تُخصم مما يُحوَّل له، ورصيد سلفه في تاريخ الصرف تحتها،
+            // وما سُدّد منه بعد ذلك (استقطاع في مسير لاحق أو سداد نقدي) فلا يُستقطع ثانية
             Object.assign(nCol('advance', 'استقطاع سلفة'), {
               min: 0,
               hint: (r, v) => {
                 if (!r.employeeId) return '';
-                const b = advOut(v)[r.employeeId] || 0;
-                return b > 0.005 || num(r.advance) > 0 ? `سلفه <span class="n">${fmt(b)}</span>` : '';
+                const b = advBal(v)[r.employeeId] || 0;
+                const room = Math.max(0, advOut(v)[r.employeeId] || 0);
+                if (!(b > 0.005) && !(num(r.advance) > 0)) return '';
+                return `سلفه <span class="n">${fmt(b)}</span>` + (b - room > 0.005 ? `<br>سُدّد منها لاحقاً <span class="n">${fmt(b - room)}</span>` : '');
               },
             }),
             // ما يُحوَّل للموظف: الصافي + مكافأة نهاية الخدمة المصروفة − السلفة المستقطعة
@@ -3442,9 +3474,10 @@
         // استقطاع السلفة مما يُصرف له (صافي الراتب ومكافأة نهاية الخدمة)، وأكبر من رصيد سلفه يُؤكَّد (السلفة لم تُسجَّل بعد مثلاً)
         const over = v.lines.findIndex((l) => num(l.advance) > RB.payrollLineGross(l) - num(l.gosiEe) + Math.max(0, num(l.eosbPaid)) + 0.005);
         if (over >= 0) return `استقطاع السلفة أكبر مما يُصرف للموظف في السطر ${over + 1}${v.lines[over].name ? ' (' + v.lines[over].name + ')' : ''}.`;
+        // وأكبر مما بقي من سلفه من تاريخ الصرف فصاعداً (بعد ما استُقطع منها في مسير لاحق أو سُدّد) يجعل رصيده سالباً
         const out = advOut(v);
-        const more = v.lines.filter((l) => num(l.advance) > (out[l.employeeId || ''] || 0) + 0.005);
-        if (more.length && !(await confirmBox(`استقطاع السلفة أكبر من رصيد السلف المستحق: ${more.map((l) => `${esc(l.name || (empOf(l.employeeId) || {}).name || 'عامل')} ${fmt(l.advance)} والرصيد ${fmt(Math.max(0, out[l.employeeId || ''] || 0))}`).join('، ')}. متابعة؟`, { ok: 'احفظ' }))) return false;
+        const more = v.lines.filter((l) => num(l.advance) > Math.max(0, out[l.employeeId || ''] || 0) + 0.005);
+        if (more.length && !(await confirmBox(`استقطاع السلفة أكبر مما بقي من سلف الموظف (بعد ما استُقطع منها في مسيرات لاحقة أو سُدّد): ${more.map((l) => `${esc(l.name || (empOf(l.employeeId) || {}).name || 'عامل')} ${fmt(l.advance)} والباقي ${fmt(Math.max(0, out[l.employeeId || ''] || 0))}`).join('، ')}. الحفظ يجعل رصيد سلفه بالسالب. متابعة؟`, { ok: 'احفظ' }))) return false;
         v.lines.forEach((l) => {
           delete l._autoDed;
           delete l._autoAdv;

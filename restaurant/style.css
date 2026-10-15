@@ -487,6 +487,8 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
   animation: rise 0.18s ease-out;
 }
 .dialog.wide { width: min(980px, 100%); }
+/* مسير الرواتب: 12 عموداً تتسع بلا تمرير أفقي من عرض 1280 */
+.dialog.xwide { width: min(1180px, 100%); }
 .dlg-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line-2); }
 .dlg-h h2 { margin: 0; font-size: 1.1rem; }
 .dlg-b { padding: 16px 18px; overflow-y: auto; flex: 1; min-height: 0; }
