@@ -2516,3 +2516,30 @@ test('التجريبي: المخزون المحسوب لا يصير سالباً
     close(RB.stockValue(D.stockCounts.find((c) => c.date === RB.addDays(open, -1)), D), RB.sum(init, RB.purchaseTotal));
   }
 });
+
+test('ميزان المراجعة: حسابات الشركاء برموز 31xx و32xx لا بمعرّفاتها الداخلية، ومرتبة بالرمز (القبول النهائي)', () => {
+  const S = base();
+  S.settings.openingDate = '2026-08-01';
+  S.capital = [
+    { id: 'c1', date: '2026-07-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 60000 },
+    { id: 'c2', date: '2026-07-01', partnerId: 'p2', type: 'contribution', account: 'bank', amount: 40000 },
+    { id: 'w1', date: '2026-09-01', partnerId: 'p2', type: 'withdrawal', account: 'cash', amount: 500 },
+    // شريك حُذف وبقيت حركته
+    { id: 'c3', date: '2026-07-02', partnerId: 'gone', type: 'contribution', account: 'bank', amount: 100 },
+  ];
+  S.sales = [{ id: 's1', date: '2026-08-05', channels: { cash: { amount: 1150, orders: 10 } } }];
+  const tb = RB.trialBalance(S, null, '2026-12-31');
+  const disp = Object.fromEntries(tb.rows.map((r) => [r.code, r.disp]));
+  assert.equal(disp['cap:p1'], '3101');
+  assert.equal(disp['cap:p2'], '3102');
+  assert.equal(disp['drw:p2'], '3202');
+  assert.equal(disp['cap:gone'], '3199');
+  assert.equal(disp['1102'], '1102');
+  assert.ok(tb.rows.every((r) => /^\d{4}$/.test(r.disp)), 'كل الرموز المعروضة أرقام');
+  const order = tb.rows.map((r) => r.disp);
+  assert.deepEqual(order, order.slice().sort());
+  close(tb.dr, tb.cr);
+  // الاسم كما هو، والحساب الداخلي باقٍ للتمييز
+  assert.equal(tb.rows.find((r) => r.code === 'drw:p2').name, 'مسحوبات ب');
+  assert.equal(tb.rows.find((r) => r.code === 'cap:gone').name, 'رأس مال شريك محذوف');
+});

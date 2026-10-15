@@ -460,11 +460,14 @@
   RB.accInfo = (code, S) => {
     if (ACC[code]) return Object.assign({ code }, ACC[code]);
     const [kind, pid] = String(code).split(':');
-    const p = S && (S.partners || []).find((x) => x.id === pid);
+    const i = S ? (S.partners || []).findIndex((x) => x && x.id === pid) : -1;
+    const p = i >= 0 ? S.partners[i] : null;
     // حساب شريك حُذف وبقيت له قيود (بيانات قديمة): يُسمّى بذلك بدل «شريك» المبهم
     const pname = p ? p.name : S ? 'شريك محذوف' : 'شريك';
-    if (kind === 'cap') return { code, name: 'رأس مال ' + pname, type: 'E', group: 'cap', partnerId: pid };
-    if (kind === 'drw') return { code, name: 'مسحوبات ' + pname, type: 'E', group: 'drw', partnerId: pid };
+    // رمز العرض: 31xx رأس مال الشريك و32xx مسحوباته بترتيبه في قائمة الشركاء (99 لشريك محذوف)، لا معرّفه الداخلي
+    const disp = (base) => base + String(i >= 0 ? Math.min(i + 1, 98) : 99).padStart(2, '0');
+    if (kind === 'cap') return { code, disp: disp('31'), name: 'رأس مال ' + pname, type: 'E', group: 'cap', partnerId: pid };
+    if (kind === 'drw') return { code, disp: disp('32'), name: 'مسحوبات ' + pname, type: 'E', group: 'drw', partnerId: pid };
     return { code, name: code, type: 'X', group: 'opex' };
   };
 
@@ -1602,16 +1605,17 @@
     return { asOf, cur, fixed, liab, equity, retained, tCur, tFixed, tAssets: r2(tCur + tFixed), tLiab, tEq, check: r2(tCur + tFixed - tLiab - tEq) };
   };
 
+  // disp: رمز الحساب للعرض (حسابات الشركاء 31xx و32xx بدل معرّفاتها الداخلية)، والترتيب به
   RB.trialBalance = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
     const b = RB.balances(L.entries, from, to);
     const rows = Object.keys(b)
       .filter((c) => Math.abs(b[c]) >= 0.005)
-      .sort()
       .map((code) => {
         const info = RB.accInfo(code, S);
-        return { code, name: info.name, type: info.type, dr: b[code] > 0 ? b[code] : 0, cr: b[code] < 0 ? -b[code] : 0 };
-      });
+        return { code, disp: info.disp || code, name: info.name, type: info.type, dr: b[code] > 0 ? b[code] : 0, cr: b[code] < 0 ? -b[code] : 0 };
+      })
+      .sort((x, y) => (x.disp < y.disp ? -1 : x.disp > y.disp ? 1 : x.code < y.code ? -1 : 1));
     return { rows, dr: r2(sum(rows, (r) => r.dr)), cr: r2(sum(rows, (r) => r.cr)) };
   };
 

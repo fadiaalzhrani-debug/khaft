@@ -1225,8 +1225,8 @@
   const limitRows = (list) => list.slice(0, rowLimit());
   const moreRows = (n) => (n > rowLimit() ? `<div class="more-rows"><p class="note">يظهر أحدث ${fmt0(rowLimit())} من ${fmt0(n)}</p>${btn('عرض المزيد', 'more', '', 'sm')}</div>` : '');
   const resetRows = () => (ui.rowLimit = ROWS);
-  // أقسام بلا نسخ (⧉): الشريك ونسبته لا يُنسخان
-  const NO_DUP = ['partners'];
+  // أقسام بلا نسخ (⧉): الشريك ونسبته لا يُنسخان، ولا سداد الضريبة (لكل إقرار سداده)
+  const NO_DUP = ['partners', 'vatPayments'];
   const rowActs = (s, id, extra) =>
     `<div class="row-acts">${extra || ''}<button type="button" class="icon-btn" data-act="edit" data-s="${s}" data-id="${esc(id)}" aria-label="تعديل" title="تعديل">✎</button>${NO_DUP.includes(s) ? '' : `<button type="button" class="icon-btn" data-act="dup" data-s="${s}" data-id="${esc(id)}" aria-label="نسخ" title="نسخ">⧉</button>`}<button type="button" class="icon-btn danger" data-act="del" data-s="${s}" data-id="${esc(id)}" aria-label="حذف" title="حذف">✕</button></div>`;
   function hbars(items, o) {
@@ -2510,7 +2510,27 @@
       ${kpi('مستحقات التطبيقات', money(bal['1103'] || 0), 'تتحول للبنك لاحقاً')}
       ${kpi('مستحق للموردين', money(-(bal['2101'] || 0)), 'مشتريات آجلة')}
     </div>`;
-    h += tabs('cashAcc', [['1101', 'كشف الصندوق'], ['1102', 'كشف البنك'], ['counts', 'جرد الصندوق']], ui.cashAcc === 'counts' ? 'counts' : acc);
+    h += tabs('cashAcc', [['1101', 'كشف الصندوق'], ['1102', 'كشف البنك'], ['counts', 'جرد الصندوق'], ['transfers', 'التحويلات']], ['counts', 'transfers'].includes(ui.cashAcc) ? ui.cashAcc : acc);
+    // التحويلات بين الصندوق والبنك: قائمة لتعديلها أو حذفها (في الكشف تظهر حركة في كل حساب)
+    if (ui.cashAcc === 'transfers') {
+      const list = good(S.transfers).filter((x) => inRange(x.date)).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+      h += card(
+        'التحويلات بين الصندوق والبنك',
+        table(
+          [
+            { h: 'التاريخ', f: (x) => dt(x.date) },
+            { h: 'من ← إلى', f: (x) => `${esc(RB.PAY_LABEL[x.from] || x.from || '')} ← ${esc(RB.PAY_LABEL[x.to] || x.to || '')}` },
+            { h: 'المبلغ', num: 1, f: (x) => `<b>${N(x.amount)}</b>` },
+            { h: 'ملاحظة', f: (x) => esc(x.note || '') },
+            { h: '', cls: 'acts', f: (x) => rowActs('transfers', x.id) },
+          ],
+          limitRows(list),
+          { cards: 1, empty: 'لا توجد تحويلات في هذه الفترة. «إيداع الكاش في البنك» ينقل النقد من الصندوق إلى الحساب البنكي.' }
+        ) + moreRows(list.length),
+        { sub: periodLabel() }
+      );
+      return h;
+    }
     if (ui.cashAcc === 'counts') {
       const list = good(S.cashCounts).filter((c) => inRange(c.date)).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
       const diffCell = (c) => {
@@ -2624,6 +2644,7 @@
     const t = today();
     const all = RB.vatReturns(S, t, ledger());
     const pers = all.filter((p) => p.to >= from && p.from <= to);
+    const lastEnded = (all.filter((p) => p.to < t).pop() || {}).key;
     // سداد لفترة قبل بداية الإقرارات: للعلم فقط، لا يُخصم من أي إقرار
     const pre = all.before || [];
     const preNote = pre.length
@@ -2651,7 +2672,8 @@
       S.settings.vatPeriod === 'monthly' ? 'الإقرارات الشهرية' : 'الإقرارات الربع سنوية',
       table(
         [
-          { h: 'الفترة', f: (p) => `<b>${esc(p.label)}</b><div class="muted sm">${dtText(p.from)} — ${dtText(p.to)}</div>` },
+          // اسم الإقرار ومداه بلا التفاف كلمة كلمة على الجوال (الجدول يُمرَّر أفقياً)
+          { h: 'الفترة', cls: 'nw', f: (p) => `<b>${esc(p.label)}</b><div class="muted sm">${dtText(p.from)} — ${dtText(p.to)}</div>` },
           { h: 'ضريبة المبيعات', num: 1, f: (p) => N(p.report.sales.vat) },
           { h: 'ضريبة المدخلات', num: 1, f: (p) => N(p.report.inVat) },
           { h: 'صافي الفترة', num: 1, f: (p) => N(p.net) },
@@ -2665,7 +2687,10 @@
               const b = btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(p.label)}"`, 'sm');
               const over = p.over > 0.005 ? ' ' + chip('دفعة زائدة ' + fmt(p.over), 'warn') + '<div class="muted sm">تُخصم من الإقرار التالي</div>' : '';
               if (!p.settled) return (p.paid ? chip('مسدد ' + fmt(p.paid), 'warn') : '') + (p.paid || Math.abs(p.remaining - p.due) > 0.005 ? `<div class="muted sm">المتبقي ${fmt(p.remaining)}</div>` : '') + b;
-              return (p.paid ? chip('مسدد ' + fmt(p.paid), 'good') : chip('لا يوجد مستحق', 'good')) + over;
+              // الرصيد الدائن قائم على آخر إقرار منتهٍ (ما قبله رُحّل إليه): استرداده من الهيئة يُسجَّل عليه بالسالب
+              const rf = p.refund > 0.005 ? '<div class="muted sm">مسترد ' + fmt(p.refund) + '</div>' : '';
+              const rb = p.credit > 0.005 && p.key === lastEnded ? btn('سجّل استرداد', 'add', `data-s="vatPayments" data-x="${esc('refund:' + p.label)}"`, 'sm ghost') : '';
+              return (p.paid ? chip('مسدد ' + fmt(p.paid), 'good') : chip('لا يوجد مستحق', 'good')) + over + rf + rb;
             },
           },
         ],
@@ -2674,6 +2699,26 @@
       ) + preNote,
       { sub: 'آخر موعد لتقديم الإقرار والسداد: نهاية الشهر التالي للفترة. الرصيد الدائن (ضريبة مدخلات أكبر من المبيعات، مثل فترة التأسيس) يُرحّل ويُخصم من الفترات التالية، إلا إذا طلبت استرداده.' }
     );
+    // المدفوعات والمستردات المسجلة: بتاريخها في الفترة، أو لإقرار معروض — لتعديلها أو حذفها
+    const shown = new Set(pers.map((p) => p.label));
+    const pays = good(S.vatPayments).filter((x) => inRange(x.date) || shown.has(x.period)).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    if (pays.length)
+      h += card(
+        'مدفوعات ومستردات الضريبة',
+        table(
+          [
+            { h: 'التاريخ', f: (x) => dt(x.date) },
+            { h: 'الإقرار', f: (x) => esc(x.period || '—') },
+            { h: 'المبلغ', num: 1, f: (x) => N(Math.abs(num(x.amount))) + ' ' + (num(x.amount) < 0 ? chip('استرداد', 'good') : chip('سداد', 'mute')) },
+            { h: 'من / إلى', f: (x) => `<span class="muted">${esc(RB.srcLabel(x.account, S))}</span>` },
+            { h: 'ملاحظة', f: (x) => esc(x.note || '') },
+            { h: '', cls: 'acts', f: (x) => rowActs('vatPayments', x.id) },
+          ],
+          pays,
+          { cards: 1 }
+        ),
+        { sub: 'السداد يُنسب للإقرار المختار مهما كان تاريخه، والاسترداد من الهيئة مبلغ بالسالب.' }
+      );
     return h;
   };
   // نقطة التعادل للشاشة وملف CSV: الأرقام، وأساس الحساب (basis)، وتوضيح ما عُدّل من الفترة المختارة (adj)
@@ -2791,7 +2836,7 @@
       'ميزان المراجعة (حركة الفترة)',
       table(
         [
-          { h: 'الحساب', f: (r) => `<span class="muted sm n">${esc(r.code)}</span> ${esc(r.name)}` },
+          { h: 'الحساب', f: (r) => `<span class="muted sm n">${esc(r.disp)}</span> ${esc(r.name)}` },
           { h: 'مدين', num: 1, f: (r) => (r.dr ? N(r.dr) : '') },
           { h: 'دائن', num: 1, f: (r) => (r.cr ? N(r.cr) : '') },
         ],
@@ -4143,28 +4188,34 @@
     });
   };
 
+  // x: اسم الإقرار للسداد، أو «refund:اسم الإقرار» لتسجيل استرداد رصيده الدائن من الهيئة (مبلغ بالسالب)
   FORMS.vatPayments = (rec, x, opts = {}) => {
     const isEdit = editing(rec, opts);
     const t = today();
+    const rm = /^refund:(.+)$/.exec(String(x || ''));
+    const refund = !rec && !!rm;
+    const label = rm ? rm[1] : x;
     // الفترات المنتهية مع المتبقي من كل إقرار (بعد خصم الرصيد الدائن وما سُدد)
     let pers = RB.vatReturns(S, t, ledger()).filter((p) => p.to < t);
-    if (!pers.length) pers = RB.vatPeriodsBetween(S, RB.addDays(t, -400), t).filter((p) => p.to < t).map((p) => Object.assign({ remaining: 0 }, p));
-    const per = pers.find((p) => p.label === x) || pers.filter((p) => p.remaining > 0).pop() || pers[pers.length - 1];
-    const due = per ? r2(per.remaining) : 0;
+    if (!pers.length) pers = RB.vatPeriodsBetween(S, RB.addDays(t, -400), t).filter((p) => p.to < t).map((p) => Object.assign({ remaining: 0, credit: 0 }, p));
+    const per = pers.find((p) => p.label === label) || pers.filter((p) => p.remaining > 0).pop() || pers[pers.length - 1];
+    // المقترح: المتبقي للسداد، وللاسترداد الرصيد الدائن بالسالب
+    const auto = (q) => (!q ? '' : refund ? (q.credit > 0 ? -r2(q.credit) : '') : q.remaining > 0 ? r2(q.remaining) : '');
     const labels = pers.map((p) => p.label).reverse();
     if (rec && rec.period && !labels.includes(rec.period)) labels.unshift(rec.period);
+    const back = refund || (!!rec && num(rec.amount) < 0);
     return formModal({
-      title: isEdit ? 'تعديل سداد الضريبة' : 'سداد ضريبة القيمة المضافة',
-      value: rec || { id: RB.uid(), date: t, period: per ? per.label : '', account: 'bank', amount: due > 0 ? due : '', note: '' },
+      title: isEdit ? (num(rec.amount) < 0 ? 'تعديل استرداد الضريبة' : 'تعديل سداد الضريبة') : refund ? 'استرداد ضريبة القيمة المضافة' : 'سداد ضريبة القيمة المضافة',
+      value: rec || { id: RB.uid(), date: t, period: per ? per.label : '', account: 'bank', amount: auto(per), note: refund ? 'استرداد الرصيد الدائن من الهيئة' : '' },
       onChange: (p, v) => {
         if (p !== 'period' || isEdit) return;
-        const q = pers.find((z) => z.label === v.period);
-        v.amount = q && q.remaining > 0 ? r2(q.remaining) : '';
+        v.amount = auto(pers.find((z) => z.label === v.period));
         return 'redraw';
       },
+      preview: (v) => (num(v.amount) < 0 ? `<p class="note">استرداد من الهيئة: يدخل الحساب ${fmt(-num(v.amount))} ${cur()} ويُخصم من الرصيد الدائن للإقرار فلا يُرحّل للفترة التالية. سجّله بعد وصول المبلغ.</p>` : ''),
       fields: [
-        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: labels, redraw: true }] },
-        { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ المسدد', req: 1, help: 'استرداد من الهيئة؟ أدخله بالسالب' }, { k: 'account', type: 'select', label: 'من / إلى', options: payOptions(false, false) }] },
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: back ? 'تاريخ الاسترداد' : 'تاريخ السداد', req: 1 }, { k: 'period', type: 'select', label: 'الفترة', options: labels, redraw: true }] },
+        { type: 'row', fields: [{ k: 'amount', type: 'money', label: back ? 'المبلغ المسترد (بالسالب)' : 'المبلغ المسدد', req: 1, help: back ? 'ما ردّته الهيئة من الرصيد الدائن، بالسالب' : 'استرداد من الهيئة؟ أدخله بالسالب' }, { k: 'account', type: 'select', label: 'من / إلى', options: payOptions(false, false) }] },
         { k: 'note', label: 'ملاحظة' },
       ],
       onSave: (v) => upsert('vatPayments', v),
@@ -5000,7 +5051,7 @@
       } else if (rep === 'trial') {
         const t = RB.trialBalance(S, from, asOf, L);
         rows.push(['الرمز', 'الحساب', 'مدين', 'دائن']);
-        t.rows.forEach((r) => rows.push([r.code, r.name, r.dr, r.cr]));
+        t.rows.forEach((r) => rows.push([r.disp, r.name, r.dr, r.cr]));
         rows.push(['', 'الإجمالي', t.dr, t.cr]);
       } else if (rep === 'balance') {
         const b = RB.balanceSheet(S, asOf, L);
