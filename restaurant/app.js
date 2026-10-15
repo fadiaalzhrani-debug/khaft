@@ -1101,7 +1101,9 @@
       }
       saving = true;
       try {
-        const res = await o.onSave(val);
+        // onSave يعمل على نسخة: الحفظ المرفوض (رسالة خطأ أو إلغاء التأكيد) لا يغيّر بيانات النموذج المفتوح،
+        // فتبقى الأسطر على الشاشة هي البيانات نفسها (كان حذف السطر الفارغ قبل الرفض يزيح أرقام الأسطر)
+        const res = await o.onSave(clone(val));
         if (typeof res === 'string') {
           toast(res, 'bad');
           return;
@@ -2600,7 +2602,7 @@
       },
       fields: (v) => [
         { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1 }, { k: 'job', label: 'الوظيفة', placeholder: 'طباخ، كاشير، عامل نظافة…' }] },
-        { type: 'row', fields: [{ k: 'nationality', type: 'select', label: 'الجنسية', options: [['expat', 'غير سعودي'], ['saudi', 'سعودي']], redraw: true }, { k: 'startDate', type: 'date', label: 'تاريخ المباشرة' }, { k: 'endDate', type: 'date', label: 'تاريخ ترك العمل' }] },
+        { type: 'row', fields: [{ k: 'nationality', type: 'select', label: 'الجنسية', options: [['expat', 'غير سعودي'], ['saudi', 'سعودي']], redraw: true }, { k: 'startDate', type: 'date', label: 'تاريخ المباشرة' }, { k: 'endDate', type: 'date', label: 'تاريخ ترك العمل', check: (x) => (x.endDate && RB.isISODate(x.startDate) && x.endDate < x.startDate ? 'لا يكون قبل تاريخ المباشرة' : '') }] },
         {
           k: 'gosiSystem',
           type: 'select',
@@ -2666,7 +2668,8 @@
   // أسطر مسير الشهر ym من بيانات الموظفين: من له راتب في الشهر، ومن باشر أو ترك العمل أثناءه بخصم ما لم يعمله
   // (نسب التأمينات حسب الشهر). cur: الأسطر الحالية (بُنيت لشهر fromYm) يبقى منها ما أدخله المستخدم:
   // الإضافي، والخصومات والتأمينات إن اختلفت عمّا يُحسب تلقائياً، ومكافأة نهاية الخدمة المصروفة؛
-  // والأسطر بلا موظف مسجل، وسطر من ليس له راتب في الشهر إن صُرفت له فيه مكافأة نهاية الخدمة
+  // والأسطر بلا موظف مسجل، وسطر من ليس له راتب في الشهر إن صُرفت له فيه مكافأة نهاية الخدمة.
+  // l._autoDed (مؤقت، يُحذف عند الحفظ): خصم الأيام الذي وضعه البرنامج في السطر، فما خالفه أدخله المستخدم
   function payrollFill(ym, cur, fromYm) {
     cur = (cur || []).filter((l) => l && typeof l === 'object');
     fromYm = RB.isISOMonth(fromYm) ? fromYm : ym;
@@ -2677,13 +2680,14 @@
       .filter((e) => RB.isEmployeeActive(e, ym))
       .map((e) => {
         const n = RB.payrollLine(e, S, ym);
+        n._autoDed = n.deductions;
         const o = old[e.id];
         if (!o) return n;
         const was = RB.payrollLine(e, S, fromYm);
         // التأمينات تلقائية إن طابقت المحسوب من بيانات الموظف أو من أساسي السطر وسكنه
         const g = RB.gosiFor(Object.assign({}, e, { basic: num(o.basic), housing: num(o.housing) }), S, fromYm);
         if (num(o.additions)) n.additions = o.additions;
-        if (num(o.deductions) && !same(o.deductions, was.deductions)) n.deductions = o.deductions;
+        if (num(o.deductions) && !same(o.deductions, o._autoDed !== undefined ? o._autoDed : was.deductions)) n.deductions = o.deductions;
         if (!same(o.gosiEe, was.gosiEe) && !same(o.gosiEe, g.ee)) n.gosiEe = o.gosiEe;
         if (!same(o.gosiEr, was.gosiEr) && !same(o.gosiEr, g.er)) n.gosiEr = o.gosiEr;
         if (num(o.eosbPaid) > 0) n.eosbPaid = o.eosbPaid;
@@ -2717,15 +2721,18 @@
     if (!rec) base.lines = payrollFill(ym);
     const nCol = (k, label) => ({ k, label, type: 'num', num: 1 });
     const empOf = (id) => (id ? S.employees.find((e) => e.id === id) : null);
-    // من تنبيه «لم تُسوَّ مكافأة نهاية الخدمة»: مسير تسوية اليوم بسطر واحد لمن ترك العمل، والمكافأة مقترحة بمقدار مخصصه
+    // من تنبيه «لم تُسوَّ مكافأة نهاية الخدمة»: مسير تسوية اليوم بسطر واحد لمن ترك العمل، والمكافأة مقترحة بمقدار مخصصه.
+    // سطر المكافأة وحدها: لا راتب فيه ولا إضافي ولا خصم أيام (راتب شهر تركه في مسير ذلك الشهر)
     const settleEmp = !rec && empOf(empId);
     if (settleEmp) {
       const prov = Math.max(0, RB.eosbBalances(S, today(), { release: false })[settleEmp.id] || 0);
+      const line = Object.assign(RB.payrollLine(settleEmp, S, today().slice(0, 7)), { basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov, _autoDed: 0 });
+      delete line.note;
       Object.assign(base, {
         month: today().slice(0, 7),
         date: today(),
         note: 'تسوية نهاية الخدمة: ' + settleEmp.name,
-        lines: [Object.assign(RB.payrollLine(settleEmp, S, today().slice(0, 7)), { basic: 0, housing: 0, allowances: 0, gosiEe: 0, gosiEr: 0, eosbPaid: prov })],
+        lines: [line],
       });
     }
     // الموظف في السطر: من على رأس العمل، ثم من ترك العمل أو توقف (لصرف مكافأته)، أو عامل غير مسجل باسم حر.
@@ -2742,7 +2749,13 @@
       const draft = Object.assign({}, v, { lines: (v.lines || []).map((l) => Object.assign({}, l, { eosbPaid: 0 })) });
       return RB.eosbBalances(Object.assign({}, S, { payroll: S.payroll.filter((p) => p.id !== v.id).concat([draft]) }), v.date, { release: false });
     };
-    const value = rec || base;
+    // خصم الأيام التلقائي لموظف السطر في الشهر (0 لعامل غير مسجل أو لمن ليس له راتب فيه)
+    const autoDed = (id, ym2) => {
+      const e = empOf(id);
+      return e && RB.isISOMonth(ym2) && RB.isEmployeeActive(e, ym2) ? num(RB.payrollLine(e, S, ym2).deductions) : 0;
+    };
+    // المسير المحفوظ (أو المنسوخ): خصم الأيام التلقائي لكل سطر، ليُعرف عند تغيير الموظف ما وضعه البرنامج
+    const value = rec && Array.isArray(rec.lines) ? Object.assign({}, rec, { lines: rec.lines.map((l) => (l && typeof l === 'object' && l._autoDed === undefined ? Object.assign({}, l, { _autoDed: autoDed(l.employeeId, rec.month) }) : l)) }) : rec || base;
     // linesYm: الشهر الذي بُنيت له الأسطر (لمعرفة ما عدّله المستخدم عند إعادة التعبئة)، lastMonth: آخر شهر صالح
     let linesYm = value.month;
     let lastMonth = value.month;
@@ -2771,16 +2784,29 @@
         }
         const m = p.match(/^lines\.(\d+)\.employeeId$/);
         const row = m && v.lines[+m[1]];
-        const e = row && empOf(row.employeeId);
+        if (!row) return;
+        // خصم الأيام يخص الموظف: خصم الموظف السابق التلقائي (أو الخانة الفارغة) يُستبدل بخصم الجديد،
+        // وما كتبه المستخدم يبقى
+        const ded = (d) => {
+          if (!num(row.deductions) || (row._autoDed !== undefined && Math.abs(num(row.deductions) - num(row._autoDed)) < 0.005)) row.deductions = d;
+          row._autoDed = d;
+        };
+        const e = empOf(row.employeeId);
         if (e) {
           // له راتب في الشهر: راتبه وتأميناته من بياناته (وخصم ما لم يعمله إن باشر أو ترك العمل أثناءه)؛
           // من ترك العمل قبل الشهر: سطر تسوية بلا راتب
-          const pl = RB.isEmployeeActive(e, v.month) ? RB.payrollLine(e, S, v.month) : { basic: 0, housing: 0, allowances: 0, gosiEe: 0, gosiEr: 0 };
+          const pl = RB.isEmployeeActive(e, v.month) ? RB.payrollLine(e, S, v.month) : { basic: 0, housing: 0, allowances: 0, deductions: 0, gosiEe: 0, gosiEr: 0 };
           row.name = e.name;
           for (const k of ['basic', 'housing', 'allowances', 'gosiEe', 'gosiEr']) row[k] = pl[k];
-          if (!num(row.deductions) && pl.deductions) row.deductions = pl.deductions;
+          ded(num(pl.deductions));
           if (pl.note) row.note = pl.note;
           else delete row.note;
+          return 'redraw';
+        }
+        // عامل غير مسجل: لا خصم أيام له (بقية السطر تبقى ليُعدّلها المستخدم)
+        if (!row.employeeId) {
+          ded(0);
+          delete row.note;
           return 'redraw';
         }
       },
@@ -2874,6 +2900,10 @@
         const ids = v.lines.map((l) => l.employeeId).filter(Boolean);
         const dup = ids.find((id, i) => ids.indexOf(id) !== i);
         if (dup) return 'الموظف مكرر في المسير: ' + ((empOf(dup) || {}).name || '') + '. اجمع ما له في سطر واحد.';
+        // سطر راتب سالب (خصومات أكبر من الأجر) يقيّد رواتب سالبة ومالاً داخلاً للبنك
+        const neg = v.lines.findIndex((l) => RB.payrollLineGross(l) < 0);
+        if (neg >= 0) return `الخصومات أكبر من الراتب في السطر ${neg + 1}${v.lines[neg].name ? ' (' + v.lines[neg].name + ')' : ''}.`;
+        v.lines.forEach((l) => delete l._autoDed);
         // مسير ثانٍ لنفس الشهر برواتب: يُؤكَّد (تعديل مسير قائم يُسأل فقط إن نُقل إلى شهر له مسير)
         if (otherRun(v) && RB.payrollTotals(v).gross > 0 && (!isEdit || v.month !== runMonth(rec)) && !(await confirmBox('يوجد مسير لنفس الشهر. حفظ مسير ثانٍ؟', { ok: 'احفظ' }))) return 'لم يُحفظ المسير.';
         upsert('payroll', v);
@@ -3171,9 +3201,9 @@
         return `<div class="pv-grid"><div><span>تكلفة الوصفة كاملة</span>${money(b.total)}</div><div><span>تكلفة 1 ${esc(v.yieldUnit)}</span><b class="n">${b.perUnit.toFixed(4)}</b></div></div>`;
       },
       onSave: (v) => {
+        if (!(num(v.yieldQty) > 0)) return 'يجب أن تكون الكمية الناتجة أكبر من صفر.';
         const bad = recipeSave(v);
         if (bad) return bad;
-        if (!(num(v.yieldQty) > 0)) return 'يجب أن تكون الكمية الناتجة أكبر من صفر.';
         upsert('composites', v);
       },
     });

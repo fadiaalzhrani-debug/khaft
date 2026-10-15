@@ -1809,6 +1809,33 @@ test('المسير يتبع تاريخ ترك العمل: من ترك في 20 س
   assert.equal(RB.payrollLine(join('2026-06-11'), S).deductions, 0);
 });
 
+test('سطر المسير لشهر ليس للموظف فيه راتب بلا خصم أيام، فسطر تسوية المكافأة لا يكون سالباً (مراجعة WP4)', () => {
+  const S = base();
+  const left = { id: 'x', name: 'سالم', nationality: 'expat', basic: 2000, housing: 500, transport: 200, otherAllow: 0, startDate: '2025-01-01', endDate: '2026-09-20', active: false };
+  // بعد شهر ترك العمل: لا خصم ولا ملاحظة «أيام عمل 0» (كان الخصم الأجر كله)
+  const oct = RB.payrollLine(left, S, '2026-10');
+  assert.equal(RB.payrollDaysWorked(left, '2026-10'), 0);
+  assert.equal(oct.deductions, 0);
+  assert.equal(oct.note, undefined);
+  // قبل المباشرة كذلك
+  const fut = RB.payrollLine({ id: 'f', name: 'ف', nationality: 'expat', basic: 3000, startDate: '2026-11-05' }, S, '2026-10');
+  assert.equal(fut.deductions, 0);
+  assert.equal(fut.note, undefined);
+  // مسير التسوية (كما يبنيه النموذج): الراتب صفر والمكافأة وحدها، فلا رواتب سالبة ولا مال داخل للبنك
+  const settle = (ym) => Object.assign(RB.payrollLine(left, S, ym), { basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 450 });
+  for (const ym of ['2026-09', '2026-10']) {
+    const t = RB.payrollTotals({ lines: [settle(ym)] });
+    assert.deepEqual([t.gross, t.cost, t.eosbPaid], [0, 0, 450]);
+  }
+  S.employees = [left];
+  S.payroll = [{ id: 'set', month: '2026-10', date: '2026-10-15', account: 'bank', gosiAccount: 'bank', lines: [settle('2026-10')] }];
+  const b = RB.balances(RB.buildLedger(S, '2026-12-31').entries.filter((e) => e.kind === 'payroll' || e.kind === 'eosb'));
+  assert.equal(b['5201'] || 0, 0);
+  assert.equal(b['1102'], -450, 'يخرج من البنك مبلغ المكافأة وحده');
+  // خصم الأيام لا يزيد على الأجر في أي شهر: السطر المبني من بيانات الموظف لا يكون سالباً
+  for (const ym of ['2024-12', '2025-01', '2026-08', '2026-09', '2026-10', '2027-01']) assert.ok(RB.payrollLineGross(RB.payrollLine(left, S, ym)) >= 0, ym);
+});
+
 test('مسير الشهر الأول في التجربة: خصم الأيام قبل المباشرة من RB.payrollLine نفسه (WP4)', () => {
   const D = RB.demoState('2026-10-15');
   const first = D.payroll.slice().sort((a, b) => (a.month < b.month ? -1 : 1))[0];
