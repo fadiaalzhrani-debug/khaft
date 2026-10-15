@@ -829,7 +829,8 @@
       'أين ذهب رأس المال التأسيسي؟',
       `<div class="pv-grid three"><div><span>إجمالي رأس المال</span>${money(uses.sources)}</div><div><span>المصروف على التأسيس</span>${money(uses.used)}</div><div><span>المتبقي كرأس مال عامل</span>${money(uses.remaining)}</div></div>` +
         (uses.vatRecoverable > 0.005 ? `<p class="note">منها ضريبة مدخلات تُسترد بخصمها من ضريبة المبيعات: <b class="n">${fmt(uses.vatRecoverable)}</b> ${cur()}</p>` : '') +
-        (uses.laterAssets.count > 0 ? `<p class="note">أصول اشتُريت بعد الافتتاح أو بالآجل (غير محسوبة من رأس المال التأسيسي): <b class="n">${fmt(uses.laterAssets.amount)}</b> ${cur()}</p>` : '') +
+        (uses.owedAtOpen > 0.005 ? `<p class="note">منها مستحق للموردين بالآجل لم يُسدد حتى الافتتاح: <b class="n">${fmt(uses.owedAtOpen)}</b> ${cur()} (مخصوم من المتبقي)</p>` : '') +
+        (uses.laterAssets.count > 0 ? `<p class="note">أصول اشتُريت بعد الافتتاح (غير محسوبة من رأس المال التأسيسي): <b class="n">${fmt(uses.laterAssets.amount)}</b> ${cur()}</p>` : '') +
         hbars(useItems, { total: uses.sources }),
       { sub: uses.open ? `حسب الأصول وما صُرف قبل تاريخ الافتتاح (${dtText(uses.open)})` : 'حدّد تاريخ الافتتاح في الإعدادات لفصل مصاريف ما قبل الافتتاح.' }
     )}${card(
@@ -932,7 +933,8 @@
       const paid = RB.sum(S.expenses.filter((x) => x.category === c.id && inRange(x.date)), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
       return { c, paid, charged: b[c.acc] || 0 };
     }).filter((r) => r.paid || r.charged);
-    const months = RB.monthsIn(from, asOf);
+    // الإيجار والإهلاك يُحمّلان كاملين أول الشهر، فالشهر الجاري يُحسب شهراً كاملاً في المتوسط
+    const months = RB.chargeMonths(from, asOf);
     let h = pageHead('المصاريف التشغيلية', 'إيجار المحل وسكن العمال والكهرباء والصيانة والتسويق وغيرها. المصروف المدفوع لعدة أشهر يُوزّع تلقائياً على أشهره.', btn('+ مصروف', 'add', 'data-s="expenses"', 'primary'));
     h += `<div class="quick">${['rent', 'housing', 'utilities', 'telecom', 'maintenance', 'marketing', 'cleaning'].map((k) => btn('+ ' + RB.expenseCat(k).name, 'add', `data-s="expenses" data-x="${k}"`, 'sm ghost')).join('')}</div>`;
     h += card(
@@ -1067,12 +1069,14 @@
     const [, to] = range();
     const all = S.purchases.filter((p) => inRange(p.date));
     const list = all.filter((p) => !ui.purCat || p.category === ui.purCat).sort((a, b) => (a.date < b.date ? 1 : -1));
-    const sp = (p) => RB.vatSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings);
+    // ضريبة المدخلات حسب تاريخ الفاتورة: قبل سريان التسجيل (أو بدونه) جزء من التكلفة لا تُخصم
+    const sp = (p) => RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings, p.date);
     const byCat = {};
     const bySrc = {};
     let taxable = 0;
     let exempt = 0;
     let vat = 0;
+    let vatCost = 0;
     all.forEach((p) => {
       const v = sp(p);
       byCat[p.category] = (byCat[p.category] || 0) + v.gross;
@@ -1080,7 +1084,14 @@
       if (p.taxable) taxable += v.gross;
       else exempt += v.gross;
       vat += v.vat;
+      vatCost += v.rawVat - v.vat;
     });
+    const vatNote =
+      vatCost >= 0.005 && vat >= 0.005
+        ? `ضريبة المدخلات تُخصم من ضريبة المبيعات في الإقرار، أما ضريبة الفواتير قبل سريان التسجيل (${fmt(vatCost)}) فجزء من التكلفة ولا تُخصم.`
+        : vatCost >= 0.005 || !RB.isVatReg(S.settings, today())
+          ? 'المطعم غير مسجل في الضريبة في تواريخ هذه الفواتير، فالضريبة المدفوعة جزء من التكلفة.'
+          : 'ضريبة المدخلات تُخصم من ضريبة المبيعات في الإقرار.';
     let h = pageHead('المشتريات التشغيلية', 'فواتير المواد الخام والتغليف والمستهلكات — من البنك أو من الكاشير أو آجل، خاضعة للضريبة أو غير خاضعة', btn('سداد مورد', 'add', 'data-s="supplierPayments"') + btn('+ فاتورة مشتريات', 'add', 'data-s="purchases"', 'primary'));
     h += `<div class="kpis small">
       ${kpi('إجمالي المشتريات', money(taxable + exempt), `${all.length} فاتورة في الفترة`)}
@@ -1090,7 +1101,7 @@
     </div>`;
     h += `<div class="grid2">${card('حسب التصنيف', hbars(RB.PURCHASE_CATS.filter((c) => byCat[c.id]).map((c) => ({ label: c.name, v: byCat[c.id] }))))}${card(
       'الضريبة',
-      `<div class="pv-grid"><div><span>مشتريات خاضعة للضريبة</span>${money(taxable)}</div><div><span>مشتريات غير خاضعة</span>${money(exempt)}</div><div><span>ضريبة المدخلات</span>${money(vat)}</div></div><p class="note">${RB.isVatReg(S.settings, today()) ? 'ضريبة المدخلات تُخصم من ضريبة المبيعات في الإقرار.' : 'المطعم غير مسجل في الضريبة، فالضريبة المدفوعة جزء من التكلفة.'} غير الخاضعة مثل مشتريات من موردين غير مسجلين أو بدون فاتورة ضريبية.</p>`
+      `<div class="pv-grid"><div><span>مشتريات خاضعة للضريبة</span>${money(taxable)}</div><div><span>مشتريات غير خاضعة</span>${money(exempt)}</div><div><span>${vat < 0.005 && vatCost >= 0.005 ? 'الضريبة المدفوعة (تكلفة)' : 'ضريبة المدخلات'}</span>${money(vat < 0.005 && vatCost >= 0.005 ? vatCost : vat)}</div></div><p class="note">${vatNote} غير الخاضعة مثل مشتريات من موردين غير مسجلين أو بدون فاتورة ضريبية.</p>`
     )}</div>`;
     const counts = {};
     all.forEach((p) => (counts[p.category] = (counts[p.category] || 0) + 1));
@@ -1425,8 +1436,10 @@
     const [from, to] = range();
     const asOf = minD(to, today());
     const L = ledger(asOf);
-    // كل الإقرارات من البداية (لترحيل الرصيد الدائن)، ويُعرض منها ما يقع في الفترة
-    const pers = RB.vatReturns(S, asOf, L).filter((p) => p.to >= from && p.from <= to);
+    // كل الإقرارات من البداية حتى اليوم (لترحيل الرصيد الدائن)، ويُعرض منها ما يلامس الفترة بكامل أرقامه
+    // ولو انتهت الفترة المختارة في منتصف إقرار؛ «ملخص الفترة» وحده يتبع الفترة المختارة
+    const t = today();
+    const pers = RB.vatReturns(S, t, ledger(t)).filter((p) => p.to >= from && p.from <= to);
     const v = RB.vatReport(S, from, asOf, L);
     const regFrom = S.settings.vatRegisteredFrom;
     let h = '';
@@ -1457,10 +1470,11 @@
           {
             h: 'السداد',
             f: (p) => {
-              if (p.to >= today()) return chip('الفترة جارية', 'mute');
+              if (p.to >= t) return chip('الفترة جارية', 'mute');
               const b = btn('سجّل السداد', 'add', `data-s="vatPayments" data-x="${esc(p.label)}"`, 'sm');
-              if (p.paid) return chip('مسدد ' + fmt(p.paid), p.settled ? 'good' : 'warn') + (p.settled ? '' : `<div class="muted sm">المتبقي ${fmt(p.remaining)}</div>${b}`);
-              return p.due > 0.01 ? b : chip('لا يوجد مستحق', 'good');
+              const over = p.over > 0.005 ? ' ' + chip('دفعة زائدة ' + fmt(p.over), 'warn') + '<div class="muted sm">تُخصم من الإقرار التالي</div>' : '';
+              if (!p.settled) return (p.paid ? chip('مسدد ' + fmt(p.paid), 'warn') : '') + (p.paid || Math.abs(p.remaining - p.due) > 0.005 ? `<div class="muted sm">المتبقي ${fmt(p.remaining)}</div>` : '') + b;
+              return (p.paid ? chip('مسدد ' + fmt(p.paid), 'good') : chip('لا يوجد مستحق', 'good')) + over;
             },
           },
         ],
@@ -1480,7 +1494,12 @@
     const nM = Math.round(e.months);
     const basis = e.estimate ? `${dtText(e.basisFrom)} — ${dtText(e.basisTo)}` : bA === bB ? RB.monthName(bA) : `${RB.monthName(bA)} — ${RB.monthName(bB)} (${nM === 2 ? 'شهران' : nM <= 10 ? nM + ' أشهر' : nM + ' شهراً'})`;
     const adj = [];
-    if (e.estimate) adj.push('لا يوجد شهر تشغيل كامل بعد، فالأرقام تقديرية من الأيام المتاحة وقد لا تشمل كل المصاريف الشهرية.');
+    if (e.beforeOpen) {
+      const op = S.settings.openingDate ? 'الافتتاح' : 'أول يوم مبيعات';
+      if (!e.estimate) adj.push(`الفترة المختارة قبل ${op}، فالحساب من أول شهر تشغيل كامل (${RB.monthName(bA)}).`);
+      else if (e.basisFrom > asOf) adj.push(`الفترة المختارة قبل ${op}، ولا يوجد شهر تشغيل كامل بعد، فالأرقام تقديرية من أيام التشغيل حتى اليوم.`);
+      else adj.push(`الفترة المختارة قبل ${op} ولم يبدأ التشغيل بعد، فالأرقام تقديرية من مصاريف ما قبل الافتتاح ولا تمثّل التشغيل الفعلي.`);
+    } else if (e.estimate) adj.push('لا يوجد شهر تشغيل كامل بعد، فالأرقام تقديرية من الأيام المتاحة وقد لا تشمل كل المصاريف الشهرية.');
     else if (e.fallback) adj.push(asOf === today() ? `الشهر الجاري لم يكتمل بعد، فالحساب من آخر شهر كامل (${RB.monthName(bA)}).` : `الفترة المختارة لا تضم شهراً كاملاً، فالحساب من آخر شهر كامل قبل نهايتها (${RB.monthName(bA)}).`);
     else {
       if (e.cutEnd) adj.push(asOf === today() ? 'الشهر الجاري لم يكتمل بعد، فلم يدخل في الحساب.' : 'الأيام من شهر غير مكتمل في نهاية الفترة لم تدخل في الحساب.');
@@ -2279,21 +2298,29 @@
         if (which === 'vat' && p === 'vatRegistered' && v.vatRegistered && !st.vatRegistered && hasVatData() && !v.vatRegisteredFrom) v.vatRegisteredFrom = today();
       },
       onSave: async (v) => {
-        if (which === 'vat' && vatHistoryChanges(st, v) && !(await confirmBox('تغيير التسجيل أو النسبة يعيد حساب الإيرادات والتكلفة وإقرارات الضريبة لكل الفترات السابقة. لتسجيل جديد استخدم تاريخ السريان بدل ذلك. متابعة؟', { danger: true }))) return false;
+        const warn = which === 'vat' ? vatHistoryChanges(st, v) : '';
+        if (warn && !(await confirmBox(warn + ' متابعة؟', { danger: true }))) return false;
         S.settings = Object.assign(S.settings, v);
         saveSettings();
       },
     });
   }
   const hasVatData = () => S.sales.length > 0 || S.purchases.length > 0;
-  // هل يغيّر تعديل إعدادات الضريبة أرقام عمليات مسجلة سابقاً؟
+  // هل يغيّر تعديل إعدادات الضريبة أرقام عمليات أو إقرارات سابقة؟ يرجع نص التحذير أو فراغاً
   function vatHistoryChanges(old, v) {
+    const out = [];
     const dated = [...S.sales, ...S.purchases, ...S.expenses, ...S.assets, ...S.payouts].filter((r) => r.date);
-    if (!dated.length) return false;
-    if (num(v.vatRate) !== num(old.vatRate)) return true;
-    if (dated.some((r) => RB.isVatReg(old, r.date) !== RB.isVatReg(v, r.date))) return true;
-    // ضريبة العمولة: تؤثر فقط على الإقفالات القديمة التي لم تُحفظ معها
-    return !!v.feeVat !== !!old.feeVat && S.sales.some((s) => Object.keys(s.channels || {}).some((id) => s.channels[id] && s.channels[id].feeVat === undefined && RB.saleChannelSplit(S, id, s.channels[id], s.date).fee > 0));
+    if (
+      dated.length &&
+      (num(v.vatRate) !== num(old.vatRate) ||
+        dated.some((r) => RB.isVatReg(old, r.date) !== RB.isVatReg(v, r.date)) ||
+        // ضريبة العمولة: تؤثر فقط على الإقفالات القديمة التي لم تُحفظ معها
+        (!!v.feeVat !== !!old.feeVat && S.sales.some((s) => Object.keys(s.channels || {}).some((id) => s.channels[id] && s.channels[id].feeVat === undefined && RB.saleChannelSplit(S, id, s.channels[id], s.date).fee > 0))))
+    )
+      out.push('تغيير التسجيل أو النسبة يعيد حساب الإيرادات والتكلفة وإقرارات الضريبة لكل الفترات السابقة. لتسجيل جديد استخدم تاريخ السريان بدل ذلك.');
+    if ((v.vatPeriod || 'quarterly') !== (old.vatPeriod || 'quarterly') && S.vatPayments.length)
+      out.push('تغيير فترة الإقرار يعيد تقسيم الإقرارات السابقة كلها على الفترة الجديدة، وتُنسب المدفوعات المسجلة إلى الفترات الجديدة التي تغطيها. إن كانت الإقرارات السابقة قُدّمت بالفترة الحالية فالأفضل إبقاؤها.');
+    return out.join(' ');
   }
 
   // ═════════════ الأحداث ═════════════
@@ -2465,17 +2492,24 @@
     formModal({
       title: 'ابدأ ببيانات مطعمك',
       ok: 'ابدأ',
-      value: { name: '', openingDate: '', vatRegistered: true, p1: '', s1: 50, p2: '', s2: 50 },
+      value: { name: '', openingDate: '', vatRegistered: true, vatRegisteredFrom: '', p1: '', s1: 50, p2: '', s2: 50 },
       fields: [
         { type: 'html', html: () => '<p class="note">تبدأ بدفتر فارغ (قنوات البيع والتصنيفات جاهزة). البيانات التجريبية لن تُحفظ.</p>' },
         { k: 'name', label: 'اسم المطعم', req: 1 },
-        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح (أو المتوقع)' }, { k: 'vatRegistered', type: 'check', label: 'مسجل في ضريبة القيمة المضافة', help: 'يُعتبر التسجيل سارياً من تاريخ الافتتاح، وتقدر تعدّل تاريخ السريان من الإعدادات.' }] },
+        { type: 'row', fields: [{ k: 'openingDate', type: 'date', label: 'تاريخ الافتتاح (أو المتوقع)' }, { k: 'vatRegistered', type: 'check', label: 'مسجل في ضريبة القيمة المضافة', redraw: true }] },
+        {
+          k: 'vatRegisteredFrom',
+          type: 'date',
+          label: 'تاريخ سريان التسجيل (من شهادة التسجيل، اختياري)',
+          show: (v) => v.vatRegistered,
+          help: 'اتركه فارغاً إن كان التسجيل سارياً قبل مشتريات التأسيس فتُخصم ضريبتها. العمليات قبل هذا التاريخ بلا ضريبة ولا تُسترد ضريبة مشترياتها، ويمكن تعديله لاحقاً من الإعدادات.',
+        },
         { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %' }] },
         { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني' }, { k: 's2', type: 'num', label: 'نسبته %' }] },
       ],
       onSave: async (v) => {
         const st = RB.emptyState();
-        Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, vatRegisteredFrom: v.vatRegistered ? v.openingDate || '' : '', startedAt: new Date().toISOString() });
+        Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, vatRegisteredFrom: v.vatRegistered ? v.vatRegisteredFrom || '' : '', startedAt: new Date().toISOString() });
         st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: num(v.s1), phone: '', note: '' });
         if (v.p2 && v.p2.trim()) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: num(v.s2), phone: '', note: '' });
         await replaceAll(st);

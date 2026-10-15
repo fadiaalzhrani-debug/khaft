@@ -291,6 +291,75 @@ test('إقرارات الضريبة: الرصيد الدائن يُرحّل، و
   assert.equal(d3.due, 6000);
 });
 
+test('إقرارات الضريبة: الدفعة الزائدة تُرحّل رصيداً دائناً للفترة التالية', () => {
+  const S = vatTwoQuarters();
+  const [q2, q3] = RB.vatPeriodsBetween(S, '2026-04-01', '2026-09-30');
+  S.vatPayments = [{ id: 'v2', date: '2026-07-20', period: q2.label, account: 'bank', amount: 3000 }];
+  const by = Object.fromEntries(RB.vatReturns(S, '2026-10-14').map((r) => [r.key, r]));
+  assert.equal(by['2026-Q2'].over, 1500);
+  assert.equal(by['2026-Q2'].credit, 1500);
+  assert.equal(by['2026-Q3'].carried, -1500);
+  assert.equal(by['2026-Q3'].due, 0);
+  assert.equal(by['2026-Q3'].settled, true);
+  assert.equal(by['2026-Q4'].carried, 0);
+  assert.equal(RB.vatBalanceAt(S, '2026-10-14'), 0);
+  // دفعة زائدة جزئياً: المتبقي من الربع الثالث = مستحقه − الزيادة
+  S.vatPayments[0].amount = 2000;
+  const d3 = RB.vatDue(S, q3);
+  assert.equal(d3.carried, -500);
+  assert.equal(d3.due, 1000);
+  assert.equal(d3.remaining, 1000);
+  close(d3.remaining, RB.vatBalanceAt(S, '2026-10-14'));
+  // استرداد الزيادة من الهيئة يلغي الترحيل، ومستحق الربع الثاني يبقى 1,500
+  S.vatPayments = [
+    { id: 'v2', date: '2026-07-20', period: q2.label, account: 'bank', amount: 3000 },
+    { id: 'r2', date: '2026-08-20', period: q2.label, account: 'bank', amount: -1500 },
+  ];
+  const r = RB.vatReturns(S, '2026-10-14');
+  assert.deepEqual([r[0].due, r[0].over, r[0].credit, r[0].settled], [1500, 0, 0, true]);
+  assert.deepEqual([r[1].carried, r[1].due, r[1].remaining], [0, 1500, 1500]);
+  // استرداد أكبر من الرصيد الدائن: الزيادة متبقية على الفترة (كما في رصيد حساب الضريبة)
+  const C = base();
+  C.assets = [{ id: 'a1', date: '2026-05-10', name: 'معدات', category: 'kitchen', amount: 20000, includesVat: false, taxable: true, account: 'bank', lifeMonths: 60 }];
+  C.vatPayments = [{ id: 'r', date: '2026-07-15', period: q2.label, account: 'bank', amount: -4000 }];
+  const c2 = RB.vatReturns(C, '2026-10-14')[0];
+  assert.deepEqual([c2.key, c2.due, c2.credit, c2.remaining, c2.settled], ['2026-Q2', 0, 0, 1000, false]);
+});
+
+test('إقرارات الضريبة: تغيير فترة الإقرار لا يترك المدفوعات السابقة بلا فترة', () => {
+  // ربع سنوي ← شهري: سداد الربع يُنسب لأشهره ويملأ مستحقها بالترتيب
+  const S = vatTwoQuarters();
+  S.sales.push({ id: 's3', date: '2026-06-10', channels: { cash: { amount: 11500, orders: 10, type: 'cash', feePct: 0 } } });
+  const [q2, q3] = RB.vatPeriodsBetween(S, '2026-04-01', '2026-09-30');
+  S.vatPayments = [
+    { id: 'v2', date: '2026-07-20', period: q2.label, account: 'bank', amount: 3000 },
+    { id: 'v3', date: '2026-10-05', period: q3.label, account: 'bank', amount: 1500 },
+  ];
+  assert.ok(RB.vatReturns(S, '2026-10-14').every((r) => r.settled));
+  S.settings.vatPeriod = 'monthly';
+  const m = Object.fromEntries(RB.vatReturns(S, '2026-10-14').map((r) => [r.key, r]));
+  assert.deepEqual([m['2026-05'].paid, m['2026-06'].paid, m['2026-08'].paid], [1500, 1500, 1500]);
+  assert.ok(Object.values(m).every((r) => r.settled && r.credit === 0));
+  // شهري ← ربع سنوي: سداد الأشهر يُجمع في ربعها
+  const M = vatTwoQuarters('monthly');
+  M.vatPayments = [
+    { id: 'a', date: '2026-09-05', period: 'أغسطس 2026', account: 'bank', amount: 1500 },
+    { id: 'b', date: '2026-10-05', period: 'سبتمبر 2026', account: 'bank', amount: 1000 },
+  ];
+  M.settings.vatPeriod = 'quarterly';
+  const q = RB.vatReturns(M, '2026-10-14').find((r) => r.key === '2026-Q3');
+  assert.deepEqual([q.due, q.paid, q.remaining, q.settled], [3000, 2500, 500, false]);
+  close(q.remaining, RB.vatBalanceAt(M, '2026-10-14'));
+  // اسم فترة غير معروف: يُنسب لآخر فترة انتهت قبل تاريخ السداد
+  const U = vatTwoQuarters();
+  U.vatPayments = [{ id: 'u', date: '2026-10-05', period: 'سداد ضريبة', account: 'bank', amount: 1500 }];
+  const u = RB.vatReturns(U, '2026-10-14');
+  assert.deepEqual(u.map((r) => [r.key, r.paid]), [['2026-Q2', 0], ['2026-Q3', 1500], ['2026-Q4', 0]]);
+  assert.equal(RB.vatLabelRange('الربع الثالث 2026').to, '2026-09-30');
+  assert.equal(RB.vatLabelRange('فبراير 2028').to, '2028-02-29');
+  assert.equal(RB.vatLabelRange('سداد ضريبة'), null);
+});
+
 test('إقرارات البيانات التجريبية: المستحق والرصيد الدائن كما في رصيد حساب الضريبة', () => {
   for (const today of ['2026-10-14', '2027-02-17', '2026-12-31']) {
     const S = RB.demoState(today);
@@ -454,6 +523,22 @@ test('عدد الأشهر في فترة: الشهر الكامل = 1 مهما ك
   assert.ok(RB.monthsIn('2026-10-14', '2026-10-01') > 0);
 });
 
+test('متوسط المحمّل شهرياً: الشهر الجاري يُحسب كاملاً لأن الإيجار والإهلاك يُحمّلان أول الشهر', () => {
+  close(RB.chargeMonths('2026-10-01', '2026-10-02'), 1, 1e-9);
+  close(RB.chargeMonths('2026-10-01', '2026-10-14'), 1, 1e-9);
+  close(RB.chargeMonths('2026-01-01', '2026-10-14'), 10, 1e-9);
+  close(RB.chargeMonths('2026-08-01', '2026-10-31'), 3, 1e-9);
+  // بداية من منتصف شهر: ذلك الشهر بأيامه (لم يدخل تحميل أول يومه)
+  close(RB.chargeMonths('2026-09-16', '2026-10-14'), 15 / 30 + 1, 1e-9);
+  // «هذا الشهر» في التجربة: متوسط الإيجار = إيجار الشهر 6,000 في اليوم 2 واليوم 14
+  for (const t of ['2026-10-02', '2026-10-14']) {
+    const D = RB.demoState(t);
+    const b = RB.balances(RB.buildLedger(D, t).entries, '2026-10-01', t);
+    close(b['5301'], 6000);
+    close(b['5301'] / RB.chargeMonths('2026-10-01', t), 6000);
+  }
+});
+
 test('نقطة التعادل من أشهر التشغيل الكاملة', () => {
   // فبراير: إيجار 6,000 شهرياً = 6,000 (لا 6,522 بقسمة 28 يوماً على 30.44)
   const S = base();
@@ -516,6 +601,18 @@ test('نقطة التعادل من أشهر التشغيل الكاملة', () =
   N.sales[0].date = '2026-08-15';
   const ns = RB.breakEven(N, '2026-01-01', t, null, t);
   assert.deepEqual([ns.basisFrom, ns.basisTo, ns.estimate], ['2026-09-01', '2026-09-30', false]);
+  // فترة كلها قبل الافتتاح (مايو في التجربة): أول شهر تشغيل كامل، لا تقدير من أشهر التأسيس
+  const may = RB.breakEven(D, '2026-05-01', '2026-05-31', RB.buildLedger(D, '2026-05-31'), t);
+  const jul = RB.breakEven(D, '2026-07-01', '2026-07-31', L, t);
+  assert.deepEqual([may.basisFrom, may.basisTo, may.estimate, may.fallback, may.beforeOpen], ['2026-07-01', '2026-07-31', false, false, true]);
+  close(may.fixedMonthly, jul.fixedMonthly);
+  close(may.beGross, jul.beGross, 1e-6);
+  assert.ok(may.revenue > 0);
+  // افتُتح حديثاً بلا شهر كامل: تقدير من أيام التشغيل حتى اليوم
+  N.settings.openingDate = '2026-10-01';
+  N.sales[0].date = '2026-10-02';
+  const nb = RB.breakEven(N, '2026-05-01', '2026-05-31', null, t);
+  assert.deepEqual([nb.basisFrom, nb.basisTo, nb.estimate, nb.beforeOpen], ['2026-10-01', t, true, true]);
 });
 
 function stockCase(reg, regFrom) {
@@ -619,11 +716,27 @@ test('أين ذهب رأس المال التأسيسي: الأصول التأس�
   close(cu2.used, cu.used);
   assert.deepEqual(cu2.laterAssets, { amount: 9200, count: 1 });
   close(cu2.vatRecoverable, cu.vatRecoverable);
-  // أصل تأسيسي بالآجل: خارج «المصروف على التأسيس»
-  S.assets.push({ id: 'owed', date: RB.addDays(pre, -5), name: 'ثلاجة بالآجل', category: 'kitchen', amount: 5000, includesVat: false, taxable: true, account: 'payable', supplier: 'شركة المعدات', lifeMonths: 60, salvage: 0 });
-  const cu3 = RB.capitalUses(S);
-  close(cu3.used, cu.used);
-  assert.deepEqual(cu3.laterAssets, { amount: 9200 + 5750, count: 2 });
+  // أصل تأسيسي بالآجل يُعامل كمشتريات ما قبل الافتتاح الآجلة: من «المصروف على التأسيس»،
+  // والمتبقي يبقى = الصندوق + البنك − المستحق للموردين عند الافتتاح
+  const reconcile = (st) => {
+    const c = RB.capitalUses(st);
+    const bb = RB.balances(RB.buildLedger(st, t).entries, null, pre);
+    close(c.remaining, (bb['1101'] || 0) + (bb['1102'] || 0) + (bb['2101'] || 0));
+    close(c.owedAtOpen, -(bb['2101'] || 0));
+    return c;
+  };
+  S.assets.push({ id: 'owed', date: RB.addDays(pre, -5), name: 'ثلاجة بالآجل', category: 'kitchen', amount: 10000, includesVat: false, taxable: true, account: 'payable', supplier: 'شركة المعدات', lifeMonths: 60, salvage: 0 });
+  const cu3 = reconcile(S);
+  close(cu3.used, cu.used + 11500);
+  close(cu3.remaining, cu.remaining - 11500);
+  assert.deepEqual(cu3.laterAssets, { amount: 9200, count: 1 });
+  // نفس المبلغ كفاتورة مشتريات آجلة قبل الافتتاح: نفس الأثر على المتبقي
+  const P = RB.demoState(t);
+  P.purchases.push({ id: 'pp', date: RB.addDays(pre, -5), supplier: 'مورد', category: 'food', account: 'payable', taxable: true, includesVat: false, lines: [{ qty: 1, price: 10000 }] });
+  close(reconcile(P).remaining, cu.remaining - 11500);
+  // سداد جزئي للمورد قبل الافتتاح لا يغيّر المتبقي (ينقص البنك والمستحق معاً)
+  S.supplierPayments = (S.supplierPayments || []).concat([{ id: 'sp', date: RB.addDays(pre, -2), supplier: 'شركة المعدات', account: 'bank', amount: 4000 }]);
+  close(reconcile(S).remaining, cu3.remaining);
   // غير مسجل: لا ضريبة مستردة
   S.settings.vatRegistered = false;
   assert.equal(RB.capitalUses(S).vatRecoverable, 0);

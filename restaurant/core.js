@@ -758,6 +758,9 @@
     }
     return total > 0 ? total : 1 / 31;
   };
+  // عدد الأشهر لمتوسط المحمّل شهرياً: الإيجار والمدفوع مقدماً والإهلاك تُحمّل كاملة أول كل شهر،
+  // فالشهر الذي دخل أول يومه في الفترة يُحسب كاملاً ولو لم ينتهِ (الشهر الجاري أو فترة تنتهي منتصف الشهر)
+  RB.chargeMonths = (from, to) => RB.monthsIn(from, RB.monthEnd(to.slice(0, 7)));
 
   RB.incomeStatement = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
@@ -917,8 +920,24 @@
     L = L || RB.buildLedger(S, date);
     return r2(-(RB.balances(L.entries, null, date)['2102'] || 0));
   };
-  // الإقرارات بالترتيب حتى تاريخ: مستحق كل فترة وحده، ولا يُرحّل إلا الرصيد الدائن لصالح المطعم.
+  // مدى فترة الإقرار من اسمها («الربع الثاني 2026» أو «مايو 2026»)، أياً كانت فترة الإقرار الحالية
+  RB.vatLabelRange = (label) => {
+    const y = /(\d{4})/.exec(String(label || ''));
+    if (!y) return null;
+    for (let m = 1; m <= 12; m++) {
+      const ym = y[1] + '-' + String(m).padStart(2, '0');
+      if (RB.monthName(ym) === label) return { from: ym + '-01', to: RB.monthEnd(ym) };
+    }
+    const q = ['الأول', 'الثاني', 'الثالث', 'الرابع'].findIndex((n) => label === 'الربع ' + n + ' ' + y[1]);
+    if (q < 0) return null;
+    const s = y[1] + '-' + String(q * 3 + 1).padStart(2, '0');
+    return { from: s + '-01', to: RB.monthEnd(RB.ymAdd(s, 2)) };
+  };
+  // الإقرارات بالترتيب حتى تاريخ: مستحق كل فترة وحده، ولا يُرحّل إلا ما هو لصالح المطعم:
+  // الرصيد الدائن من الإقرار (مدخلات أكبر من المخرجات) والدفعة الزائدة عن المستحق.
   // السداد يُنسب لفترته (period) مهما كان تاريخه، والمبلغ السالب استرداد من الهيئة.
+  // سداد باسم فترة غير موجودة الآن (تغيّرت فترة الإقرار أو تاريخ السريان) يُنسب للفترات التي يغطيها مداه،
+  // ويملأ مستحقها بالترتيب والباقي على آخرها؛ وما لا يُعرف مداه يُنسب لآخر فترة انتهت قبل تاريخ السداد.
   RB.vatReturns = (S, upTo, L) => {
     L = L || RB.buildLedger(S, upTo);
     let start = '';
@@ -932,19 +951,61 @@
     if (!start) return [];
     const regFrom = S.settings.vatRegisteredFrom;
     if (regFrom && regFrom > start) start = regFrom;
+    const pers = RB.vatPeriodsBetween(S, start, upTo);
+    if (!pers.length) return [];
+    const own = pers.map(() => []);
+    const loose = [];
+    for (const x of S.vatPayments || []) {
+      const amt = num(x.amount);
+      if (!amt) continue;
+      const i = pers.findIndex((q) => q.label === x.period);
+      if (i >= 0) {
+        own[i].push(amt);
+        continue;
+      }
+      const rg = RB.vatLabelRange(x.period);
+      let idx;
+      if (rg) {
+        if (rg.from > upTo) continue; // فترة لم تأتِ بعد في هذا العرض
+        idx = pers.map((q, j) => (q.to >= rg.from && q.from <= rg.to ? j : -1)).filter((j) => j >= 0);
+        if (!idx.length) idx = [0]; // فترة قبل بداية الإقرارات الحالية: تُحسب لصالح المطعم من أول إقرار
+      } else {
+        const j = pers.map((q) => q.to < (x.date || '')).lastIndexOf(true);
+        idx = [Math.max(0, j)];
+      }
+      loose.push({ idx, left: amt });
+    }
     const out = [];
     let credit = 0;
-    for (const q of RB.vatPeriodsBetween(S, start, upTo)) {
+    pers.forEach((q, i) => {
       const report = RB.vatReport(S, q.from, q.to, L);
-      const pays = (S.vatPayments || []).filter((x) => x.period === q.label).map((x) => num(x.amount));
-      const paid = r2(sum(pays.filter((a) => a > 0)));
-      const refund = r2(-sum(pays.filter((a) => a < 0)));
       const carried = credit ? -credit : 0;
-      const x = r2(report.net - credit + refund);
+      const x = r2(report.net - credit);
       const due = Math.max(0, x);
-      credit = Math.max(0, -x);
-      out.push(Object.assign({}, q, { report, net: report.net, carried, due, credit, paid, remaining: Math.max(0, r2(due - paid)), settled: due <= 0.01 || paid >= due - 0.01 }));
-    }
+      let paid = r2(sum(own[i].filter((a) => a > 0)));
+      let refund = r2(-sum(own[i].filter((a) => a < 0)));
+      for (const o of loose) {
+        if (!o.left || !o.idx.includes(i)) continue;
+        const last = i === o.idx[o.idx.length - 1];
+        if (o.left < 0) {
+          // الاسترداد على آخر فترة يغطيها
+          if (last) {
+            refund = r2(refund - o.left);
+            o.left = 0;
+          }
+          continue;
+        }
+        const need = Math.max(0, r2(due + refund - Math.max(0, -x) - paid));
+        const give = last ? o.left : Math.min(o.left, need);
+        paid = r2(paid + give);
+        o.left = r2(o.left - give);
+      }
+      // الموقف بعد السداد: موجب = لصالح المطعم يُرحّل، سالب = متبقٍ على هذه الفترة
+      const bal = r2(Math.max(0, -x) + paid - refund - due);
+      credit = Math.max(0, bal);
+      const remaining = Math.max(0, -bal);
+      out.push(Object.assign({}, q, { report, net: report.net, carried, due, credit, paid, refund, over: Math.max(0, r2(paid - refund - due)), remaining, settled: remaining <= 0.01 }));
+    });
     return out;
   };
   // المستحق لفترة إقرار مع ترحيل الرصيد الدائن من الفترات السابقة
@@ -953,7 +1014,7 @@
     const row = RB.vatReturns(S, p.to, L).find((r) => r.key === p.key);
     if (row) return row;
     const report = { sales: { base: 0, vat: 0 }, inputs: {}, inBase: 0, inVat: 0, paid: 0, net: 0 };
-    return Object.assign({}, p, { report, net: 0, carried: 0, due: 0, credit: 0, paid: 0, remaining: 0, settled: true });
+    return Object.assign({}, p, { report, net: 0, carried: 0, due: 0, credit: 0, paid: 0, refund: 0, over: 0, remaining: 0, settled: true });
   };
 
   // ملخص مبيعات القنوات في فترة
@@ -1105,14 +1166,15 @@
     const contributions = r2(sum((S.capital || []).filter((c) => c.type !== 'withdrawal'), (c) => num(c.amount)));
     let direct = 0;
     for (const e of L.entries) for (const l of e.lines) if (l.a.startsWith('cap:') && l.v < 0 && e.kind !== 'capital') direct = r2(direct - l.v);
-    // الأصول التأسيسية فقط: المشتراة حتى الافتتاح وغير الآجلة. ما بعدها أو بالآجل يُعرض للعلم ولا يُخصم
+    // الأصول التأسيسية فقط: المشتراة حتى الافتتاح (نقداً أو بالآجل، مثل مشتريات ومصاريف ما قبل الافتتاح).
+    // ما بعد الافتتاح يُعرض للعلم ولا يُخصم
     const assets = {};
     const laterAssets = { amount: 0, count: 0 };
     let vatRecoverable = 0;
     for (const a of S.assets || []) {
       const c = RB.assetCat(a.category);
       const sp = RB.costSplit(a.amount, a.includesVat, a.taxable, set, a.date);
-      if ((open && a.date > open) || a.account === 'payable') {
+      if (open && a.date > open) {
         laterAssets.amount = r2(laterAssets.amount + sp.gross);
         laterAssets.count++;
         continue;
@@ -1141,9 +1203,12 @@
     }
     preopen = { expenses: r2(preopen.expenses), purchases: r2(preopen.purchases), payroll: r2(preopen.payroll) };
     const sources = r2(contributions + direct);
-    // المصروف والمتبقي بالإجمالي المدفوع (نقدي)؛ ضريبة المدخلات المستردة معلومة فقط ولا تُضاف للمتبقي
+    // المصروف والمتبقي بالإجمالي شامل الضريبة؛ ضريبة المدخلات المستردة معلومة فقط ولا تُضاف للمتبقي.
+    // المتبقي = الصندوق + البنك − المستحق للموردين قبل الافتتاح (رأس المال العامل عند الافتتاح)
     const used = r2(sum(assetList, (a) => a.amount) + preopen.expenses + preopen.purchases + preopen.payroll);
-    return { contributions, direct, sources, assets: assetList, assetsTotal: r2(sum(assetList, (a) => a.amount)), preopen, used, remaining: r2(sources - used), open, laterAssets, vatRecoverable: r2(vatRecoverable) };
+    // منه ما بقي آجلاً على الموردين حتى الافتتاح (يُسدد من المتبقي)
+    const owedAtOpen = open ? Math.max(0, r2(-(RB.balances(L.entries, null, RB.addDays(open, -1))['2101'] || 0))) : 0;
+    return { contributions, direct, sources, assets: assetList, assetsTotal: r2(sum(assetList, (a) => a.amount)), preopen, used, remaining: r2(sources - used), open, laterAssets, vatRecoverable: r2(vatRecoverable), owedAtOpen };
   };
 
   // نقطة التعادل: كم يلزم من المبيعات شهرياً لتغطية المصاريف الثابتة.
@@ -1163,7 +1228,25 @@
     let wTo = lastFull;
     let estimate = false;
     let fallback = false;
-    if (wTo < wFrom) {
+    let beforeOpen = false;
+    if (first && end < first) {
+      // الفترة المختارة كلها قبل بداية التشغيل: الحساب من أول شهر تشغيل كامل حتى اليوم،
+      // وإلا فتقدير من أيام التشغيل المتاحة، وإن لم يبدأ التشغيل بعد فمن الفترة نفسها
+      beforeOpen = true;
+      const tFull = today === RB.monthEnd(today.slice(0, 7)) ? today : RB.addDays(today.slice(0, 7) + '-01', -1);
+      if (firstFull <= tFull) {
+        wFrom = firstFull;
+        wTo = RB.monthEnd(firstFull.slice(0, 7));
+      } else if (first <= today) {
+        estimate = true;
+        wFrom = first;
+        wTo = today;
+      } else {
+        estimate = true;
+        wFrom = from;
+        wTo = end;
+      }
+    } else if (wTo < wFrom) {
       wFrom = lastFull.slice(0, 7) + '-01';
       fallback = true;
       if (firstFull && wFrom < firstFull) {
@@ -1174,7 +1257,9 @@
         wTo = end;
       }
     }
-    const inc = RB.incomeStatement(S, wFrom, wTo, L || RB.buildLedger(S, wTo));
+    // الدفتر المعطى قد ينتهي قبل أساس الحساب (فترة قبل الافتتاح): يُبنى حتى نهاية الأساس
+    if (!L || (L.asOf && L.asOf < wTo)) L = RB.buildLedger(S, wTo);
+    const inc = RB.incomeStatement(S, wFrom, wTo, L);
     const months = RB.monthsIn(wFrom, wTo);
     const days = Math.max(RB.daysBetween(wFrom, wTo) + 1, 1);
     const rate = RB.isVatReg(set, today) ? num(set.vatRate) / 100 : 0;
@@ -1191,11 +1276,11 @@
       fixedParts: { labor: inc.tot.labor / months, occ: inc.tot.occ / months, opex: inc.tot.opex / months, dep: inc.tot.dep / months },
       beNet, beGross, beDaily, beOrders: sales.total.avgTicket ? beGross / sales.total.avgTicket : 0,
       avgTicket: sales.total.avgTicket, avgMonthlyNet, safety: avgMonthlyNet ? ((avgMonthlyNet - beNet) / avgMonthlyNet) * 100 : 0,
-      basisFrom: wFrom, basisTo: wTo, estimate, fallback,
+      basisFrom: wFrom, basisTo: wTo, estimate, fallback, beforeOpen,
       // ما استُبعد من الفترة المختارة (للتوضيح في التقرير)
-      cutEnd: !estimate && !fallback && wTo < end,
-      cutStart: !estimate && !fallback && wFrom > from && !(firstFull && from < firstFull),
-      preOpen: !estimate && !fallback && !!firstFull && from < firstFull,
+      cutEnd: !estimate && !fallback && !beforeOpen && wTo < end,
+      cutStart: !estimate && !fallback && !beforeOpen && wFrom > from && !(firstFull && from < firstFull),
+      preOpen: !estimate && !fallback && !beforeOpen && !!firstFull && from < firstFull,
     };
   };
 
