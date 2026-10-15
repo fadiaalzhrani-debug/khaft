@@ -394,14 +394,62 @@
     }
     return { sets, dels, known };
   };
+  // الإعدادات مستند واحد فيه حقول مستقلة (الأرصدة الافتتاحية، قنوات البيع، الأيام المغلقة، الضريبة، التأمينات…):
+  // كل حفظ يكتب المفاتيح التي غيّرها فقط (keys) فوق أحدث نسخة (base)، فلا تمحو نسخةُ جهاز وصلته التحديثات متأخرة، ولا
+  // نموذج فُتح قبل تعديل الشريك أو نافذة أخرى، ما حُفظ بعدها. keys غير قائمة = الإعدادات كلها (rec). لا تُعدَّل base ولا rec
+  RB.settingsWith = (base, rec, keys) => {
+    if (!Array.isArray(keys) || !isObj(base)) return JSON.parse(JSON.stringify(isObj(rec) ? rec : {}));
+    const out = JSON.parse(JSON.stringify(base));
+    for (const k of keys) {
+      if (typeof k !== 'string' || PROTO.includes(k)) continue;
+      if (!isObj(rec) || rec[k] === undefined) delete out[k];
+      else out[k] = JSON.parse(JSON.stringify(rec[k]));
+    }
+    return out;
+  };
+  // مفاتيح حفظ جديد للإعدادات ومعها مفاتيح كل حفظ سابق لها يجري الآن أو فشل (prev: [{keys}]): الحفظ الأحدث هو الذي
+  // يقرر النتيجة، فلا يضيع ما غيّره السابق إن فشل. حفظ سابق للإعدادات كلها (بلا keys) يجعل الجديد للإعدادات كلها
+  RB.settingsKeys = (prev, keys) => {
+    if (!Array.isArray(keys)) return undefined;
+    const out = new Set(keys);
+    for (const p of prev || []) {
+      if (!isObj(p)) continue;
+      if (!Array.isArray(p.keys)) return undefined;
+      for (const k of p.keys) out.add(k);
+    }
+    return [...out];
+  };
+  // سجلان بالمحتوى نفسه: ترتيب المفاتيح لا يُعتد به (المستند من البيانات المشتركة قد يأتي بترتيب آخر)، ولا علامة _bad
+  const canon = (x) => JSON.stringify(x, (k, v) => (k === '_bad' ? undefined : isObj(v) ? Object.keys(v).sort().reduce((o, z) => ((o[z] = v[z]), o), {}) : v));
+  RB.sameRec = (a, b) => canon(a) === canon(b);
+  // حفظ نموذج تعديل سجل عدّله الشريك أو نافذة أخرى بعد فتحه: ما غيّره المستخدم في النموذج وحده يُكتب فوق أحدث نسخة
+  // للسجل، فلا تعود حقول الآخر إلى ما كانت عليه. orig: السجل حين فُتح النموذج، start: قيمة النموذج حين فُتح (بعد تجهيزه)،
+  // form: قيمته الآن، cur: السجل الآن. يرجع {rec، clash: الحقول التي غيّرها الاثنان إلى قيمتين مختلفتين (يُسأل عنها)}
+  RB.editMerge = (orig, start, form, cur) => {
+    const keys = new Set([...Object.keys(start || {}), ...Object.keys(form || {})]);
+    keys.delete('id');
+    keys.delete('_bad');
+    const at = (o, k) => (isObj(o) ? o[k] : undefined);
+    const mine = [...keys].filter((k) => !RB.sameRec(at(form, k), at(start, k)));
+    const rec = JSON.parse(JSON.stringify(cur));
+    delete rec._bad;
+    for (const k of mine) {
+      if (PROTO.includes(k)) continue;
+      if (at(form, k) === undefined) delete rec[k];
+      else rec[k] = JSON.parse(JSON.stringify(form[k]));
+    }
+    const clash = mine.filter((k) => !RB.sameRec(at(cur, k), at(orig, k)) && !RB.sameRec(at(form, k), at(cur, k)));
+    return { rec, clash };
+  };
   // لقطة قسم من البيانات المشتركة ومعها ما فشل حفظه من هذه الصفحة ولم يُحفظ بعده (unsaved: [{section, id, rec}]؛
-  // rec = null للحذف، وللإعدادات rec الإعدادات كلها): ما في الشاشة يبقى كما أدخله المستخدم. لا تُعدَّل data
+  // rec = null للحذف، وللإعدادات rec الإعدادات كلها ومعها keys ما غيّره الحفظ منها): ما في الشاشة يبقى كما أدخله
+  // المستخدم، وما حفظه الشريك في مفاتيح الإعدادات الأخرى يظهر. لا تُعدَّل data
   RB.withUnsaved = (section, data, unsaved) => {
     let out = data;
     for (const u of unsaved || []) {
       if (!isObj(u) || u.section !== section) continue;
       if (section === 'settings') {
-        if (isObj(u.rec)) out = JSON.parse(JSON.stringify(u.rec));
+        if (isObj(u.rec)) out = RB.settingsWith(out, u.rec, u.keys);
         continue;
       }
       out = (Array.isArray(out) ? out : []).filter((x) => !(isObj(x) && String(x.id) === String(u.id)));
@@ -456,6 +504,8 @@
       },
       has: (path) => bad.has(path),
       busy: (path) => last.has(path),
+      // ما يجري حفظه الآن للمستند وما فشل حفظه (لدمج مفاتيح الإعدادات في الحفظ التالي)
+      keeps: (path) => [inflight.get(path), bad.get(path)].filter(isObj),
       get size() {
         return bad.size;
       },

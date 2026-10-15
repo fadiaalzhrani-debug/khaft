@@ -15,11 +15,13 @@
   // syncLost: انقطع التحديث المباشر. replacing: استيراد أو مسح جارٍ في البيانات المشتركة من هذه الصفحة.
   // replaceFailed: لم يكتمل ذلك (state: الدفتر المطلوب حفظه). replaceMarker: علامة config/replace كما في البيانات المشتركة.
   // retrying: إعادة حفظ ما لم يُحفظ جارية (زر «أعد المحاولة»). revoked: توقف الوصول إلى البيانات المشتركة (نهائي لهذه
-  // الزيارة، وسببه لا تذكره المنصة: صلاحية أو مشاركة أو إتاحة) فلا تعديل ولا «أعد المحاولة» بعده
+  // الزيارة، وسببه لا تذكره المنصة: صلاحية أو مشاركة أو إتاحة) فلا تعديل ولا «أعد المحاولة» بعده.
+  // noShared: الصفحة داخل Claude (Artifact) والبيانات المشتركة غير متاحة في هذه الزيارة: لا يُبدأ دفتر خاص بهذا المتصفح
+  // (لا يراه الشريك)، وتُعرض التجربة أو نسخة خاصة من زيارة سابقة مع شريط دائم
   const APP = {
     mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false,
     save: { pending: 0, failed: null }, canWrite: null, readOnly: false, syncLost: false, noStorage: false,
-    replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false, retrying: false, revoked: false,
+    replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false, retrying: false, revoked: false, noShared: false,
   };
   // معرّف هذه الزيارة: يميّز علامة الاستيراد التي كتبتها هذه الصفحة عن علامة جهاز آخر
   const SID = Math.random().toString(36).slice(2, 10);
@@ -207,7 +209,7 @@
       this.kind = 'local';
       this.key = 'rb-restaurant-books-v1';
       this.t = null;
-      this.pending = []; // {op: 'put'|'del'|'settings', section, rec|id|s}
+      this.pending = []; // {op: 'put'|'del'|'settings', section, rec|id|s, keys}
       this.raw = null; // آخر نص قرأته هذه النافذة أو كتبته
     }
     async load() {
@@ -217,7 +219,8 @@
     // تطبيق العمليات المنتظرة على نسخة من الدفتر (بالمعرّف)
     apply(st) {
       for (const p of this.pending) {
-        if (p.op === 'settings') st.settings = clone(p.s);
+        // الإعدادات: المفاتيح التي غيّرها الحفظ فقط فوق آخر نسخة مخزنة (ما حفظته نافذة أخرى في غيرها يبقى)
+        if (p.op === 'settings') st.settings = RB.settingsWith(st.settings, p.s, p.keys);
         else if (p.op === 'put') {
           const arr = st[p.section];
           const i = arr.findIndex((x) => String(x.id) === String(p.rec.id));
@@ -269,8 +272,8 @@
       this.pending.push({ op: 'del', section, id });
       this.schedule();
     }
-    saveSettings(s) {
-      this.pending.push({ op: 'settings', s: clone(s) });
+    saveSettings(s, keys) {
+      this.pending.push({ op: 'settings', s: clone(s), keys });
       this.schedule();
     }
     // استبدال الدفتر كله (البداية، الاستيراد، المسح): يُكتب كما هو وتُلغى العمليات المنتظرة
@@ -334,11 +337,18 @@
         return 'البيانات المشتركة غير متاحة في هذه الصفحة.';
       case 'resource_exhausted':
         return 'طلبات كثيرة على البيانات المشتركة. انتظر قليلاً ثم أعد المحاولة.';
+      case 'busy':
+        return BUSY_MSG;
       default:
         return 'تعذّر الحفظ في البيانات المشتركة (انقطاع مؤقت). أعد المحاولة بعد قليل.';
     }
   }
 
+  // استيراد أو مسح أو بداية دفتر جارية في البيانات المشتركة من جهاز آخر: لا تبدأ عملية ثانية فوقها (يُخلط الدفتران)
+  const BUSY_MSG = 'جهاز آخر يستورد أو يمسح البيانات المشتركة الآن — انتظر حتى ينتهي ثم أعد المحاولة.';
+  // عقد استبدال الدفتر (config/replacelock): يُجدَّد كل ثلث مدته ما دامت العملية جارية، فإن توقفت الصفحة انتهى بعد
+  // 30 ثانية ولا يمنع غيرها
+  const LEASE_MS = 30000;
   class CloudBackend {
     constructor(db) {
       this.kind = 'cloud';
@@ -518,13 +528,26 @@
     del(section, id) {
       return this.save({ section, id, rec: null });
     }
-    saveSettings(settings) {
-      return this.save({ section: 'settings', id: 'settings', rec: clone(settings) });
+    // keys: مفاتيح الإعدادات التي غيّرها هذا الحفظ، ومعها مفاتيح حفظ سابق للإعدادات يجري أو فشل (لا يضيع إن فشل)
+    saveSettings(settings, keys) {
+      const k = RB.settingsKeys(this.bad.keeps('config/settings'), keys);
+      return this.save(Object.assign({ section: 'settings', id: 'settings', rec: clone(settings) }, k ? { keys: k } : {}));
     }
     // كتابة مستند كما يصفه keep ({section, id, rec}؛ rec = null للحذف): الحفظ العادي وإعادة المحاولة بالطريقة نفسها
     save(keep, onErr) {
       const { section, id, rec } = keep;
-      if (section === 'settings') return this.write('config/settings', () => this.db.doc('config/settings').set(rec), section, keep, onErr);
+      if (section === 'settings') {
+        // المفاتيح التي غيّرها الحفظ فقط تُكتب فوق أحدث نسخة مشتركة: نسخة هذا الجهاز قد تكون أقدم (تحديثات تصل متأخرة،
+        // أو نموذج فُتح قبل تعديل الشريك) فلا تمحو ما حفظه الشريك في غيرها. القراءة والكتابة متتاليتان في سلسلة المستند
+        const ref = this.db.doc('config/settings');
+        const fn = keep.keys
+          ? async () => {
+              const d = await ref.get();
+              return ref.set(RB.settingsWith(d.exists ? d.data() : null, rec, d.exists ? keep.keys : null));
+            }
+          : () => ref.set(rec);
+        return this.write('config/settings', fn, section, keep, onErr);
+      }
       const fn = rec ? () => this.db.collection(section).doc(id).set(rec) : () => this.db.collection(section).doc(id).delete();
       return this.write(section + '/' + id, fn, section, keep, onErr);
     }
@@ -533,14 +556,38 @@
     mark(status) {
       return this.chain('config/replace', () => this.db.doc('config/replace').set({ status, at: new Date().toISOString(), by: SID }));
     }
+    // عقد قصير على config/replacelock (مستند لا يُحذف): جهاز واحد فقط يستبدل الدفتر في الوقت نفسه، ولو بدأ جهازان معاً
+    // قبل أن يرى أحدهما علامة الآخر. يرجع false إن كان العقد مع جهاز آخر (تجديده من هذه الصفحة يرجع true).
+    // منصة بلا acquire: بلا عقد (تكفي العلامة)
+    async lease(ms) {
+      const ref = this.db.doc('config/replacelock');
+      if (typeof ref.acquire !== 'function') return true;
+      const r = await this.retry(() => ref.acquire({ holder: SID, ttlMs: ms || LEASE_MS }));
+      return !!(r && r.acquired);
+    }
     // استبدال الدفتر المشترك كله: العلامة أثناء العملية، ثم كتابة كل السجلات، ثم حذف القديمة،
     // ثم الإعدادات أخيراً. أي فشل يوقف الباقي، والإعادة آمنة (تكتب نفس الشيء). يرجع {ok, failed, dels, code, before}:
     // failed سجلات الدفتر المطلوب التي لم تُكتب بعد، وdels السجلات القديمة التي لم تُحذف بعد (والإعدادات آخراً)
     // before: المستندات التي كانت موجودة حين بدأت العملية أول مرة وما كتبته العملية. عند إكمال عملية فشلت
     // يُمرَّر prev = before، فلا يُحذف إلا منها: ما أضافه الشريك بعد الفشل يبقى
+    // busy (untouched: لم يُكتب شيء): جهاز آخر يستبدل الدفتر الآن (علامته جارية أو العقد معه)، أو فقدت هذه الصفحة
+    // العقد أثناء الكتابة (تأخر تجديده حتى أخذه جهاز آخر) فتتوقف ولا تكتب علامة فوق علامته
     async replaceAll(state, progress, prev) {
       const bad = RB.badIds(state);
       if (bad.length) return { ok: false, failed: countRecs(state), code: 'invalid_id', badIds: bad, before: prev };
+      const run = { done: 0, failed: false, code: null };
+      let renew = null;
+      try {
+        return await this.replaceRun(state, progress, prev, run, (t) => (renew = t));
+      } finally {
+        // لا فعل لتحرير العقد: يُجدَّد بأقصر مدة (ثانية) فلا ينتظر جهاز آخر انتهاء مدته بعد انتهاء العملية
+        if (renew) {
+          clearInterval(renew);
+          this.lease(1000).catch(() => {});
+        }
+      }
+    }
+    async replaceRun(state, progress, prev, run, onRenew) {
       let marked = false;
       const fail = (e) => {
         if (marked) this.mark('failed').catch(() => {});
@@ -548,6 +595,22 @@
       };
       let plan;
       try {
+        const m = await this.retry(() => this.db.doc('config/replace').get());
+        const live = m.exists && RB.replaceMarkerState(clone(m.data() || {}), Date.now(), SID) === 'running';
+        if (live || !(await this.lease())) return { ok: false, code: 'busy', untouched: true, failed: 0, before: prev };
+        onRenew(
+          setInterval(() => {
+            this.lease().then(
+              (ok) => {
+                if (!ok && !run.failed) {
+                  run.failed = true;
+                  run.code = 'busy';
+                }
+              },
+              () => {}
+            );
+          }, LEASE_MS / 3)
+        );
         await this.mark('running');
         marked = true;
         // السجلات القديمة لكل المجموعات تُقرأ معاً
@@ -566,7 +629,6 @@
       const dels = plan.dels.map(([k, id]) => [k + '/' + id, () => this.db.collection(k).doc(id).delete()]);
       const st = clone(state.settings);
       const total = sets.length + dels.length + 1;
-      const run = { done: 0, failed: false, code: null };
       let beat = Date.now();
       if (progress) progress(0, total);
       const phase = async (jobs) => {
@@ -597,11 +659,18 @@
       const delsDone = run.done - setsDone;
       if (!run.failed) await phase([['config/settings', () => this.db.doc('config/settings').set(st)]]);
       if (run.failed) {
-        this.mark('failed').catch(() => {});
+        // العقد مع جهاز آخر الآن: علامته الجارية تبقى
+        if (run.code !== 'busy') this.mark('failed').catch(() => {});
         return { ok: false, failed: nSets - setsDone, dels: nDels - delsDone, code: run.code, before };
       }
       try {
-        await this.chain('config/replace', () => this.db.doc('config/replace').delete());
+        // العلامة تُحذف إن كانت لهذه الصفحة فقط: لا يزول تنبيه عملية بدأها جهاز آخر بعدها
+        await this.chain('config/replace', async () => {
+          const ref = this.db.doc('config/replace');
+          const d = await ref.get();
+          if (d.exists && RB.isObj(d.data()) && d.data().by !== SID) return;
+          await ref.delete();
+        });
       } catch (e) {
         /* تبقى العلامة فيظهر تنبيه في الزيارة القادمة */
       }
@@ -620,9 +689,9 @@
     if (APP.demo) return demoNote();
     APP.backend.del(section, id);
   }
-  function persistSettings() {
+  function persistSettings(keys) {
     if (APP.demo) return demoNote();
-    APP.backend.saveSettings(S.settings);
+    APP.backend.saveSettings(S.settings, keys);
   }
   function demoNote() {
     if (APP.warnedDemo) return;
@@ -639,6 +708,14 @@
     toast(roMsg(), 'bad');
     return true;
   }
+  // بدء دفتر أو استيراده أو مسحه والبيانات المشتركة غير متاحة: يُكتب في هذا المتصفح وحده فلا يراه الشريك، ولا تعرضه
+  // الزيارات التي تتاح فيها البيانات المشتركة
+  const NO_SHARED_MSG = 'البيانات المشتركة غير متاحة في هذه الزيارة، فلا يُبدأ دفتر ولا يُستورد ولا يُمسح هنا: لن يراه شريكك. أعد تحميل الصفحة، أو افتحها من Claude وأنت مسجّل الدخول.';
+  function noSharedBlock() {
+    if (!APP.noShared) return false;
+    toast(NO_SHARED_MSG, 'bad');
+    return true;
+  }
 
   function bump() {
     VER++;
@@ -646,6 +723,9 @@
   }
   // السجل بمعرّفه في قسم (الإعدادات ليست قائمة سجلات: لا شيء)
   const find = (section, id) => (Array.isArray(S[section]) ? S[section].find((x) => String(x.id) === String(id)) : undefined);
+  // تعديل سجل محفوظ يُفتح نموذجه الآن (ACT.edit): القسم والسجل كما كان حين فُتح، يأخذه formModal ليُعرف عند الحفظ أعدّله
+  // الشريك أو نافذة أخرى بعدها أم حذفه
+  let EDIT_OF = null;
   // ما حفظه النموذج المفتوح (أول سجل: فاتورة المشتريات قبل أسعار موادها): ليُعرف بعد الحفظ أظاهر هو في الصفحة أم لا
   let saveLog = null;
   function upsert(section, rec) {
@@ -671,10 +751,12 @@
     bump();
     persistDel(section, id);
   }
-  function saveSettings() {
+  // keys: مفاتيح الإعدادات التي غيّرها هذا الحفظ (opening، channels…): تُكتب وحدها فوق أحدث نسخة محفوظة، فلا تمحو نسخةُ
+  // هذه الصفحة (قد تكون أقدم) ما حفظه الشريك أو نافذة أخرى في غيرها. بلا keys تُحفظ الإعدادات كلها
+  function saveSettings(keys) {
     bump();
     if (APP.readOnly && !APP.demo) return;
-    persistSettings();
+    persistSettings(keys);
   }
 
   // ═════════════ أدوات الواجهة ═════════════
@@ -982,20 +1064,33 @@
     return true;
   }
 
+  // النماذج المفتوحة: معاينتها وحساباتها وتلميحاتها تتحدث حين تتغير البيانات من الخارج (الشريك أو نافذة أخرى)، كتنبيه
+  // «يوجد إقفال مسجل لهذا اليوم» حين يحفظ الشريك إقفال اليوم نفسه. الحقول نفسها لا تُلمس
+  const OPEN_FORMS = new Set();
+  // أسماء حقول السجل التي لا حقل واحد لها في النموذج (لرسالة التعديل المتزامن): مبالغ القنوات في الإقفال جدول مرسوم
+  const KEY_NAME = { channels: 'مبالغ القنوات' };
   // o.onChange(path, val) يرجع 'redraw' إذا غيّر حقولاً أخرى فيُعاد رسم النموذج فوراً لتظهر قيمها الجديدة
   // (حتى أثناء كتابة التاريخ: الحقل نفسه لا يُمس). o.onLeave(path, val): عند مغادرة الحقل (انتهاء تعديله)،
   // ويرجع 'redraw' إن غيّر شيئاً. o.focus: محدد CSS للحقل الذي يبدأ عنده التركيز
   function formModal(o) {
     const val = clone(o.value || {});
+    // نموذج تعديل سجل محفوظ (من ✎): السجل كما كان حين فُتح (لا نموذجاً آخر فتحه هذا النموذج بدلاً منه)
+    const editOf = EDIT_OF && RB.isObj(o.value) && String(o.value.id) === String(EDIT_OF.rec.id) ? EDIT_OF : null;
+    EDIT_OF = null;
+    // فُتح في البيانات التجريبية أم في دفتر المطعم: قيمه (موظفون وأصناف ومبالغ) من ذلك الدفتر وحده
+    const demoAt = APP.demo;
     // تغيّرت بيانات النموذج عما فُتح به (لقطة بعد أول رسم)، فالإغلاق بلا حفظ يُسأل عنه أولاً. ما عُدّل ثم أُعيد
     // كما كان لا يُسأل عنه
     let snap = null;
     const dirty = () => snap !== null && JSON.stringify(val) !== snap;
+    const refresh = () => !drawing && upd();
     const m = openModal({
       title: o.title,
       wide: o.wide,
       beforeClose: () => !dirty() || confirmBox('لم تُحفظ البيانات التي أدخلتها. هل تريد تجاهلها وإغلاق النموذج؟', { danger: true, ok: 'تجاهل وإغلاق' }),
+      onClose: () => OPEN_FORMS.delete(refresh),
     });
+    if (demoAt && !o.anyBooks) m.el.dataset.demoForm = '1';
     const fields = () => (typeof o.fields === 'function' ? o.fields(val) : o.fields);
     let saving = false;
     // drawing يمنع رسماً داخل رسم (حدث يطلقه حذف العنصر المركَّز أثناء innerHTML)، ويُعاد الرسم بعده مرة واحدة
@@ -1278,8 +1373,42 @@
       const msg = [missing.length ? (missing.length > 1 ? 'أكمل الحقول: ' : 'أكمل الحقل: ') + missing.join('، ') : '', ...other].filter(Boolean).join(' · ');
       return { errs: out, first, msg };
     }
+    const keyName = (k) => {
+      const all = flatFields(fields()).filter((f) => f.k && f.label);
+      const f = all.find((x) => x.k === k);
+      const sub = all.find((x) => x.k.startsWith(k + '.'));
+      return f ? f.label : KEY_NAME[k] || FIELD_NAME[k] || (sub ? sub.label : k);
+    };
+    // السجل تغيّر بعد فتح النموذج (الشريك أو نافذة أخرى): لا يُكتب فوقه بصمت. حُذف: يُسأل أيُعاد إنشاؤه. عُدّل: ما غيّره
+    // المستخدم في النموذج وحده يُكتب فوق أحدث نسخة (تبقى تعديلات الآخر في حقولها)، ويُسأل إن غيّرا الحقل نفسه.
+    // يرجع ما يُحفظ، أو null إن ألغى المستخدم (يبقى النموذج مفتوحاً)
+    let mergedNote = false;
+    async function editedSince(v) {
+      mergedNote = false;
+      const cur = find(editOf.s, editOf.rec.id);
+      if (!cur) return (await confirmBox('حُذف هذا السجل بعد أن فتحته — حذفه شريكك أو نافذة أخرى، أو مُسحت البيانات. هل تعيد إنشاءه بما في النموذج؟', { ok: 'أعد إنشاءه' })) ? v : null;
+      if (RB.sameRec(cur, editOf.rec)) return v;
+      const mg = RB.editMerge(editOf.rec, JSON.parse(snap), v, cur);
+      // ما وافق عليه المستخدم مرة لا يُسأل عنه ثانية إن رُفض الحفظ لسبب آخر ثم أُعيد
+      if (mg.clash.length && !(editOf.seen && RB.sameRec(cur, editOf.seen))) {
+        const names = [...new Set(mg.clash.map(keyName))].map((x) => '«' + esc(x) + '»').join('، ');
+        const one = mg.clash.length === 1;
+        if (!(await confirmBox(`عدّل شريكك أو نافذة أخرى هذا السجل بعد أن فتحته، وغيّرتَ أنت أيضاً ${names}. الحفظ يضع ما في النموذج مكان تعديله في ${one ? 'هذا الحقل' : 'هذه الحقول'}، وتبقى تعديلاته في غيرها. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return null;
+        editOf.seen = clone(cur);
+      }
+      mergedNote = true;
+      return mg.rec;
+    }
     async function submit() {
       if (saving) return;
+      // تغيّر الدفتر المعروض بعد فتح النموذج: بدأ الشريك أو نافذة أخرى دفتر المطعم والنموذج من التجربة، أو مُسح الدفتر
+      // في نافذة أخرى فعُرضت التجربة. لا يُحفظ في دفتر لم يُفتح منه (o.anyBooks: معالج البداية يتحقق بنفسه)
+      if (APP.demo !== demoAt && !o.anyBooks) {
+        toast(demoAt ? 'فُتح دفتر المطعم بعد أن فتحت هذا النموذج في البيانات التجريبية، فأُغلق دون حفظ: لا يُحفظ شيء من التجربة في دفترك.' : 'عُرضت البيانات التجريبية بعد أن فتحت هذا النموذج (مُسح الدفتر في نافذة أخرى)، فأُغلق دون حفظ.', 'bad');
+        m.close();
+        render();
+        return;
+      }
       // إعادة رسم مؤجلة لم تحدث بعد: تُرسم أولاً، وإن غيّرت شيئاً على الشاشة (حقلاً أو سطراً) لا يُحفظ قبل أن
       // يراه المستخدم — فلا يُحفظ أبداً ما لم يُعرض
       if (pending) {
@@ -1310,11 +1439,13 @@
       saving = true;
       let log = null;
       try {
+        let out = clone(val);
+        if (editOf && !APP.readOnly && !(out = await editedSince(out))) return;
         // onSave يعمل على نسخة: الحفظ المرفوض (رسالة خطأ أو إلغاء التأكيد) لا يغيّر بيانات النموذج المفتوح،
         // فتبقى الأسطر على الشاشة هي البيانات نفسها (كان حذف السطر الفارغ قبل الرفض يزيح أرقام الأسطر).
         // الرفض نص (رسالة)، أو {msg, path, inline}: الخطأ تحت حقله (aria-invalid) والتركيز إليه كأخطاء التحقق
         saveLog = log = [];
-        const res = await o.onSave(clone(val));
+        const res = await o.onSave(out);
         saveLog = null;
         if (typeof res === 'string' || (res && typeof res === 'object' && res.msg)) {
           const r = typeof res === 'string' ? { msg: res } : res;
@@ -1333,6 +1464,7 @@
         m.close();
         render();
         savedHint(log, o.done);
+        if (mergedNote) toast('عدّل شريكك أو نافذة أخرى هذا السجل بعد أن فتحته — حُفظ ما غيّرته أنت، وبقيت تعديلاته في الحقول الأخرى.');
       } finally {
         saving = false;
         if (saveLog === log) saveLog = null;
@@ -1346,6 +1478,7 @@
     m.foot.querySelector('[data-save]').addEventListener('click', submit);
     draw();
     snap = JSON.stringify(val);
+    OPEN_FORMS.add(refresh);
     const first = (o.focus && m.body.querySelector(o.focus)) || m.body.querySelector('input:not([type=checkbox]),select,textarea');
     if (first && !o.noFocus) first.focus();
     return m;
@@ -3136,7 +3269,13 @@
   PAGES.settings = () => {
     const st = S.settings;
     const backend = APP.backend ? APP.backend.kind : '';
-    const where = APP.demo ? 'وضع التجربة — لا يُحفظ شيء' : backend === 'cloud' ? 'قاعدة بيانات مشتركة لهذه الصفحة: يراها ويعدّلها كل من لديه صلاحية التعديل عليها (مثل شريكك).' : 'هذا المتصفح على هذا الجهاز فقط. اجعل الإدخال من جهاز واحد، وصدّر نسخة احتياطية بانتظام. الاستيراد يستبدل كل البيانات ولا يدمجها؛ للعمل مع شريكك على نفس الدفتر استخدما نسخة Claude المشتركة.';
+    const where = APP.noShared
+      ? APP.demo
+        ? 'البيانات المشتركة غير متاحة في هذه الزيارة — بيانات تجريبية لا يُحفظ منها شيء'
+        : 'نسخة خاصة بهذا المتصفح من زيارة سابقة لم تتح فيها البيانات المشتركة — لا يراها شريكك. صدّرها نسخة احتياطية.'
+      : APP.demo
+        ? 'وضع التجربة — لا يُحفظ شيء'
+        : backend === 'cloud' ? 'قاعدة بيانات مشتركة لهذه الصفحة: يراها ويعدّلها كل من لديه صلاحية التعديل عليها (مثل شريكك).' : 'هذا المتصفح على هذا الجهاز فقط. اجعل الإدخال من جهاز واحد، وصدّر نسخة احتياطية بانتظام. الاستيراد يستبدل كل البيانات ولا يدمجها؛ للعمل مع شريكك على نفس الدفتر استخدما نسخة Claude المشتركة.';
     const kv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
     let h = pageHead('الإعدادات والنسخ الاحتياطي', 'بيانات المطعم، الضريبة، نسب التأمينات، قنوات البيع، والنسخ الاحتياطي');
     h += `<div class="grid2">`;
@@ -3155,8 +3294,8 @@
     h += card(
       'الحفظ والنسخ الاحتياطي',
       `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}${backend === 'local' && !APP.demo ? `<br>آخر نسخة احتياطية من هذا المتصفح: ${lastBackupText()}` : ''}</p>
-      <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}${btn('استيراد نسخة', 'import', '', 'ghost')}<input type="file" accept=".json,application/json" id="importFile" hidden></div>
-      <div class="btn-row">${APP.demo ? (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary') : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary')) : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + btn('مسح كل البيانات', 'wipe', '', 'danger ghost')}</div>`
+      <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}${APP.noShared ? '' : btn('استيراد نسخة', 'import', '', 'ghost')}<input type="file" accept=".json,application/json" id="importFile" hidden></div>
+      <div class="btn-row">${APP.demo ? (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary') : APP.noShared ? '' : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary')) : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + (APP.noShared ? '' : btn('مسح كل البيانات', 'wipe', '', 'danger ghost'))}</div>`
     );
     h += `</div>`;
     h += card(
@@ -4325,6 +4464,8 @@
     const chs = S.settings.channels.filter((c) => c.active !== false || (isEdit && rec.channels && rec.channels[c.id]));
     // اليوم الافتراضي: المطلوب (من تنبيه يوم بلا إقفال)، أو أمس إن كان آخر إقفال قبله مباشرة (إقفال الأمس صباحاً)، وإلا اليوم
     const lastClose = good(S.sales).reduce((m, z) => (z.date > m ? z.date : m), '');
+    // الإقفالات حين فُتح النموذج: إقفال لليوم نفسه يصل بعدها (الشريك أو نافذة أخرى) يُسأل عنه عند الحفظ
+    const known = new Set(S.sales.map((z) => String(z.id)));
     const yest = RB.addDays(today(), -1);
     const day0 = RB.isISODate(x) ? x : lastClose && RB.addDays(lastClose, 1) === yest ? yest : today();
     const base = { id: RB.uid(), date: day0, channels: {}, items: [], note: '' };
@@ -4394,7 +4535,7 @@
         const twice = !isEdit && S.sales.some((s) => s.date === v.date && s.id !== v.id) ? `<p class="note bad">يوجد إقفال مسجل لهذا اليوم. الحفظ يضيف إقفالاً ثانياً (مثلاً وردية مسائية).</p>` : '';
         return `${twice}<div class="pv-grid"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
       },
-      onSave: (v) => {
+      onSave: async (v) => {
         // خانات القنوات ليست حقولاً في النموذج (جدول مرسوم): خطؤها تحت خانتها هنا
         for (const id of Object.keys(v.channels))
           for (const k of ['amount', 'orders']) if (num(v.channels[id][k]) < 0) return { msg: 'المبالغ والطلبات لا تكون سالبة', path: `channels.${id}.${k}`, inline: 'لا تكون سالبة' };
@@ -4419,6 +4560,10 @@
           };
         }
         if (!Object.keys(out).length) return { msg: 'أدخل مبيعات قناة واحدة على الأقل.', path: chs.length ? `channels.${chs[0].id}.amount` : '', inline: 'أدخل مبيعات قناة واحدة على الأقل' };
+        // إقفال لليوم نفسه سُجّل بعد فتح النموذج: الشريكان يُدخلان إقفال المساء معاً غالباً، وتنبيه المعاينة قد لا يُرى
+        // قبل الحفظ، والإقفال الثاني يضاعف مبيعات اليوم وضريبته ونقده. إقفال كان قبل فتحه ظهر تنبيهه عند اختيار اليوم
+        const late = !isEdit && good(S.sales).some((z) => z.date === v.date && z.id !== v.id && !known.has(String(z.id)));
+        if (late && !(await confirmBox(`سُجّل إقفال لـ ${esc(dtText(v.date))} بعد أن فتحت هذا النموذج (ربما من شريكك أو من نافذة أخرى). هل تحفظ إقفالاً ثانياً لليوم نفسه (وردية أخرى مثلاً)؟`, { ok: 'احفظ إقفالاً ثانياً' }))) return false;
         v.channels = out;
         v.items = (v.items || []).filter((i) => i.productId && num(i.qty));
         upsert('sales', v);
@@ -4728,7 +4873,7 @@
         const di = ids.findIndex((id, i) => id && ids.indexOf(id) !== i);
         if (di >= 0) return { msg: 'الموظف مكرر في مخصص نهاية الخدمة: ' + ((empOf(ids[di]) || {}).name || '') + '. اجمع مخصصه في سطر واحد.', path: `eosb.${di}.employeeId`, inline: 'مكرر' };
         S.settings.opening = c;
-        saveSettings();
+        saveSettings(['opening']);
       },
       done: 'حُفظت الأرصدة الافتتاحية.',
     });
@@ -4751,13 +4896,14 @@
         else S.settings.channels.push(v);
         // خطوة البداية «راجع الإعدادات» تكتمل بحفظ أي نموذج إعدادات أو قناة
         S.settings.reviewedAt = new Date().toISOString();
-        saveSettings();
+        saveSettings(['channels', 'reviewedAt']);
       },
     });
   }
 
+  // النموذج يُفتح بنسخة من الإعدادات للعرض والتحقق، ويكتب حقوله وحدها فوق الإعدادات الحالية عند الحفظ (S.settings تتحدث
+  // أثناء فتحه بما يحفظه الشريك أو نافذة أخرى: قناة جديدة، أرصدة افتتاحية، يوم مغلق… فتبقى)
   function settingsForm(which) {
-    const st = S.settings;
     const defs = {
       general: [
         { k: 'name', label: 'اسم المطعم', req: 1 },
@@ -4778,7 +4924,7 @@
           type: 'date',
           label: 'تاريخ سريان التسجيل في الضريبة (من شهادة التسجيل)',
           show: (x) => x.vatRegistered,
-          req: !st.vatRegistered && v.vatRegistered && hasVatData() ? 1 : 0,
+          req: !S.settings.vatRegistered && v.vatRegistered && hasVatData() ? 1 : 0,
           help: 'اتركه فارغاً إن كان المطعم مسجلاً منذ البداية؛ العمليات قبله بلا ضريبة مخرجات ولا تُسترد ضريبة مشترياتها',
         },
         { type: 'row', fields: [{ k: 'vatNumber', label: 'الرقم الضريبي' }, { k: 'vatRate', type: 'num', label: 'نسبة الضريبة %', req: 1, min: 0, max: 100, check: (x) => (x.vatRegistered && !(num(x.vatRate) > 0) ? 'لا تكون صفراً والمطعم مسجل في الضريبة' : '') }] },
@@ -4798,11 +4944,11 @@
     };
     formModal({
       title: { general: 'بيانات المطعم', vat: 'ضريبة القيمة المضافة', labor: 'التأمينات ورسوم العمالة' }[which],
-      value: clone(st),
+      value: clone(S.settings),
       fields: defs[which],
       onChange: (p, v) => {
         // تسجيل جديد ولدى المطعم عمليات سابقة: السريان من اليوم حتى لا تتغير الفترات الماضية
-        if (which === 'vat' && p === 'vatRegistered' && v.vatRegistered && !st.vatRegistered && hasVatData() && !v.vatRegisteredFrom) {
+        if (which === 'vat' && p === 'vatRegistered' && v.vatRegistered && !S.settings.vatRegistered && hasVatData() && !v.vatRegisteredFrom) {
           v.vatRegisteredFrom = today();
           return 'redraw';
         }
@@ -4812,10 +4958,18 @@
         // الأرقام تُحفظ أرقاماً: الحقل الفارغ (الحد الأعلى للأجر مثلاً) صفر لا نص فارغ
         const list = typeof defs[which] === 'function' ? defs[which](v) : defs[which];
         for (const f of flatFields(list)) if (f.k && (f.type === 'num' || f.type === 'money')) setPath(v, f.k, num(getPath(v, f.k)));
-        const warn = which === 'vat' ? vatHistoryChanges(st, v) : '';
+        // حقول هذا النموذج وحدها (gosi.cap مثلاً لا التأمينات كلها) فوق الإعدادات الحالية، لا النسخة التي فُتح بها
+        const ks = flatFields(list).filter((f) => f.k).map((f) => f.k);
+        const onto = (base) => {
+          for (const k of ks) setPath(base, k, getPath(v, k));
+          return base;
+        };
+        const warn = which === 'vat' ? vatHistoryChanges(S.settings, onto(clone(S.settings))) : '';
         if (warn && !(await confirmBox(warn + ' متابعة؟', { danger: true }))) return false;
-        S.settings = Object.assign(S.settings, v, { reviewedAt: new Date().toISOString() });
-        saveSettings();
+        // بعد التأكيد: فوق أحدث إعدادات (قد تصل أثناء السؤال)
+        onto(S.settings);
+        S.settings.reviewedAt = new Date().toISOString();
+        saveSettings(['reviewedAt', ...new Set(ks.map((k) => k.split('.')[0]))]);
       },
     });
   }
@@ -4908,7 +5062,7 @@
     if (roBlock()) return;
     const rest = (S.settings.closedDays || []).filter((x) => x !== d);
     S.settings.closedDays = on ? rest.concat([d]).sort().slice(-60) : rest;
-    saveSettings();
+    saveSettings(['closedDays']);
     render();
     if (!on && say) toast('أُلغيت علامة «كان مغلقاً» عن ' + dtText(d) + '، فيعود تنبيه إقفاله.');
   }
@@ -4919,7 +5073,14 @@
       // قيد الأرصدة الافتتاحية (من كشف الصندوق أو البنك) يُفتح بنموذجها
       if (el.dataset.s === 'settings') return el.dataset.id === 'opening' ? openingForm() : undefined;
       const rec = find(el.dataset.s, el.dataset.id);
-      if (rec && FORMS[el.dataset.s]) FORMS[el.dataset.s](clone(rec));
+      if (!rec || !FORMS[el.dataset.s]) return;
+      // كل النماذج تُفتح متزامنة (formModal يأخذه فوراً)
+      EDIT_OF = { s: el.dataset.s, rec: clone(rec) };
+      try {
+        FORMS[el.dataset.s](clone(rec));
+      } finally {
+        EDIT_OF = null;
+      }
     },
     // النسخة سجل جديد: تُفتح كإضافة (العنوان، ونسب العمولات الحالية، وذاكرة المورد…) بعد تجهيزها في DUP_PREP
     dup: (el) => {
@@ -5034,7 +5195,7 @@
       if (Object.prototype.hasOwnProperty.call(opApps, id) && num(opApps[id])) return toast('لهذه القناة مستحقات في الأرصدة الافتتاحية. أوقفها (غير مفعّلة) بدلاً من حذفها، أو صفّر مستحقاتها في الأرصدة الافتتاحية أولاً.', 'bad');
       if (!(await confirmBox('حذف قناة البيع؟', { danger: true, ok: 'احذف' }))) return;
       S.settings.channels = S.settings.channels.filter((c) => c.id !== id);
-      saveSettings();
+      saveSettings(['channels']);
       render();
       toast('تم الحذف.');
     },
@@ -5084,14 +5245,14 @@
       if (roBlock()) return;
       if (!(await confirmBox('حذف الأرصدة الافتتاحية؟ يُحذف قيدها من الدفاتر (الصندوق والبنك والمخزون والموردون ومخصص نهاية الخدمة وحقوق الشركاء).', { danger: true, ok: 'احذف' }))) return;
       S.settings.opening = null;
-      saveSettings();
+      saveSettings(['opening']);
       render();
       toast('تم الحذف.');
     },
     // «إخفاء» خطوات البداية (يُحفظ في الإعدادات، فتختفي عند الشريك كذلك)
     setupdone: () => {
       S.settings.setupDone = true;
-      saveSettings();
+      saveSettings(['setupDone']);
       render();
       focusPageTitle();
     },
@@ -5099,6 +5260,7 @@
     skip: () => focusPageTitle(),
     // زر حقيقي يصله Tab ويفتح اختيار الملف (حقل الملف نفسه مخفي)
     import: () => {
+      if (noSharedBlock()) return;
       const i = document.getElementById('importFile');
       if (i) {
         i.value = '';
@@ -5152,8 +5314,12 @@
     // يبقى اسم المطعم والشركاء ونسبهم (لا سجلات تتبعهم بعد المسح): بدونهم لا يُسجَّل رأس مال ولا أرصدة افتتاحية،
     // ومعالج البداية لا يُعرض لدفتر بدأ (ولا يُعاد فتحه: في البيانات المشتركة يفتح الدفتر القائم ولا يضيف الشركاء)
     wipe: async () => {
-      if (roBlock()) return;
-      if (!(await confirmBox('مسح كل بيانات المطعم نهائياً؟ يبقى اسم المطعم والشركاء ونسبهم فقط، وتعود الإعدادات إلى قيمها الافتراضية. صدّر نسخة احتياطية قبلها إن احتجت.', { danger: true, ok: 'امسح الكل' }))) return;
+      if (roBlock() || noSharedBlock()) return;
+      if (otherReplacing()) return toast(BUSY_MSG, 'bad');
+      // في البيانات المشتركة يُمسح الدفتر عند الشريك أيضاً، والإعدادات التي تعود إلى الافتراضي تُذكر بأسمائها (الدفتر
+      // الممسوح لا يعرض معالج البداية ليُعاد إدخالها، وما يُسجَّل بعده يُحسب بها)
+      const what = APP.backend && APP.backend.kind === 'cloud' ? 'مسح الدفتر المشترك نهائياً؟ يُمسح عندك وعند شريكك.' : 'مسح كل بيانات المطعم من هذا المتصفح نهائياً؟';
+      if (!(await confirmBox(`${what} يبقى اسم المطعم والشركاء ونسبهم فقط، وتعود بقية الإعدادات (التسجيل في الضريبة وتاريخه والرقم الضريبي وتاريخ الافتتاح وقنوات البيع وعمولاتها ونسب التأمينات) إلى قيمها الافتراضية فراجعها بعد المسح. صدّر نسخة احتياطية قبلها إن احتجت.`, { danger: true, ok: 'امسح الكل' }))) return;
       const fresh = RB.emptyState();
       fresh.settings = Object.assign(RB.defaultSettings(), { name: S.settings.name, startedAt: new Date().toISOString() });
       fresh.partners = good(S.partners).map(clone);
@@ -5229,6 +5395,8 @@
     } else if (b) b.focus();
   }
 
+  // جهاز آخر يستورد أو يمسح البيانات المشتركة الآن (علامته جارية): لا تبدأ عملية استبدال ثانية فوقها
+  const otherReplacing = () => !!APP.backend && APP.backend.kind === 'cloud' && RB.replaceMarkerState(APP.replaceMarker, Date.now(), SID) === 'running';
   // استبدال الدفتر كله (البداية، الاستيراد، المسح، إكمال الحفظ). يرجع true فقط إن حُفظ كاملاً.
   // before: عند إكمال عملية فشلت، المستندات التي كانت قبلها (لا يُحذف غيرها)
   async function replaceAll(state, before) {
@@ -5236,6 +5404,11 @@
       toast(roMsg(), 'bad');
       return false;
     }
+    if (otherReplacing()) {
+      toast(BUSY_MSG, 'bad');
+      return false;
+    }
+    const was = { S, demo: APP.demo, real: APP.real };
     S = RB.normalize(state);
     APP.demo = false;
     APP.real = null;
@@ -5265,6 +5438,27 @@
     t.remove();
     APP.replacing = false;
     APP.save.pending--;
+    if (res.code === 'busy' && res.untouched) {
+      // بدأ جهاز آخر قبل هذه (لم يُكتب شيء): يعود ما كان معروضاً، مطابَقاً مع البيانات المشتركة (لقطاتها أثناء
+      // المحاولة لم تُطبَّق). عملية فشلت قبلها يبقى دفترها المطلوب في الشاشة لـ «أكمل الحفظ»
+      S = was.S;
+      APP.demo = was.demo;
+      APP.real = was.real;
+      toast(BUSY_MSG, 'bad');
+      if (!APP.replaceFailed) {
+        try {
+          const d = await APP.backend.load();
+          if (APP.demo) {
+            if (APP.real && d) APP.real = RB.normalize(d);
+          } else if (hasBooks(d)) S = RB.normalize(d);
+        } catch (e) {
+          /* يبقى ما كان معروضاً */
+        }
+      }
+      bump();
+      render();
+      return false;
+    }
     if (res.ok) {
       APP.replaceFailed = null;
       APP.replaceMarker = null;
@@ -5331,18 +5525,23 @@
       APP.adopting = false;
     }
     if (!(APP.demo && !APP.real && hasBooks(d))) return;
+    // نموذج مفتوح من التجربة (غير معالج البداية) لا يُحفظ في الدفتر (formModal)، فيُقال ذلك الآن قبل أن يُكمله المستخدم
+    const form = !!document.querySelector('#modals .overlay[data-demo-form]');
     openBooks(d);
     // تعذّر التحميل عند الفتح ثم وصلت البيانات: ليست بداية جديدة من الشريك
-    toast(APP.loadFailed ? 'تم فتح دفتر المطعم بعد تعذّر تحميله أول مرة.' : APP.backend.kind === 'cloud' ? 'بدأ شريكك دفتر المطعم — تم فتح البيانات المشتركة.' : 'بدأ دفتر المطعم في نافذة أخرى — تم فتحه هنا.');
+    toast((APP.loadFailed ? 'تم فتح دفتر المطعم بعد تعذّر تحميله أول مرة.' : APP.backend.kind === 'cloud' ? 'بدأ شريكك دفتر المطعم — تم فتح البيانات المشتركة.' : 'بدأ دفتر المطعم في نافذة أخرى — تم فتحه هنا.') + (form ? ' النموذج المفتوح من البيانات التجريبية لن يُحفظ.' : ''));
   }
 
   function startWizard() {
+    if (noSharedBlock()) return;
     // نسبة الشريك الثاني تكمل الأول إلى 100% ما لم يكتبها المستخدم بنفسه
     let s2Typed = false;
     const twoP = (v) => !!(v.p2 && String(v.p2).trim());
     formModal({
       title: 'ابدأ ببيانات مطعمك',
       ok: 'ابدأ',
+      // يتحقق بنفسه من دفتر بدأ بعد فتحه (يفتحه أو يسأل قبل حذفه)
+      anyBooks: true,
       value: { name: '', openingDate: '', vatRegistered: true, vatRegisteredFrom: '', p1: '', s1: 50, p2: '', s2: 50, existing: false },
       // نسبة الثاني تظهر فوراً أثناء الكتابة (الحقل الذي يُكتب فيه يبقى كما هو)، فلا يُحفظ ما لم يُعرض
       onChange: (p, v) => {
@@ -5377,6 +5576,8 @@
         const s2 = num(v.s2);
         if (two && (!(s1 > 0) || !(s2 > 0))) return 'يجب أن تكون نسبة كل شريك أكبر من صفر.';
         if (two && Math.abs(s1 + s2 - 100) > 0.01) return 'يجب أن يكون مجموع نسبتي الشريكين 100% (يمكن إضافة شركاء آخرين لاحقاً من صفحة الشركاء).';
+        // الشريك يستورد أو يبدأ الدفتر الآن: يبقى النموذج مفتوحاً، وحين ينتهي يُفتح دفتره هنا
+        if (otherReplacing()) return BUSY_MSG;
         // لا يُكتب فوق دفتر محفوظ: المشترك يُفتح كما هو، وفي المتصفح يلزم تأكيد حذفه
         let existing = APP.real;
         if (!existing) {
@@ -5687,6 +5888,8 @@
       const isObj = RB.isObj;
       if (!isObj(data) || (data.settings != null && !isObj(data.settings)) || (!isObj(data.settings) && !RB.SECTIONS.some((k) => Array.isArray(data[k])))) return toast('الملف ليس نسخة احتياطية صالحة من دفتر المطعم.', 'bad');
       if (APP.readOnly) return toast(roMsg(), 'bad');
+      if (otherReplacing()) return toast(BUSY_MSG, 'bad');
+      if (noSharedBlock()) return;
       // معرّف يكسر الصفحة أو مسار البيانات المشتركة: يُرفض الملف كله (لا تُغيَّر المعرّفات لأن السجلات مرتبطة بها)
       const badIds = RB.badIds(data);
       if (badIds.length) return toast(`لم يُستورد الملف: فيه معرّفات سجلات غير صالحة (${badIds.slice(0, 5).map(shortId).join('، ')}${badIds.length > 5 ? '…' : ''}).`, 'bad');
@@ -5712,7 +5915,9 @@
         }
       }
       // الاستيراد يستبدل ولا يدمج: يُذكر عدد ما سيُحذف ويُنصح بالتصدير قبله
-      const repl = hasBooks(cur) ? `ستحل محل ${APP.demo ? 'دفترك المحفوظ' : 'بياناتك الحالية'} «${esc((cur.settings && cur.settings.name) || '')}» (${cnt(countRecs(cur), W.rec)}) بالكامل. صدّر نسخة من بياناتك أولاً إن احتجتها.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
+      // البيانات المشتركة (ولو كانت التجربة معروضة فوقها): تُستبدل عند الشريك أيضاً
+      const what = APP.backend.kind === 'cloud' ? 'الدفتر المشترك (عندك وعند شريكك)' : APP.demo ? 'دفترك المحفوظ' : 'بياناتك الحالية';
+      const repl = hasBooks(cur) ? `ستحل محل ${what} «${esc((cur.settings && cur.settings.name) || '')}» (${cnt(countRecs(cur), W.rec)}) بالكامل. صدّر نسخة من بياناتك أولاً إن احتجتها.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
       const notes = (skipped ? `<br>تم تجاهل سجلات غير صالحة: ${cnt(skipped, W.rec)}.` : '') + (notList.length ? `<br>أقسام ليست قوائم تم تجاهلها: ${esc(notList.map((k) => RB.SECTION_LABELS[k] || k).join('، '))}.` : '');
       const demoNote = data.demo === true ? '<br><b>هذا ملف بيانات تجريبية وليس نسخة من دفترك.</b>' : '';
       if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${cnt(n, W.rec)}؟ ${repl}${demoNote}${notes}`, { danger: true, ok: 'استورد' }))) return;
@@ -5837,12 +6042,16 @@
     if (mk === 'running') h += bar('warn', '<b>يجري الآن استيراد أو مسح للبيانات المشتركة من جهاز آخر</b> — انتظر حتى ينتهي قبل أن تعدّل.', '');
     if (mk === 'stale') h += bar('warn', 'استيراد/مسح سابق لم يكتمل — أعد العملية', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
     if (APP.readOnly && !APP.demo && !APP.revoked) h += bar('info', RO_MSG, '');
+    if (APP.noShared)
+      h += APP.demo
+        ? bar('bad', '<b>البيانات المشتركة غير متاحة في هذه الزيارة</b> — ما تراه بيانات تجريبية وليس دفتر مطعمك المشترك. أعد تحميل الصفحة، أو افتحها من Claude وأنت مسجّل الدخول. لا تبدأ دفتراً هنا: لن يراه شريكك.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'))
+        : bar('bad', '<b>البيانات المشتركة غير متاحة في هذه الزيارة</b> — هذه نسخة خاصة بهذا المتصفح (من زيارة سابقة) لا يراها شريكك، وما تُدخله فيها لا يصل إلى الدفتر المشترك. صدّرها نسخة احتياطية، ثم أعد تحميل الصفحة.', btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary') + btn('إعادة تحميل الصفحة', 'reload', '', 'sm'));
     if (APP.demo)
       h += bar(
         'demo',
         '<b>بيانات تجريبية لمطعم برقر</b> — جرّب كل شيء بحرية؛ لا يُحفظ أي تعديل. الأرقام أمثلة توضيحية وليست أسعاراً أو رسوماً رسمية.',
         // فوق دفتر محفوظ: الرجوع إليه فقط (البدء من جديد يكون بمسح البيانات من الإعدادات)
-        APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary sm') : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary sm')
+        APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary sm') : APP.noShared ? '' : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary sm')
       );
     if (h !== lastBanner) {
       // زر في الشريط عليه التركيز (أعد المحاولة مثلاً) يبقى عليه بعد إعادة رسم الشريط
@@ -5873,16 +6082,26 @@
     else if (APP.readOnly || f === 'invalid_argument') h = `${dot(f ? 'bad' : 'warn')}عرض فقط — لا تملك صلاحية التعديل`;
     else if (APP.save.pending > 0) h = `${dot('warn')}جاري الحفظ…`;
     else if (kind === 'cloud') h = `${dot('good')}محفوظ ومشترك${at}`;
-    else if (kind === 'local') h = `${dot('good')}محفوظ في هذا المتصفح${at}`;
+    else if (kind === 'local') h = APP.noShared ? `${dot('warn')}محفوظ في هذا المتصفح فقط — لا يراه شريكك${at}` : `${dot('good')}محفوظ في هذا المتصفح${at}`;
     el.innerHTML = h;
     // شريط فشل الحفظ يظهر أو يزول مع الحالة (الحفظ يفشل أو ينجح بعد الرسم)
     updateBanner();
   }
 
   let rt = null;
+  // بعد تحديث من الخارج: الصفحة، ومعاينة النماذج المفتوحة فوقها
   function scheduleRender() {
     clearTimeout(rt);
-    rt = setTimeout(render, 80);
+    rt = setTimeout(() => {
+      render();
+      for (const f of OPEN_FORMS) {
+        try {
+          f();
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+    }, 80);
   }
 
   // حقلا الفترة المخصصة. كتابة التاريخ بلوحة المفاتيح تمر بقيم وسيطة صالحة الشكل (السنة 0002 ثم 0020 ثم 0202 ثم 2025،
@@ -6129,7 +6348,10 @@
     }
     document.getElementById('page').innerHTML = `<div class="loading"><span class="mark big" aria-hidden="true"><i></i><i></i><i></i><i></i></span><p>جاري فتح دفاتر المطعم…</p></div>`;
     let backend = null;
-    if (window.claude && typeof window.claude.use === 'function') {
+    // داخل Claude (Artifact): الدفتر في البيانات المشتركة. use('db') = null أو خطأ (لم تُمنح، أو تعذّر تحميلها، أو بلا تسجيل
+    // دخول، أو لم تُجب المنصة): لا يُبدأ دفتر في هذا المتصفح بدلها (noShared)، وتبقى نسخة خاصة سابقة إن وُجدت للعرض والتصدير
+    const inArtifact = !!(window.claude && typeof window.claude.use === 'function');
+    if (inArtifact) {
       try {
         const db = await window.claude.use('db');
         if (db) backend = new CloudBackend(db);
@@ -6138,6 +6360,7 @@
       }
     }
     APP.backend = backend || new LocalBackend();
+    APP.noShared = inArtifact && !backend;
     if (backend) {
       // من لا يملك صلاحية تعديل البيانات المشتركة يرى الدفتر للعرض فقط (null = لم تحدد المنصة: يقرر أول حفظ)
       try {

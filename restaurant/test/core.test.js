@@ -3306,3 +3306,70 @@ test('تنبيه الرصيد السالب: الجاري منذ بداية هذ�
   assert.equal(RB.negativeAlert(L, '1101', '2026-10-05', 10), null);
   assert.equal(RB.negativeAlert(L, '1102', '2026-10-15', 60), null);
 });
+
+test('حفظ الإعدادات يكتب المفاتيح التي غيّرها فقط فوق أحدث نسخة: لا تمحو نسخة قديمة أرصدة الشريك الافتتاحية وقنواته (السحابة، الجولة 1)', () => {
+  // أحدث نسخة مشتركة: الشريك أدخل الأرصدة الافتتاحية وأضاف قناة
+  const server = { name: 'برقر', city: '', opening: { date: '2026-08-01', cash: 50000 }, channels: [{ id: 'cash' }, { id: 'toyou' }], closedDays: [] };
+  // نسخة هذا الجهاز أقدم (بلا أرصدة ولا القناة الجديدة) وفيها تعديله: المدينة، و«إخفاء» خطوات البداية
+  const mine = { name: 'برقر', city: 'الرياض', opening: null, channels: [{ id: 'cash' }], closedDays: [], setupDone: true };
+  const out = RB.settingsWith(server, mine, ['city', 'reviewedAt']);
+  assert.equal(out.city, 'الرياض');
+  assert.deepEqual(out.opening, server.opening);
+  assert.equal(out.channels.length, 2);
+  // مفتاح غير موجود في النسخة المحفوظة يُحذف (لا undefined)، ومفتاح null يُكتب null
+  assert.equal('reviewedAt' in out, false);
+  assert.equal(RB.settingsWith(server, mine, ['opening']).opening, null);
+  assert.equal(RB.settingsWith(server, mine, ['setupDone']).setupDone, true);
+  // لا تُعدَّل النسختان، ولا تُكتب خصائص النموذج الأولي
+  assert.deepEqual(server.channels.length, 2);
+  assert.equal(RB.settingsWith(server, mine, ['__proto__', 'city']).city, 'الرياض');
+  assert.equal({}.polluted, undefined);
+  // بلا مفاتيح، أو لا نسخة محفوظة: الإعدادات كلها
+  assert.deepEqual(RB.settingsWith(server, mine), mine);
+  assert.deepEqual(RB.settingsWith(null, mine, ['city']), mine);
+  // مفاتيح حفظ سابق يجري أو فشل تدخل في الحفظ التالي (لا يضيع ما غيّره إن فشل)، وحفظ سابق للإعدادات كلها يجعله كلها
+  assert.deepEqual(RB.settingsKeys([{ keys: ['opening'] }, { keys: ['channels', 'reviewedAt'] }], ['setupDone']).sort(), ['channels', 'opening', 'reviewedAt', 'setupDone']);
+  assert.deepEqual(RB.settingsKeys([], ['closedDays']), ['closedDays']);
+  assert.equal(RB.settingsKeys([{ rec: {} }], ['closedDays']), undefined);
+  assert.equal(RB.settingsKeys([{ keys: ['opening'] }], undefined), undefined);
+  // ما يُحفظ الآن يُعرض فوق اللقطة بمفاتيحه فقط: أرصدة الشريك تظهر مع «إخفاء» هذا الجهاز
+  const shown = RB.withUnsaved('settings', server, [{ section: 'settings', id: 'settings', rec: mine, keys: ['setupDone'] }]);
+  assert.equal(shown.setupDone, true);
+  assert.deepEqual(shown.opening, server.opening);
+  assert.equal(server.setupDone, undefined);
+  const u = RB.unsavedWrites();
+  const P = 'config/settings';
+  const n = u.start(P, { section: 'settings', id: 'settings', rec: mine, keys: ['opening'] });
+  assert.deepEqual(u.keeps(P).map((k) => k.keys), [['opening']]);
+  u.fail(P, n, { section: 'settings', id: 'settings', rec: mine, keys: ['opening'] });
+  assert.deepEqual(u.keeps(P).map((k) => k.keys), [['opening']]);
+  assert.deepEqual(RB.settingsKeys(u.keeps(P), ['setupDone']), ['setupDone', 'opening']);
+  assert.deepEqual(u.keeps('expenses/x'), []);
+});
+
+test('تعديل سجل عدّله الشريك بعد فتح النموذج: ما غيّره المستخدم وحده فوق أحدث نسخة، ويُسأل عن الحقل الذي غيّراه كلاهما (السحابة، الجولة 1)', () => {
+  const orig = { id: 'x1', date: '2026-08-01', desc: 'إيجار', amount: 30000, account: 'bank' };
+  // النموذج يُفتح بحقول مؤقتة (لا تُحفظ) وبترتيب مفاتيح آخر
+  const start = { amount: 30000, id: 'x1', desc: 'إيجار', date: '2026-08-01', account: 'bank', preset: '' };
+  const cur = { id: 'x1', date: '2026-08-01', desc: 'إيجار', amount: 34500, account: 'bank', _bad: undefined };
+  // المستخدم غيّر البيان، والشريك المبلغ: لا تعارض، ويبقى مبلغ الشريك
+  let r = RB.editMerge(orig, start, Object.assign({}, start, { desc: 'إيجار المحل — أغسطس' }), cur);
+  assert.deepEqual(r.clash, []);
+  assert.equal(r.rec.amount, 34500);
+  assert.equal(r.rec.desc, 'إيجار المحل — أغسطس');
+  assert.equal('preset' in r.rec, false);
+  // كلاهما غيّر المبلغ إلى قيمتين مختلفتين: تعارض يُسأل عنه، وما في النموذج هو ما يُحفظ فيه إن وافق
+  r = RB.editMerge(orig, start, Object.assign({}, start, { amount: 31000 }), cur);
+  assert.deepEqual(r.clash, ['amount']);
+  assert.equal(r.rec.amount, 31000);
+  // إلى القيمة نفسها: لا تعارض
+  assert.deepEqual(RB.editMerge(orig, start, Object.assign({}, start, { amount: 34500 }), cur).clash, []);
+  // لم يغيّر المستخدم شيئاً: نسخة الشريك كما هي
+  assert.deepEqual(RB.editMerge(orig, start, Object.assign({}, start), cur).rec, { id: 'x1', date: '2026-08-01', desc: 'إيجار', amount: 34500, account: 'bank' });
+  // حقل حذفه المستخدم من النموذج يُحذف
+  assert.equal('account' in RB.editMerge(orig, start, { id: 'x1', amount: 30000, desc: 'إيجار', date: '2026-08-01', preset: '' }, cur).rec, false);
+  // المقارنة لا تتأثر بترتيب المفاتيح ولا بعلامة _bad
+  assert.equal(RB.sameRec({ a: 1, b: { c: 2, d: [1, { e: 1, f: 2 }] } }, { b: { d: [1, { f: 2, e: 1 }], c: 2 }, a: 1, _bad: ['date'] }), true);
+  assert.equal(RB.sameRec({ a: 1 }, { a: 2 }), false);
+  assert.equal(RB.sameRec({ a: [1, 2] }, { a: [2, 1] }), false);
+});
