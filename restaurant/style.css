@@ -183,6 +183,8 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
 .scrim { display: none; }
 
 .main { min-width: 0; display: flex; flex-direction: column; }
+/* يُركَّز المحتوى الرئيسي بعد إغلاق نافذة حين لا يبقى الزر الذي فتحها (حذف سجل مثلاً): بلا إطار على الصفحة كلها */
+.main:focus { outline: none; }
 .topbar {
   position: sticky;
   top: env(safe-area-inset-top, 0px);

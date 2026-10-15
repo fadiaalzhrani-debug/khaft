@@ -604,29 +604,84 @@
     setTimeout(() => t.remove(), 4700);
   }
 
+  // النافذة: الخلفية (الصفحة والنوافذ تحتها) معطّلة (inert) فلا يصلها Tab ولا النقر، وعند الإغلاق يعود التركيز
+  // إلى الزر الذي فتحها (أو مثيله بعد إعادة رسم الصفحة، أو المحتوى الرئيسي).
+  // o.beforeClose: يُسأل قبل الإغلاق بـ Escape أو ✕ أو «إلغاء» (يرجع false أو وعداً بـ false فيبقى مفتوحاً)؛
+  // close() المرجَعة تغلق بلا سؤال (بعد الحفظ مثلاً)
+  let DLG = 0;
+  const TRIGGER_ATTRS = ['act', 's', 'id', 'x'];
   function openModal(o) {
     const root = document.getElementById('modals');
+    const prevFocus = document.activeElement;
+    // محدد الزر الذي فتح النافذة: يُبحث به عنه إن أُعيد رسم الصفحة بعد الحفظ
+    const trigSel =
+      prevFocus && prevFocus.dataset && prevFocus.dataset.act
+        ? TRIGGER_ATTRS.filter((k) => prevFocus.dataset[k] !== undefined)
+            .map((k) => `[data-${k}="${CSS.escape(prevFocus.dataset[k])}"]`)
+            .join('')
+        : '';
     const wrap = document.createElement('div');
     wrap.className = 'overlay';
-    wrap.innerHTML = `<div class="dialog ${o.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="dlg-t-${VER}"><header class="dlg-h"><h3 id="dlg-t-${VER}">${esc(o.title)}</h3><button type="button" class="icon-btn" data-close aria-label="إغلاق">✕</button></header><div class="dlg-b"></div><footer class="dlg-f"></footer></div>`;
+    const tid = 'dlg-t-' + ++DLG;
+    wrap.innerHTML = `<div class="dialog ${o.wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="${tid}"><header class="dlg-h"><h3 id="${tid}">${esc(o.title)}</h3><button type="button" class="icon-btn" data-close aria-label="إغلاق">✕</button></header><div class="dlg-b"></div><footer class="dlg-f"></footer></div>`;
+    for (const w of root.children) w.inert = true;
+    const shell = document.querySelector('.shell');
+    if (shell) shell.inert = true;
     root.appendChild(wrap);
-    const prevFocus = document.activeElement;
+    let closed = false;
+    let asking = false;
     const onKey = (e) => {
-      if (e.key === 'Escape' && root.lastElementChild === wrap) close();
+      if (e.key === 'Escape' && root.lastElementChild === wrap) requestClose();
     };
     function close() {
+      if (closed) return;
+      closed = true;
       wrap.remove();
       document.removeEventListener('keydown', onKey);
+      const top = root.lastElementChild;
+      if (top) top.inert = false;
+      else if (shell) shell.inert = false;
       if (o.onClose) o.onClose();
-      if (prevFocus && prevFocus.focus) prevFocus.focus();
+      // بعد إعادة الرسم التي تتبع الحفظ: الزر نفسه إن بقي، أو مثيله في الصفحة الجديدة، أو المحتوى الرئيسي
+      setTimeout(() => {
+        if (top) {
+          // عودة إلى النافذة التي تحتها (إن لم تُغلق هي أيضاً، فإغلاقها يعيد التركيز)
+          if (!top.isConnected) return;
+          if (prevFocus && prevFocus.isConnected && top.contains(prevFocus)) prevFocus.focus();
+          else if (!top.contains(document.activeElement)) (top.querySelector('[data-save],[data-ok],[data-close]') || top).focus();
+          return;
+        }
+        if (root.lastElementChild) return;
+        const a = document.activeElement;
+        if (a && a !== document.body && a.isConnected) return;
+        let el = prevFocus && prevFocus !== document.body && prevFocus.isConnected && !root.contains(prevFocus) ? prevFocus : null;
+        if (!el && trigSel) el = [...document.querySelectorAll(trigSel)].find((x) => !root.contains(x) && x.getClientRects().length);
+        if (!el) el = document.getElementById('main');
+        if (el && el.focus) el.focus({ preventScroll: el.id === 'main' });
+      }, 0);
+    }
+    async function requestClose() {
+      if (closed || asking) return;
+      if (o.beforeClose) {
+        asking = true;
+        let ok = false;
+        try {
+          ok = await o.beforeClose();
+        } finally {
+          asking = false;
+        }
+        if (!ok) return;
+      }
+      close();
     }
     document.addEventListener('keydown', onKey);
     wrap.addEventListener('click', (e) => {
-      if (e.target.closest('[data-close]')) close();
+      if (e.target.closest('[data-close]')) requestClose();
     });
     return { el: wrap, body: wrap.querySelector('.dlg-b'), foot: wrap.querySelector('.dlg-f'), close };
   }
 
+  // opt.danger: التأكيد لعملية لا تُسترجع (حذف، تجاهل)؛ التركيز يبدأ عند «إلغاء» فلا يحذف Enter المتكرر شيئاً
   function confirmBox(msg, opt) {
     opt = opt || {};
     return new Promise((resolve) => {
@@ -639,7 +694,7 @@
         resolve(true);
         m.close();
       });
-      m.foot.querySelector('[data-ok]').focus();
+      (opt.danger ? m.foot.querySelector('[data-close]') : m.foot.querySelector('[data-ok]')).focus();
     });
   }
 
@@ -771,7 +826,13 @@
   // o.focus: محدد CSS للحقل الذي يبدأ عنده التركيز
   function formModal(o) {
     const val = clone(o.value || {});
-    const m = openModal({ title: o.title, wide: o.wide });
+    // dirty: أدخل المستخدم شيئاً (حقلاً أو سطراً)، فالإغلاق بلا حفظ يُسأل عنه أولاً
+    let dirty = false;
+    const m = openModal({
+      title: o.title,
+      wide: o.wide,
+      beforeClose: () => !dirty || confirmBox('لم تُحفظ البيانات التي أدخلتها. هل تريد تجاهلها وإغلاق النموذج؟', { danger: true, ok: 'تجاهل وإغلاق' }),
+    });
     const fields = () => (typeof o.fields === 'function' ? o.fields(val) : o.fields);
     let saving = false;
     // drawing يمنع رسماً داخل رسم (حدث يطلقه حذف العنصر المركَّز أثناء innerHTML)، ويُعاد الرسم بعده مرة واحدة
@@ -903,7 +964,9 @@
       const el = e.target;
       const p = el.dataset && el.dataset.path;
       if (!p) return;
-      setPath(val, p, readInput(el));
+      const nv = readInput(el);
+      if (getPath(val, p) !== nv) dirty = true;
+      setPath(val, p, nv);
       clearErr(el);
       const want = o.onChange ? o.onChange(p, val) : undefined;
       if ((isChange && el.dataset.redraw) || want === 'redraw') {
@@ -965,6 +1028,7 @@
       const f = flatFields(fields()).find((x) => x.k === b.dataset.lk);
       if (!f) return;
       const rows = getPath(val, f.k) || [];
+      dirty = true;
       if (b.dataset.lact === 'add') rows.push(f.newRow ? f.newRow(val) : {});
       else if (b.dataset.lact === 'del') rows.splice(+b.dataset.i, 1);
       else {
@@ -1082,8 +1146,10 @@
   }
   const money = (n) => `<span class="money">${N(n)} <small class="cur">${cur()}</small></span>`;
   const btn = (label, act, attrs, kind) => `<button type="button" class="btn ${kind || ''}" data-act="${act}" ${attrs || ''}>${label}</button>`;
+  // أقسام بلا نسخ (⧉): الشريك ونسبته لا يُنسخان
+  const NO_DUP = ['partners'];
   const rowActs = (s, id, extra) =>
-    `<div class="row-acts">${extra || ''}<button type="button" class="icon-btn" data-act="edit" data-s="${s}" data-id="${esc(id)}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn" data-act="dup" data-s="${s}" data-id="${esc(id)}" aria-label="نسخ" title="نسخ">⧉</button><button type="button" class="icon-btn danger" data-act="del" data-s="${s}" data-id="${esc(id)}" aria-label="حذف" title="حذف">✕</button></div>`;
+    `<div class="row-acts">${extra || ''}<button type="button" class="icon-btn" data-act="edit" data-s="${s}" data-id="${esc(id)}" aria-label="تعديل" title="تعديل">✎</button>${NO_DUP.includes(s) ? '' : `<button type="button" class="icon-btn" data-act="dup" data-s="${s}" data-id="${esc(id)}" aria-label="نسخ" title="نسخ">⧉</button>`}<button type="button" class="icon-btn danger" data-act="del" data-s="${s}" data-id="${esc(id)}" aria-label="حذف" title="حذف">✕</button></div>`;
   function hbars(items, o) {
     o = o || {};
     if (!items.length) return `<div class="empty-box">${o.empty || 'لا توجد بيانات.'}</div>`;
@@ -1654,7 +1720,8 @@
   PAGES.staff = () => {
     const ym = today().slice(0, 7);
     const emps = S.employees.slice().sort((a, b) => (a.active === false) - (b.active === false));
-    const active = emps.filter((e) => RB.isEmployeeActive(e, ym));
+    // على رأس العمل الآن (حالته في الشهر)، لا كل من له راتب في مسير الشهر
+    const active = emps.filter((e) => RB.employeeStatus(e, ym) === 'active');
     const costs = Object.fromEntries(emps.map((e) => [e.id, RB.employeeMonthlyCost(e, S, ym)]));
     const saudi = active.filter((e) => e.nationality === 'saudi').length;
     // مخصص نهاية الخدمة المتراكم حتى اليوم (رصيد الحساب 2201) ونصيب كل موظف منه
@@ -2318,15 +2385,18 @@
 
   // ═════════════ النماذج ═════════════
   const FORMS = {};
+  // كل نموذج يُستدعى (rec, x, opts): rec السجل، وopts.isNew أنه سجل جديد مبني على rec (نسخة ⧉ أو تجديد)،
+  // فيُعامل كإضافة لا كتعديل (العنوان، والقوالب، وذاكرة المورد، ونسب العمولات الحالية…)
+  const editing = (rec, opts) => !!rec && !(opts && opts.isNew);
   const LEVY_HELP = 'المقابل المالي 800 ر.س شهرياً لكل وافد إذا زاد عدد الوافدين عن السعوديين في المنشأة، و700 ر.س إذا كانوا مساوين أو أقل — تحقق من قيمته في منصة قوى.';
   const MED_HELP = 'إلزامي لكل عامل وافد ولكل موظف سعودي في القطاع الخاص (نظام الضمان الصحي التعاوني) — أدخل قسط وثيقتك الفعلي';
   const vatFields = (redraw) => [
     { type: 'row', fields: [{ k: 'taxable', type: 'check', label: 'خاضع لضريبة القيمة المضافة', redraw: true, help: 'اختره إذا كانت الفاتورة ضريبية فيها الرقم الضريبي للمورد. في السعودية لا إعفاء للأغذية (خضار، لحوم، خبز = 15%). غير الخاضع: الرسوم الحكومية، إيجار السكن، أو مورد غير مسجل/بدون فاتورة ضريبية. فاتورة 1,000 ر.س فأكثر يلزم أن تكون باسم المطعم ورقمه الضريبي لخصم ضريبتها.' }, { k: 'includesVat', type: 'check', label: 'المبلغ المدخل شامل الضريبة', redraw: !!redraw, show: (v) => v.taxable }] },
   ];
 
-  FORMS.partners = (rec) =>
+  FORMS.partners = (rec, x, opts = {}) =>
     formModal({
-      title: rec ? 'تعديل شريك' : 'شريك جديد',
+      title: editing(rec, opts) ? 'تعديل شريك' : 'شريك جديد',
       value: rec || { id: RB.uid(), name: '', share: S.partners.length ? Math.max(0, 100 - RB.sum(S.partners, (p) => num(p.share))) : 50, phone: '', note: '' },
       fields: [
         { k: 'name', label: 'اسم الشريك', req: 1 },
@@ -2336,10 +2406,11 @@
       onSave: (v) => upsert('partners', v),
     });
 
-  FORMS.capital = (rec, x) => {
+  FORMS.capital = (rec, x, opts = {}) => {
     if (!S.partners.length) return toast('أضف الشركاء أولاً.', 'bad');
+    const type = rec ? rec.type : x;
     return formModal({
-      title: rec ? 'تعديل حركة رأس مال' : x === 'withdrawal' ? 'سحب شريك' : 'إيداع رأس مال',
+      title: editing(rec, opts) ? 'تعديل حركة رأس مال' : type === 'withdrawal' ? 'سحب شريك' : 'إيداع رأس مال',
       value: rec || { id: RB.uid(), date: today(), partnerId: S.partners[0].id, type: x || 'contribution', account: 'bank', amount: '', note: '' },
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'partnerId', type: 'select', label: 'الشريك', options: S.partners.map((p) => [p.id, p.name]) }] },
@@ -2351,13 +2422,13 @@
     });
   };
 
-  FORMS.assets = (rec) => {
+  FORMS.assets = (rec, x, opts = {}) => {
     // التأمين المسترد لا ضريبة عليه: يُفرض «غير خاضع» عند اختيار التصنيف وعند فتح سجل محفوظ أو حفظه
     const noVat = (v) => Object.assign(v, { taxable: false, includesVat: false });
     const value = Object.assign({}, rec || { id: RB.uid(), date: today(), name: '', category: 'kitchen', amount: '', includesVat: false, taxable: true, account: 'bank', lifeMonths: 60, salvage: 0, supplier: '', note: '' });
     if (value.category === 'deposit') noVat(value);
     return formModal({
-      title: rec ? 'تعديل أصل' : 'أصل جديد',
+      title: editing(rec, opts) ? 'تعديل أصل' : 'أصل جديد',
       value,
       onChange: (p, v) => {
         if (p !== 'category') return;
@@ -2388,7 +2459,8 @@
     });
   };
 
-  FORMS.expenses = (rec, x) => {
+  FORMS.expenses = (rec, x, opts = {}) => {
+    const isEdit = editing(rec, opts);
     const isGov = x === 'gov' || (rec && RB.GOV_CATS.includes(rec.category));
     const cat0 = x && RB.EXPENSE_CATS.some((c) => c.id === x) ? x : isGov ? 'gov' : 'utilities';
     // بلا ضريبة افتراضياً: سكن العمال والرسوم الحكومية والزكاة
@@ -2426,9 +2498,15 @@
         delete v._zs;
       }
     };
+    // نسخة أو تجديد للزكاة: بداية السنة التي تخصها تتبع تاريخ الدفع ما دامت الافتراضية
+    const value = rec ? Object.assign({ preset: '' }, rec) : base;
+    if (!isEdit && rec && value.category === 'zakat') {
+      if (!value.startDate) value.startDate = zakatStart(value.date);
+      if (value.startDate === zakatStart(value.date)) value._zs = value.startDate;
+    }
     return formModal({
-      title: rec ? 'تعديل مصروف' : isGov ? 'رسم حكومي أو اشتراك' : 'مصروف تشغيلي',
-      value: rec ? Object.assign({ preset: '' }, rec) : base,
+      title: isEdit ? 'تعديل مصروف' : opts.mode === 'renew' ? 'تجديد: ' + (rec.desc || RB.expenseCat(rec.category).name) : isGov ? 'رسم حكومي أو اشتراك' : 'مصروف تشغيلي',
+      value,
       onChange: (p, v) => {
         if (p === 'category') {
           v.months = RB.expenseCat(v.category).months;
@@ -2451,7 +2529,7 @@
         }
       },
       fields: (v) => [
-        ...(isGov && !rec ? [{ k: 'preset', type: 'select', label: 'اختر من القائمة (اختياري)', options: [['', '— بند آخر —']].concat(presetList), redraw: true }] : []),
+        ...(isGov && !isEdit ? [{ k: 'preset', type: 'select', label: 'اختر من القائمة (اختياري)', options: [['', '— بند آخر —']].concat(presetList), redraw: true }] : []),
         { type: 'row', fields: [{ k: 'category', type: 'select', label: 'التصنيف', options: RB.EXPENSE_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الدفع', req: 1, redraw: v.category === 'zakat' }] },
         ...(v.category === 'zakat' ? [{ type: 'html', html: () => '<p class="note">يُقدَّم إقرار الزكاة ويُسدَّد خلال 120 يوماً من نهاية السنة المالية؛ الزكاة 2.5% من الوعاء الزكوي، وتُحمَّل على السنة التي تخصها.</p>' }] : []),
         ...(v.category === 'insurance' ? [{ type: 'html', html: () => '<p class="note">اشتراكات التأمينات الاجتماعية (GOSI) تُحسب وتُسجَّل تلقائياً من مسير الرواتب — لا تسجّل فاتورة سداد التأمينات هنا حتى لا تُحسب مرتين.</p>' }] : []),
@@ -2487,18 +2565,29 @@
     });
   };
 
-  FORMS.employees = (rec) => {
+  FORMS.employees = (rec, x, opts = {}) => {
     const L = S.settings.labor;
+    const isEdit = editing(rec, opts);
     return formModal({
-      title: rec ? 'تعديل بيانات موظف' : 'موظف جديد',
+      title: isEdit ? 'تعديل بيانات موظف' : 'موظف جديد',
       wide: true,
       value: rec || { id: RB.uid(), name: '', job: '', nationality: 'expat', startDate: today(), endDate: '', active: true, basic: '', housing: 0, transport: 0, otherAllow: 0, levyMonthly: L.levyMonthly, iqamaAnnual: L.iqamaAnnual, workPermitAnnual: L.workPermitAnnual, medicalAnnual: L.medicalAnnual, ticketAnnual: 0, housingCost: 0, otherAnnual: 0, note: '' },
       onChange: (p, v) => {
         if (p === 'nationality' && v.nationality === 'saudi') Object.assign(v, { levyMonthly: 0, iqamaAnnual: 0, workPermitAnnual: 0 });
         if (p === 'nationality' && v.nationality !== 'saudi' && !num(v.levyMonthly)) Object.assign(v, { levyMonthly: L.levyMonthly, iqamaAnnual: L.iqamaAnnual, workPermitAnnual: L.workPermitAnnual });
         // السعودي الجديد: النظام الجديد افتراضياً؛ السجل القائم بلا قيمة يبقى على النظام السابق
-        if (p === 'nationality' && v.nationality === 'saudi' && !rec && !v.gosiSystem) v.gosiSystem = 'new';
+        if (p === 'nationality' && v.nationality === 'saudi' && !isEdit && !v.gosiSystem) v.gosiSystem = 'new';
         if (p === 'nationality') return 'redraw';
+        // إلغاء «على رأس العمل» بلا تاريخ ترك العمل: يُقترح اليوم ويظهر ليؤكده المستخدم أو يعدّله (v._autoEnd مؤقت)
+        if (p === 'active' && !v.active && !v.endDate) {
+          v.endDate = v._autoEnd = today();
+          return 'redraw';
+        }
+        if (p === 'active' && v.active && v._autoEnd && v.endDate === v._autoEnd) {
+          v.endDate = '';
+          delete v._autoEnd;
+          return 'redraw';
+        }
       },
       fields: (v) => [
         { type: 'row', fields: [{ k: 'name', label: 'الاسم', req: 1 }, { k: 'job', label: 'الوظيفة', placeholder: 'طباخ، كاشير، عامل نظافة…' }] },
@@ -2533,6 +2622,7 @@
       // مخصص نهاية الخدمة لمن ترك العمل يبقى قائماً حتى تُسوّى مكافأته
       preview: (v) =>
         empCostHTML(v) +
+        (v._autoEnd && v.endDate === v._autoEnd ? `<p class="note">حُدّد «تاريخ ترك العمل» بتاريخ اليوم (${dtText(v.endDate)}) — عدّله إن ترك العمل في يوم آخر. يُصرف له راتب الأيام التي عملها في شهر تركه.</p>` : '') +
         (v.active === false && !v.endDate
           ? '<p class="note bad">حدّد «تاريخ ترك العمل» إن ترك العمل، ثم سجّل مكافأة نهاية الخدمة في مسير رواتب أو اختر «لا مكافأة مستحقة» ليُسوّى مخصصه.</p>'
           : v.endDate && !v.eosbNone
@@ -2540,6 +2630,7 @@
             : ''),
       onSave: (v) => {
         if (!v.endDate || !v.eosbNone) delete v.eosbNone;
+        delete v._autoEnd;
         upsert('employees', v);
       },
     });
@@ -2558,12 +2649,63 @@
       <p class="note">التأمينات ${rates} من أجر خاضع ${fmt(c.gosi.base)}. الأجر الخاضع = الأساسي + بدل السكن (أو السكن العيني مقدّراً بأجر شهرين في السنة). ${c.gosi.ee ? `يُخصم من الموظف ${fmt(c.gosi.ee)} فيصله صافي ${fmt(c.netPay)}.` : 'لا يُخصم من الموظف غير السعودي.'} تكلفته السنوية ≈ ${fmt(c.total * 12)} ${cur()}.</p>`;
   }
 
-  FORMS.payroll = (rec, empId) => {
-    const ym = RB.ymAdd(today().slice(0, 7), today().slice(8) >= '25' ? 0 : -1);
-    // نسب التأمينات حسب شهر المسير (النظام الجديد للسعودي يتغير كل يوليو)
-    const fill = (v) => (v.lines = S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S, v.month)));
-    const base = { id: RB.uid(), month: ym, date: RB.monthEnd(ym) <= today() ? RB.monthEnd(ym) : today(), account: 'bank', gosiAccount: 'bank', lines: [], note: '' };
-    if (!rec) fill(base);
+  // تاريخ الصرف الافتراضي لمسير الشهر ym: آخر الشهر، أو اليوم إن لم ينتهِ الشهر بعد
+  const payDefaultDate = (ym) => (RB.monthEnd(ym) <= today() ? RB.monthEnd(ym) : today());
+  const runMonth = (p) => p.month || String(p.date || '').slice(0, 7);
+  // أشهر لها مسير رواتب (مسير التسوية بلا راتب لا يُعد مسيراً للشهر)
+  const paidMonths = (exceptId) => new Set(good(S.payroll).filter((p) => p.id !== exceptId && RB.payrollTotals(p).gross > 0).map(runMonth));
+  // أسطر مسير الشهر ym من بيانات الموظفين: من له راتب في الشهر، ومن باشر أو ترك العمل أثناءه بخصم ما لم يعمله
+  // (نسب التأمينات حسب الشهر). cur: الأسطر الحالية (بُنيت لشهر fromYm) يبقى منها ما أدخله المستخدم:
+  // الإضافي، والخصومات والتأمينات إن اختلفت عمّا يُحسب تلقائياً، ومكافأة نهاية الخدمة المصروفة؛
+  // والأسطر بلا موظف مسجل، وسطر من ليس له راتب في الشهر إن صُرفت له فيه مكافأة نهاية الخدمة
+  function payrollFill(ym, cur, fromYm) {
+    cur = (cur || []).filter((l) => l && typeof l === 'object');
+    fromYm = RB.isISOMonth(fromYm) ? fromYm : ym;
+    const old = {};
+    for (const l of cur) if (l.employeeId && !old[l.employeeId]) old[l.employeeId] = l;
+    const same = (a, b) => Math.abs(num(a) - num(b)) < 0.005;
+    const lines = S.employees
+      .filter((e) => RB.isEmployeeActive(e, ym))
+      .map((e) => {
+        const n = RB.payrollLine(e, S, ym);
+        const o = old[e.id];
+        if (!o) return n;
+        const was = RB.payrollLine(e, S, fromYm);
+        // التأمينات تلقائية إن طابقت المحسوب من بيانات الموظف أو من أساسي السطر وسكنه
+        const g = RB.gosiFor(Object.assign({}, e, { basic: num(o.basic), housing: num(o.housing) }), S, fromYm);
+        if (num(o.additions)) n.additions = o.additions;
+        if (num(o.deductions) && !same(o.deductions, was.deductions)) n.deductions = o.deductions;
+        if (!same(o.gosiEe, was.gosiEe) && !same(o.gosiEe, g.ee)) n.gosiEe = o.gosiEe;
+        if (!same(o.gosiEr, was.gosiEr) && !same(o.gosiEr, g.er)) n.gosiEr = o.gosiEr;
+        if (num(o.eosbPaid) > 0) n.eosbPaid = o.eosbPaid;
+        return n;
+      });
+    const ids = new Set(lines.map((l) => l.employeeId));
+    for (const l of cur) {
+      if (!l.employeeId) lines.push(l);
+      else if (!ids.has(l.employeeId) && num(l.eosbPaid) > 0) {
+        lines.push(l);
+        ids.add(l.employeeId);
+      }
+    }
+    return lines;
+  }
+
+  FORMS.payroll = (rec, empId, opts = {}) => {
+    const isEdit = editing(rec, opts);
+    // الشهر الافتراضي لمسير جديد: الشهر الماضي (أو الحالي من يوم 25)، أو أول شهر بعده حتى الشهر الحالي بلا مسير
+    const thisYm = today().slice(0, 7);
+    const def = RB.ymAdd(thisYm, today().slice(8) >= '25' ? 0 : -1);
+    const paid = paidMonths();
+    let ym = def;
+    for (let m = def; m <= thisYm; m = RB.ymAdd(m, 1)) {
+      if (!paid.has(m)) {
+        ym = m;
+        break;
+      }
+    }
+    const base = { id: RB.uid(), month: ym, date: payDefaultDate(ym), account: 'bank', gosiAccount: 'bank', lines: [], note: '' };
+    if (!rec) base.lines = payrollFill(ym);
     const nCol = (k, label) => ({ k, label, type: 'num', num: 1 });
     const empOf = (id) => (id ? S.employees.find((e) => e.id === id) : null);
     // من تنبيه «لم تُسوَّ مكافأة نهاية الخدمة»: مسير تسوية اليوم بسطر واحد لمن ترك العمل، والمكافأة مقترحة بمقدار مخصصه
@@ -2591,32 +2733,51 @@
       const draft = Object.assign({}, v, { lines: (v.lines || []).map((l) => Object.assign({}, l, { eosbPaid: 0 })) });
       return RB.eosbBalances(Object.assign({}, S, { payroll: S.payroll.filter((p) => p.id !== v.id).concat([draft]) }), v.date, { release: false });
     };
+    const value = rec || base;
+    // linesYm: الشهر الذي بُنيت له الأسطر (لمعرفة ما عدّله المستخدم عند إعادة التعبئة)، lastMonth: آخر شهر صالح
+    let linesYm = value.month;
+    let lastMonth = value.month;
+    // مسير آخر لنفس الشهر فيه رواتب: مسير ثانٍ يضاعف مصروف الرواتب (مسير التسوية بلا راتب مستثنى)
+    const otherRun = (v) => !settleEmp && RB.isISOMonth(v.month) && paidMonths(v.id).has(v.month);
     return formModal({
-      title: rec ? 'تعديل مسير رواتب' : settleEmp ? 'تسوية نهاية الخدمة' : 'مسير رواتب',
+      title: isEdit ? 'تعديل مسير رواتب' : settleEmp ? 'تسوية نهاية الخدمة' : 'مسير رواتب',
       wide: true,
-      value: rec || base,
+      value,
       onChange: (p, v) => {
-        // مسير التسوية يبقى بسطر من ترك العمل وإن تغيّر شهره
-        if (p === 'month' && !rec && !settleEmp) {
+        if (p === 'month') {
           // الشهر أثناء كتابته (سنة ناقصة مثل 0002-10، أو فارغ) لا يمسح الأسطر ولا ينتج تاريخاً غير صالح
           if (!(RB.isISOMonth(v.month) && v.month >= '2000-01')) return;
-          fill(v);
-          v.date = RB.monthEnd(v.month) <= today() ? RB.monthEnd(v.month) : today();
+          const from = lastMonth;
+          lastMonth = v.month;
+          // مسير التسوية يبقى بسطر من ترك العمل وإن تغيّر شهره
+          if (from === v.month || settleEmp) return;
+          // مسير جديد: أسطر الشهر الجديد، ويبقى ما أدخله المستخدم فيها
+          if (!isEdit) {
+            v.lines = payrollFill(v.month, v.lines, linesYm);
+            linesYm = v.month;
+          }
+          // تاريخ الصرف يتبع الشهر ما دام الافتراضي لشهره السابق (التاريخ الذي كتبه المستخدم يبقى)
+          if (RB.isISOMonth(from) && v.date === payDefaultDate(from)) v.date = payDefaultDate(v.month);
           return 'redraw';
         }
         const m = p.match(/^lines\.(\d+)\.employeeId$/);
         const row = m && v.lines[+m[1]];
         const e = row && empOf(row.employeeId);
         if (e) {
-          // على رأس العمل في الشهر: راتبه وتأميناته من بياناته؛ من ترك العمل: سطر تسوية بلا راتب
+          // له راتب في الشهر: راتبه وتأميناته من بياناته (وخصم ما لم يعمله إن باشر أو ترك العمل أثناءه)؛
+          // من ترك العمل قبل الشهر: سطر تسوية بلا راتب
           const pl = RB.isEmployeeActive(e, v.month) ? RB.payrollLine(e, S, v.month) : { basic: 0, housing: 0, allowances: 0, gosiEe: 0, gosiEr: 0 };
           row.name = e.name;
           for (const k of ['basic', 'housing', 'allowances', 'gosiEe', 'gosiEr']) row[k] = pl[k];
+          if (!num(row.deductions) && pl.deductions) row.deductions = pl.deductions;
+          if (pl.note) row.note = pl.note;
+          else delete row.note;
           return 'redraw';
         }
       },
       fields: [
         { type: 'row', fields: [{ k: 'month', type: 'month', label: 'الشهر', req: 1, redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الصرف', req: 1, help: 'تُحمَّل التكلفة على الشهر المختار مهما كان تاريخ الصرف' }, { k: 'account', type: 'select', label: 'صُرفت من', options: payOptions(false, false) }, { k: 'gosiAccount', type: 'select', label: 'التأمينات سُددت من', options: payOptions(false, false) }] },
+        { type: 'html', html: (v) => (otherRun(v) ? `<p class="note bad">يوجد مسير مسجل لشهر ${esc(RB.monthName(v.month))}. الحفظ يضيف مسيراً ثانياً يتضاعف به مصروف الرواتب — للمكافآت أو الإضافي استخدم عمود «إضافي ومكافآت» في المسير الموجود.</p>` : '') },
         {
           k: 'lines',
           type: 'lines',
@@ -2624,7 +2785,18 @@
           addLabel: 'إضافة موظف',
           // اسم الموظف يدخل في اسم كل خانة لقارئ الشاشة: «الأساسي — سليم»
           rowName: (r) => r.name || (empOf(r.employeeId) || {}).name || '',
-          tools: [{ id: 'fill', label: 'تعبئة من بيانات الموظفين', run: (v, rows) => rows.splice(0, rows.length, ...S.employees.filter((e) => RB.isEmployeeActive(e, v.month)).map((e) => RB.payrollLine(e, S, v.month))) }],
+          // تعبئة من بيانات الموظفين لا تمسح ما أُدخل: الإضافي والخصومات والتأمينات المعدّلة والأسطر اليدوية تبقى
+          tools: [
+            {
+              id: 'fill',
+              label: 'تعبئة من بيانات الموظفين',
+              run: (v, rows) => {
+                if (!RB.isISOMonth(v.month)) return toast('اختر الشهر أولاً.', 'bad');
+                rows.splice(0, rows.length, ...payrollFill(v.month, rows, linesYm));
+                linesYm = v.month;
+              },
+            },
+          ],
           newRow: () => ({ employeeId: '', name: '', basic: 0, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0, eosbPaid: 0 }),
           cols: [
             {
@@ -2640,7 +2812,8 @@
             nCol('housing', 'السكن'),
             nCol('allowances', 'بدلات'),
             nCol('additions', 'إضافي ومكافآت'),
-            nCol('deductions', 'خصومات وغياب'),
+            // «أيام عمل 20»: من باشر أو ترك العمل أثناء الشهر، وخُصم ما لم يعمله
+            Object.assign(nCol('deductions', 'خصومات وغياب'), { hint: (r) => (r.note ? esc(r.note) : '') }),
             nCol('gosiEe', 'تأمينات الموظف'),
             nCol('gosiEr', 'تأمينات المنشأة'),
             Object.assign(nCol('eosbPaid', 'مكافأة نهاية الخدمة المصروفة'), {
@@ -2686,19 +2859,22 @@
       preview: (v) =>
         (v.account === 'cash' || v.gosiAccount === 'cash' ? '<p class="note bad">نظام حماية الأجور يتطلب صرف رواتب العمال عبر الحساب البنكي ورفع ملف الأجور في منصة «مدد» شهرياً؛ الصرف النقدي قد يُعدّ عدم التزام ويعرّض المنشأة لإيقاف خدمات قوى.</p>' : '') +
         '<p class="note">اشتراكات التأمينات الاجتماعية تُسدَّد قبل يوم 15 من الشهر التالي.</p>',
-      onSave: (v) => {
+      onSave: async (v) => {
         if (!v.lines.length) return 'المسير فارغ.';
         // السطر المكرر لموظف يضاعف استحقاق مخصصه
         const ids = v.lines.map((l) => l.employeeId).filter(Boolean);
         const dup = ids.find((id, i) => ids.indexOf(id) !== i);
         if (dup) return 'الموظف مكرر في المسير: ' + ((empOf(dup) || {}).name || '') + '. اجمع ما له في سطر واحد.';
+        // مسير ثانٍ لنفس الشهر برواتب: يُؤكَّد (تعديل مسير قائم يُسأل فقط إن نُقل إلى شهر له مسير)
+        if (otherRun(v) && RB.payrollTotals(v).gross > 0 && (!isEdit || v.month !== runMonth(rec)) && !(await confirmBox('يوجد مسير لنفس الشهر. حفظ مسير ثانٍ؟', { ok: 'احفظ' }))) return 'لم يُحفظ المسير.';
         upsert('payroll', v);
       },
     });
   };
 
-  FORMS.purchases = (rec) => {
+  FORMS.purchases = (rec, x, opts = {}) => {
     const set = S.settings;
+    const isEdit = editing(rec, opts);
     const rawOpts = () => [['', '— بند حر —']].concat(S.raw.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')).map((x) => [x.id, x.name + (x.buyUnit ? ' (' + x.buyUnit + ')' : '')]));
     const last = S.purchases.slice().sort((a, b) => (a.date < b.date ? 1 : -1))[0];
     const payOpts = payOptions(true);
@@ -2721,9 +2897,15 @@
       }
     };
     return formModal({
-      title: rec ? 'تعديل فاتورة مشتريات' : 'فاتورة مشتريات',
+      title: isEdit ? 'تعديل فاتورة مشتريات' : 'فاتورة مشتريات',
       wide: true,
-      value: rec ? Object.assign({ updatePrices: false }, rec) : { id: RB.uid(), date: today(), supplier: '', invoiceNo: '', category: 'food', account: 'bank', taxable: true, includesVat: false, lines: [{ rawId: '', desc: '', qty: 1, price: '' }], note: '', updatePrices: true },
+      // نسخة فاتورة: أسعارها المنسوخة (row._copy مؤقت) لا تُحدّث أسعار المواد الخام إلا إن عُدّلت،
+      // فلا ترجع نسخة فاتورة قديمة سعر مادة إلى سعرها القديم
+      value: isEdit
+        ? Object.assign({ updatePrices: false }, rec)
+        : rec
+          ? Object.assign({}, rec, { updatePrices: true, lines: (rec.lines || []).map((l) => Object.assign({}, l, l.rawId ? { _copy: l.price } : {})) })
+          : { id: RB.uid(), date: today(), supplier: '', invoiceNo: '', category: 'food', account: 'bank', taxable: true, includesVat: false, lines: [{ rawId: '', desc: '', qty: 1, price: '' }], note: '', updatePrices: true },
       onChange: (p, v) => {
         if (MEM.includes(p)) touched[p] = true;
         const m = p.match(/^lines\.(\d+)\.(rawId|price)$/);
@@ -2731,6 +2913,7 @@
           const row = v.lines[+m[1]];
           if (!row) return;
           // سعر كتبه المستخدم لا يُحوَّل مع خيارات الضريبة
+          delete row._copy;
           if (m[2] === 'price') {
             delete row._auto;
             return;
@@ -2743,7 +2926,7 @@
           return 'redraw';
         }
         let again = p === 'includesVat' || p === 'taxable';
-        if (p === 'supplier' && !rec) {
+        if (p === 'supplier' && !isEdit) {
           // ذاكرة المورد: إعدادات آخر فاتورة منه، إلا ما غيّره المستخدم بنفسه، وتظهر في النموذج قبل الحفظ
           const name = String(v.supplier || '').trim();
           const prev = name && S.purchases.filter((x) => String(x.supplier || '').trim() === name).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
@@ -2791,8 +2974,11 @@
         v.lines = v.lines.filter((l) => num(l.qty) || num(l.price) || l.desc || l.rawId);
         if (!v.lines.length) return 'أضف صنفاً واحداً على الأقل.';
         // السعر المعبأ تلقائياً من المادة الخام لا يحمل سعراً جديداً لها
-        const typed = v.lines.filter((l) => !(l._auto !== undefined && num(l.price) === num(l._auto)));
-        v.lines.forEach((l) => delete l._auto);
+        const typed = v.lines.filter((l) => !(l._auto !== undefined && num(l.price) === num(l._auto)) && !(l._copy !== undefined && num(l.price) === num(l._copy)));
+        v.lines.forEach((l) => {
+          delete l._auto;
+          delete l._copy;
+        });
         const updPrices = v.updatePrices;
         delete v.updatePrices;
         if (upsert('purchases', v) === false) return false;
@@ -2808,7 +2994,8 @@
     });
   };
 
-  FORMS.supplierPayments = (rec, x) => {
+  FORMS.supplierPayments = (rec, x, opts = {}) => {
+    const isEdit = editing(rec, opts);
     const bal = RB.supplierBalances(S, today());
     // المبلغ المقترح = المستحق على المورد المختار (إن كان له رصيد)
     const owed = (name) => {
@@ -2818,11 +3005,11 @@
     const sup = x || (bal.find((b) => b.balance > 0.005) || {}).supplier || '';
     let auto = owed(sup);
     return formModal({
-      title: rec ? 'تعديل سداد مورد' : 'سداد مورد',
+      title: isEdit ? 'تعديل سداد مورد' : 'سداد مورد',
       value: rec || { id: RB.uid(), date: today(), supplier: sup, account: 'bank', amount: auto, note: '' },
       // تغيير المورد يغيّر المبلغ المقترح، ما لم يكتب المستخدم مبلغاً بنفسه
       onChange: (p, v) => {
-        if (p !== 'supplier' || rec) return;
+        if (p !== 'supplier' || isEdit) return;
         const was = v.amount;
         if (v.amount === '' || v.amount === auto) v.amount = auto = owed(v.supplier);
         if (v.amount !== was) return 'redraw';
@@ -2841,9 +3028,9 @@
     });
   };
 
-  FORMS.raw = (rec) =>
+  FORMS.raw = (rec, x, opts = {}) =>
     formModal({
-      title: rec ? 'تعديل مادة خام' : 'مادة خام جديدة',
+      title: editing(rec, opts) ? 'تعديل مادة خام' : 'مادة خام جديدة',
       value: rec || { id: RB.uid(), name: '', category: 'لحوم', supplier: '', buyUnit: 'كرتون', packQty: 1, useUnit: 'جم', price: '', taxable: true, wastePct: 0 },
       fields: [
         { type: 'row', fields: [{ k: 'name', label: 'اسم المادة', req: 1 }, { k: 'category', type: 'select', label: 'الفئة', options: RB.RAW_CATS }] },
@@ -2863,10 +3050,10 @@
       },
     });
 
-  FORMS.stockCounts = (rec) => {
+  FORMS.stockCounts = (rec, x, opts = {}) => {
     const all = () => S.raw.slice().sort((a, b) => (a.category + a.name).localeCompare(b.category + b.name, 'ar')).map((x) => ({ rawId: x.id, qty: 0, price: x.price }));
     return formModal({
-      title: rec ? 'تعديل جرد' : 'جرد المخزون',
+      title: editing(rec, opts) ? 'تعديل جرد' : 'جرد المخزون',
       wide: true,
       value: rec || { id: RB.uid(), date: today(), note: '', lines: all() },
       onChange: (p, v) => {
@@ -2934,9 +3121,9 @@
   }
   const withRec = (section, v) => Object.assign({}, S, { [section]: S[section].filter((x) => x.id !== v.id).concat([v]) });
 
-  FORMS.composites = (rec) =>
+  FORMS.composites = (rec, x, opts = {}) =>
     formModal({
-      title: rec ? 'تعديل منتج مجمّع' : 'منتج مجمّع جديد',
+      title: editing(rec, opts) ? 'تعديل منتج مجمّع' : 'منتج مجمّع جديد',
       wide: true,
       value: rec || { id: RB.uid(), name: '', yieldQty: 1, yieldUnit: 'حبة', items: [{ kind: 'raw', id: '', qty: '' }], note: '' },
       fields: [
@@ -2956,11 +3143,11 @@
       },
     });
 
-  FORMS.products = (rec) => {
+  FORMS.products = (rec, x, opts = {}) => {
     // أسعار المنيو شاملة الضريبة للمطعم المسجل فقط
     const incl = RB.isVatReg(S.settings, today()) ? ' (شامل الضريبة)' : '';
     return formModal({
-      title: rec ? 'تعديل صنف' : 'صنف جديد في المنيو',
+      title: editing(rec, opts) ? 'تعديل صنف' : 'صنف جديد في المنيو',
       wide: true,
       value: rec ? Object.assign({ competitors: [] }, rec) : { id: RB.uid(), name: '', category: 'برقر', price: '', appPrice: '', active: true, items: [{ kind: 'raw', id: '', qty: '' }], competitors: [], note: '' },
       fields: [
@@ -3016,19 +3203,24 @@
       .join('')}<tr class="total"><td colspan="3">الإجمالي${kind === 'comp' ? ` (ينتج ${fmtQ(rec.yieldQty)} ${esc(rec.yieldUnit)})` : ''}</td><td class="num">${N(b.total)}</td><td></td></tr></tbody></table></div>`;
   }
 
-  FORMS.sales = (rec) => {
-    const chs = S.settings.channels.filter((c) => c.active !== false || (rec && rec.channels && rec.channels[c.id]));
+  FORMS.sales = (rec, x, opts = {}) => {
+    const isEdit = editing(rec, opts);
+    // القنوات المفعّلة، والموقوفة التي لها مبيعات في الإقفال المحفوظ
+    const chs = S.settings.channels.filter((c) => c.active !== false || (isEdit && rec.channels && rec.channels[c.id]));
     const base = { id: RB.uid(), date: today(), channels: {}, items: [], note: '' };
     chs.forEach((c) => (base.channels[c.id] = { amount: '', orders: '' }));
     const v0 = rec ? clone(rec) : base;
+    v0.channels = v0.channels || {};
+    // سجل جديد من نسخة: لا قناة مخفية (موقوفة أو محذوفة) تُحسب أو تُحفظ دون أن تظهر
+    if (!isEdit) for (const id of Object.keys(v0.channels)) if (!chs.some((c) => c.id === id)) delete v0.channels[id];
     chs.forEach((c) => (v0.channels[c.id] = v0.channels[c.id] || { amount: '', orders: '' }));
     const prodOpts = () => [['', '— اختر —']].concat(S.products.filter((p) => p.active !== false).map((p) => [p.id, p.name]));
     return formModal({
-      title: rec ? 'تعديل إقفال يومي' : 'إقفال يومي',
+      title: isEdit ? 'تعديل إقفال يومي' : 'إقفال يومي',
       wide: true,
       value: v0,
       // الإقفال الجديد يبدأ من مبلغ أول قناة
-      focus: rec ? '' : '[data-path^="channels."][data-path$=".amount"]',
+      focus: isEdit ? '' : '[data-path^="channels."][data-path$=".amount"]',
       // اليوم بلا إعادة رسم (يُكتب بلوحة المفاتيح بمقاطعه)، وتنبيه الإقفال الثاني لنفس اليوم في المعاينة
       fields: [
         { type: 'row', fields: [{ k: 'date', type: 'date', label: 'اليوم', req: 1 }, { k: 'note', label: 'ملاحظات' }] },
@@ -3070,7 +3262,7 @@
           orders += x.orders;
         }
         const itemsVal = RB.sum(v.items || [], (row) => num((S.products.find((p) => p.id === row.productId) || {}).price) * num(row.qty));
-        const twice = !rec && S.sales.some((s) => s.date === v.date) ? `<p class="note bad">يوجد إقفال مسجل لهذا اليوم. الحفظ يضيف إقفالاً ثانياً (مثلاً وردية مسائية).</p>` : '';
+        const twice = !isEdit && S.sales.some((s) => s.date === v.date && s.id !== v.id) ? `<p class="note bad">يوجد إقفال مسجل لهذا اليوم. الحفظ يضيف إقفالاً ثانياً (مثلاً وردية مسائية).</p>` : '';
         return `${twice}<div class="pv-grid four"><div><span>إجمالي المبيعات</span>${money(gross)}</div><div><span>الضريبة</span>${money(vat)}</div><div><span>العمولات والرسوم</span>${money(fee)}</div><div><span>الطلبات</span><b class="n">${fmt0(orders)}</b><small>${orders ? 'متوسط ' + fmt(gross / orders) : ''}</small></div></div>${itemsVal && gross ? `<p class="note">قيمة الأصناف بسعر المحل ${fmt(itemsVal)} (أسعار التطبيقات أعلى عادة).</p>` : ''}`;
       },
       onSave: (v) => {
@@ -3081,8 +3273,16 @@
           const x = v.channels[id];
           if (!num(x.amount) && !num(x.orders)) continue;
           const c = RB.channelOf(S, id) || {};
-          // نسبة العمولة وضريبتها تُحفظ مع الإقفال، فتعديل الإعدادات لاحقاً لا يغيّر الأيام السابقة
-          out[id] = { amount: num(x.amount), orders: num(x.orders), feePct: x.feePct !== undefined && x.feePct !== '' ? num(x.feePct) : num(c.feePct), type: x.type || c.type, feeVat: x.feeVat !== undefined ? !!x.feeVat : !!S.settings.feeVat };
+          // نسبة العمولة وضريبتها تُحفظ مع الإقفال، فتعديل الإعدادات لاحقاً لا يغيّر الأيام السابقة؛
+          // الإقفال الجديد (ومنه النسخة) يأخذها من الإعدادات الحالية
+          const keep = isEdit || !c.id;
+          out[id] = {
+            amount: num(x.amount),
+            orders: num(x.orders),
+            feePct: keep && x.feePct !== undefined && x.feePct !== '' ? num(x.feePct) : num(c.feePct),
+            type: (keep && x.type) || c.type,
+            feeVat: keep && x.feeVat !== undefined ? !!x.feeVat : !!S.settings.feeVat,
+          };
         }
         if (!Object.keys(out).length) return 'أدخل مبيعات قناة واحدة على الأقل.';
         v.channels = out;
@@ -3093,34 +3293,56 @@
     });
   };
 
-  FORMS.payouts = (rec, x) => {
+  FORMS.payouts = (rec, x, opts = {}) => {
+    const isEdit = editing(rec, opts);
     const apps = S.settings.channels.filter((c) => c.type === 'app');
     if (!apps.length) return toast('لا توجد تطبيقات توصيل في الإعدادات.', 'bad');
     const recv = RB.appReceivables(S, today());
     const ch0 = x || (recv.sort((a, b) => b.balance - a.balance)[0] || apps[0]).id;
+    // المستحق على التطبيق قبل هذا التحويل في تاريخه: كل المبيعات والتحويلات حتى التاريخ، بلا هذا التحويل نفسه
+    const balOf = (v) => {
+      const S2 = Object.assign({}, S, { payouts: S.payouts.filter((p) => p.id !== v.id) });
+      const b = RB.appReceivables(S2, RB.isISODate(v.date) ? v.date : today()).find((a) => a.id === v.channelId);
+      return b ? b.balance : 0;
+    };
+    const autoAmt = (v) => r2(Math.max(balOf(v), 0)) || '';
+    // التطبيقات المفعّلة، والموقوفة التي لها رصيد أو المختارة في التحويل، والتطبيق المحذوف المختار باسمه
+    const chOpts = (v) => {
+      const o = apps.filter((c) => c.active !== false || c.id === v.channelId || Math.abs((recv.find((a) => a.id === c.id) || {}).balance || 0) > 0.005).map((c) => [c.id, c.name + (c.active === false ? ' (موقوفة)' : '')]);
+      if (v.channelId && !o.some((z) => z[0] === v.channelId)) o.push([v.channelId, v.channelId + ' (محذوفة)']);
+      return o;
+    };
     // «نوع الخصم» يظهر عند وجود خصومات، ويُبدّل أثناء الكتابة بلا إعادة رسم حتى لا يضيع الضغط على «حفظ» أو Enter
     const dedOff = (v) => !(num(v.deductions) > 0);
+    // المبلغ المقترح (= المستحق) يتبع التطبيق والتاريخ ما دام المستخدم لم يكتب مبلغاً غيره
+    const value = rec
+      ? Object.assign({}, rec, { dedType: RB.DED_TYPES[rec.dedType] ? rec.dedType : num(rec.deductions) ? 'other' : 'sale' })
+      : { id: RB.uid(), date: today(), channelId: ch0, amount: '', deductions: 0, dedType: 'sale', note: '' };
+    let auto;
+    if (!rec) value.amount = auto = autoAmt(value);
     let m = null;
     m = formModal({
-      title: rec ? 'تعديل تحويل' : 'تحويل من تطبيق توصيل',
+      title: isEdit ? 'تعديل تحويل' : 'تحويل من تطبيق توصيل',
       // السجل القديم بخصومات وبلا نوع يبقى «غرامة أو تسوية» فلا تتغير الفترات المقدَّمة؛ الجديد افتراضياً «عرض أو مرتجع»
-      value: rec
-        ? Object.assign({}, rec, { dedType: RB.DED_TYPES[rec.dedType] ? rec.dedType : num(rec.deductions) ? 'other' : 'sale' })
-        : { id: RB.uid(), date: today(), channelId: ch0, amount: r2(Math.max((recv.find((a) => a.id === ch0) || {}).balance || 0, 0)) || '', deductions: 0, dedType: 'sale', note: '' },
+      value,
       onChange: (p, v) => {
         const f = p === 'deductions' && m && m.body.querySelector('.field[data-k="dedType"]');
         if (f) f.classList.toggle('off', dedOff(v));
+        if (p !== 'channelId' && p !== 'date') return;
+        if (!(v.amount === '' || v.amount === undefined || v.amount === null || (auto !== undefined && num(v.amount) === num(auto)))) return;
+        const a = autoAmt(v);
+        if (a === v.amount) return;
+        v.amount = auto = a;
+        return 'redraw';
       },
       fields: (v) => [
-        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ وصول المبلغ للبنك', req: 1 }, { k: 'channelId', type: 'select', label: 'التطبيق', options: apps.map((c) => [c.id, c.name]), redraw: true }] },
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'تاريخ وصول المبلغ للبنك', req: 1 }, { k: 'channelId', type: 'select', label: 'التطبيق', options: chOpts, redraw: true }] },
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ الواصل', req: 1, min: 0 }, { k: 'deductions', type: 'money', label: 'خصومات إضافية', min: 0, help: 'ما خصمه التطبيق من التحويل غير عمولته المسجلة في الإقفال: عروض أو مرتجعات، رسوم إعلان، أو غرامات' }] },
         { k: 'dedType', type: 'select', label: 'نوع الخصم', cls: dedOff(v) ? 'off' : '', options: Object.keys(RB.DED_TYPES).map((k) => [k, RB.DED_TYPES[k].name]), help: 'يحدد معالجة الضريبة: العرض أو المرتجع يخفض المبيعات وضريبتها، والرسوم بفاتورة ضريبية تُسترد ضريبتها، والغرامة بلا ضريبة.' },
         { k: 'note', label: 'ملاحظة' },
       ],
       preview: (v) => {
-        const b = RB.appReceivables(S, v.date || today()).find((a) => a.id === v.channelId);
-        const own = rec ? num(rec.amount) + num(rec.deductions) : 0;
-        const bal = b ? b.balance + (rec && rec.channelId === v.channelId ? own : 0) : 0;
+        const bal = balOf(v);
         return `<p class="note">المستحق على التطبيق قبل هذا التحويل: <b class="n">${fmt(bal)}</b> ${cur()} · بعده: <b class="n">${fmt(bal - num(v.amount) - num(v.deductions))}</b></p>`;
       },
       onSave: (v) => upsert('payouts', v),
@@ -3128,13 +3350,31 @@
     return m;
   };
 
-  FORMS.transfers = (rec, x) =>
-    formModal({
-      title: rec ? 'تعديل تحويل' : x === 'bank' ? 'سحب من البنك إلى الصندوق' : 'إيداع نقدية الصندوق في البنك',
-      value: rec || { id: RB.uid(), date: today(), from: x === 'bank' ? 'bank' : 'cash', to: x === 'bank' ? 'cash' : 'bank', amount: x === 'bank' ? '' : Math.max(0, Math.floor((RB.balances(ledger(today()).entries, null, today())['1101'] || 0) / 100) * 100) || '', note: '' },
+  FORMS.transfers = (rec, x, opts = {}) => {
+    const isEdit = editing(rec, opts);
+    // رصيد الحساب في تاريخ التحويل قبله (بلا هذا التحويل إن كان محفوظاً)
+    const balAt = (acc, v) => {
+      const d = RB.isISODate(v.date) ? v.date : today();
+      let b = RB.balances(ledger(d).entries, null, d)[RB.srcAcc(acc)] || 0;
+      const old = S.transfers.find((t) => t.id === v.id);
+      if (old && old.date <= d) {
+        if (old.from === acc) b += num(old.amount);
+        if (old.to === acc) b -= num(old.amount);
+      }
+      return r2(b);
+    };
+    // المقترح: من الصندوق رصيده مقرَّباً لأدنى 100، ومن البنك بلا مبلغ
+    const autoAmt = (v) => (v.from === 'cash' ? Math.max(0, Math.floor(balAt('cash', v) / 100) * 100) || '' : '');
+    const value = rec || { id: RB.uid(), date: today(), from: x === 'bank' ? 'bank' : 'cash', to: x === 'bank' ? 'cash' : 'bank', amount: '', note: '' };
+    let auto;
+    if (!rec) value.amount = auto = autoAmt(value);
+    return formModal({
+      title: isEdit ? 'تعديل تحويل' : 'تحويل بين الصندوق والبنك',
+      value,
       onChange: (p, v) => {
         if (p !== 'from') return;
         v.to = v.from === 'cash' ? 'bank' : 'cash';
+        if (!isEdit && (v.amount === '' || v.amount === undefined || v.amount === null || (auto !== undefined && num(v.amount) === num(auto)))) v.amount = auto = autoAmt(v);
         return 'redraw';
       },
       fields: [
@@ -3142,11 +3382,13 @@
         { k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 },
         { k: 'note', label: 'ملاحظة' },
       ],
-      preview: (v) => `<p class="note">إلى: <b>${RB.PAY_LABEL[v.to]}</b></p>`,
+      preview: (v) => `<p class="note">من: <b>${esc(RB.PAY_LABEL[v.from] || '')}</b> ← إلى: <b>${esc(RB.PAY_LABEL[v.to] || '')}</b> · رصيد ${v.from === 'bank' ? 'البنك' : 'الصندوق'} قبل التحويل: <b class="n">${fmt(balAt(v.from, v))}</b> ${cur()}</p>`,
       onSave: (v) => upsert('transfers', v),
     });
+  };
 
-  FORMS.vatPayments = (rec, x) => {
+  FORMS.vatPayments = (rec, x, opts = {}) => {
+    const isEdit = editing(rec, opts);
     const t = today();
     // الفترات المنتهية مع المتبقي من كل إقرار (بعد خصم الرصيد الدائن وما سُدد)
     let pers = RB.vatReturns(S, t, ledger(t)).filter((p) => p.to < t);
@@ -3156,10 +3398,10 @@
     const labels = pers.map((p) => p.label).reverse();
     if (rec && rec.period && !labels.includes(rec.period)) labels.unshift(rec.period);
     return formModal({
-      title: rec ? 'تعديل سداد الضريبة' : 'سداد ضريبة القيمة المضافة',
+      title: isEdit ? 'تعديل سداد الضريبة' : 'سداد ضريبة القيمة المضافة',
       value: rec || { id: RB.uid(), date: t, period: per ? per.label : '', account: 'bank', amount: due > 0 ? due : '', note: '' },
       onChange: (p, v) => {
-        if (p !== 'period' || rec) return;
+        if (p !== 'period' || isEdit) return;
         const q = pers.find((z) => z.label === v.period);
         v.amount = q && q.remaining > 0 ? r2(q.remaining) : '';
         return 'redraw';
@@ -3291,6 +3533,39 @@
     employees: 'لهذا الموظف مسيرات رواتب؛ حدّد «تاريخ ترك العمل» وأوقفه بدلاً من حذفه.',
   };
 
+  // تجهيز النسخة قبل فتحها كسجل جديد
+  const DUP_PREP = {
+    // نسب العمولة وضريبتها من الإعدادات الحالية (لا من الإقفال المنسوخ)، ولا قنوات موقوفة أو محذوفة
+    sales: (c) => {
+      const out = {};
+      for (const id of Object.keys(c.channels || {})) {
+        const ch = S.settings.channels.find((z) => z.id === id);
+        if (!ch || ch.active === false) continue;
+        const x = Object.assign({}, c.channels[id]);
+        delete x.feePct;
+        delete x.type;
+        delete x.feeVat;
+        out[id] = x;
+      }
+      c.channels = out;
+    },
+    // التغطية تبدأ من تاريخ الدفع الجديد (لا من بداية تغطية المصروف المنسوخ)
+    expenses: (c) => {
+      c.startDate = '';
+      if (!c.name && c.desc) c.desc += ' (نسخة)';
+    },
+    // مسير الشهر التالي لآخر مسير: أسطره من بيانات الموظفين لذلك الشهر، والأسطر اليدوية (بلا موظف مسجل) تبقى
+    payroll: (c) => {
+      const months = [...paidMonths()].filter(RB.isISOMonth).sort();
+      const ym = months.length ? RB.ymAdd(months[months.length - 1], 1) : RB.isISOMonth(c.month) ? c.month : today().slice(0, 7);
+      c.month = ym;
+      c.lines = payrollFill(ym, (c.lines || []).filter((l) => l && !l.employeeId).map((l) => Object.assign({}, l, { eosbPaid: 0 })));
+      c.date = payDefaultDate(ym);
+      // ملاحظة المسير المنسوخ تخص شهره (شهر جزئي، تسوية نهاية الخدمة…)
+      c.note = '';
+    },
+  };
+
   const ACT = {
     go: (el) => go(el.dataset.v),
     add: (el) => FORMS[el.dataset.s] && FORMS[el.dataset.s](null, el.dataset.x),
@@ -3298,14 +3573,18 @@
       const rec = find(el.dataset.s, el.dataset.id);
       if (rec && FORMS[el.dataset.s]) FORMS[el.dataset.s](clone(rec));
     },
+    // النسخة سجل جديد: تُفتح كإضافة (العنوان، ونسب العمولات الحالية، وذاكرة المورد…) بعد تجهيزها في DUP_PREP
     dup: (el) => {
-      const rec = find(el.dataset.s, el.dataset.id);
-      if (!rec) return;
+      const s = el.dataset.s;
+      const rec = find(s, el.dataset.id);
+      if (!rec || !FORMS[s] || NO_DUP.includes(s)) return;
       const c = clone(rec);
       c.id = RB.uid();
+      delete c._bad;
       if (c.date) c.date = today();
       if (c.name) c.name = c.name + ' (نسخة)';
-      FORMS[el.dataset.s](c);
+      if (DUP_PREP[s]) DUP_PREP[s](c);
+      FORMS[s](c, undefined, { isNew: true, mode: 'dup' });
     },
     del: async (el) => {
       const s = el.dataset.s;
@@ -3343,7 +3622,7 @@
       // الزكاة: سنة الدفع الجديدة تخص السنة السابقة لها؛ غيرها يبدأ بعد نهاية التغطية السابقة
       if (rec.category === 'zakat') c.startDate = +c.date.slice(0, 4) - 1 + '-01-01';
       else c.startDate = RB.addDays(RB.coverageEnd(rec.startDate || rec.date, rec.months), 1);
-      FORMS.expenses(c);
+      FORMS.expenses(c, undefined, { isNew: true, mode: 'renew' });
     },
     stopRenew: async (el) => {
       const rec = find('expenses', el.dataset.id);
@@ -3865,7 +4144,7 @@
         <div class="side-foot" id="saveStatus"></div>
       </aside>
       <div class="scrim" data-act="menu"></div>
-      <main class="main" id="main">
+      <main class="main" id="main" tabindex="-1">
         <header class="topbar">
           <button type="button" class="icon-btn menu-btn" data-act="menu" aria-label="القائمة">☰</button>
           <div class="crumb" id="crumb"></div>

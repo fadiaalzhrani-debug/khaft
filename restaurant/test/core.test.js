@@ -1772,3 +1772,54 @@ test('تحديث أسعار المواد الخام من الفاتورة: ال�
   // سطر بآخر سعر نفسه بين سطرين: لا يعني تغييراً إن كان الأخير مثل الحالي
   assert.deepEqual(RB.rawPriceUpdates(inv([{ rawId: 'beef', qty: 1, price: 350 }, { rawId: 'beef', qty: 1, price: 340 }]), raws, set), []);
 });
+
+test('المسير يتبع تاريخ ترك العمل: من ترك في 20 سبتمبر له مسير سبتمبر بعشرين يوماً وليس له أكتوبر (WP4)', () => {
+  const S = base();
+  const left = { id: 'x', name: 'سالم', nationality: 'saudi', gosiSystem: 'old', basic: 5000, housing: 1000, transport: 300, otherAllow: 0, startDate: '2026-01-01', endDate: '2026-09-20', active: false };
+  // تاريخ ترك العمل هو الحَكَم وإن أُلغي «على رأس العمل»
+  assert.equal(RB.isEmployeeActive(left, '2026-08'), true);
+  assert.equal(RB.isEmployeeActive(left, '2026-09'), true);
+  assert.equal(RB.isEmployeeActive(left, '2026-10'), false);
+  assert.equal(RB.isEmployeeActive(Object.assign({}, left, { active: true }), '2026-09'), true);
+  // بلا تاريخ ترك العمل: «على رأس العمل»؛ ومن لم يباشر بعد لا مسير له
+  assert.equal(RB.isEmployeeActive({ startDate: '2026-01-01', active: false }, '2026-09'), false);
+  assert.equal(RB.isEmployeeActive({ startDate: '2026-10-05' }, '2026-09'), false);
+  assert.equal(RB.isEmployeeActive({ startDate: '2026-10-05' }, '2026-10'), true);
+  // سطر سبتمبر: خصم 10 أيام من 30 من الأجر، والأساسي والسكن كما هما فلا يتغير أجر التأمينات
+  const full = RB.payrollLine(left, S, '2026-08');
+  const sep = RB.payrollLine(left, S, '2026-09');
+  const wage = 5000 + 1000 + 300;
+  assert.equal(full.deductions, 0);
+  assert.equal(full.note, undefined);
+  close(sep.deductions, RB.r2((wage * 10) / 30));
+  assert.equal(sep.note, 'أيام عمل 20');
+  assert.deepEqual([sep.basic, sep.housing, sep.allowances, sep.gosiEe, sep.gosiEr], [full.basic, full.housing, full.allowances, full.gosiEe, full.gosiEr]);
+  close(RB.payrollLineGross(sep), RB.r2((wage * 20) / 30));
+  // المباشرة أثناء الشهر: من 11 يونيو = 20 يوماً؛ من أول فبراير شهر كامل (28 يوماً) بلا خصم؛ من 15 فبراير 14 يوماً
+  const join = (d) => ({ id: 'j', name: 'ج', nationality: 'expat', basic: 3000, startDate: d });
+  close(RB.payrollLine(join('2026-06-11'), S, '2026-06').deductions, 1000);
+  assert.equal(RB.payrollLine(join('2026-02-01'), S, '2026-02').deductions, 0);
+  assert.equal(RB.payrollLine(join('2026-02-15'), S, '2026-02').note, 'أيام عمل 14');
+  close(RB.payrollLine(join('2026-02-15'), S, '2026-02').deductions, 1600);
+  // من 2 يوليو (31 يوماً): 30 يوم عمل = شهر كامل
+  assert.equal(RB.payrollLine(join('2026-07-02'), S, '2026-07').deductions, 0);
+  assert.equal(RB.payrollDaysWorked(join('2026-07-02'), '2026-07'), 30);
+  assert.equal(RB.payrollDaysWorked(join('2026-01-01'), '2026-07'), null);
+  // بلا شهر: لا تقدير لأيام العمل
+  assert.equal(RB.payrollLine(join('2026-06-11'), S).deductions, 0);
+});
+
+test('مسير الشهر الأول في التجربة: خصم الأيام قبل المباشرة من RB.payrollLine نفسه (WP4)', () => {
+  const D = RB.demoState('2026-10-15');
+  const first = D.payroll.slice().sort((a, b) => (a.month < b.month ? -1 : 1))[0];
+  assert.ok(first.lines.length > 0);
+  for (const l of first.lines) {
+    const e = D.employees.find((x) => x.id === l.employeeId);
+    const w = RB.payrollDaysWorked(e, first.month);
+    assert.ok(w > 0 && w < 30);
+    close(l.deductions, RB.r2(((l.basic + l.housing + l.allowances) * (30 - w)) / 30));
+    assert.equal(l.note, 'أيام عمل ' + w);
+  }
+  // الأشهر الكاملة بلا خصم
+  for (const p of D.payroll.filter((x) => x !== first)) for (const l of p.lines) assert.equal(l.deductions, 0);
+});

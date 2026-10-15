@@ -590,12 +590,21 @@
     if (emp.active === false) return emp.endDate && emp.endDate.slice(0, 7) <= ym ? 'left' : 'stopped';
     return 'active';
   };
-  RB.isEmployeeActive = (emp, ym) => RB.employeeStatus(emp, ym) === 'active';
+  // له راتب في مسير الشهر ym: باشر قبل نهاية الشهر، ولم يترك العمل قبل أوله. تاريخ ترك العمل هو الحَكَم
+  // (من ترك العمل في 20 سبتمبر له مسير سبتمبر وإن أُلغي «على رأس العمل»)، وبلا تاريخ يُتبع «على رأس العمل».
+  // حالة الموظف للعرض (RB.employeeStatus) تبقى كما هي
+  RB.isEmployeeActive = (emp, ym) => {
+    if (emp.startDate && emp.startDate.slice(0, 7) > ym) return false;
+    if (emp.endDate) return emp.endDate.slice(0, 7) >= ym;
+    return emp.active !== false;
+  };
 
-  // سطر المسير لشهر ym (نسب التأمينات حسب الشهر)؛ بدونه الشهر الحالي
+  // سطر المسير لشهر ym (نسب التأمينات حسب الشهر)؛ بدونه الشهر الحالي.
+  // من باشر أو ترك العمل أثناء الشهر: خصم الأيام التي لم يعملها (الأجر ÷ 30 لكل يوم، والشهر الكامل 30 يوماً)
+  // في «الخصومات»، ويبقى الأساسي والسكن كما هما فلا يتغير أجر التأمينات
   RB.payrollLine = (emp, S, ym) => {
     const g = RB.gosiFor(emp, S, ym);
-    return {
+    const l = {
       employeeId: emp.id,
       name: emp.name,
       basic: num(emp.basic),
@@ -607,6 +616,25 @@
       gosiEr: g.er,
       eosbPaid: 0, // مكافأة نهاية الخدمة المصروفة: خارج إجمالي الرواتب والتأمينات، تُخصم من المخصص
     };
+    const w = RB.payrollDaysWorked(emp, ym);
+    if (w !== null) {
+      const ded = r2(((l.basic + l.housing + l.allowances) * (30 - Math.min(w, 30))) / 30);
+      if (ded > 0) {
+        l.deductions = ded;
+        l.note = 'أيام عمل ' + w;
+      }
+    }
+    return l;
+  };
+  // أيام العمل في الشهر ym لمن باشر أو ترك العمل أثناءه؛ null إن عمل الشهر كله (أو بلا شهر صالح)
+  RB.payrollDaysWorked = (emp, ym) => {
+    if (!RB.isISOMonth(ym)) return null;
+    const ms = ym + '-01';
+    const me = RB.monthEnd(ym);
+    const from = RB.isISODate(emp.startDate) && emp.startDate > ms ? emp.startDate : ms;
+    const to = RB.isISODate(emp.endDate) && emp.endDate < me ? emp.endDate : me;
+    if (from === ms && to === me) return null;
+    return Math.max(0, RB.daysBetween(from, to) + 1);
   };
   RB.payrollLineGross = (l) => r2(num(l.basic) + num(l.housing) + num(l.allowances) + num(l.additions) - num(l.deductions));
   RB.payrollTotals = (pr) => {

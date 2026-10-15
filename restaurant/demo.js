@@ -275,11 +275,8 @@
     for (let ym = RB.ymAdd(openYm, -1); ym < thisYm; ym = RB.ymAdd(ym, 1)) {
       const date = RB.monthEnd(ym);
       if (date > today) break;
-      const lines = S.employees.filter((e) => RB.isEmployeeActive(e, ym)).map((e) => {
-        const l = RB.payrollLine(e, S, ym);
-        if (ym < openYm) l.deductions = r2(((l.basic + l.housing + l.allowances) * 10) / 30); // بدأوا قبل نهاية الشهر بعشرين يوماً
-        return l;
-      });
+      // الشهر الأول جزئي: باشروا قبل نهايته بعشرين يوماً، فيُخصم من رواتبهم ما لم يعملوه (RB.payrollLine)
+      const lines = S.employees.filter((e) => RB.isEmployeeActive(e, ym)).map((e) => RB.payrollLine(e, S, ym));
       S.payroll.push({ id: id('w'), month: ym, date, account: 'bank', gosiAccount: 'bank', lines, note: ym < openYm ? 'شهر جزئي قبل الافتتاح' : '' });
     }
 
