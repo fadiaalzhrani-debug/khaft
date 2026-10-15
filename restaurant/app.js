@@ -130,7 +130,8 @@
       case 'all':
         return dataBounds();
       case 'custom':
-        if (ui.from && ui.to && ui.from <= ui.to) return [ui.from, ui.to];
+        // من وإلى بأي ترتيب (حالة محفوظة قديمة): الأصغر ثم الأكبر، لا الشهر الجاري
+        if (RB.isISODate(ui.from) && RB.isISODate(ui.to)) return ui.from <= ui.to ? [ui.from, ui.to] : [ui.to, ui.from];
         return [ym + '-01', RB.monthEnd(ym)];
       default:
         return [ym + '-01', RB.monthEnd(ym)];
@@ -314,14 +315,14 @@
       this.subs = {};
     }
     async load() {
-      const out = {};
-      // الحد المؤقت لعدد الطلبات لا يُفشل القراءة (التحقق قبل البداية والاستيراد يعتمد عليها)
-      const st = await this.retry(() => this.db.doc('config/settings').get());
-      out.settings = st.exists ? clone(st.data()) : null;
-      for (const k of RB.SECTIONS) {
-        const snap = await this.retry(() => this.db.collection(k).get());
-        out[k] = snap.docs.map(docRec);
-      }
+      // الإعدادات وكل المجموعات معاً لا واحدة بعد الأخرى (فتح أسرع). ولكل قراءة إعادة محاولة عند الانقطاع المؤقت
+      // أو الحد المؤقت لعدد الطلبات، فلا يُفشل خطأ عابر القراءة (التحقق قبل البداية والاستيراد يعتمد عليها)
+      const [st, ...snaps] = await Promise.all([
+        this.retry(() => this.db.doc('config/settings').get()),
+        ...RB.SECTIONS.map((k) => this.retry(() => this.db.collection(k).get())),
+      ]);
+      const out = { settings: st.exists ? clone(st.data()) : null };
+      RB.SECTIONS.forEach((k, i) => (out[k] = snaps[i].docs.map(docRec)));
       if (!out.settings && RB.SECTIONS.every((k) => !out[k].length)) return null;
       out.settings = out.settings || {};
       return out;
@@ -460,8 +461,10 @@
       const dels = [];
       try {
         await this.retry(() => this.db.doc('config/replace').set({ status: 'running', at: new Date().toISOString() }));
-        for (const k of RB.SECTIONS) {
-          const snap = await this.retry(() => this.db.collection(k).get());
+        // السجلات القديمة لكل المجموعات تُقرأ معاً
+        const snaps = await Promise.all(RB.SECTIONS.map((k) => this.retry(() => this.db.collection(k).get())));
+        RB.SECTIONS.forEach((k, i) => {
+          const snap = snaps[i];
           const keep = new Set(state[k].map((r) => r.id));
           snap.docs.forEach((d) => {
             if (!keep.has(d.id)) dels.push([k + '/' + d.id, () => this.db.collection(k).doc(d.id).delete()]);
@@ -470,7 +473,7 @@
             const body = clone(r);
             sets.push([k + '/' + r.id, () => this.db.collection(k).doc(r.id).set(body)]);
           });
-        }
+        });
       } catch (e) {
         return fail(e);
       }
@@ -967,6 +970,9 @@
   ];
   const PAGE_TITLES = Object.fromEntries(NAV.flatMap((g) => g[1]));
   const PAGES = {};
+  // اسم صفحة من الرابط أو من حالة محفوظة: صفحاتنا فقط، لا خصائص الكائنات الموروثة (#constructor، #toString…)
+  const hasOwn = (o, k) => typeof k === 'string' && Object.prototype.hasOwnProperty.call(o, k);
+  const isPage = (p) => hasOwn(PAGES, p);
 
   // ─── لوحة المتابعة ───
   PAGES.dashboard = () => {
@@ -1022,10 +1028,25 @@
     return h;
   };
 
+  const lastBackupText = () => {
+    const at = Date.parse(ui.lastBackupAt || '');
+    if (!isFinite(at)) return 'لم تُؤخذ بعد';
+    const d = new Date(at);
+    return dtText(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')) + ' ' + TIMEF.format(d);
+  };
+  // تذكير النسخ الاحتياطي للحفظ في المتصفح: عمر آخر نسخة بالأيام إن مضى عليها أكثر من 14 يوماً (−1: لم تُؤخذ)، وإلا null
+  function backupAge() {
+    if (APP.demo || !APP.backend || APP.backend.kind !== 'local' || !countRecs(S)) return null;
+    const at = Date.parse(ui.lastBackupAt || '');
+    if (!isFinite(at)) return -1;
+    return Date.now() - at > 14 * 86400000 ? Math.floor((Date.now() - at) / 86400000) : null;
+  }
   function alertsHTML(asOf) {
     const out = [];
     const bad = badRecords(asOf);
     if (bad.length) out.push(['bad', `سجلات تحتاج تصحيح: <span class="n">${bad.length}</span> — لا تدخل في الحسابات حتى تُصحَّح${fixList(bad, true)}`, '']);
+    const bk = backupAge();
+    if (bk !== null) out.push(['warn', `${bk < 0 ? 'لم تُؤخذ نسخة احتياطية بعد' : `آخر نسخة احتياطية قبل <span class="n">${bk}</span> يوم`} — مسح بيانات المتصفح يمسح الدفتر`, btn('صدّر الآن', 'backup', '', 'sm')]);
     for (const r of RB.renewals(S, today())) {
       if (r.status === 'ok') continue;
       const name = (r.rec.desc || RB.expenseCat(r.rec.category).name) + (r.rec.entity ? ' — ' + r.rec.entity : '') + empName(r.rec.employeeId, ' · ');
@@ -1747,11 +1768,13 @@
   PAGES.reports = () => {
     const canPrint = !window.claude;
     let h = pageHead('التقارير المالية', periodLabel(), (canPrint ? btn('طباعة', 'print', '', 'ghost') : '') + btn('تصدير CSV', 'csv', `data-v="report"`, 'ghost'));
+    if (!isReport(ui.report)) ui.report = 'income';
     h += tabs('report', REPORTS, ui.report);
-    h += (REPORT[ui.report] || REPORT.income)();
+    h += REPORT[ui.report]();
     return h;
   };
   const REPORT = {};
+  const isReport = (r) => hasOwn(REPORT, r);
   function lineRows(list, total, label) {
     return list.map((x) => `<tr><td class="ind">${esc(x.name)}</td><td class="num">${N(x.amount)}</td><td class="num muted">${total ? pct((x.amount / total) * 100) : ''}</td></tr>`).join('') + (label ? `<tr class="sum"><td>${label}</td><td class="num">${N(RB.sum(list, (x) => x.amount))}</td><td class="num muted">${total ? pct((RB.sum(list, (x) => x.amount) / total) * 100) : ''}</td></tr>` : '');
   }
@@ -1979,7 +2002,7 @@
   PAGES.settings = () => {
     const st = S.settings;
     const backend = APP.backend ? APP.backend.kind : '';
-    const where = APP.demo ? 'وضع التجربة — لا يُحفظ شيء' : backend === 'cloud' ? 'قاعدة بيانات مشتركة لهذه الصفحة: يراها ويعدّلها كل من لديه صلاحية التعديل عليها (مثل شريكك).' : 'هذا المتصفح على هذا الجهاز فقط. صدّر نسخة احتياطية بانتظام وانقلها لشريكك.';
+    const where = APP.demo ? 'وضع التجربة — لا يُحفظ شيء' : backend === 'cloud' ? 'قاعدة بيانات مشتركة لهذه الصفحة: يراها ويعدّلها كل من لديه صلاحية التعديل عليها (مثل شريكك).' : 'هذا المتصفح على هذا الجهاز فقط. اجعل الإدخال من جهاز واحد، وصدّر نسخة احتياطية بانتظام. الاستيراد يستبدل كل البيانات ولا يدمجها؛ للعمل مع شريكك على نفس الدفتر استخدما نسخة Claude المشتركة.';
     const kv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
     let h = pageHead('الإعدادات والنسخ الاحتياطي', 'بيانات المطعم، الضريبة، نسب التأمينات، قنوات البيع، والنسخ الاحتياطي');
     h += `<div class="grid2">`;
@@ -1988,7 +2011,7 @@
     h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي (النظام السابق) — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي (النظام السابق) — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('السعودي (النظام الجديد)', '<span class="n">+0.5%</span> لكل طرف كل يوليو 2025–2028') + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)) + kv('التأمين الطبي سنوياً (افتراضي)', fmt(st.labor.medicalAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
     h += card(
       'الحفظ والنسخ الاحتياطي',
-      `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}</p>
+      `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}${backend === 'local' && !APP.demo ? `<br>آخر نسخة احتياطية من هذا المتصفح: ${lastBackupText()}` : ''}</p>
       <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}<label class="btn ghost file-btn">استيراد نسخة<input type="file" accept=".json,application/json" id="importFile" hidden></label></div>
       <div class="btn-row">${APP.demo ? (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary') : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary')) : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + btn('مسح كل البيانات', 'wipe', '', 'danger ghost')}</div>`
     );
@@ -2994,15 +3017,28 @@
     menu: () => document.body.classList.toggle('nav-open'),
     print: () => window.print(),
     csv: (el) => exportCSV(el.dataset.v),
-    backup: () => saveFile(`نسخة-دفتر-المطعم-${today()}.json`, JSON.stringify(Object.assign({ app: 'restaurant-books', version: 1, exportedAt: new Date().toISOString() }, S), null, 1)),
+    // أثناء عرض التجربة فوق دفتر محفوظ تُصدَّر البيانات الحقيقية، وملف التجربة وحدها يُعلَّم بأنه تجريبي
+    backup: async () => {
+      const src = backupSource();
+      const demo = APP.demo && !APP.real;
+      const name = demo ? `بيانات-تجريبية-${today()}.json` : `نسخة-دفتر-المطعم-${today()}.json`;
+      const ok = await saveFile(name, JSON.stringify(Object.assign({ app: 'restaurant-books', version: 1, exportedAt: new Date().toISOString() }, demo ? { demo: true } : {}, src), null, 1), APP.demo && APP.real ? { okMsg: REAL_MSG } : null);
+      if (ok && !demo) backedUp();
+    },
     copybackup: async () => {
-      const txt = JSON.stringify(Object.assign({ app: 'restaurant-books', version: 1 }, S));
+      const src = backupSource();
+      const demo = APP.demo && !APP.real;
+      const txt = JSON.stringify(Object.assign({ app: 'restaurant-books', version: 1, exportedAt: new Date().toISOString() }, demo ? { demo: true } : {}, src));
+      let ok = false;
       try {
-        await navigator.clipboard.writeText(txt);
-        toast('نُسخت البيانات. الصقها في ملف نصي واحفظه.');
+        await writeClip(txt);
+        ok = true;
+        toast(APP.demo && APP.real ? REAL_MSG + '. الصقها في ملف نصي واحفظه.' : 'نُسخت البيانات. الصقها في ملف نصي واحفظه.');
       } catch (e) {
-        infoBox('انسخ النص يدوياً', `<textarea class="copy-area" readonly>${esc(txt)}</textarea>`);
+        ok = await copyBox('انسخ النص يدوياً واحفظه في ملف', txt);
+        if (ok && APP.demo && APP.real) toast(REAL_MSG);
       }
+      if (ok && !demo) backedUp();
     },
     start: () => startWizard(),
     showdemo: async () => {
@@ -3047,7 +3083,7 @@
   };
 
   function go(page) {
-    if (!PAGES[page]) page = 'dashboard';
+    if (!isPage(page)) page = 'dashboard';
     ui.page = page;
     saveUI();
     try {
@@ -3209,20 +3245,101 @@
     });
   }
 
-  async function saveFile(name, data) {
-    if (window.claude && typeof window.claude.use === 'function') {
-      try {
-        const dl = await window.claude.use('downloads');
-        if (dl) {
-          await dl.save({ filename: name, data });
-          toast('تم حفظ الملف.');
-          return;
+  // النسخة الاحتياطية: الدفتر المحفوظ لا البيانات التجريبية المعروضة فوقه
+  const backupSource = () => (APP.demo && APP.real ? APP.real : S);
+  const REAL_MSG = 'صُدّرت بياناتك الحقيقية وليست البيانات التجريبية';
+  // آخر نسخة احتياطية (لتذكير الحفظ في المتصفح)
+  function backedUp() {
+    ui.lastBackupAt = new Date().toISOString();
+    saveUI();
+    render();
+  }
+  // الصفحة داخل إطار (Artifact): التنزيل المباشر بالرابط لا يعمل فيه
+  const framed = () => {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  };
+  // الكتابة في الحافظة. محظورة في الإطار: ترفض مباشرة دون محاولة يسجّلها المتصفح خطأً
+  function writeClip(txt) {
+    try {
+      const fp = document.permissionsPolicy || document.featurePolicy;
+      if (fp && !fp.allowsFeature('clipboard-write')) return Promise.reject(new Error('clipboard blocked'));
+    } catch (e) {
+      /* لا يُعرف: تُجرَّب الحافظة */
+    }
+    return navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject(new Error('no clipboard'));
+  }
+  // نافذة نسخ النص حين لا يمكن تنزيل الملف. ترجع (عند إغلاقها) true إن نُسخ النص
+  function copyBox(title, txt) {
+    return new Promise((resolve) => {
+      let copied = false;
+      const m = openModal({ title, wide: true, onClose: () => resolve(copied) });
+      m.body.innerHTML = `<textarea class="copy-area" readonly aria-label="نص الملف">${esc(txt)}</textarea>`;
+      m.foot.innerHTML = `<button type="button" class="btn primary" data-copy>نسخ</button><button type="button" class="btn ghost" data-close>إغلاق</button>`;
+      const ta = m.body.querySelector('textarea');
+      m.foot.querySelector('[data-copy]').addEventListener('click', async () => {
+        try {
+          await writeClip(txt);
+          copied = true;
+        } catch (e) {
+          // الحافظة محظورة في الإطار: تحديد النص ونسخه بالطريقة القديمة
+          ta.focus();
+          ta.select();
+          try {
+            copied = document.execCommand('copy');
+          } catch (x) {
+            copied = false;
+          }
         }
+        toast(copied ? 'نُسخ النص. الصقه في ملف نصي واحفظه.' : 'تعذّر النسخ التلقائي: النص محدد، انسخه يدوياً.', copied ? '' : 'bad');
+      });
+      ta.focus();
+      ta.select();
+    });
+  }
+  // حفظ ملف: صلاحية التنزيل في Artifact، أو رابط تنزيل في المتصفح، أو نافذة نسخ النص إن تعذّر التنزيل.
+  // ترجع true إن سُلّم الملف أو نُسخ نصه. opt.okMsg: رسالة النجاح
+  async function saveFile(name, data, opt) {
+    opt = opt || {};
+    const copy = async () => {
+      // علامة اتجاه قبل أول رقم: تاريخ الاسم يظهر بترتيبه بعد الحروف العربية
+      const ok = await copyBox('التنزيل غير متاح هنا — انسخ النص واحفظه في ملف باسم ' + name.replace(/\d/, '\u200E$&'), data);
+      if (ok && opt.okMsg) toast(opt.okMsg);
+      return ok;
+    };
+    if (window.claude && typeof window.claude.use === 'function') {
+      let dl = null;
+      try {
+        dl = await window.claude.use('downloads');
       } catch (e) {
-        if (e && e.code === 'declined') return;
-        toast('تعذّر حفظ الملف هنا. استخدم «نسخ النسخة للحافظة».', 'bad');
-        return;
+        dl = null;
       }
+      if (dl) {
+        try {
+          await dl.save({ filename: name, data });
+          toast(opt.okMsg || 'تم حفظ الملف.');
+          return true;
+        } catch (e) {
+          const code = e && e.code;
+          if (code === 'declined') return false;
+          if (code === 'rate_limited') {
+            toast('نافذة الحفظ مفتوحة بالفعل، انتظر ثم حاول مرة أخرى', 'bad');
+            return false;
+          }
+          if (code === 'too_large') {
+            const mb = new Blob([data]).size / 1048576;
+            toast(`الملف أكبر من الحجم المسموح للحفظ هنا (${mb.toFixed(1)} ميغابايت).${name.endsWith('.csv') ? ' اختر فترة أقصر.' : ''}`, 'bad');
+            return false;
+          }
+          // unavailable وnot_granted وcapability_disabled وcapability_removed وأي رمز آخر
+          return copy();
+        }
+      }
+      // بلا صلاحية تنزيل داخل إطار: رابط التنزيل لا يعمل، فيُعرض النص للنسخ
+      if (framed()) return copy();
     }
     const blob = new Blob([data], { type: name.endsWith('.csv') ? 'text/csv;charset=utf-8' : 'application/json' });
     const a = document.createElement('a');
@@ -3234,6 +3351,8 @@
       URL.revokeObjectURL(a.href);
       a.remove();
     }, 1500);
+    if (opt.okMsg) toast(opt.okMsg);
+    return true;
   }
 
   function exportCSV(what) {
@@ -3272,7 +3391,7 @@
     } else {
       // التقارير مقطوعة عند اليوم مثل ما تعرضه الشاشة
       const L = ledger(asOf);
-      const rep = ui.report;
+      const rep = isReport(ui.report) ? ui.report : 'income';
       end = asOf;
       if (rep === 'journal') {
         rows.push(['التاريخ', 'البيان', 'الحساب', 'مدين', 'دائن']);
@@ -3343,9 +3462,12 @@
           }
         }
       }
-      const repl = hasBooks(cur) ? `ستحل محل ${APP.demo ? 'دفترك المحفوظ' : 'البيانات الحالية'} «${esc((cur.settings && cur.settings.name) || '')}» (${countRecs(cur)} سجل) بالكامل.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
+      // الاستيراد يستبدل ولا يدمج: يُذكر عدد ما سيُحذف ويُنصح بالتصدير قبله
+      const repl = hasBooks(cur) ? `ستحل محل ${APP.demo ? 'دفترك المحفوظ' : 'بياناتك الحالية'} «${esc((cur.settings && cur.settings.name) || '')}» (${countRecs(cur)} سجل) بالكامل. صدّر نسخة من بياناتك أولاً إن احتجتها.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
       const notes = (skipped ? `<br>تم تجاهل ${skipped} سجل غير صالح.` : '') + (notList.length ? `<br>أقسام ليست قوائم تم تجاهلها: ${esc(notList.join('، '))}.` : '');
-      if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${n} سجل؟ ${repl}${notes}`, { danger: true, ok: 'استورد' }))) return;
+      const demoNote = data.demo === true ? '<br><b>هذا ملف بيانات تجريبية وليس نسخة من دفترك.</b>' : '';
+      if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${n} سجل؟ ${repl}${demoNote}${notes}`, { danger: true, ok: 'استورد' }))) return;
+      delete data.demo;
       data.settings = Object.assign({}, data.settings, { startedAt: (data.settings && data.settings.startedAt) || new Date().toISOString() });
       if (await replaceAll(data)) toast('تم الاستيراد.');
     };
@@ -3382,19 +3504,22 @@
     const page = document.getElementById('page');
     if (!page) return;
     for (const k of Object.keys(CHARTS)) delete CHARTS[k];
+    if (!isPage(ui.page)) ui.page = 'dashboard';
     document.getElementById('restName').textContent = S.settings.name || '';
     document.getElementById('nav').innerHTML = NAV.map(([g, items]) => `<div class="nav-g"><span>${g}</span>${items.map(([k, l]) => `<a href="#${k}" class="${ui.page === k ? 'on' : ''}" ${ui.page === k ? 'aria-current="page"' : ''}>${l}</a>`).join('')}</div>`).join('');
     document.getElementById('crumb').textContent = PAGE_TITLES[ui.page] || '';
     document.getElementById('periodSel').value = ui.period;
     const cr = document.getElementById('customRange');
     cr.hidden = ui.period !== 'custom';
+    // الفترة المخصصة: الحقلان يعرضان المحفوظ نفسه، فلا يظهر شهر غير المستخدم في الحساب
     const [a, b] = range();
-    document.getElementById('pFrom').value = a;
-    document.getElementById('pTo').value = b;
+    const custom = ui.period === 'custom';
+    document.getElementById('pFrom').value = custom && RB.isISODate(ui.from) ? ui.from : a;
+    document.getElementById('pTo').value = custom && RB.isISODate(ui.to) ? ui.to : b;
     document.body.classList.toggle('readonly', !!APP.readOnly);
     updateBanner();
     try {
-      page.innerHTML = (PAGES[ui.page] || PAGES.dashboard)();
+      page.innerHTML = PAGES[ui.page]();
     } catch (e) {
       console.error(e);
       page.innerHTML = `<div class="empty-box bad">حدث خطأ أثناء عرض الصفحة: ${esc(e.message)}</div>`;
@@ -3467,16 +3592,39 @@
     document.addEventListener('change', (e) => {
       const t = e.target;
       if (t.id === 'periodSel') {
+        // الفترة المخصصة تبدأ من الفترة المعروضة إن لم تُحدَّد من قبل
+        const [a, b] = range();
         ui.period = t.value;
-        if (t.value === 'custom' && !ui.from) {
-          const [a, b] = range();
+        if (t.value === 'custom' && !(RB.isISODate(ui.from) && RB.isISODate(ui.to))) {
           ui.from = a;
           ui.to = b;
         }
         saveUI();
         render();
       } else if (t.id === 'pFrom' || t.id === 'pTo') {
-        ui[t.id === 'pFrom' ? 'from' : 'to'] = t.value;
+        // حقل فارغ أو تاريخ غير صالح يعيد القيمة السابقة. وإن صار «من» بعد «إلى» يُعدَّل الطرف الآخر إلى نهاية شهر «من» أو أول شهر «إلى»
+        const v = t.value;
+        if (!RB.isISODate(v)) {
+          t.value = t.id === 'pFrom' ? ui.from : ui.to;
+          return;
+        }
+        // الطرف الآخر كما يظهر في الشاشة إن لم يكن محفوظاً
+        const [a, b] = range();
+        if (!RB.isISODate(ui.from)) ui.from = a;
+        if (!RB.isISODate(ui.to)) ui.to = b;
+        if (t.id === 'pFrom') {
+          ui.from = v;
+          if (ui.to < ui.from) {
+            ui.to = RB.monthEnd(ui.from.slice(0, 7));
+            toast('عُدّل تاريخ «إلى» ليأتي بعد «من»');
+          }
+        } else {
+          ui.to = v;
+          if (ui.to < ui.from) {
+            ui.from = ui.to.slice(0, 7) + '-01';
+            toast('عُدّل تاريخ «من» ليأتي قبل «إلى»');
+          }
+        }
         saveUI();
         render();
       } else if (t.id === 'importFile' && t.files && t.files[0]) {
@@ -3486,7 +3634,7 @@
     });
     window.addEventListener('hashchange', () => {
       const p = location.hash.slice(1);
-      if (p && p !== ui.page && PAGES[p]) {
+      if (p && p !== ui.page && isPage(p)) {
         ui.page = p;
         saveUI();
         document.body.classList.remove('nav-open');
@@ -3566,8 +3714,21 @@
     const root = document.getElementById('app');
     root.innerHTML = shellHTML();
     bindGlobal();
+    // صفحة أو تقرير محفوظ لم يعد صالحاً (أو من خصائص الكائنات الموروثة) يعود للبداية
+    const uiWas = JSON.stringify(ui);
+    if (!isPage(ui.page)) ui.page = 'dashboard';
+    if (!isReport(ui.report)) ui.report = 'income';
+    if (RB.isISODate(ui.from) && RB.isISODate(ui.to) && ui.from > ui.to) [ui.from, ui.to] = [ui.to, ui.from];
+    if (JSON.stringify(ui) !== uiWas) saveUI();
     const h = location.hash.slice(1);
-    if (h && PAGES[h]) ui.page = h;
+    if (h && isPage(h)) ui.page = h;
+    else if (h) {
+      try {
+        history.replaceState(null, '', '#' + ui.page);
+      } catch (e) {
+        /* بعض الإطارات تمنع تعديل الرابط */
+      }
+    }
     document.getElementById('page').innerHTML = `<div class="loading"><span class="mark big" aria-hidden="true"><i></i><i></i><i></i><i></i></span><p>جاري فتح دفاتر المطعم…</p></div>`;
     let backend = null;
     if (window.claude && typeof window.claude.use === 'function') {
@@ -3601,6 +3762,12 @@
         APP.save.failed = 'local';
       }
     }
+    // علامة استيراد أو مسح بدأ ولم ينتهِ: تُقرأ مع الدفتر في الوقت نفسه
+    const stale = backend
+      ? Promise.resolve()
+          .then(() => backend.retry(() => backend.db.doc('config/replace').get()))
+          .then((r) => !!(r && r.exists), () => false)
+      : Promise.resolve(false);
     let data = null;
     try {
       data = await APP.backend.load();
@@ -3608,15 +3775,7 @@
       APP.loadFailed = true;
       toast('تعذّر تحميل البيانات المحفوظة. أعد تحميل الصفحة قبل أن تبدأ.', 'bad');
     }
-    if (backend) {
-      // علامة استيراد أو مسح بدأ ولم ينتهِ
-      try {
-        const r = await backend.db.doc('config/replace').get();
-        APP.replaceStale = !!(r && r.exists);
-      } catch (e) {
-        /* لا تُعرف */
-      }
-    }
+    APP.replaceStale = await stale;
     if (hasBooks(data)) {
       S = RB.normalize(data);
       APP.demo = false;

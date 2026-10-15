@@ -1732,8 +1732,11 @@
       .map((r) =>
         r
           .map((c) => {
-            const s = c === null || c === undefined ? '' : typeof c === 'number' ? String(r2(c)) : String(c);
-            return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+            if (c === null || c === undefined) return '';
+            let s = typeof c === 'number' ? String(r2(c)) : String(c);
+            // نص يبدأ بـ = + - @ أو مسافة جدولة يُنفَّذ كمعادلة في Excel: يُسبق بفاصلة عليا (المبالغ السالبة تبقى أرقاماً)
+            if (typeof c !== 'number' && /^[=+\-@\t\r]/.test(s)) s = "'" + s;
+            return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
           })
           .join(',')
       )
