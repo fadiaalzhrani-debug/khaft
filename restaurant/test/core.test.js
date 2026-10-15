@@ -1199,3 +1199,98 @@ test('حد التسجيل في ضريبة القيمة المضافة لغير �
   close(x.runRate, (40000 / 30) * 365);
   assert.equal(x.level, 'mandatory');
 });
+
+test('التأمين المسترد لا ضريبة عليه ولو حُفظ «خاضعاً»', () => {
+  const S = base();
+  S.settings.openingDate = '2026-09-15';
+  S.capital = [{ id: 'c1', date: '2026-08-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 50000 }];
+  // سجل قديم حُفظ بـ taxable: true (الافتراضي في النموذج قبل التصحيح)
+  const dep = { id: 'a1', date: '2026-09-01', name: 'تأمين إيجار المحل', category: 'deposit', amount: 11500, includesVat: false, taxable: true, account: 'bank', lifeMonths: 0, salvage: 0 };
+  S.assets = [dep, { id: 'a2', date: '2026-09-02', name: 'تأمين العدادات', category: 'deposit', amount: 2300, includesVat: true, taxable: true, account: 'payable', supplier: 'شركة الكهرباء', lifeMonths: 0, salvage: 0 }];
+  assert.equal(RB.assetTaxable(dep), false);
+  assert.equal(RB.assetTaxable({ category: 'kitchen', taxable: true }), true);
+  assert.equal(RB.assetTaxable({ category: 'kitchen', taxable: false }), false);
+  assert.match(RB.assetCat('deposit').hint, /لا تُحتسب عليه ضريبة/);
+  const L = RB.buildLedger(S, '2026-10-15');
+  const e = L.entries.find((x) => x.kind === 'asset' && x.ref.id === 'a1');
+  assert.ok(!e.lines.some((l) => l.a === '2102' && l.v), 'لا سطر ضريبة مدخلات');
+  assert.equal(e.lines.find((l) => l.a === '1208').v, 11500);
+  assert.equal(e.lines.find((l) => l.a === '1102').v, -11500);
+  const vr = RB.vatReport(S, '2026-07-01', '2026-12-31', L);
+  assert.equal(vr.inVat, 0);
+  assert.equal(vr.inBase, 0);
+  // جدول الإهلاك والآجل ورأس المال التأسيسي بلا ضريبة أيضاً
+  assert.equal(RB.depSchedule(dep, S).cost, 11500);
+  assert.equal(RB.supplierBalances(S, '2026-10-15').find((x) => x.supplier === 'شركة الكهرباء').balance, 2300);
+  const u = RB.capitalUses(S, L);
+  assert.equal(u.assetsTotal, 13800);
+  assert.equal(u.vatRecoverable, 0);
+  const bal = RB.balances(L.entries, null, '2026-10-15');
+  close(bal['1208'], 13800);
+  close(bal['2102'] || 0, 0);
+});
+
+test('التأمين الطبي إلزامي: قيمة افتراضية في الإعدادات وتكلفة العامل، وتطابق التجريبي مع المصروف المسجل', () => {
+  const d = RB.defaultSettings();
+  assert.equal(d.labor.medicalAnnual, 1500);
+  // نسخة قديمة حفظت 0: تبقى كما هي (قيمة المستخدم)
+  assert.equal(RB.normalize({ settings: { labor: { medicalAnnual: 0 } } }).settings.labor.medicalAnnual, 0);
+  // عامل جديد بالقيم الافتراضية في دفتر جديد: 1,500 ÷ 12 = 125 شهرياً
+  const S = base();
+  const L = S.settings.labor;
+  const ex = { id: 'e1', nationality: 'expat', basic: 2000, housing: 0, levyMonthly: L.levyMonthly, iqamaAnnual: L.iqamaAnnual, workPermitAnnual: L.workPermitAnnual, medicalAnnual: L.medicalAnnual };
+  const c = RB.employeeMonthlyCost(ex, S);
+  const med = c.items.find((i) => i.k === 'medical');
+  assert.equal(med.v, 125);
+  assert.equal(med.label, 'التأمين الطبي (شهرياً)');
+  assert.deepEqual(c.items.map((i) => i.k), ['salary', 'gosi', 'levy', 'iqama', 'medical', 'ticket', 'housing', 'other', 'eosb']);
+  // بلا قسط: البند موجود بقيمة صفر (تعرضه الواجهة مع تنبيه)
+  assert.equal(RB.employeeMonthlyCost(Object.assign({}, ex, { medicalAnnual: 0 }), S).items.find((i) => i.k === 'medical').v, 0);
+  // التجريبي: مجموع أقساط الموظفين = مصروف التأمين الطبي المسجل
+  const D = RB.demoState('2026-10-15');
+  const booked = RB.sum(D.expenses.filter((x) => x.category === 'insurance'), (x) => RB.num(x.amount));
+  assert.equal(booked, 9500);
+  assert.equal(RB.sum(D.employees, (e) => RB.num(e.medicalAnnual)), booked);
+  assert.ok(D.employees.filter((e) => e.nationality === 'saudi').every((e) => RB.num(e.medicalAnnual) > 0));
+});
+
+test('التجريبي: مورد الخضار غير مسجل في الضريبة وفواتيره بلا رقم ضريبي', () => {
+  const D = RB.demoState('2026-10-15');
+  const veg = D.purchases.filter((p) => p.supplier === 'بائع خضار (غير مسجل في الضريبة)');
+  assert.ok(veg.length > 5);
+  for (const p of veg) {
+    assert.equal(p.taxable, false);
+    assert.equal(p.invoiceNo, '');
+    assert.equal(p.note, 'مورد غير مسجل في الضريبة — لا فاتورة ضريبية');
+  }
+  assert.ok(!D.purchases.some((p) => p.supplier === 'سوق الخضار المركزي'));
+  // المواد غير الخاضعة في التجريبي مصدرها هذا المورد فقط
+  const untaxed = D.raw.filter((r) => !r.taxable);
+  assert.ok(untaxed.length && untaxed.every((r) => r.supplier === 'بائع خضار (غير مسجل في الضريبة)'));
+  // باقي الموردين لهم أرقام فواتير
+  assert.ok(D.purchases.filter((p) => p.lines.some((l) => l.rawId) && p.taxable).every((p) => p.invoiceNo));
+});
+
+test('تكلفة الطعام والسعر المقترح حسب التسجيل في الضريبة (كما يشرحها الدليل)', () => {
+  const S = base();
+  S.settings.targetFoodCost = 30;
+  S.settings.priceRounding = 1;
+  S.raw = [{ id: 'beef', name: 'لحم', price: 400, packQty: 10000, useUnit: 'جم', taxable: true, wastePct: 0 }];
+  S.products = [{ id: 'b', name: 'برقر', price: 23, items: [{ kind: 'raw', id: 'beef', qty: 150 }] }]; // التكلفة 6
+  // المسجل: الأسعار شاملة الضريبة؛ تكلفة الطعام من السعر بدونها، والمقترح يضيف الضريبة ثم يُقرَّب لأعلى
+  let st = RB.productStats(S, S.products[0]);
+  close(st.cost, 6, 1e-9);
+  close(st.foodCost, (6 / 20) * 100, 1e-9);
+  assert.equal(st.suggested, 23); // 6 ÷ 0.30 = 20 × 1.15 = 23
+  // نسبة ضريبة مختلفة في الإعدادات تُستخدم بدل 15% الثابتة
+  S.settings.vatRate = 10;
+  assert.equal(RB.productStats(S, S.products[0]).suggested, 22);
+  // غير المسجل: لا ضريبة على أسعاره
+  S.settings.vatRate = 15;
+  S.settings.vatRegistered = false;
+  S.raw[0].taxable = false;
+  st = RB.productStats(S, S.products[0]);
+  close(st.priceNet, 23, 1e-9);
+  close(st.foodCost, (6 / 23) * 100, 1e-9);
+  assert.equal(st.suggested, 20);
+});

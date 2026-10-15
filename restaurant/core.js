@@ -69,7 +69,7 @@
     { id: 'tech', name: 'أجهزة ونظام الكاشير', acc: '1205', life: 36, hint: 'جهاز كاشير، شاشات، طابعات، كاميرات' },
     { id: 'vehicle', name: 'سيارات ودراجات توصيل', acc: '1206', life: 60, hint: '' },
     { id: 'preop', name: 'مصاريف التأسيس وما قبل الافتتاح', acc: '1207', life: 36, hint: 'تصميم الهوية والمنيو، استشارات، رسوم التأسيس' },
-    { id: 'deposit', name: 'تأمينات مستردة', acc: '1208', life: 0, hint: 'تأمين الإيجار أو العدادات — لا يُستهلك' },
+    { id: 'deposit', name: 'تأمينات مستردة', acc: '1208', life: 0, hint: 'تأمين الإيجار أو العدادات — لا يُستهلك ولا تُحتسب عليه ضريبة (يُسترد عند انتهاء العقد)' },
   ];
 
   // المصاريف التشغيلية. group يحدد مكانها في قائمة الدخل
@@ -208,7 +208,8 @@
     targetFoodCost: 30,
     priceRounding: 1,
     gosi: { saudiEr: 11.75, saudiEe: 9.75, expatEr: 2, cap: 45000 },
-    labor: { levyMonthly: 800, iqamaAnnual: 650, workPermitAnnual: 100, medicalAnnual: 0 },
+    // التأمين الطبي إلزامي لكل عامل (نظام الضمان الصحي التعاوني): 1,500 تقدير قابل للتعديل
+    labor: { levyMonthly: 800, iqamaAnnual: 650, workPermitAnnual: 100, medicalAnnual: 1500 },
     channels: [
       { id: 'cash', name: 'كاش', type: 'cash', feePct: 0, active: true },
       { id: 'card', name: 'شبكة (مدى وبطاقات)', type: 'card', feePct: 0.8, active: true },
@@ -326,6 +327,8 @@
 
   const catOf = (list, id) => list.find((c) => c.id === id) || list[list.length - 1];
   RB.assetCat = (id) => RB.ASSET_CATS.find((c) => c.id === id) || RB.ASSET_CATS[0];
+  // التأمين المسترد (تأمين الإيجار أو العدادات) ليس توريداً خاضعاً: لا ضريبة عليه مهما كانت قيمة taxable المحفوظة
+  RB.assetTaxable = (a) => a.category !== 'deposit' && !!a.taxable;
   RB.expenseCat = (id) => catOf(RB.EXPENSE_CATS, id);
   RB.purchaseCat = (id) => RB.PURCHASE_CATS.find((c) => c.id === id) || RB.PURCHASE_CATS[0];
 
@@ -403,16 +406,16 @@
     // مخصص نهاية الخدمة: نفس ما يُستحق في الدفاتر مع كل مسير
     const eosb = RB.eosbMonthly(salary, emp.startDate, RB.monthEnd(ym));
     const items = [
-      ['الراتب والبدلات', salary],
-      ['التأمينات الاجتماعية (حصة المنشأة)', gosi.er],
-      ['المقابل المالي', levy],
-      ['الإقامة ورخصة العمل (شهرياً)', iqama],
-      ['التأمين الطبي (شهرياً)', medical],
-      ['تذاكر السفر (شهرياً)', ticket],
-      ['السكن المقدّم (نصيبه)', housing],
-      ['رسوم ومزايا أخرى (شهرياً)', other],
-      ['مخصص نهاية الخدمة', eosb],
-    ].map(([label, v]) => ({ label, v: r2(v) }));
+      ['salary', 'الراتب والبدلات', salary],
+      ['gosi', 'التأمينات الاجتماعية (حصة المنشأة)', gosi.er],
+      ['levy', 'المقابل المالي', levy],
+      ['iqama', 'الإقامة ورخصة العمل (شهرياً)', iqama],
+      ['medical', 'التأمين الطبي (شهرياً)', medical],
+      ['ticket', 'تذاكر السفر (شهرياً)', ticket],
+      ['housing', 'السكن المقدّم (نصيبه)', housing],
+      ['other', 'رسوم ومزايا أخرى (شهرياً)', other],
+      ['eosb', 'مخصص نهاية الخدمة', eosb],
+    ].map(([k, label, v]) => ({ k, label, v: r2(v) }));
     return { salary: r2(salary), gosi, items, total: r2(sum(items, (i) => i.v)), netPay: r2(salary - gosi.ee) };
   };
 
@@ -701,7 +704,7 @@
     // الأصول وإهلاكها الشهري
     for (const a of S.assets || []) {
       const cat = RB.assetCat(a.category);
-      const sp = RB.costSplit(a.amount, a.includesVat, a.taxable, set, a.date);
+      const sp = RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date);
       const ref = { s: 'assets', id: a.id };
       add(a.date, 'asset', ref, 'شراء أصل: ' + a.name, [[cat.acc, sp.cost], ['2102', sp.vat, sp.net], [RB.srcAcc(a.account), -sp.gross]]);
       const sched = RB.depSchedule(a, S);
@@ -843,7 +846,7 @@
   RB.depSchedule = (a, S) => {
     const cat = RB.assetCat(a.category);
     const life = Math.round(num(a.lifeMonths));
-    const sp = RB.costSplit(a.amount, a.includesVat, a.taxable, S.settings, a.date);
+    const sp = RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), S.settings, a.date);
     const base = r2(sp.cost - num(a.salvage));
     const out = { cost: sp.cost, base, life, monthly: 0, months: [] };
     if (cat.life === 0 || life <= 0 || base <= 0) return out;
@@ -1257,7 +1260,7 @@
     }
     for (const a of S.assets || []) {
       if (a.account !== 'payable' || a.date > asOf) continue;
-      owe(a.supplier, RB.costSplit(a.amount, a.includesVat, a.taxable, set, a.date).gross);
+      owe(a.supplier, RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date).gross);
     }
     for (const x of S.expenses || []) {
       if (x.account !== 'payable' || x.date > asOf) continue;
@@ -1348,7 +1351,7 @@
     let vatRecoverable = 0;
     for (const a of S.assets || []) {
       const c = RB.assetCat(a.category);
-      const sp = RB.costSplit(a.amount, a.includesVat, a.taxable, set, a.date);
+      const sp = RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date);
       if (open && a.date > open) {
         laterAssets.amount = r2(laterAssets.amount + sp.gross);
         laterAssets.count++;

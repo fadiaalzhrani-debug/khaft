@@ -48,6 +48,8 @@
   // ═════════════ التنسيق ═════════════
   const NF2 = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const NF0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+  // وقت الحفظ بأرقام لاتينية مثل باقي الأرقام في البرنامج
+  const TIMEF = new Intl.DateTimeFormat('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
   const fmt = (n) => NF2.format(r2(n) || 0);
   const fmt0 = (n) => NF0.format(Math.round(n) || 0);
   const fmtQ = (n) => {
@@ -893,10 +895,10 @@
       ${kpi('القيمة الدفترية الحالية', money(RB.sum(catRows, (c) => c.book)), 'التكلفة − الإهلاك المتراكم')}
     </div>`;
     h += card(
-      'حسب الصنف',
+      'حسب التصنيف',
       table(
         [
-          { h: 'الصنف', f: (r) => esc(r.name) },
+          { h: 'التصنيف', f: (r) => esc(r.name) },
           { h: 'العدد', num: 1, f: (r) => r.n },
           { h: 'التكلفة', num: 1, f: (r) => N(r.cost) },
           { h: 'الإهلاك الشهري', num: 1, f: (r) => N(r.monthly) },
@@ -912,7 +914,7 @@
       table(
         [
           { h: 'الأصل', f: (r) => `<b>${esc(r.a.name)}</b>${r.a.note ? `<div class="muted sm">${esc(r.a.note)}</div>` : ''}` },
-          { h: 'الصنف', f: (r) => esc(RB.assetCat(r.a.category).name) },
+          { h: 'التصنيف', f: (r) => esc(RB.assetCat(r.a.category).name) },
           { h: 'تاريخ الشراء', f: (r) => dt(r.a.date) },
           { h: 'التكلفة', num: 1, f: (r) => N(r.sch.cost) },
           { h: 'العمر', num: 1, f: (r) => (r.sch.life ? `${r.sch.life} شهر` : 'لا يُستهلك') },
@@ -1057,6 +1059,11 @@
       );
       return h;
     }
+    // المقابل المالي 700 بدل 800 إن كان السعوديون مساوين للوافدين أو أكثر
+    const expats = active.filter((e) => e.nationality !== 'saudi');
+    if (expats.length && saudi >= expats.length && expats.some((e) => num(e.levyMonthly) >= 800)) {
+      h += card('', `<ul class="alerts"><li class="al warn"><span class="al-dot" aria-hidden="true"></span><span class="al-t">عدد السعوديين ≥ الوافدين: قد يكون المقابل المالي 700 ر.س — راجع قوى.</span></li></ul>`);
+    }
     h += card(
       'الموظفون',
       table(
@@ -1065,7 +1072,7 @@
           { h: 'الجنسية', f: (e) => (e.nationality === 'saudi' ? chip('سعودي', 'accent') : chip('غير سعودي', 'mute')) },
           { h: 'الراتب والبدلات', num: 1, f: (e) => N(costs[e.id].salary) },
           { h: 'تأمينات المنشأة', num: 1, f: (e) => N(costs[e.id].gosi.er) },
-          { h: 'المقابل المالي والإقامة', num: 1, f: (e) => N(costs[e.id].items[2].v + costs[e.id].items[3].v) },
+          { h: 'المقابل المالي والإقامة', num: 1, f: (e) => N(RB.sum(costs[e.id].items.filter((i) => i.k === 'levy' || i.k === 'iqama'), (i) => i.v)) },
           { h: 'التكلفة الشهرية الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
           { h: 'مخصص نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
           { h: 'الحالة', f: (e) => (RB.isEmployeeActive(e, ym) ? chip('على رأس العمل', 'good') : chip('متوقف', 'mute')) },
@@ -1276,7 +1283,7 @@
         rows,
         { empty: 'أضف أصناف المنيو وحدّد مكونات كل صنف (مواد خام أو منتجات مجمّعة) وسعر البيع.', rowCls: (r) => (r.p.active === false ? 'off' : '') }
       ),
-      { sub: `الأسعار شاملة ضريبة ${pct(S.settings.vatRate, 0)}. تكلفة الطعام = التكلفة ÷ السعر بدون الضريبة. السعر المقترح يحقق المستهدف (${pct(target, 0)}) مقرّباً لأعلى. ربح التطبيقات بعد خصم متوسط العمولة.` }
+      { sub: `${RB.isVatReg(S.settings, today()) ? `الأسعار شاملة ضريبة ${pct(S.settings.vatRate, 0)}. تكلفة الطعام = التكلفة ÷ السعر بدون الضريبة.` : 'المطعم غير مسجل في الضريبة: الأسعار بدون ضريبة وتكلفة الطعام = التكلفة ÷ السعر.'} السعر المقترح يحقق المستهدف (${pct(target, 0)}) مقرّباً لأعلى. ربح التطبيقات بعد خصم متوسط العمولة.` }
     );
     return h;
   };
@@ -1560,7 +1567,7 @@
           { h: 'ربح الحبة', num: 1, f: (r) => N(r.profit) },
           { h: 'إجمالي الربح', num: 1, f: (r) => N(r.totalProfit) },
           { h: 'تكلفة الطعام', num: 1, f: (r) => pct(r.foodCost) },
-          { h: 'التصنيف', f: (r) => `${cls(r.cls)}<div class="muted sm">${RB.MENU_CLASS[r.cls].tip}</div>` },
+          { h: 'فئة المنيو', f: (r) => `${cls(r.cls)}<div class="muted sm">${RB.MENU_CLASS[r.cls].tip}</div>` },
         ],
         m.rows
       ),
@@ -1568,7 +1575,7 @@
     );
     h += card(
       'التكلفة النظرية مقابل الفعلية',
-      `<div class="pv-grid three"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق (هدر أو نقص أو سرقة)</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">فرق موجب كبير يعني استهلاكاً أكثر من الوصفات: هدر، حصص أكبر، أو نقص في الجرد. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة.</p>`
+      `<div class="pv-grid three"><div><span>النظرية (حسب الوصفات × المبيعات)</span>${money(m.theoretical)}<small>${pct(m.revenue ? (m.theoretical / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفعلية (المشتريات ± الجرد)</span>${money(m.actual)}<small>${pct(m.revenue ? (m.actual / m.revenue) * 100 : 0)} من المبيعات</small></div><div><span>الفرق غير المفسَّر</span>${money(m.variance)}<small>${pct(m.theoretical ? (m.variance / m.theoretical) * 100 : 0)} من النظرية</small></div></div><p class="note">الهدر المتوقع محسوب أصلاً في التكلفة النظرية عبر «نسبة الهدر %» لكل مادة؛ الفرق المتبقي من هدر غير مسجل، وجبات العمال، حصص أكبر، أو نقص/سرقة. تحتاج جرداً في بداية الفترة ونهايتها لتكون المقارنة دقيقة.</p>`
     );
     h += card(
       'الاستهلاك النظري للمواد الخام',
@@ -1645,10 +1652,10 @@
     h += `<div class="grid2">`;
     h += card('بيانات المطعم', kv('الاسم', esc(st.name)) + kv('المدينة', esc(st.city || '—')) + kv('السجل التجاري', esc(st.crNumber || '—')) + kv('تاريخ الافتتاح', st.openingDate ? dtText(st.openingDate) : '—') + kv('مستهدف تكلفة الطعام', pct(st.targetFoodCost, 0)) + kv('تقريب السعر المقترح', fmt(st.priceRounding) + ' ' + cur()), { actions: btn('تعديل', 'settings', 'data-v="general"', 'sm') });
     h += card('ضريبة القيمة المضافة', kv('مسجل في الضريبة', st.vatRegistered ? 'نعم' : 'لا') + (st.vatRegistered ? kv('سريان التسجيل', st.vatRegisteredFrom ? dtText(st.vatRegisteredFrom) : 'منذ البداية') : '') + kv('الرقم الضريبي', esc(st.vatNumber || '—')) + kv('النسبة', pct(st.vatRate, 0)) + kv('فترة الإقرار', st.vatPeriod === 'monthly' ? 'شهرية' : 'ربع سنوية') + kv('ضريبة على العمولات والرسوم', st.feeVat ? 'نعم' : 'لا'), { actions: btn('تعديل', 'settings', 'data-v="vat"', 'sm') });
-    h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي (النظام السابق) — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي (النظام السابق) — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('السعودي (النظام الجديد)', '<span class="n">+0.5%</span> لكل طرف كل يوليو 2025–2028') + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
+    h += card('التأمينات الاجتماعية ورسوم العمالة', kv('السعودي (النظام السابق) — حصة المنشأة', pct(st.gosi.saudiEr, 2)) + kv('السعودي (النظام السابق) — حصة الموظف', pct(st.gosi.saudiEe, 2)) + kv('السعودي (النظام الجديد)', '<span class="n">+0.5%</span> لكل طرف كل يوليو 2025–2028') + kv('غير السعودي — حصة المنشأة', pct(st.gosi.expatEr, 2)) + kv('الحد الأعلى للأجر الخاضع', fmt0(st.gosi.cap)) + kv('المقابل المالي الشهري (افتراضي)', fmt(st.labor.levyMonthly)) + kv('الإقامة سنوياً (افتراضي)', fmt(st.labor.iqamaAnnual)) + kv('رخصة العمل سنوياً (افتراضي)', fmt(st.labor.workPermitAnnual)) + kv('التأمين الطبي سنوياً (افتراضي)', fmt(st.labor.medicalAnnual)), { actions: btn('تعديل', 'settings', 'data-v="labor"', 'sm'), sub: 'قيم افتراضية قابلة للتعديل. راجع آخر النسب المعتمدة من التأمينات الاجتماعية ومنصة قوى.' });
     h += card(
       'الحفظ والنسخ الاحتياطي',
-      `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${new Date(APP.savedAt).toLocaleTimeString('ar-SA')}` : ''}</p>
+      `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}</p>
       <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}<label class="btn ghost file-btn">استيراد نسخة<input type="file" accept=".json,application/json" id="importFile" hidden></label></div>
       <div class="btn-row">${APP.demo ? btn('ابدأ ببيانات مطعمك', 'start', '', 'primary') + (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'ghost') : '') : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + btn('مسح كل البيانات', 'wipe', '', 'danger ghost')}</div>`
     );
@@ -1672,8 +1679,10 @@
 
   // ═════════════ النماذج ═════════════
   const FORMS = {};
+  const LEVY_HELP = 'المقابل المالي 800 ر.س شهرياً لكل وافد إذا زاد عدد الوافدين عن السعوديين في المنشأة، و700 ر.س إذا كانوا مساوين أو أقل — تحقق من قيمته في منصة قوى.';
+  const MED_HELP = 'إلزامي لكل عامل وافد ولكل موظف سعودي في القطاع الخاص (نظام الضمان الصحي التعاوني) — أدخل قسط وثيقتك الفعلي';
   const vatFields = (redraw) => [
-    { type: 'row', fields: [{ k: 'taxable', type: 'check', label: 'خاضع لضريبة القيمة المضافة', redraw: true }, { k: 'includesVat', type: 'check', label: 'المبلغ المدخل شامل الضريبة', redraw: !!redraw, show: (v) => v.taxable }] },
+    { type: 'row', fields: [{ k: 'taxable', type: 'check', label: 'خاضع لضريبة القيمة المضافة', redraw: true, help: 'اختره إذا كانت الفاتورة ضريبية فيها الرقم الضريبي للمورد. في السعودية لا إعفاء للأغذية (خضار، لحوم، خبز = 15%). غير الخاضع: الرسوم الحكومية، إيجار السكن، أو مورد غير مسجل/بدون فاتورة ضريبية. فاتورة 1,000 ر.س فأكثر يلزم أن تكون باسم المطعم ورقمه الضريبي لخصم ضريبتها.' }, { k: 'includesVat', type: 'check', label: 'المبلغ المدخل شامل الضريبة', redraw: !!redraw, show: (v) => v.taxable }] },
   ];
 
   FORMS.partners = (rec) =>
@@ -1703,32 +1712,41 @@
     });
   };
 
-  FORMS.assets = (rec) =>
-    formModal({
+  FORMS.assets = (rec) => {
+    // التأمين المسترد لا ضريبة عليه: يُفرض «غير خاضع» عند اختيار التصنيف وعند فتح سجل محفوظ أو حفظه
+    const noVat = (v) => Object.assign(v, { taxable: false, includesVat: false });
+    const value = Object.assign({}, rec || { id: RB.uid(), date: today(), name: '', category: 'kitchen', amount: '', includesVat: false, taxable: true, account: 'bank', lifeMonths: 60, salvage: 0, supplier: '', note: '' });
+    if (value.category === 'deposit') noVat(value);
+    return formModal({
       title: rec ? 'تعديل أصل' : 'أصل جديد',
-      value: rec || { id: RB.uid(), date: today(), name: '', category: 'kitchen', amount: '', includesVat: false, taxable: true, account: 'bank', lifeMonths: 60, salvage: 0, supplier: '', note: '' },
+      value,
       onChange: (p, v) => {
-        if (p === 'category') v.lifeMonths = RB.assetCat(v.category).life;
+        if (p !== 'category') return;
+        v.lifeMonths = RB.assetCat(v.category).life;
+        v.taxable = v.category !== 'deposit';
+        if (!v.taxable) v.includesVat = false;
       },
-      fields: [
+      fields: (v) => [
         { k: 'name', label: 'اسم الأصل', req: 1, placeholder: 'مثال: شواية برقر مسطحة' },
-        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'الصنف', options: RB.ASSET_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الشراء', req: 1 }] },
-        { type: 'html', html: (v) => `<p class="note">${esc(RB.assetCat(v.category).hint)}</p>` },
+        { type: 'row', fields: [{ k: 'category', type: 'select', label: 'تصنيف الأصل', options: RB.ASSET_CATS.map((c) => [c.id, c.name]), redraw: true }, { k: 'date', type: 'date', label: 'تاريخ الشراء', req: 1 }] },
+        { type: 'html', html: (x) => `<p class="note">${esc(RB.assetCat(x.category).hint)}</p>` },
         { type: 'row', fields: [{ k: 'amount', type: 'money', label: 'المبلغ', req: 1, min: 0 }, { k: 'account', type: 'select', label: 'دُفع من', options: payOptions(true) }] },
-        ...vatFields(),
+        ...(v.category === 'deposit' ? [{ type: 'html', html: () => '<p class="note">التأمين المسترد لا تُحتسب عليه ضريبة القيمة المضافة</p>' }] : vatFields()),
         { type: 'row', fields: [{ k: 'lifeMonths', type: 'num', label: 'العمر الإنتاجي (بالأشهر)', min: 0, help: '0 = لا يُستهلك (مثل التأمين المسترد)' }, { k: 'salvage', type: 'money', label: 'القيمة المتبقية في النهاية', min: 0 }] },
         { k: 'supplier', label: 'المورد' },
         { k: 'note', type: 'textarea', label: 'ملاحظات' },
       ],
       preview: (v) => {
         const sch = RB.depSchedule(Object.assign({}, v, { date: v.date || today() }), S);
-        return vatPreview(v.amount, v.includesVat, v.taxable, v.date) + (sch.monthly ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>` : `<p class="note">لا يُستهلك هذا الأصل.</p>`);
+        return vatPreview(v.amount, v.includesVat, RB.assetTaxable(v), v.date) + (sch.monthly ? `<p class="note">يُحمّل <b class="n">${fmt(sch.monthly)}</b> ${cur()} شهرياً على المصاريف لمدة ${sch.life} شهراً، بدءاً من ${RB.monthName(sch.months[0].ym)}.</p>` : `<p class="note">لا يُستهلك هذا الأصل.</p>`);
       },
       onSave: (v) => {
         if (v.account === 'payable' && !(v.supplier || '').trim()) return 'اكتب اسم المورد أو الجهة للشراء الآجل.';
+        if (v.category === 'deposit') noVat(v);
         upsert('assets', v);
       },
     });
+  };
 
   FORMS.expenses = (rec, x) => {
     const isGov = x === 'gov' || (rec && RB.GOV_CATS.includes(rec.category));
@@ -1848,8 +1866,8 @@
         { type: 'section', label: 'الراتب الشهري' },
         { type: 'row', fields: [{ k: 'basic', type: 'money', label: 'الراتب الأساسي', req: 1, min: 0 }, { k: 'housing', type: 'money', label: 'بدل السكن', min: 0 }, { k: 'transport', type: 'money', label: 'بدل النقل', min: 0 }, { k: 'otherAllow', type: 'money', label: 'بدلات أخرى (إعاشة…)', min: 0 }] },
         { type: 'section', label: 'تكاليف أخرى على المطعم' },
-        ...(v.nationality !== 'saudi' ? [{ type: 'row', fields: [{ k: 'levyMonthly', type: 'money', label: 'المقابل المالي شهرياً', min: 0 }, { k: 'iqamaAnnual', type: 'money', label: 'رسوم الإقامة سنوياً', min: 0 }, { k: 'workPermitAnnual', type: 'money', label: 'رخصة العمل سنوياً', min: 0 }] }] : []),
-        { type: 'row', fields: [{ k: 'medicalAnnual', type: 'money', label: 'التأمين الطبي سنوياً', min: 0 }, { k: 'ticketAnnual', type: 'money', label: 'تذاكر السفر سنوياً', min: 0 }, { k: 'housingCost', type: 'money', label: 'نصيبه من سكن العمال شهرياً', min: 0 }, { k: 'otherAnnual', type: 'money', label: 'رسوم أخرى سنوياً', min: 0 }] },
+        ...(v.nationality !== 'saudi' ? [{ type: 'row', fields: [{ k: 'levyMonthly', type: 'money', label: 'المقابل المالي شهرياً', min: 0, help: LEVY_HELP }, { k: 'iqamaAnnual', type: 'money', label: 'رسوم الإقامة سنوياً', min: 0 }, { k: 'workPermitAnnual', type: 'money', label: 'رخصة العمل سنوياً', min: 0 }] }] : []),
+        { type: 'row', fields: [{ k: 'medicalAnnual', type: 'money', label: 'التأمين الطبي سنوياً', min: 0, help: MED_HELP }, { k: 'ticketAnnual', type: 'money', label: 'تذاكر السفر سنوياً', min: 0 }, { k: 'housingCost', type: 'money', label: 'نصيبه من سكن العمال شهرياً', min: 0 }, { k: 'otherAnnual', type: 'money', label: 'رسوم أخرى سنوياً', min: 0 }] },
         // بلا اختيار صريح يُفترض العيني إن لم يكن له بدل سكن نقدي وله نصيب من سكن العمال
         { k: 'housingInKind', type: 'check', label: 'السكن مقدَّم عيناً من المطعم (يُحتسب للتأمينات بأجر شهرين في السنة)', get: (x) => RB.housingInKind(x) },
         { k: 'active', type: 'check', label: 'على رأس العمل' },
@@ -1867,7 +1885,9 @@
     const saudi = e.nationality === 'saudi';
     const r = saudi ? RB.gosiSaudiRates(e, S, ym) : { er: S.settings.gosi.expatEr, ee: 0 };
     const rates = saudi ? `بنسبة ${rp(r.er)} على المنشأة و${rp(r.ee)} على الموظف (${e.gosiSystem === 'new' ? 'النظام الجديد' : 'النظام السابق'})` : `بنسبة ${rp(r.er)} على المنشأة`;
-    return `<div class="tbl-wrap"><table class="tbl mini"><tbody>${c.items.filter((i) => i.v).map((i) => `<tr><td>${esc(i.label)}</td><td class="num">${N(i.v)}</td></tr>`).join('')}<tr class="total"><td>التكلفة الشهرية الحقيقية</td><td class="num">${N(c.total)}</td></tr></tbody></table></div>
+    // التأمين الطبي إلزامي: يظهر دائماً، وبلا قسط يُنبَّه عليه
+    const row = (i) => `<tr><td>${esc(i.label)}${i.k === 'medical' && !i.v ? '<div class="note bad">لم يُدخل قسط التأمين الطبي (إلزامي)</div>' : ''}</td><td class="num">${N(i.v)}</td></tr>`;
+    return `<div class="tbl-wrap"><table class="tbl mini"><tbody>${c.items.filter((i) => i.v || i.k === 'medical').map(row).join('')}<tr class="total"><td>التكلفة الشهرية الحقيقية</td><td class="num">${N(c.total)}</td></tr></tbody></table></div>
       <p class="note">التأمينات ${rates} من أجر خاضع ${fmt(c.gosi.base)}. الأجر الخاضع = الأساسي + بدل السكن (أو السكن العيني مقدّراً بأجر شهرين في السنة). ${c.gosi.ee ? `يُخصم من الموظف ${fmt(c.gosi.ee)} فيصله صافي ${fmt(c.netPay)}.` : 'لا يُخصم من الموظف غير السعودي.'} تكلفته السنوية ≈ ${fmt(c.total * 12)} ${cur()}.</p>`;
   }
 
@@ -1917,6 +1937,10 @@
         },
         { k: 'note', label: 'ملاحظات' },
       ],
+      // نظام حماية الأجور (مدد) وموعد سداد التأمينات
+      preview: (v) =>
+        (v.account === 'cash' || v.gosiAccount === 'cash' ? '<p class="note bad">نظام حماية الأجور يتطلب صرف رواتب العمال عبر الحساب البنكي ورفع ملف الأجور في منصة «مدد» شهرياً؛ الصرف النقدي قد يُعدّ عدم التزام ويعرّض المنشأة لإيقاف خدمات قوى.</p>' : '') +
+        '<p class="note">اشتراكات التأمينات الاجتماعية تُسدَّد قبل يوم 15 من الشهر التالي.</p>',
       onSave: (v) => {
         if (!v.lines.length) return 'المسير فارغ.';
         upsert('payroll', v);
@@ -2033,14 +2057,14 @@
         { type: 'section', label: 'كيف تشتريها وكيف تستخدمها' },
         { type: 'row', fields: [{ k: 'buyUnit', label: 'وحدة الشراء', req: 1, placeholder: 'كرتون 10 كجم' }, { k: 'price', type: 'money', label: 'سعر وحدة الشراء (بدون ضريبة)', req: 1, min: 0 }] },
         { type: 'row', fields: [{ k: 'useUnit', type: 'select', label: 'وحدة الاستخدام في الوصفات', options: RB.UNITS, redraw: true }, { k: 'packQty', type: 'num', label: 'كم وحدة استخدام في وحدة الشراء؟', req: 1, min: 0, help: 'كرتون 10 كجم بوحدة جم = 10000' }] },
-        { type: 'row', fields: [{ k: 'wastePct', type: 'num', label: 'نسبة الهدر %', min: 0, help: 'تقشير، تقطيع، تلف' }, { k: 'taxable', type: 'check', label: 'خاضعة لضريبة القيمة المضافة' }] },
+        { type: 'row', fields: [{ k: 'wastePct', type: 'num', label: 'نسبة الهدر %', min: 0, help: 'تقشير، تقطيع، تلف' }, { k: 'taxable', type: 'check', label: 'خاضعة لضريبة القيمة المضافة', help: 'حسب المورد المعتاد: أزلها فقط إذا كان المورد غير مسجل في الضريبة' }] },
       ],
       preview: (v) => {
         const u = RB.rawUnitCost(v, S);
         return `<div class="pv-grid"><div><span>تكلفة 1 ${esc(v.useUnit)}</span><b class="n">${u.toFixed(4)}</b></div><div><span>تكلفة 100 ${esc(v.useUnit)}</span><b class="n">${fmt(u * 100)}</b></div><div><span>تكلفة 1000 ${esc(v.useUnit)}</span><b class="n">${fmt(u * 1000)}</b></div></div>`;
       },
       onSave: (v) => {
-        if (!(num(v.packQty) > 0)) return 'كمية وحدة الشراء لازم تكون أكبر من صفر.';
+        if (!(num(v.packQty) > 0)) return 'يجب أن تكون كمية وحدة الشراء أكبر من صفر.';
         upsert('raw', v);
       },
     });
@@ -2132,19 +2156,21 @@
       },
       onSave: (v) => {
         v.items = v.items.filter((i) => i.id && num(i.qty));
-        if (!(num(v.yieldQty) > 0)) return 'الكمية الناتجة لازم تكون أكبر من صفر.';
+        if (!(num(v.yieldQty) > 0)) return 'يجب أن تكون الكمية الناتجة أكبر من صفر.';
         upsert('composites', v);
       },
     });
 
-  FORMS.products = (rec) =>
-    formModal({
+  FORMS.products = (rec) => {
+    // أسعار المنيو شاملة الضريبة للمطعم المسجل فقط
+    const incl = RB.isVatReg(S.settings, today()) ? ' (شامل الضريبة)' : '';
+    return formModal({
       title: rec ? 'تعديل صنف' : 'صنف جديد في المنيو',
       wide: true,
       value: rec ? Object.assign({ competitors: [] }, rec) : { id: RB.uid(), name: '', category: 'برقر', price: '', appPrice: '', active: true, items: [{ kind: 'raw', id: '', qty: '' }], competitors: [], note: '' },
       fields: [
         { type: 'row', fields: [{ k: 'name', label: 'اسم الصنف', req: 1 }, { k: 'category', type: 'select', label: 'القسم', options: RB.PRODUCT_CATS }] },
-        { type: 'row', fields: [{ k: 'price', type: 'money', label: 'سعر البيع في المحل (شامل الضريبة)', req: 1, min: 0 }, { k: 'appPrice', type: 'money', label: 'سعره في التطبيقات (شامل الضريبة)', min: 0, help: 'اتركه فارغاً إن كان نفس السعر' }] },
+        { type: 'row', fields: [{ k: 'price', type: 'money', label: 'سعر البيع في المحل' + incl, req: 1, min: 0 }, { k: 'appPrice', type: 'money', label: 'سعره في التطبيقات' + incl, min: 0, help: 'اتركه فارغاً إن كان نفس السعر' }] },
         itemsField('prod', rec && rec.id, 'المكونات'),
         {
           k: 'competitors',
@@ -2170,11 +2196,12 @@
         upsert('products', v);
       },
     });
+  };
 
   function productAnalysisHTML(St, p, C, short) {
     const st = RB.productStats(St, p, C);
     const target = num(St.settings.targetFoodCost);
-    let h = `<div class="pv-grid four"><div><span>التكلفة</span>${money(st.cost)}</div><div><span>السعر بدون الضريبة</span>${money(st.priceNet)}</div><div><span>تكلفة الطعام</span><b class="n ${st.foodCost > target + 3 ? 'neg' : ''}">${pct(st.foodCost)}</b><small>المستهدف ${pct(target, 0)}</small></div><div><span>ربح الحبة</span>${money(st.profit)}</div></div>`;
+    let h = `<div class="pv-grid four"><div><span>التكلفة</span>${money(st.cost)}</div><div><span>${RB.isVatReg(St.settings, today()) ? 'السعر بدون الضريبة' : 'سعر البيع (غير مسجل في الضريبة)'}</span>${money(st.priceNet)}</div><div><span>تكلفة الطعام</span><b class="n ${st.foodCost > target + 3 ? 'neg' : ''}">${pct(st.foodCost)}</b><small>المستهدف ${pct(target, 0)}</small></div><div><span>ربح الحبة</span>${money(st.profit)}</div></div>`;
     const tips = [];
     if (st.suggested && st.price && st.suggested > st.price + 0.01) tips.push(`لتحقيق تكلفة طعام ${pct(target, 0)} يكون السعر ${fmt(st.suggested)} ${cur()}.`);
     if (st.market) tips.push(`السوق: من ${fmt(st.market.min)} إلى ${fmt(st.market.max)} (المتوسط ${fmt(st.market.avg)}). سعرك ${st.vsMarket > 0 ? 'أعلى' : 'أقل'} بـ ${pct(Math.abs(st.vsMarket), 0)}.`);
@@ -2391,9 +2418,9 @@
         { type: 'row', fields: [{ k: 'gosi.saudiEr', type: 'num', label: 'السعودي (النظام السابق) — حصة المنشأة %' }, { k: 'gosi.saudiEe', type: 'num', label: 'السعودي (النظام السابق) — حصة الموظف %' }] },
         { type: 'html', html: () => '<p class="note">المشتركون الجدد (أول تسجيل من 3 يوليو 2024): تُضاف زيادة فرع المعاشات 0.5% لكل طرف كل يوليو من 2025 حتى 2028 (من يوليو 2026: المنشأة 12.75% والموظف 10.75%).</p>' },
         { type: 'row', fields: [{ k: 'gosi.expatEr', type: 'num', label: 'غير السعودي — حصة المنشأة % (الأخطار المهنية)' }, { k: 'gosi.cap', type: 'num', label: 'الحد الأعلى للأجر الخاضع' }] },
-        { type: 'section', label: 'قيم افتراضية للعامل غير السعودي (تتعبأ عند إضافة موظف)' },
-        { type: 'row', fields: [{ k: 'labor.levyMonthly', type: 'num', label: 'المقابل المالي شهرياً' }, { k: 'labor.iqamaAnnual', type: 'num', label: 'رسوم الإقامة سنوياً' }] },
-        { type: 'row', fields: [{ k: 'labor.workPermitAnnual', type: 'num', label: 'رخصة العمل سنوياً' }, { k: 'labor.medicalAnnual', type: 'num', label: 'التأمين الطبي سنوياً' }] },
+        { type: 'section', label: 'قيم افتراضية تتعبأ عند إضافة موظف' },
+        { type: 'row', fields: [{ k: 'labor.levyMonthly', type: 'num', label: 'المقابل المالي شهرياً', help: LEVY_HELP }, { k: 'labor.iqamaAnnual', type: 'num', label: 'رسوم الإقامة سنوياً' }] },
+        { type: 'row', fields: [{ k: 'labor.workPermitAnnual', type: 'num', label: 'رخصة العمل سنوياً' }, { k: 'labor.medicalAnnual', type: 'num', label: 'التأمين الطبي سنوياً', help: MED_HELP }] },
       ],
     };
     formModal({
@@ -2545,7 +2572,7 @@
     },
     start: () => startWizard(),
     showdemo: async () => {
-      if (!(await confirmBox('عرض البيانات التجريبية مؤقتاً؟ بياناتك تبقى محفوظة كما هي، وتقدر ترجع لها من الإعدادات.'))) return;
+      if (!(await confirmBox('عرض البيانات التجريبية مؤقتاً؟ بياناتك تبقى محفوظة كما هي، ويمكنك الرجوع إليها من الإعدادات.'))) return;
       APP.real = S;
       S = RB.normalize(RB.demoState(today()));
       APP.demo = true;
@@ -2725,8 +2752,8 @@
         rows.push(['الصافي', '', v.net]);
       } else if (rep === 'menu') {
         const m = RB.menuAnalysis(S, from, asOf, L);
-        rows.push(['الصنف', 'الكمية', 'ربح الحبة', 'إجمالي الربح', 'تكلفة الطعام %', 'التصنيف']);
-        m.rows.forEach((r) => rows.push([r.name, r.qty, r.profit, r.totalProfit, r.foodCost, RB.MENU_CLASS[r.cls].name]));
+        rows.push(['الصنف', 'الكمية', 'ربح الحبة', 'إجمالي الربح', 'تكلفة الطعام %', 'فئة المنيو', 'ماذا تفعل']);
+        m.rows.forEach((r) => rows.push([r.name, r.qty, r.profit, r.totalProfit, r.foodCost, RB.MENU_CLASS[r.cls].name, RB.MENU_CLASS[r.cls].tip]));
       } else {
         const inc = RB.incomeStatement(S, from, asOf, L);
         rows.push(['القسم', 'البند', 'المبلغ']);
@@ -2811,7 +2838,7 @@
     const el = document.getElementById('saveStatus');
     if (!el) return;
     const kind = APP.backend ? APP.backend.kind : '';
-    el.innerHTML = APP.demo ? `<span class="dot warn"></span>وضع التجربة — لا يُحفظ` : kind === 'cloud' ? `<span class="dot good"></span>محفوظ ومشترك${APP.savedAt ? ' · ' + new Date(APP.savedAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : ''}` : kind === 'local' ? `<span class="dot good"></span>محفوظ في هذا المتصفح${APP.savedAt ? ' · ' + new Date(APP.savedAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' }) : ''}` : '';
+    el.innerHTML = APP.demo ? `<span class="dot warn"></span>وضع التجربة — لا يُحفظ` : kind === 'cloud' ? `<span class="dot good"></span>محفوظ ومشترك${APP.savedAt ? ' · ' + TIMEF.format(new Date(APP.savedAt)) : ''}` : kind === 'local' ? `<span class="dot good"></span>محفوظ في هذا المتصفح${APP.savedAt ? ' · ' + TIMEF.format(new Date(APP.savedAt)) : ''}` : '';
   }
 
   let rt = null;

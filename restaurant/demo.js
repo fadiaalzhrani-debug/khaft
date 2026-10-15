@@ -67,7 +67,7 @@
       Object.assign({ id: 'e3', name: 'أنور', job: 'تحضير وتغليف', basic: 1600, otherAllow: 200 }, expat),
       Object.assign({ id: 'e4', name: 'جمال', job: 'نظافة وخدمة', basic: 1400, otherAllow: 200 }, expat),
       // أول تسجيل له في التأمينات بعد 3 يوليو 2024: نسب النظام الجديد
-      { id: 'e5', name: 'سعود', job: 'كاشير ومشرف وردية', nationality: 'saudi', gosiSystem: 'new', basic: 4000, housing: 1000, transport: 500, otherAllow: 0, levyMonthly: 0, iqamaAnnual: 0, workPermitAnnual: 0, medicalAnnual: 0, ticketAnnual: 0, housingCost: 0, otherAnnual: 0, startDate: empStart, active: true },
+      { id: 'e5', name: 'سعود', job: 'كاشير ومشرف وردية', nationality: 'saudi', gosiSystem: 'new', basic: 4000, housing: 1000, transport: 500, otherAllow: 0, levyMonthly: 0, iqamaAnnual: 0, workPermitAnnual: 0, medicalAnnual: 2300, ticketAnnual: 0, housingCost: 0, otherAnnual: 0, startDate: empStart, active: true },
     ];
 
     // ─── المواد الخام (السعر لوحدة الشراء بدون ضريبة) ───
@@ -165,7 +165,8 @@
     const SUP = {
       meat: { supplier: 'مؤسسة اللحوم الطازجة', category: 'food', account: 'payable', taxable: true },
       bread: { supplier: 'مخبز الريان', category: 'food', account: 'cash', taxable: true },
-      veg: { supplier: 'سوق الخضار المركزي', category: 'food', account: 'cash', taxable: false },
+      // مورد غير مسجل في الضريبة (لا إعفاء للخضار في السعودية): بلا فاتورة ضريبية ولا رقم فاتورة
+      veg: { supplier: 'بائع خضار (غير مسجل في الضريبة)', category: 'food', account: 'cash', taxable: false, invoiceNo: '', note: 'مورد غير مسجل في الضريبة — لا فاتورة ضريبية' },
       dry: { supplier: 'شركة التموين الغذائي', category: 'food', account: 'bank', taxable: true },
       pack: { supplier: 'مصنع التغليف الحديث', category: 'packaging', account: 'bank', taxable: true },
       drinks: { supplier: 'موزع المشروبات', category: 'drinks', account: 'bank', taxable: true },
