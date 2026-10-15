@@ -1507,3 +1507,143 @@ test('تكلفة الطعام والسعر المقترح حسب التسجيل 
   close(st.foodCost, (6 / 23) * 100, 1e-9);
   assert.equal(st.suggested, 20);
 });
+
+// ───────────── سلامة البيانات (WP3) ─────────────
+test('تنظيف السجل: التاريخ الناقص أو غير الصالح يُعلَّم ولا يُحذف، والأشكال الخاطئة تُصحَّح بلا تغيير الأصل', () => {
+  const ok = { id: 'x1', date: '2026-03-15', category: 'rent', amount: 100 };
+  assert.equal(RB.sanitizeRecord('expenses', ok), ok); // السليم يرجع كما هو
+  assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', amount: 1 })._bad, ['date']);
+  assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', date: '15/03/2026' })._bad, ['date']);
+  assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', date: '2026-13-45' })._bad, ['date']);
+  assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', date: '2026-02-30' })._bad, ['date']);
+  assert.deepEqual(RB.sanitizeRecord('expenses', { id: 'a', date: '2026-02-28', startDate: 'غداً' })._bad, ['startDate']);
+  assert.deepEqual(RB.sanitizeRecord('payroll', { id: 'a', date: '2026-02-28', month: '2026-13' })._bad, ['month']);
+  assert.deepEqual(RB.sanitizeRecord('employees', { id: 'a', name: 'س', endDate: 20260101 }), { id: 'a', name: 'س', endDate: '20260101', _bad: ['endDate'] });
+  // الأقسام بلا تاريخ عملية (الموظفون والمواد والمنيو) لا تحتاج تاريخاً
+  assert.equal(RB.sanitizeRecord('employees', { id: 'e', name: 'س' })._bad, undefined);
+  // التصحيح يمسح العلامة القديمة، والأصل لا يتغير
+  const fixed = { id: 'a', date: '2026-03-01', _bad: ['date'] };
+  assert.equal(RB.sanitizeRecord('expenses', fixed)._bad, undefined);
+  assert.deepEqual(fixed._bad, ['date']);
+  // المعرّف نص، والقوائم مصفوفات كائنات، والأسماء نصوص، والقناة الفارغة تُسقط
+  assert.equal(RB.sanitizeRecord('partners', { id: 42, name: 'ر' }).id, '42');
+  assert.deepEqual(RB.sanitizeRecord('purchases', { id: 'p', date: '2026-01-01', lines: { a: 1 } }).lines, []);
+  assert.deepEqual(RB.sanitizeRecord('purchases', { id: 'p', date: '2026-01-01', lines: [null, { qty: 1 }, 'x'] }).lines, [{ qty: 1 }]);
+  assert.deepEqual(RB.sanitizeRecord('composites', { id: 'c', name: 'ص', items: { a: 1 } }).items, []);
+  assert.deepEqual(RB.sanitizeRecord('sales', { id: 's', date: '2026-01-01', channels: { cash: null, card: { amount: 5 } } }).channels, { card: { amount: 5 } });
+  assert.deepEqual(RB.sanitizeRecord('sales', { id: 's', date: '2026-01-01', channels: 'x' }).channels, {});
+  assert.equal(RB.sanitizeRecord('products', { id: 'p', price: 5 }).name, '');
+  assert.equal(RB.sanitizeRecord('expenses', { id: 'e', date: '2026-01-01', desc: 12 }).desc, '12');
+  // ليس سجلاً: يُرفض
+  assert.equal(RB.sanitizeRecord('sales', null), null);
+  assert.equal(RB.sanitizeRecord('sales', { date: '2026-01-01' }), null);
+  assert.equal(RB.sanitizeRecord('sales', [1]), null);
+});
+
+test('توحيد البيانات: الإعدادات كائن بلا مفاتيح رقمية، قنوات صالحة، ومعرّفات مكررة تُفرَّق', () => {
+  const a = RB.normalize({ settings: 'abc' });
+  assert.deepEqual(a.settings, RB.defaultSettings());
+  const b = RB.normalize({ settings: { 0: 'a', 1: 'b', name: 'مطعمنا', gosi: [1], labor: { 5: 1, levyMonthly: 700 } } });
+  assert.equal(b.settings.name, 'مطعمنا');
+  assert.ok(!('0' in b.settings) && !('1' in b.settings));
+  assert.deepEqual(b.settings.gosi, RB.defaultSettings().gosi);
+  assert.equal(b.settings.labor.levyMonthly, 700);
+  assert.ok(!('5' in b.settings.labor));
+  // قنوات البيع: تُسقط الفارغة وما بلا معرّف، وإن لم يبقَ شيء فالافتراضية
+  const c = RB.normalize({ settings: { channels: [null, { id: 'cash', name: 'كاش', type: 'cash' }, { name: 'بلا معرّف' }] } });
+  assert.deepEqual(c.settings.channels.map((x) => x.id), ['cash']);
+  assert.equal(RB.normalize({ settings: { channels: [null, 5] } }).settings.channels.length, RB.defaultSettings().channels.length);
+  // تاريخ غير مفهوم في الإعدادات يُفرَّغ
+  assert.equal(RB.normalize({ settings: { openingDate: '15/03/2026', vatRegisteredFrom: '2026-01-01' } }).settings.openingDate, '');
+  // المعرّف المكرر في القسم يُعطى معرّفاً جديداً، والمعرّف الرقمي يصبح نصاً، وما بلا معرّف يُسقط
+  const d = RB.normalize({ partners: [{ id: 'p', name: 'أ' }, { id: 'p', name: 'ب' }, { id: 7, name: 'ج' }, { name: 'بلا معرّف' }, null] });
+  assert.equal(d.partners.length, 3);
+  assert.equal(new Set(d.partners.map((x) => x.id)).size, 3);
+  assert.equal(d.partners[0].id, 'p');
+  assert.equal(d.partners[2].id, '7');
+  // ما ليس كائناً
+  assert.deepEqual(RB.normalize([1, 2]), RB.emptyState());
+});
+
+test('السجل المعيب لا يكسر الدفتر ولا التقارير، ويُستبعد من الحسابات', () => {
+  const t = '2026-10-14';
+  const clean = RB.normalize(RB.demoState(t));
+  const L0 = RB.buildLedger(clean, '2026-10-31');
+  const cases = {
+    'مصروف بلا تاريخ': (S) => S.expenses.push({ id: 'bad1', category: 'rent', amount: 100, months: 6 }),
+    'مصروف 15/03/2026': (S) => S.expenses.push({ id: 'bad2', date: '15/03/2026', category: 'utilities', amount: 100, months: 1 }),
+    'بداية تغطية غير صالحة': (S) => S.expenses.push({ id: 'bad2b', date: '2026-09-01', startDate: '2026-13-45', category: 'rent', amount: 100, months: 6 }),
+    'أصل بلا تاريخ': (S) => S.assets.push({ id: 'bad3', name: 'x', category: 'kitchen', amount: 1000, lifeMonths: 60 }),
+    'أسطر فاتورة كائن': (S) => S.purchases.push({ id: 'bad4', date: '2026-10-01', supplier: 'م', lines: { a: 1 } }),
+    'قناة فارغة في إقفال': (S) => S.sales.push({ id: 'bad5', date: '2026-10-02', channels: { cash: null } }),
+    'مكونات منتج مجمّع كائن': (S) => S.composites.push({ id: 'bad6', name: 'x', items: { a: 1 } }),
+    'مسير بلا تاريخ': (S) => S.payroll.push({ id: 'bad7', month: '2026-09', lines: [{ employeeId: 'e1', basic: 1000 }] }),
+    'قناة فارغة في الإعدادات': (S) => S.settings.channels.push(null),
+  };
+  for (const [name, mut] of Object.entries(cases)) {
+    const raw = JSON.parse(JSON.stringify(RB.demoState(t)));
+    mut(raw);
+    const S = RB.normalize(raw);
+    let L;
+    assert.doesNotThrow(() => (L = RB.buildLedger(S, '2026-10-31')), name);
+    assert.deepEqual(L.errors, [], name);
+    // السجل المعيب خارج القيود: الأرصدة كما بدونه (الأسطر الفارغة لا تضيف شيئاً)
+    assert.deepEqual(RB.balances(L.entries), RB.balances(L0.entries), name);
+    for (const f of [
+      () => RB.costing(S),
+      () => RB.incomeStatement(S, '2026-01-01', '2026-10-31', L),
+      () => RB.balanceSheet(S, '2026-10-31', L),
+      () => RB.salesByChannel(S, '2026-01-01', '2026-10-31'),
+      () => RB.appReceivables(S, '2026-10-31'),
+      () => RB.supplierBalances(S, '2026-10-31'),
+      () => RB.renewals(S, t),
+      () => RB.capitalUses(S),
+      () => RB.breakEven(S, '2026-07-01', '2026-09-30', L, t),
+      () => RB.vatReturns(S, t),
+      () => RB.eosbUnsettled(S, t),
+      () => RB.menuAnalysis(S, '2026-01-01', '2026-10-31', L),
+      () => S.products.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')),
+    ])
+      assert.doesNotThrow(f, name);
+  }
+  // العلامة على السجل تحدد أنه يحتاج تصحيحاً
+  const raw = JSON.parse(JSON.stringify(RB.demoState(t)));
+  raw.expenses.push({ id: 'bad1', category: 'rent', amount: 100, months: 6 });
+  assert.deepEqual(RB.normalize(raw).expenses.find((x) => x.id === 'bad1')._bad, ['date']);
+});
+
+test('سجل يفشل حسابه لا يوقف الدفتر: تُحذف قيوده الجزئية ويُذكر في الأخطاء', () => {
+  const S = base();
+  S.capital = [{ id: 'c1', date: '2026-01-01', partnerId: 'p1', type: 'contribution', account: 'bank', amount: 1000 }];
+  const boom = { id: 'x', date: '2026-01-05', category: 'rent', amount: 100, months: 1 };
+  Object.defineProperty(boom, 'account', { enumerable: true, get: () => { throw new Error('تالف'); } });
+  S.expenses = [boom, { id: 'y', date: '2026-01-06', category: 'utilities', amount: 50, months: 1, taxable: false, account: 'cash' }];
+  const L = RB.buildLedger(S, '2026-01-31');
+  assert.deepEqual(L.errors.map((e) => [e.section, e.id]), [['expenses', 'x']]);
+  assert.ok(!L.entries.some((e) => e.ref && e.ref.id === 'x'));
+  assert.ok(L.entries.some((e) => e.ref && e.ref.id === 'y'));
+  const bal = RB.balances(L.entries);
+  assert.equal(bal['1102'], 1000);
+  assert.equal(bal['1101'], -50);
+  // التكلفة: سجل يفشل حسابه يُذكر ولا يوقف الباقي
+  S.raw = [{ id: 'r', name: 'لحم', price: 10, packQty: 1 }];
+  const evil = { id: 'pz', name: 'صنف' };
+  Object.defineProperty(evil, 'items', { enumerable: true, get: () => { throw new Error('تالف'); } });
+  S.products = [evil, { id: 'ok', name: 'برقر', items: [{ kind: 'raw', id: 'r', qty: 2 }] }];
+  const C = RB.costing(S);
+  assert.deepEqual(C.errors.map((e) => [e.section, e.id]), [['products', 'pz']]);
+  assert.equal(C.prod.ok, 20);
+});
+
+test('معرّفات الملف المستورد: يُرفض ما يكسر الصفحة أو مسار البيانات المشتركة', () => {
+  const st = RB.normalize(RB.demoState('2026-10-14'));
+  assert.deepEqual(RB.badIds(st), []); // كل معرّفات البرنامج والتجريبي صالحة
+  assert.ok(RB.validId(RB.uid()) && RB.validId('ch' + Date.now().toString(36)) && RB.validId(RB.uid() + 'b') && RB.validId(42));
+  for (const id of ['"><img src=x onerror=__hit(1)>', 'a b', 'x/1', 'cap:1', 'a.b', 'لحم', '__proto__', 'constructor', '', 'x'.repeat(65)]) assert.ok(!RB.validId(id), id);
+  const evil = { settings: { channels: [{ id: 'cash' }, { id: 'a"b' }] }, partners: [{ id: 'ok' }, { id: '<b>' }], sales: [{ id: 'x.y' }, null, { date: '2026-01-01' }] };
+  assert.deepEqual(RB.badIds(evil).sort(), ['<b>', 'a"b', 'x.y'].sort());
+  // مفتاح قناة يلوّث النموذج الأولي لا يدخل الإقفال
+  const s = RB.sanitizeRecord('sales', JSON.parse('{"id":"s","date":"2026-01-01","channels":{"__proto__":{"amount":5},"cash":{"amount":1}}}'));
+  assert.deepEqual(Object.keys(s.channels), ['cash']);
+  assert.equal({}.amount, undefined);
+});

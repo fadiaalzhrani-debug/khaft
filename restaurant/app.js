@@ -11,7 +11,13 @@
   // ═════════════ الحالة ═════════════
   let S = RB.emptyState();
   let VER = 0;
-  const APP = { mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false };
+  // save: حالة الحفظ الفعلية (pending عمليات لم تُؤكَّد بعد، failed رمز آخر فشل). readOnly: عرض فقط بلا صلاحية تعديل.
+  // syncLost: انقطع التحديث المباشر. replacing: استيراد أو مسح جارٍ في البيانات المشتركة
+  const APP = {
+    mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false,
+    save: { pending: 0, failed: null }, canWrite: null, readOnly: false, syncLost: false, noStorage: false,
+    replacing: false, replaceFailed: null, replaceStale: false, adopting: false, loadFailed: false,
+  };
   const UI_KEY = 'rb-restaurant-ui';
   const ui = Object.assign(
     { page: 'dashboard', period: 'month', from: '', to: '', expCat: '', purCat: '', cashAcc: '1101', report: 'income', salesTab: 'days', staffTab: 'emp', rawTab: 'list' },
@@ -62,13 +68,20 @@
   const N = (n, cls) => `<span class="n ${cls || ''} ${r2(n) < 0 ? 'neg' : ''}">${fmt(n)}</span>`;
   const N0 = (n) => `<span class="n">${fmt0(n)}</span>`;
   const cur = () => esc(S.settings.currency || 'ر.س');
+  // التاريخ غير الصالح (بيانات منقولة أو معيبة) يُعرض كما هو
   const dt = (iso) => {
     if (!iso) return '';
+    if (!RB.isISODate(iso)) return esc(iso);
     const y = iso.slice(0, 4);
     const s = +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1];
     return `<span class="dt">${s}${y !== today().slice(0, 4) ? ' ' + y : ''}</span>`;
   };
-  const dtText = (iso) => (iso ? +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4) : '');
+  const dtText = (iso) => (!iso ? '' : !RB.isISODate(iso) ? esc(iso) : +iso.slice(8, 10) + ' ' + RB.MONTHS[+iso.slice(5, 7) - 1] + ' ' + iso.slice(0, 4));
+  const good = RB.good;
+  // عدد السجلات في دفتر، وهل فيه بيانات حقيقية (بدأه أحد أو فيه سجلات)
+  const countRecs = (st) => RB.SECTIONS.reduce((n, k) => n + (st && Array.isArray(st[k]) ? st[k].length : 0), 0);
+  const shortId = (id) => (id.length > 24 ? id.slice(0, 24) + '…' : id);
+  const hasBooks = (st) => !!st && ((RB.isObj(st.settings) && !!st.settings.startedAt) || countRecs(st) > 0);
   const chip = (t, k) => `<span class="chip ${k || ''}">${t}</span>`;
 
   // ═════════════ الفترة ═════════════
@@ -87,7 +100,7 @@
     if (boundsCache && boundsCache.v === VER && boundsCache.t === t) return boundsCache.b.slice();
     let lo = t;
     let hi = t;
-    for (const k of RB.SECTIONS) for (const r of S[k]) if (r.date) {
+    for (const k of RB.SECTIONS) for (const r of S[k]) if (r.date && !r._bad) {
       if (r.date < lo) lo = r.date;
       if (r.date > hi) hi = r.date;
     }
@@ -157,39 +170,139 @@
   }
 
   // ═════════════ الحفظ ═════════════
+  // في المتصفح: كل تعديل عملية في قائمة انتظار تُطبَّق عند الحفظ على آخر نسخة مخزنة (لا على نسخة هذه النافذة)،
+  // فلا تمحو نافذةٌ تعديلات نافذة أخرى، والنافذة الخاملة لا تكتب شيئاً. ونافذة أخرى تحفظ فتتحدث هذه
   class LocalBackend {
     constructor() {
       this.kind = 'local';
       this.key = 'rb-restaurant-books-v1';
       this.t = null;
+      this.pending = []; // {op: 'put'|'del'|'settings', section, rec|id|s}
+      this.raw = null; // آخر نص قرأته هذه النافذة أو كتبته
     }
     async load() {
-      return safeJSON(lsGet(this.key));
+      this.raw = lsGet(this.key);
+      return safeJSON(this.raw);
+    }
+    // تطبيق العمليات المنتظرة على نسخة من الدفتر (بالمعرّف)
+    apply(st) {
+      for (const p of this.pending) {
+        if (p.op === 'settings') st.settings = clone(p.s);
+        else if (p.op === 'put') {
+          const arr = st[p.section];
+          const i = arr.findIndex((x) => String(x.id) === String(p.rec.id));
+          if (i >= 0) arr[i] = clone(p.rec);
+          else arr.push(clone(p.rec));
+        } else if (p.op === 'del') st[p.section] = st[p.section].filter((x) => String(x.id) !== String(p.id));
+      }
+      return st;
+    }
+    write(json) {
+      if (!lsSet(this.key, json)) {
+        APP.save.failed = 'local';
+        updateSaveStatus();
+        toast('تعذّر الحفظ في هذا المتصفح. صدّر نسخة احتياطية من الإعدادات الآن.', 'bad');
+        return false;
+      }
+      this.raw = json;
+      APP.save.failed = null;
+      APP.savedAt = Date.now();
+      updateSaveStatus();
+      return true;
     }
     flush() {
       clearTimeout(this.t);
       this.t = null;
-      if (APP.demo) return;
-      if (lsSet(this.key, JSON.stringify(S))) {
-        APP.savedAt = Date.now();
-        updateSaveStatus();
-      } else toast('تعذّر الحفظ في هذا المتصفح. صدّر نسخة احتياطية من الإعدادات الآن.', 'bad');
+      if (APP.demo || !this.pending.length) return true;
+      const cur = lsGet(this.key);
+      // لم يتغير المخزن منذ آخر قراءة: نسخة هذه النافذة = المخزن + تعديلاتها. وإلا فالتعديلات فوق أحدث نسخة مخزنة
+      const merged = cur !== this.raw;
+      const base = merged ? this.apply(RB.normalize(safeJSON(cur) || S)) : S;
+      if (!this.write(JSON.stringify(base))) return false;
+      this.pending = [];
+      if (merged) {
+        S = base;
+        bump();
+        scheduleRender();
+      }
+      return true;
     }
     schedule() {
       clearTimeout(this.t);
       this.t = setTimeout(() => this.flush(), 200);
     }
-    put() {
+    put(section, rec) {
+      this.pending.push({ op: 'put', section, rec: clone(rec) });
       this.schedule();
     }
-    del() {
+    del(section, id) {
+      this.pending.push({ op: 'del', section, id });
       this.schedule();
     }
-    saveSettings() {
+    saveSettings(s) {
+      this.pending.push({ op: 'settings', s: clone(s) });
       this.schedule();
     }
-    async replaceAll() {
-      this.flush();
+    // استبدال الدفتر كله (البداية، الاستيراد، المسح): يُكتب كما هو وتُلغى العمليات المنتظرة
+    async replaceAll(state) {
+      clearTimeout(this.t);
+      this.t = null;
+      this.pending = [];
+      return this.write(JSON.stringify(state));
+    }
+    // حفظ من نافذة أخرى لنفس الدفتر: تتحدث هذه النافذة (مع إبقاء تعديلاتها المنتظرة والنموذج المفتوح)
+    subscribe(cb) {
+      window.addEventListener('storage', (e) => {
+        if (e.key !== null && e.key !== this.key) return;
+        const nv = e.key === null ? lsGet(this.key) : e.newValue;
+        if (nv === this.raw) return;
+        if (nv === null) {
+          clearTimeout(this.t);
+          this.t = null;
+          this.pending = [];
+          this.raw = null;
+          toast('تم مسح الدفتر من نافذة أخرى');
+          openBooks(null);
+          return;
+        }
+        const d = safeJSON(nv);
+        if (!d) return;
+        this.raw = nv;
+        const fresh = this.apply(RB.normalize(d));
+        let changed = cb('settings', fresh.settings);
+        for (const k of RB.SECTIONS) changed = cb(k, fresh[k]) || changed;
+        if (changed) toast('تحدّثت البيانات من نافذة أخرى');
+      });
+    }
+  }
+
+  // رموز الأخطاء التي لا يُصلحها إعادة الاشتراك (db.d.ts)
+  const DB_TERMINAL = ['revoked', 'invalid_argument', 'resource_exhausted', 'not_granted', 'capability_disabled', 'capability_removed', 'transform_error'];
+  // سجل من مستند: المعرّف من مسار المستند لا من محتواه
+  const docRec = (d) => Object.assign(clone(d.data() || {}), { id: d.id });
+  // رمز فشل الحفظ: invalid_argument محجوز لمن لا يملك صلاحية التعديل (عرض فقط)، وغيره سجل غير صالح أو كبير
+  const failCode = (code) => (code === 'invalid_argument' ? 'invalid' : code || 'error');
+  // رسالة عربية لخطأ البيانات المشتركة (لا تُعرض رسائل المنصة الإنجليزية)
+  function dbErrMsg(e) {
+    if (e instanceof TypeError) return 'معرّف سجل غير صالح';
+    switch (e && e.code) {
+      case 'quota_exceeded':
+        return 'امتلأت مساحة البيانات المشتركة. صدّر نسخة احتياطية واحذف سجلات قديمة.';
+      case 'invalid_argument':
+      case 'transform_error':
+        return APP.readOnly ? 'ليست لديك صلاحية تعديل هذه البيانات.' : 'تعذّر الحفظ: السجل غير صالح أو أكبر من الحجم المسموح.';
+      case 'invalid_id':
+        return 'معرّف سجل غير صالح';
+      case 'revoked':
+        return 'توقف الوصول إلى البيانات المشتركة. أعد تحميل الصفحة.';
+      case 'not_granted':
+      case 'capability_disabled':
+      case 'capability_removed':
+        return 'البيانات المشتركة غير متاحة في هذه الصفحة.';
+      case 'resource_exhausted':
+        return 'طلبات كثيرة على البيانات المشتركة. انتظر قليلاً ثم أعد المحاولة.';
+      default:
+        return 'تعذّر الحفظ في البيانات المشتركة (انقطاع مؤقت). أعد المحاولة بعد قليل.';
     }
   }
 
@@ -198,24 +311,72 @@
       this.kind = 'cloud';
       this.db = db;
       this.q = {};
-      this.unsubs = [];
+      this.subs = {};
     }
     async load() {
       const out = {};
-      const st = await this.db.doc('config/settings').get();
+      // الحد المؤقت لعدد الطلبات لا يُفشل القراءة (التحقق قبل البداية والاستيراد يعتمد عليها)
+      const st = await this.retry(() => this.db.doc('config/settings').get());
       out.settings = st.exists ? clone(st.data()) : null;
       for (const k of RB.SECTIONS) {
-        const snap = await this.db.collection(k).get();
-        out[k] = snap.docs.map((d) => clone(d.data()));
+        const snap = await this.retry(() => this.db.collection(k).get());
+        out[k] = snap.docs.map(docRec);
       }
       if (!out.settings && RB.SECTIONS.every((k) => !out[k].length)) return null;
       out.settings = out.settings || {};
       return out;
     }
+    // مستمع لكل مجموعة: إن انقطع لسبب مؤقت يُعاد تشغيله وحده (لقطة جديدة تعيد الحالة كاملة)،
+    // وإن كان السبب نهائياً أو تكرر أكثر من 5 مرات فتنبيه دائم بأن التحديث المباشر انقطع
     subscribe(cb) {
-      const onErr = (e) => console.warn('db subscription', e && e.code);
-      this.unsubs.push(this.db.doc('config/settings').onSnapshot((s) => s.exists && cb('settings', clone(s.data())), onErr));
-      for (const k of RB.SECTIONS) this.unsubs.push(this.db.collection(k).onSnapshot((snap) => cb(k, snap.docs.map((d) => clone(d.data()))), onErr));
+      const add = (key, ref, deliver) => {
+        this.subs[key] = { ref, deliver, unsub: null, tries: 0, timer: null, dead: false };
+        this.listen(key);
+      };
+      add('settings', () => this.db.doc('config/settings'), (s) => s.exists && cb('settings', clone(s.data())));
+      for (const k of RB.SECTIONS) add(k, () => this.db.collection(k), (snap) => cb(k, snap.docs.map(docRec)));
+    }
+    listen(key) {
+      const s = this.subs[key];
+      try {
+        s.unsub = s.ref().onSnapshot(
+          (snap) => {
+            s.tries = 0;
+            try {
+              s.deliver(snap);
+            } catch (e) {
+              console.error(e);
+            }
+          },
+          (e) => this.onErr(key, e)
+        );
+      } catch (e) {
+        this.onErr(key, e);
+      }
+    }
+    onErr(key, e) {
+      const s = this.subs[key];
+      if (!s || s.dead) return;
+      try {
+        if (s.unsub) s.unsub();
+      } catch (x) {
+        /* انتهى أصلاً */
+      }
+      s.unsub = null;
+      const code = e && e.code;
+      s.tries++;
+      if (DB_TERMINAL.includes(code) || s.tries > 5) {
+        s.dead = true;
+        // كل المستمعين قد ينقطعون معاً: يُعاد الرسم مرة واحدة لكل تغيّر في الحالة
+        const ro = code === 'revoked' && !APP.readOnly;
+        if (APP.syncLost && !ro) return;
+        APP.syncLost = true;
+        if (ro) APP.readOnly = true;
+        render();
+        return;
+      }
+      clearTimeout(s.timer);
+      s.timer = setTimeout(() => this.listen(key), 1000 * s.tries + Math.random() * 1500);
     }
     async retry(fn) {
       for (let i = 0; ; i++) {
@@ -231,60 +392,119 @@
         }
       }
     }
-    write(path, fn) {
-      const p = (this.q[path] || Promise.resolve())
-        .then(() => this.retry(fn))
-        .then(() => {
-          APP.savedAt = Date.now();
-          updateSaveStatus();
-        })
-        .catch((e) => {
-          const code = e && e.code;
-          toast(code === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة. صدّر نسخة احتياطية واحذف سجلات قديمة.' : code === 'invalid_argument' ? 'ليست لديك صلاحية تعديل هذه البيانات.' : 'تعذّر الحفظ: ' + ((e && e.message) || code || ''), 'bad');
-        });
-      this.q[path] = p;
+    // عمليات المستند الواحد متتالية لا تتداخل (حفظ عادي واستيراد)
+    chain(path, fn) {
+      const p = (this.q[path] || Promise.resolve()).then(() => this.retry(fn));
+      this.q[path] = p.catch(() => {});
       return p;
+    }
+    write(path, fn, section) {
+      APP.save.pending++;
+      updateSaveStatus();
+      return this.chain(path, fn)
+        .then(() => {
+          APP.save.failed = null;
+          APP.savedAt = Date.now();
+        })
+        .catch((e) => this.failed(e, section))
+        .finally(() => {
+          APP.save.pending--;
+          updateSaveStatus();
+        });
+    }
+    failed(e, section) {
+      const code = e && e.code;
+      // رفض الكتابة لمن لم تحدد المنصة صلاحيته: عرض فقط بقية الزيارة، ويُعاد القسم من البيانات المشتركة (لا يبقى سجل وهمي)
+      if (code === 'invalid_argument' && APP.canWrite !== true) {
+        APP.save.failed = code;
+        APP.readOnly = true;
+        toast('ليست لديك صلاحية تعديل هذه البيانات.', 'bad');
+        this.resync(section);
+        return;
+      }
+      APP.save.failed = failCode(code || (e instanceof TypeError ? 'invalid_id' : 'error'));
+      toast(dbErrMsg(e), 'bad');
+    }
+    async resync(section) {
+      try {
+        if (section === 'settings') {
+          const d = await this.db.doc('config/settings').get();
+          if (d.exists) onRemote('settings', clone(d.data()));
+        } else if (section) {
+          const snap = await this.db.collection(section).get();
+          onRemote(section, snap.docs.map(docRec));
+        }
+      } catch (e) {
+        /* يبقى ما في الشاشة */
+      }
+      render();
     }
     put(section, rec) {
       const body = clone(rec);
-      return this.write(section + '/' + rec.id, () => this.db.collection(section).doc(rec.id).set(body));
+      return this.write(section + '/' + rec.id, () => this.db.collection(section).doc(rec.id).set(body), section);
     }
     del(section, id) {
-      return this.write(section + '/' + id, () => this.db.collection(section).doc(id).delete());
+      return this.write(section + '/' + id, () => this.db.collection(section).doc(id).delete(), section);
     }
     saveSettings(settings) {
       const body = clone(settings);
-      return this.write('config/settings', () => this.db.doc('config/settings').set(body));
+      return this.write('config/settings', () => this.db.doc('config/settings').set(body), 'settings');
     }
+    // استبدال الدفتر المشترك كله: علامة config/replace أثناء العملية، ثم كتابة كل السجلات، ثم حذف القديمة،
+    // ثم الإعدادات أخيراً. أي فشل يوقف الباقي، والإعادة آمنة (تكتب نفس الشيء). يرجع {ok, failed, code}
     async replaceAll(state, progress) {
-      const jobs = [];
-      for (const k of RB.SECTIONS) {
-        const snap = await this.retry(() => this.db.collection(k).get());
-        const keep = new Set(state[k].map((r) => r.id));
-        snap.docs.forEach((d) => {
-          if (!keep.has(d.id)) jobs.push(() => this.db.collection(k).doc(d.id).delete());
-        });
-        state[k].forEach((r) => {
-          const body = clone(r);
-          jobs.push(() => this.db.collection(k).doc(r.id).set(body));
-        });
+      const bad = RB.badIds(state);
+      if (bad.length) return { ok: false, failed: countRecs(state) + 1, code: 'invalid_id', badIds: bad };
+      const fail = (e) => ({ ok: false, failed: countRecs(state) + 1, code: (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error') });
+      const sets = [];
+      const dels = [];
+      try {
+        await this.retry(() => this.db.doc('config/replace').set({ status: 'running', at: new Date().toISOString() }));
+        for (const k of RB.SECTIONS) {
+          const snap = await this.retry(() => this.db.collection(k).get());
+          const keep = new Set(state[k].map((r) => r.id));
+          snap.docs.forEach((d) => {
+            if (!keep.has(d.id)) dels.push([k + '/' + d.id, () => this.db.collection(k).doc(d.id).delete()]);
+          });
+          state[k].forEach((r) => {
+            const body = clone(r);
+            sets.push([k + '/' + r.id, () => this.db.collection(k).doc(r.id).set(body)]);
+          });
+        }
+      } catch (e) {
+        return fail(e);
       }
       const st = clone(state.settings);
-      jobs.push(() => this.db.doc('config/settings').set(st));
-      let done = 0;
-      const worker = async () => {
-        while (jobs.length) {
-          const j = jobs.shift();
-          await this.retry(j);
-          done++;
-          if (progress) progress(done);
-        }
-      };
-      const total = jobs.length;
+      const total = sets.length + dels.length + 1;
+      const run = { done: 0, failed: false, code: null };
       if (progress) progress(0, total);
-      await Promise.all([worker(), worker(), worker()]);
+      const phase = async (jobs) => {
+        const worker = async () => {
+          while (jobs.length && !run.failed) {
+            const [path, fn] = jobs.shift();
+            try {
+              await this.chain(path, fn);
+              run.done++;
+              if (progress) progress(run.done);
+            } catch (e) {
+              run.failed = true;
+              run.code = (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error');
+            }
+          }
+        };
+        await Promise.all([worker(), worker(), worker()]);
+      };
+      await phase(sets);
+      if (!run.failed) await phase(dels);
+      if (!run.failed) await phase([['config/settings', () => this.db.doc('config/settings').set(st)]]);
+      if (run.failed) return { ok: false, failed: total - run.done, code: run.code };
+      try {
+        await this.retry(() => this.db.doc('config/replace').delete());
+      } catch (e) {
+        /* تبقى العلامة فيظهر تنبيه في الزيارة القادمة */
+      }
       APP.savedAt = Date.now();
-      updateSaveStatus();
+      return { ok: true, failed: 0 };
     }
   }
 
@@ -305,27 +525,40 @@
     APP.warnedDemo = true;
     toast('أنت في وضع التجربة: التعديلات تظهر الآن لكنها لا تُحفظ.');
   }
+  // عرض فقط: لا يتغير شيء في الدفتر (وضع التجربة مستثنى لأنه لا يُحفظ)
+  const RO_MSG = 'عرض فقط — ليست لديك صلاحية تعديل دفتر المطعم';
+  function roBlock() {
+    if (!APP.readOnly || APP.demo) return false;
+    toast(RO_MSG, 'bad');
+    return true;
+  }
 
   function bump() {
     VER++;
     costCache = null;
   }
-  const find = (section, id) => S[section].find((x) => x.id === id);
+  const find = (section, id) => S[section].find((x) => String(x.id) === String(id));
   function upsert(section, rec) {
+    if (roBlock()) return false;
+    // العلامة تُحسب من جديد: السجل المصحح يخرج من «سجلات تحتاج تصحيح»
+    delete rec._bad;
+    rec = RB.sanitizeRecord(section, rec) || rec;
     const arr = S[section];
-    const i = arr.findIndex((x) => x.id === rec.id);
+    const i = arr.findIndex((x) => String(x.id) === String(rec.id));
     if (i >= 0) arr[i] = rec;
     else arr.push(rec);
     bump();
     persistPut(section, rec);
   }
   function remove(section, id) {
-    S[section] = S[section].filter((x) => x.id !== id);
+    if (roBlock()) return false;
+    S[section] = S[section].filter((x) => String(x.id) !== String(id));
     bump();
     persistDel(section, id);
   }
   function saveSettings() {
     bump();
+    if (APP.readOnly && !APP.demo) return;
     persistSettings();
   }
 
@@ -394,6 +627,8 @@
   }
   function setPath(o, p, v) {
     const ks = p.split('.');
+    // مسار من معرّف خارجي لا يصل إلى النموذج الأولي للكائنات
+    if (ks.some((k) => k === '__proto__' || k === 'constructor' || k === 'prototype')) return;
     let a = o;
     for (let i = 0; i < ks.length - 1; i++) {
       if (a[ks[i]] === undefined || a[ks[i]] === null || typeof a[ks[i]] !== 'object') a[ks[i]] = /^\d+$/.test(ks[i + 1]) ? [] : {};
@@ -496,6 +731,15 @@
       m.body.scrollTop = sc;
       upd();
     }
+    // المعاينة والحسابات المساعدة لا توقف النموذج إن فشلت (سجل بتاريخ غير صالح يُفتح للتصحيح)
+    const safeHTML = (f) => {
+      try {
+        return f();
+      } catch (e) {
+        console.warn(e);
+        return '';
+      }
+    };
     function upd() {
       const lf = flatFields(fields()).filter((f) => f.type === 'lines');
       for (const f of lf) {
@@ -503,16 +747,16 @@
           const [, i, ck] = el.dataset.calc.split('|');
           const c = f.cols.find((x) => x.k === ck);
           const row = (getPath(val, f.k) || [])[+i];
-          if (c && row) el.innerHTML = c.calc(row, val);
+          if (c && row) el.innerHTML = safeHTML(() => c.calc(row, val));
         });
         m.body.querySelectorAll(`[data-hint^="${f.k}|"]`).forEach((el) => {
           const [, i, ck] = el.dataset.hint.split('|');
           const c = f.cols.find((x) => x.k === ck);
           const row = (getPath(val, f.k) || [])[+i];
-          if (c && c.hint && row) el.innerHTML = c.hint(row, val);
+          if (c && c.hint && row) el.innerHTML = safeHTML(() => c.hint(row, val));
         });
         const ft = m.body.querySelector(`[data-lfoot="${f.k}"]`);
-        if (ft && f.foot) ft.innerHTML = f.foot(val);
+        if (ft && f.foot) ft.innerHTML = safeHTML(() => f.foot(val));
       }
       for (const f of flatFields(fields())) {
         if (!f.live || !f.show) continue;
@@ -526,7 +770,7 @@
         if (el) el.checked = !!f.get(val);
       }
       const pv = m.body.querySelector('.form-preview');
-      if (pv && o.preview) pv.innerHTML = o.preview(val);
+      if (pv && o.preview) pv.innerHTML = safeHTML(() => o.preview(val));
     }
     function onField(e, isChange) {
       const el = e.target;
@@ -627,7 +871,7 @@
   const money = (n) => `<span class="money">${N(n)} <small class="cur">${cur()}</small></span>`;
   const btn = (label, act, attrs, kind) => `<button type="button" class="btn ${kind || ''}" data-act="${act}" ${attrs || ''}>${label}</button>`;
   const rowActs = (s, id, extra) =>
-    `<div class="row-acts">${extra || ''}<button type="button" class="icon-btn" data-act="edit" data-s="${s}" data-id="${id}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn" data-act="dup" data-s="${s}" data-id="${id}" aria-label="نسخ" title="نسخ">⧉</button><button type="button" class="icon-btn danger" data-act="del" data-s="${s}" data-id="${id}" aria-label="حذف" title="حذف">✕</button></div>`;
+    `<div class="row-acts">${extra || ''}<button type="button" class="icon-btn" data-act="edit" data-s="${s}" data-id="${esc(id)}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn" data-act="dup" data-s="${s}" data-id="${esc(id)}" aria-label="نسخ" title="نسخ">⧉</button><button type="button" class="icon-btn danger" data-act="del" data-s="${s}" data-id="${esc(id)}" aria-label="حذف" title="حذف">✕</button></div>`;
   function hbars(items, o) {
     o = o || {};
     if (!items.length) return `<div class="empty-box">${o.empty || 'لا توجد بيانات.'}</div>`;
@@ -780,6 +1024,8 @@
 
   function alertsHTML(asOf) {
     const out = [];
+    const bad = badRecords(asOf);
+    if (bad.length) out.push(['bad', `سجلات تحتاج تصحيح: <span class="n">${bad.length}</span> — لا تدخل في الحسابات حتى تُصحَّح${fixList(bad, true)}`, '']);
     for (const r of RB.renewals(S, today())) {
       if (r.status === 'ok') continue;
       const name = (r.rec.desc || RB.expenseCat(r.rec.category).name) + (r.rec.entity ? ' — ' + r.rec.entity : '') + empName(r.rec.employeeId, ' · ');
@@ -808,12 +1054,12 @@
     const target = num(S.settings.targetFoodCost);
     const high = S.products.filter((p) => p.active !== false && num(p.price) > 0 && RB.productStats(S, p, C).foodCost > target + 5);
     if (high.length) out.push(['warn', `${high.length} من أصناف المنيو تكلفتها أعلى من المستهدف بأكثر من 5 نقاط: ${high.slice(0, 4).map((p) => esc(p.name)).join('، ')}${high.length > 4 ? '…' : ''}`, btn('راجع التسعير', 'go', 'data-v="products"', 'sm')]);
-    if (C.errors.length) out.push(['bad', 'يوجد تداخل دائري في وصفة: منتج يحتوي نفسه. افتح المنتجات المجمّعة وصحّح المكونات.', '']);
+    if (C.errors.some((e) => e.path)) out.push(['bad', 'يوجد تداخل دائري في وصفة: منتج يحتوي نفسه. افتح المنتجات المجمّعة وصحّح المكونات.', '']);
     const bal = RB.balances(ledger(asOf).entries, null, asOf);
     if ((bal['1101'] || 0) < -0.5) out.push(['bad', 'رصيد الصندوق بالسالب: سجّلت مصروفات نقدية أكثر من الكاش الموجود. راجع الإقفالات والتحويلات.', btn('كشف الصندوق', 'go', 'data-v="cash"', 'sm')]);
     if ((bal['1102'] || 0) < -0.5) out.push(['bad', 'رصيد البنك بالسالب: تأكد من تسجيل إيداعات رأس المال والتحويلات.', btn('كشف البنك', 'go', 'data-v="cash"', 'sm')]);
     for (const a of RB.appReceivables(S, asOf)) {
-      if (a.balance > 1 && (!a.lastPayout || RB.daysBetween(a.lastPayout, asOf) > 14)) out.push(['warn', `${esc(a.name)}: مستحقات ${fmt(a.balance)} ${cur()} ولم يُسجَّل تحويل منذ ${a.lastPayout ? RB.daysBetween(a.lastPayout, asOf) + ' يوم' : 'البداية'}`, btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${a.id}"`, 'sm')]);
+      if (a.balance > 1 && (!a.lastPayout || RB.daysBetween(a.lastPayout, asOf) > 14)) out.push(['warn', `${esc(a.name)}: مستحقات ${fmt(a.balance)} ${cur()} ولم يُسجَّل تحويل منذ ${a.lastPayout ? RB.daysBetween(a.lastPayout, asOf) + ' يوم' : 'البداية'}`, btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${esc(a.id)}"`, 'sm')]);
     }
     const shares = RB.sum(S.partners, (p) => num(p.share));
     if (S.partners.length && Math.abs(shares - 100) > 0.01) out.push(['warn', `مجموع نسب الشركاء ${fmt(shares)}% وليس 100%.`, btn('الشركاء', 'go', 'data-v="partners"', 'sm')]);
@@ -821,6 +1067,46 @@
     if (!out.length) return `<div class="empty-box ok">كل شيء تمام — لا تنبيهات حالياً.</div>`;
     return alertsUL(out);
   }
+  // ─── سجلات تحتاج تصحيح: تاريخ ناقص أو غير صالح (_bad)، أو فشل حسابها في الدفتر أو التكلفة ───
+  const SECTION_NAME = {
+    partners: 'شريك', capital: 'حركة رأس مال', assets: 'أصل', expenses: 'مصروف', employees: 'موظف', payroll: 'مسير رواتب',
+    raw: 'مادة خام', purchases: 'فاتورة مشتريات', supplierPayments: 'سداد مورد', composites: 'منتج مجمّع', products: 'صنف في المنيو',
+    sales: 'إقفال يومي', payouts: 'تحويل تطبيق', transfers: 'تحويل بين الصندوق والبنك', stockCounts: 'جرد', vatPayments: 'سداد ضريبة',
+  };
+  const FIELD_NAME = { date: 'التاريخ', startDate: 'بداية التغطية', endDate: 'تاريخ ترك العمل', month: 'الشهر' };
+  function badRecords(asOf) {
+    const out = [];
+    const seen = new Set();
+    const push = (section, rec, why) => {
+      const k = section + '|' + rec.id;
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push({ section, rec, why });
+    };
+    for (const k of RB.SECTIONS)
+      for (const x of S[k])
+        if (x._bad) push(k, x, x._bad.map((f) => `${k === 'employees' && f === 'startDate' ? 'تاريخ المباشرة' : FIELD_NAME[f] || f} ${x[f] ? '«' + x[f] + '» غير صالح' : 'ناقص'}`).join('، '));
+    for (const e of ledger(asOf || today()).errors.concat(costing().errors.filter((x) => x.section))) {
+      const rec = e.id !== undefined && e.id !== '' && find(e.section, e.id);
+      if (rec) push(e.section, rec, 'تعذّر حسابه');
+    }
+    return out;
+  }
+  const recLabel = (x) => {
+    const t = x.name || x.desc || x.supplier || x.entity || x.note || '';
+    return t + (num(x.amount) ? (t ? ' · ' : '') + fmt(x.amount) : '');
+  };
+  // قائمة السجلات مع «تصحيح» و«حذف» لكل منها (withSection: يُذكر نوع السجل)
+  const fixList = (list, withSection) =>
+    `<ul class="fix-list">${list
+      .slice(0, 30)
+      .map((b) => `<li><span>${withSection ? `<b>${esc(SECTION_NAME[b.section] || b.section)}</b>: ` : ''}${esc(recLabel(b.rec) || b.rec.id)} — ${esc(b.why)}</span><span class="al-a">${btn('تصحيح', 'edit', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm')}${btn('حذف', 'del', `data-s="${esc(b.section)}" data-id="${esc(b.rec.id)}"`, 'sm ghost')}</span></li>`)
+      .join('')}</ul>${list.length > 30 ? `<p class="note">و${list.length - 30} سجل آخر.</p>` : ''}`;
+  // صندوق «بحاجة لتصحيح» في صفحة القسم (asOf: تاريخ دفتر الصفحة، فلا يُبنى دفتر آخر)
+  const fixCard = (section, asOf) => {
+    const list = badRecords(asOf).filter((b) => b.section === section);
+    return list.length ? card('بحاجة لتصحيح', fixList(list, false), { cls: 'fix', sub: 'سجلات بتاريخ ناقص أو غير صالح: لا تدخل في الحسابات ولا في القوائم حتى تصححها أو تحذفها.' }) : '';
+  };
   const alertsUL = (out) => `<ul class="alerts">${out.map(([k, t, a]) => `<li class="al ${k}"><span class="al-dot" aria-hidden="true"></span><span class="al-t">${t}</span>${a}</li>`).join('')}</ul>`;
   // مخصص نهاية خدمة لم يُسوَّ: من ترك العمل ولم تُسجَّل مكافأته ولا أنه لا مكافأة له (يبقى التزاماً حتى ذلك)،
   // و(في صفحة العمال فقط: all) المتوقف بلا تاريخ ترك العمل
@@ -895,7 +1181,7 @@
           { h: 'المبلغ', num: 1, f: (r) => N(r.amount) },
           { h: '', f: (r) => rowActs('capital', r.id) },
         ],
-        S.capital.slice().sort((a, b) => (a.date < b.date ? 1 : -1)),
+        good(S.capital).sort((a, b) => (a.date < b.date ? 1 : -1)),
         { empty: 'لا توجد إيداعات بعد.' }
       ),
       { sub: `المدفوع مباشرة من حساب شريك (أصل أو مصروف) يُضاف تلقائياً لرأس ماله: ${fmt(uses.direct)} ${cur()}` }
@@ -907,7 +1193,7 @@
   PAGES.assets = () => {
     const [from, to] = range();
     const asOf = minD(to, today());
-    const rows = S.assets.map((a) => {
+    const rows = good(S.assets).map((a) => {
       const sch = RB.depSchedule(a, S);
       const accum = r2(RB.sum(sch.months.filter((m) => m.date <= asOf), (m) => m.amount));
       return { a, sch, accum, book: r2(sch.cost - accum) };
@@ -929,11 +1215,12 @@
     const ordersPerMonth = sales.total.orders / months;
     let h = pageHead('الأصول والأثاث', 'معدات المطبخ والأثاث والأدوات والديكور، وتوزيع تكلفتها على أشهر التشغيل (الإهلاك)', btn('+ أصل جديد', 'add', 'data-s="assets"', 'primary'));
     h += `<div class="kpis small">
-      ${kpi('تكلفة الأصول', money(RB.sum(catRows, (c) => c.cost)), `${S.assets.length} أصل`)}
+      ${kpi('تكلفة الأصول', money(RB.sum(catRows, (c) => c.cost)), `${rows.length} أصل`)}
       ${kpi('الإهلاك الشهري الحالي', money(monthlyDep), 'يُحمّل على مصاريف كل شهر')}
       ${kpi('نصيب الطلب الواحد', money(ordersPerMonth ? monthlyDep / ordersPerMonth : 0), ordersPerMonth ? `على أساس ${fmt0(ordersPerMonth)} طلب شهرياً` : 'يظهر بعد تسجيل المبيعات')}
       ${kpi('القيمة الدفترية الحالية', money(RB.sum(catRows, (c) => c.book)), 'التكلفة − الإهلاك المتراكم')}
     </div>`;
+    h += fixCard('assets', asOf);
     h += card(
       'حسب التصنيف',
       table(
@@ -974,20 +1261,22 @@
   // ─── المصاريف التشغيلية ───
   PAGES.expenses = () => {
     const [from, to] = range();
-    const list = S.expenses.filter((x) => inRange(x.date) && (!ui.expCat || x.category === ui.expCat)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    const exps = good(S.expenses);
+    const list = exps.filter((x) => inRange(x.date) && (!ui.expCat || x.category === ui.expCat)).sort((a, b) => (a.date < b.date ? 1 : -1));
     const counts = {};
-    S.expenses.filter((x) => inRange(x.date)).forEach((x) => (counts[x.category] = (counts[x.category] || 0) + 1));
+    exps.filter((x) => inRange(x.date)).forEach((x) => (counts[x.category] = (counts[x.category] || 0) + 1));
     // المدفوع مقابل المحمّل على الفترة (حتى اليوم) لكل تصنيف
     const asOf = minD(to, today());
     const b = RB.balances(ledger(asOf).entries, from, asOf);
     const catRows = RB.EXPENSE_CATS.map((c) => {
-      const paid = RB.sum(S.expenses.filter((x) => x.category === c.id && inRange(x.date)), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
+      const paid = RB.sum(exps.filter((x) => x.category === c.id && inRange(x.date)), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
       return { c, paid, charged: b[c.acc] || 0 };
     }).filter((r) => r.paid || r.charged);
     // الإيجار والإهلاك يُحمّلان كاملين أول الشهر، فالشهر الجاري يُحسب شهراً كاملاً في المتوسط
     const months = RB.chargeMonths(from, asOf);
     let h = pageHead('المصاريف التشغيلية', 'إيجار المحل وسكن العمال والكهرباء والصيانة والتسويق وغيرها. المصروف المدفوع لعدة أشهر يُوزّع تلقائياً على أشهره.', btn('+ مصروف', 'add', 'data-s="expenses"', 'primary'));
     h += `<div class="quick">${['rent', 'housing', 'utilities', 'telecom', 'maintenance', 'marketing', 'cleaning'].map((k) => btn('+ ' + RB.expenseCat(k).name, 'add', `data-s="expenses" data-x="${k}"`, 'sm ghost')).join('')}</div>`;
+    h += fixCard('expenses', asOf);
     h += card(
       'ملخص الفترة',
       table(
@@ -1028,7 +1317,7 @@
     const rn = RB.renewals(S, today()).filter((r) => RB.GOV_CATS.includes(r.rec.category) || ['rent', 'housing'].includes(r.rec.category));
     // التكلفة السنوية للبنود المتكررة (المنتهية منها باقية): تكلفة آخر دفعة بدون الضريبة المستردة، محوّلة لسنة
     const annual = RB.sum(rn.filter((r) => RB.GOV_CATS.includes(r.rec.category)), (r) => (RB.costSplit(r.rec.amount, r.rec.includesVat, r.rec.taxable, S.settings, r.rec.date).cost * 12) / Math.max(1, num(r.rec.months)));
-    const list = S.expenses.filter((x) => RB.GOV_CATS.includes(x.category) && inRange(x.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    const list = good(S.expenses).filter((x) => RB.GOV_CATS.includes(x.category) && inRange(x.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
     let h = pageHead('الرسوم الحكومية والاشتراكات', 'السجل التجاري والبلدية والدفاع المدني والغرفة التجارية، ورسوم العمالة (قوى ومقيم)، والتأمين، والزكاة، واشتراكات الأنظمة، مع تنبيه قبل انتهاء كل منها — التأمينات الاجتماعية تُحسب من مسير الرواتب', btn('+ رسم أو اشتراك', 'add', 'data-s="expenses" data-x="gov"', 'primary'));
     const soon = rn.filter((r) => r.status !== 'ok').length;
     h += `<div class="kpis small">
@@ -1077,12 +1366,13 @@
     </div>`;
     h += tabs('staffTab', [['emp', 'الموظفون'], ['payroll', 'مسيرات الرواتب']], ui.staffTab);
     if (ui.staffTab === 'payroll') {
-      const runs = S.payroll.slice().sort((a, b) => (a.month < b.month ? 1 : -1));
+      const runMonth = (p) => p.month || p.date.slice(0, 7);
+      const runs = good(S.payroll).sort((a, b) => (runMonth(a) < runMonth(b) ? 1 : -1));
       h += card(
         'مسيرات الرواتب',
         table(
           [
-            { h: 'الشهر', f: (p) => `<b>${RB.monthName(p.month)}</b>${p.note ? `<div class="muted sm">${esc(p.note)}</div>` : ''}` },
+            { h: 'الشهر', f: (p) => `<b>${RB.monthName(runMonth(p))}</b>${p.note ? `<div class="muted sm">${esc(p.note)}</div>` : ''}` },
             { h: 'تاريخ الصرف', f: (p) => dt(p.date) },
             { h: 'العدد', num: 1, f: (p) => RB.payrollTotals(p).count },
             { h: 'إجمالي الرواتب', num: 1, f: (p) => N(RB.payrollTotals(p).gross) },
@@ -1119,7 +1409,7 @@
           { h: 'التكلفة الشهرية<br>الحقيقية', num: 1, f: (e) => `<b>${N(costs[e.id].total)}</b>` },
           { h: 'مخصص<br>نهاية الخدمة', num: 1, f: (e) => N(eosb[e.id] || 0) },
           { h: 'الحالة', f: (e) => { const st = RB.employeeStatus(e, ym); return st === 'active' ? chip('على رأس العمل', 'good') : chip(EMP_STATUS[st], st === 'future' ? 'accent' : 'mute'); } },
-          { h: '', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${e.id}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
+          { h: '', f: (e) => rowActs('employees', e.id, `<button type="button" class="icon-btn" data-act="empcost" data-id="${esc(e.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
         emps,
         { empty: 'أضف العمال مع رواتبهم لحساب التأمينات والمقابل المالي والتكلفة الحقيقية.' }
@@ -1132,7 +1422,7 @@
   // ─── المشتريات ───
   PAGES.purchases = () => {
     const [, to] = range();
-    const all = S.purchases.filter((p) => inRange(p.date));
+    const all = good(S.purchases).filter((p) => inRange(p.date));
     const list = all.filter((p) => !ui.purCat || p.category === ui.purCat).sort((a, b) => (a.date < b.date ? 1 : -1));
     // ضريبة المدخلات حسب تاريخ الفاتورة: قبل سريان التسجيل (أو بدونه) جزء من التكلفة لا تُخصم
     const sp = (p) => RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings, p.date);
@@ -1206,7 +1496,7 @@
         sb,
         { empty: 'لا توجد مستحقات آجلة.' }
       ) +
-        (S.supplierPayments.length
+        (good(S.supplierPayments).length
           ? `<h4 class="sub-h">دفعات السداد</h4>` +
             table(
               [
@@ -1216,7 +1506,7 @@
                 { h: 'المبلغ', num: 1, f: (p) => N(p.amount) },
                 { h: '', f: (p) => rowActs('supplierPayments', p.id) },
               ],
-              S.supplierPayments.slice().sort((a, b) => (a.date < b.date ? 1 : -1))
+              good(S.supplierPayments).sort((a, b) => (a.date < b.date ? 1 : -1))
             )
           : '')
     );
@@ -1240,7 +1530,7 @@
             { h: 'ملاحظات', f: (c) => esc(c.note || '') },
             { h: '', f: (c) => rowActs('stockCounts', c.id) },
           ],
-          S.stockCounts.slice().sort((a, b) => (a.date < b.date ? 1 : -1)),
+          good(S.stockCounts).sort((a, b) => (a.date < b.date ? 1 : -1)),
           { empty: 'سجّل جرد آخر الشهر لتصبح تكلفة المواد دقيقة: تكلفة المواد = المشتريات − الزيادة في المخزون.' }
         ),
         { sub: 'قيمة الجرد = الكمية الموجودة × سعر وحدة الشراء. الفرق بين جرد وآخر يعدّل تكلفة المواد في قائمة الدخل.' + (RB.isVatReg(S.settings, today()) ? '' : ' المطعم غير مسجل في الضريبة: قيمة الجرد تشمل الضريبة للمواد الخاضعة لأنها جزء من التكلفة') }
@@ -1283,7 +1573,7 @@
           { h: 'تكلفة الدفعة', num: 1, f: (c) => N((C.comp[c.id] || 0) * (num(c.yieldQty) || 1)) },
           { h: 'تكلفة الوحدة', num: 1, f: (c) => `<b class="n">${(C.comp[c.id] || 0).toFixed(4)}</b><div class="muted sm">لكل 1 ${esc(c.yieldUnit)}</div>` },
           { h: 'يستخدم في', num: 1, f: (c) => usedIn(c.id) || '—' },
-          { h: '', f: (c) => rowActs('composites', c.id, `<button type="button" class="icon-btn" data-act="view" data-s="composites" data-id="${c.id}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
+          { h: '', f: (c) => rowActs('composites', c.id, `<button type="button" class="icon-btn" data-act="view" data-s="composites" data-id="${esc(c.id)}" aria-label="تفاصيل التكلفة" title="تفاصيل التكلفة">ⓘ</button>`) },
         ],
         S.composites.slice().sort((a, b) => a.name.localeCompare(b.name, 'ar')),
         { empty: 'أضف أول منتج مجمّع، مثل «قطعة لحم 120 جم» = لحم مفروم + ملح + بهارات.' }
@@ -1321,7 +1611,7 @@
           { h: 'متوسط السوق', num: 1, f: (r) => (r.st.market ? `${N(r.st.market.avg)}<div class="sm">${r.st.vsMarket > 5 ? chip('أغلى ' + pct(r.st.vsMarket, 0), 'warn') : r.st.vsMarket < -5 ? chip('أرخص ' + pct(-r.st.vsMarket, 0), 'accent') : chip('مماثل', 'good')}</div>` : '<span class="muted">—</span>') },
           { h: 'سعر التطبيقات', num: 1, f: (r) => N(r.st.appPrice) },
           { h: 'ربحه في التطبيقات', num: 1, f: (r) => (r.st.avgApp ? `${N(r.st.avgApp.profit)}<div class="muted sm">هامش ${pct(r.st.avgApp.margin, 0)}</div>` : '—') },
-          { h: '', f: (r) => rowActs('products', r.p.id, `<button type="button" class="icon-btn" data-act="view" data-s="products" data-id="${r.p.id}" aria-label="تحليل الصنف" title="تحليل الصنف">ⓘ</button>`) },
+          { h: '', f: (r) => rowActs('products', r.p.id, `<button type="button" class="icon-btn" data-act="view" data-s="products" data-id="${esc(r.p.id)}" aria-label="تحليل الصنف" title="تحليل الصنف">ⓘ</button>`) },
         ],
         rows,
         { empty: 'أضف أصناف المنيو وحدّد مكونات كل صنف (مواد خام أو منتجات مجمّعة) وسعر البيع.', rowCls: (r) => (r.p.active === false ? 'off' : '') }
@@ -1369,7 +1659,7 @@
             { h: 'التطبيق', f: (a) => `<b>${esc(a.name)}</b>` },
             { h: 'الرصيد المستحق', num: 1, f: (a) => N(a.balance) },
             { h: 'آخر تحويل', f: (a) => (a.lastPayout ? dt(a.lastPayout) : '—') },
-            { h: '', f: (a) => btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${a.id}"`, 'sm') },
+            { h: '', f: (a) => btn('سجّل تحويل', 'add', `data-s="payouts" data-x="${esc(a.id)}"`, 'sm') },
           ],
           RB.appReceivables(S, asOf),
           { empty: 'لا توجد مبيعات تطبيقات.' }
@@ -1387,12 +1677,12 @@
             { h: 'ملاحظات', f: (p) => esc(p.note || '') },
             { h: '', f: (p) => rowActs('payouts', p.id) },
           ],
-          S.payouts.filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? 1 : -1))
+          good(S.payouts).filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? 1 : -1))
         )
       );
       return h;
     }
-    const days = S.sales.filter((s) => inRange(s.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
+    const days = good(S.sales).filter((s) => inRange(s.date)).sort((a, b) => (a.date < b.date ? 1 : -1));
     const chs = S.settings.channels.filter((c) => c.active !== false || days.some((s) => s.channels && s.channels[c.id]));
     const showApps = chs.filter((c) => c.type === 'app');
     const compact = showApps.length > 3;
@@ -1432,7 +1722,7 @@
             { h: 'داخل', num: 1, f: (r) => (r.in ? N(r.in, 'pos') : '') },
             { h: 'خارج', num: 1, f: (r) => (r.out ? N(r.out) : '') },
             { h: 'الرصيد', num: 1, f: (r) => N(r.balance) },
-            { h: '', f: (r) => (r.ref && r.ref.s ? `<button type="button" class="icon-btn" data-act="edit" data-s="${r.ref.s}" data-id="${r.ref.id}" aria-label="فتح العملية" title="فتح العملية">↗</button>` : '') },
+            { h: '', f: (r) => (r.ref && r.ref.s ? `<button type="button" class="icon-btn" data-act="edit" data-s="${esc(r.ref.s)}" data-id="${esc(r.ref.id)}" aria-label="فتح العملية" title="فتح العملية">↗</button>` : '') },
           ],
           rows.slice(0, 400),
           { empty: 'لا توجد حركات في هذه الفترة.' }
@@ -1700,7 +1990,7 @@
       'الحفظ والنسخ الاحتياطي',
       `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}</p>
       <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}<label class="btn ghost file-btn">استيراد نسخة<input type="file" accept=".json,application/json" id="importFile" hidden></label></div>
-      <div class="btn-row">${APP.demo ? btn('ابدأ ببيانات مطعمك', 'start', '', 'primary') + (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'ghost') : '') : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + btn('مسح كل البيانات', 'wipe', '', 'danger ghost')}</div>`
+      <div class="btn-row">${APP.demo ? (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary') : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary')) : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + btn('مسح كل البيانات', 'wipe', '', 'danger ghost')}</div>`
     );
     h += `</div>`;
     h += card(
@@ -1711,7 +2001,7 @@
           { h: 'النوع', f: (c) => esc(RB.CHANNEL_TYPES[c.type] || c.type) },
           { h: 'العمولة / الرسوم', num: 1, f: (c) => (c.type === 'cash' ? '—' : pct(c.feePct, 2)) },
           { h: 'الحالة', f: (c) => (c.active === false ? chip('موقوفة', 'mute') : chip('مفعّلة', 'good')) },
-          { h: '', f: (c) => `<div class="row-acts"><button type="button" class="icon-btn" data-act="channel" data-id="${c.id}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn danger" data-act="delchannel" data-id="${c.id}" aria-label="حذف" title="حذف">✕</button></div>` },
+          { h: '', f: (c) => `<div class="row-acts"><button type="button" class="icon-btn" data-act="channel" data-id="${esc(c.id)}" aria-label="تعديل" title="تعديل">✎</button><button type="button" class="icon-btn danger" data-act="delchannel" data-id="${esc(c.id)}" aria-label="حذف" title="حذف">✕</button></div>` },
         ],
         st.channels
       ),
@@ -2379,7 +2669,7 @@
             `<div class="field"><label>المبيعات حسب القناة (شاملة الضريبة)</label><div class="tbl-wrap"><table class="lines-tbl"><thead><tr><th>القناة</th><th class="num">المبلغ</th><th class="num">عدد الطلبات</th><th class="num">العمولة</th></tr></thead><tbody>${chs
               .map((c) => {
                 const x = v.channels[c.id] || {};
-                return `<tr><td><b>${esc(c.name)}</b></td><td class="num"><input type="number" inputmode="decimal" step="any" data-type="num" data-path="channels.${c.id}.amount" value="${x.amount === undefined ? '' : esc(x.amount)}" aria-label="مبلغ ${esc(c.name)}"></td><td class="num"><input type="number" inputmode="numeric" step="1" data-type="num" data-path="channels.${c.id}.orders" value="${x.orders === undefined ? '' : esc(x.orders)}" aria-label="طلبات ${esc(c.name)}"></td><td class="num muted">${c.type === 'cash' ? '—' : pct(x.feePct !== undefined && x.feePct !== '' ? x.feePct : c.feePct, 1)}</td></tr>`;
+                return `<tr><td><b>${esc(c.name)}</b></td><td class="num"><input type="number" inputmode="decimal" step="any" data-type="num" data-path="channels.${esc(c.id)}.amount" value="${x.amount === undefined ? '' : esc(x.amount)}" aria-label="مبلغ ${esc(c.name)}"></td><td class="num"><input type="number" inputmode="numeric" step="1" data-type="num" data-path="channels.${esc(c.id)}.orders" value="${x.orders === undefined ? '' : esc(x.orders)}" aria-label="طلبات ${esc(c.name)}"></td><td class="num muted">${c.type === 'cash' ? '—' : pct(x.feePct !== undefined && x.feePct !== '' ? x.feePct : c.feePct, 1)}</td></tr>`;
               })
               .join('')}</tbody></table></div></div>`,
         },
@@ -2519,6 +2809,7 @@
         { k: 'active', type: 'check', label: 'مفعّلة' },
       ],
       onSave: (v) => {
+        if (roBlock()) return false;
         const i = S.settings.channels.findIndex((x) => x.id === v.id);
         if (i >= 0) S.settings.channels[i] = v;
         else S.settings.channels.push(v);
@@ -2570,6 +2861,7 @@
         if (which === 'vat' && p === 'vatRegistered' && v.vatRegistered && !st.vatRegistered && hasVatData() && !v.vatRegisteredFrom) v.vatRegisteredFrom = today();
       },
       onSave: async (v) => {
+        if (roBlock()) return false;
         const warn = which === 'vat' ? vatHistoryChanges(st, v) : '';
         if (warn && !(await confirmBox(warn + ' متابعة؟', { danger: true }))) return false;
         S.settings = Object.assign(S.settings, v);
@@ -2691,6 +2983,7 @@
     },
     channel: (el) => channelForm(el.dataset.id),
     delchannel: async (el) => {
+      if (roBlock()) return;
       const id = el.dataset.id;
       if (S.sales.some((s) => s.channels && s.channels[id])) return toast('لهذه القناة مبيعات مسجلة. أوقفها بدلاً من حذفها.', 'bad');
       if (!(await confirmBox('حذف قناة البيع؟', { danger: true, ok: 'احذف' }))) return;
@@ -2714,6 +3007,8 @@
     start: () => startWizard(),
     showdemo: async () => {
       if (!(await confirmBox('عرض البيانات التجريبية مؤقتاً؟ بياناتك تبقى محفوظة كما هي، ويمكنك الرجوع إليها من الإعدادات.'))) return;
+      // تعديل لم يُكتب بعد يُحفظ قبل التجربة (التجربة لا تحفظ شيئاً)
+      if (APP.backend.flush) APP.backend.flush();
       APP.real = S;
       S = RB.normalize(RB.demoState(today()));
       APP.demo = true;
@@ -2729,11 +3024,25 @@
       render();
     },
     wipe: async () => {
+      if (roBlock()) return;
       if (!(await confirmBox('مسح كل بيانات المطعم نهائياً؟ صدّر نسخة احتياطية قبلها إن احتجت.', { danger: true, ok: 'امسح الكل' }))) return;
       const fresh = RB.emptyState();
       fresh.settings = Object.assign(RB.defaultSettings(), { name: S.settings.name, startedAt: new Date().toISOString() });
-      await replaceAll(fresh);
-      toast('تم مسح البيانات.');
+      if (await replaceAll(fresh)) toast('تم مسح البيانات.');
+    },
+    reload: () => location.reload(),
+    // إكمال استيراد أو مسح لم يكتمل في البيانات المشتركة: إعادة كتابة ما في الشاشة (آمنة إن تكررت)
+    resumereplace: async () => {
+      if (await replaceAll(S)) toast('اكتمل الحفظ في البيانات المشتركة.');
+    },
+    dismissreplace: async () => {
+      APP.replaceStale = false;
+      updateBanner();
+      try {
+        await APP.backend.db.doc('config/replace').delete();
+      } catch (e) {
+        /* يبقى مخفياً في هذه الزيارة */
+      }
     },
   };
 
@@ -2753,26 +3062,101 @@
     window.scrollTo(0, 0);
   }
 
+  // استبدال الدفتر كله (البداية، الاستيراد، المسح، إكمال الحفظ). يرجع true فقط إن حُفظ كاملاً
   async function replaceAll(state) {
+    if (APP.readOnly) {
+      toast(RO_MSG, 'bad');
+      return false;
+    }
     S = RB.normalize(state);
     APP.demo = false;
     APP.real = null;
     bump();
     render();
-    if (APP.backend.kind === 'cloud') {
-      const t = document.createElement('div');
-      t.className = 'toast sticky';
-      document.getElementById('toast').appendChild(t);
+    if (APP.backend.kind !== 'cloud') return APP.backend.replaceAll(S);
+    // اللقطات الجزئية أثناء الكتابة لا تُعرض؛ يُطابق الدفتر مع البيانات المشتركة بعد الانتهاء
+    APP.replacing = true;
+    APP.save.pending++;
+    updateSaveStatus();
+    const t = document.createElement('div');
+    t.className = 'toast sticky';
+    document.getElementById('toast').appendChild(t);
+    let res;
+    try {
+      res = await APP.backend.replaceAll(S, (done, total) => {
+        if (total) t.dataset.total = total;
+        t.textContent = `جاري الحفظ… ${done} من ${t.dataset.total || '?'}`;
+      });
+    } catch (e) {
+      res = { ok: false, failed: countRecs(S) + 1, code: (e && e.code) || 'error' };
+    }
+    t.remove();
+    APP.replacing = false;
+    APP.save.pending--;
+    if (res.ok) {
+      APP.replaceFailed = null;
+      APP.replaceStale = false;
+      APP.save.failed = null;
       try {
-        await APP.backend.replaceAll(S, (done, total) => {
-          if (total) t.dataset.total = total;
-          t.textContent = `جاري الحفظ… ${done} من ${t.dataset.total || '?'}`;
-        });
+        const d = await APP.backend.load();
+        if (d) S = RB.normalize(d);
       } catch (e) {
-        toast('توقف الحفظ: ' + ((e && e.message) || (e && e.code) || ''), 'bad');
+        /* يبقى ما كُتب */
       }
-      t.remove();
-    } else await APP.backend.replaceAll(S);
+      bump();
+      render();
+      return true;
+    }
+    if (res.code === 'invalid_argument' && APP.canWrite !== true) {
+      // لا صلاحية تعديل: لا شيء كُتب، فيُعاد الدفتر المشترك كما هو
+      APP.readOnly = true;
+      APP.save.failed = 'invalid_argument';
+      toast('ليست لديك صلاحية تعديل هذه البيانات.', 'bad');
+      try {
+        openBooks(await APP.backend.load());
+      } catch (e) {
+        render();
+      }
+      return false;
+    }
+    APP.replaceFailed = { n: res.failed };
+    APP.save.failed = failCode(res.code);
+    toast(res.code === 'invalid_id' ? 'معرّف سجل غير صالح: ' + (res.badIds || []).slice(0, 5).map(shortId).join('، ') : dbErrMsg(res), 'bad');
+    render();
+    return false;
+  }
+
+  // يفتح دفتراً محفوظاً، أو البيانات التجريبية إن لم يوجد
+  function openBooks(d) {
+    APP.real = null;
+    if (hasBooks(d)) {
+      S = RB.normalize(d);
+      APP.demo = false;
+    } else {
+      S = RB.normalize(RB.demoState(today()));
+      APP.demo = true;
+    }
+    bump();
+    render();
+  }
+  // وضع التجربة بلا دفتر: بدأ أحدٌ الدفتر (الشريك في البيانات المشتركة أو نافذة أخرى) فيُفتح بدل التجربة
+  async function adoptSaved() {
+    if (APP.adopting) return;
+    APP.adopting = true;
+    let d = null;
+    try {
+      d = await APP.backend.load();
+    } catch (e) {
+      APP.adopting = false;
+      return;
+    }
+    if (!(APP.demo && !APP.real && hasBooks(d))) {
+      APP.adopting = false;
+      return;
+    }
+    openBooks(d);
+    // تعذّر التحميل عند الفتح ثم وصلت البيانات: ليست بداية جديدة من الشريك
+    toast(APP.loadFailed ? 'تم فتح دفتر المطعم بعد تعذّر تحميله أول مرة.' : APP.backend.kind === 'cloud' ? 'بدأ شريكك دفتر المطعم — تم فتح البيانات المشتركة.' : 'بدأ دفتر المطعم في نافذة أخرى — تم فتحه هنا.');
   }
 
   function startWizard() {
@@ -2795,13 +3179,32 @@
         { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني' }, { k: 's2', type: 'num', label: 'نسبته %' }] },
       ],
       onSave: async (v) => {
+        // لا يُكتب فوق دفتر محفوظ: المشترك يُفتح كما هو، وفي المتصفح يلزم تأكيد حذفه
+        let existing = APP.real;
+        if (!existing) {
+          try {
+            existing = await APP.backend.load();
+          } catch (e) {
+            return 'تعذّر التحقق من البيانات المحفوظة، أعد المحاولة.';
+          }
+        }
+        if (hasBooks(existing)) {
+          if (APP.backend.kind === 'cloud') {
+            const mine = existing === APP.real;
+            openBooks(existing);
+            toast(mine ? 'يوجد دفتر مشترك محفوظ — تم فتحه بدل البدء من جديد.' : 'بدأ شريكك دفتر المطعم — تم فتح البيانات المشتركة.');
+            return;
+          }
+          const name = (existing.settings && existing.settings.name) || '';
+          if (!(await confirmBox('يوجد دفتر محفوظ «' + esc(name) + '» فيه ' + countRecs(existing) + ' سجل وسيُحذف نهائياً. صدّر نسخة احتياطية أولاً إن احتجت.', { danger: true, ok: 'احذف وابدأ من جديد' }))) return false;
+        }
         const st = RB.emptyState();
         Object.assign(st.settings, { name: v.name.trim(), openingDate: v.openingDate, vatRegistered: !!v.vatRegistered, vatRegisteredFrom: v.vatRegistered ? v.vatRegisteredFrom || '' : '', startedAt: new Date().toISOString() });
         st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: num(v.s1), phone: '', note: '' });
         if (v.p2 && v.p2.trim()) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: num(v.s2), phone: '', note: '' });
-        await replaceAll(st);
+        const ok = await replaceAll(st);
         go('partners');
-        toast('جاهز. ابدأ بتسجيل رأس المال ثم الأصول.');
+        if (ok) toast('جاهز. ابدأ بتسجيل رأس المال ثم الأصول.');
       },
     });
   }
@@ -2841,14 +3244,14 @@
     let name = what;
     if (what === 'expenses') {
       rows.push(['التاريخ', 'التصنيف', 'البيان', 'الجهة', 'قبل الضريبة', 'الضريبة', 'الإجمالي', 'الأشهر', 'الدفع من']);
-      S.expenses.filter((x) => inRange(x.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((x) => {
+      good(S.expenses).filter((x) => inRange(x.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((x) => {
         const v = RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings);
         rows.push([x.date, RB.expenseCat(x.category).name, x.desc, x.entity, v.net, v.vat, v.gross, x.months, RB.srcLabel(x.account, S)]);
       });
       name = 'المصاريف';
     } else if (what === 'purchases') {
       rows.push(['التاريخ', 'المورد', 'رقم الفاتورة', 'التصنيف', 'الدفع', 'خاضعة', 'قبل الضريبة', 'الضريبة', 'الإجمالي']);
-      S.purchases.filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((p) => {
+      good(S.purchases).filter((p) => inRange(p.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((p) => {
         const v = RB.vatSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, S.settings);
         rows.push([p.date, p.supplier, p.invoiceNo, RB.purchaseCat(p.category).name, RB.srcLabel(p.account, S), p.taxable ? 'نعم' : 'لا', v.net, v.vat, v.gross]);
       });
@@ -2856,7 +3259,7 @@
     } else if (what === 'sales') {
       const chs = S.settings.channels;
       rows.push(['التاريخ', ...chs.map((c) => c.name), 'الطلبات', 'الإجمالي']);
-      S.sales.filter((s) => inRange(s.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((s) => rows.push([s.date, ...chs.map((c) => (s.channels[c.id] ? s.channels[c.id].amount : '')), RB.saleOrders(s), RB.saleTotal(s)]));
+      good(S.sales).filter((s) => inRange(s.date)).sort((a, b) => (a.date < b.date ? -1 : 1)).forEach((s) => rows.push([s.date, ...chs.map((c) => (s.channels[c.id] ? s.channels[c.id].amount : '')), RB.saleOrders(s), RB.saleTotal(s)]));
       name = 'المبيعات';
     } else if (what === 'statement') {
       const acc = ui.cashAcc === '1102' ? '1102' : '1101';
@@ -2913,12 +3316,38 @@
     const fr = new FileReader();
     fr.onload = async () => {
       const data = safeJSON(fr.result);
-      if (!data || typeof data !== 'object' || (!data.settings && !RB.SECTIONS.some((k) => Array.isArray(data[k])))) return toast('الملف ليس نسخة احتياطية صالحة من دفتر المطعم.', 'bad');
-      const n = RB.SECTIONS.reduce((s, k) => s + (Array.isArray(data[k]) ? data[k].length : 0), 0);
-      if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${n} سجل؟ ستحل محل البيانات الحالية بالكامل.`, { danger: true, ok: 'استورد' }))) return;
+      const isObj = RB.isObj;
+      if (!isObj(data) || (data.settings != null && !isObj(data.settings)) || (!isObj(data.settings) && !RB.SECTIONS.some((k) => Array.isArray(data[k])))) return toast('الملف ليس نسخة احتياطية صالحة من دفتر المطعم.', 'bad');
+      if (APP.readOnly) return toast(RO_MSG, 'bad');
+      // معرّف يكسر الصفحة أو مسار البيانات المشتركة: يُرفض الملف كله (لا تُغيَّر المعرّفات لأن السجلات مرتبطة بها)
+      const badIds = RB.badIds(data);
+      if (badIds.length) return toast(`لم يُستورد الملف: فيه معرّفات سجلات غير صالحة (${badIds.slice(0, 5).map(shortId).join('، ')}${badIds.length > 5 ? '…' : ''}).`, 'bad');
+      // يُعد السجل الصالح فقط (كائن بمعرّف)، وتُذكر الأقسام التي ليست قوائم
+      let n = 0;
+      let skipped = 0;
+      const notList = [];
+      for (const k of RB.SECTIONS) {
+        if (data[k] == null) continue;
+        if (!Array.isArray(data[k])) notList.push(k);
+        else for (const x of data[k]) RB.sanitizeRecord(k, x) ? n++ : skipped++;
+      }
+      // ما سيُستبدل: الدفتر المحفوظ، لا البيانات التجريبية المعروضة
+      let cur = S;
+      if (APP.demo) {
+        cur = APP.real;
+        if (!cur) {
+          try {
+            cur = await APP.backend.load();
+          } catch (e) {
+            return toast('تعذّر التحقق من البيانات المحفوظة، أعد المحاولة.', 'bad');
+          }
+        }
+      }
+      const repl = hasBooks(cur) ? `ستحل محل ${APP.demo ? 'دفترك المحفوظ' : 'البيانات الحالية'} «${esc((cur.settings && cur.settings.name) || '')}» (${countRecs(cur)} سجل) بالكامل.` : 'لا يوجد دفتر محفوظ الآن، فيبدأ دفترك بها.';
+      const notes = (skipped ? `<br>تم تجاهل ${skipped} سجل غير صالح.` : '') + (notList.length ? `<br>أقسام ليست قوائم تم تجاهلها: ${esc(notList.join('، '))}.` : '');
+      if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${n} سجل؟ ${repl}${notes}`, { danger: true, ok: 'استورد' }))) return;
       data.settings = Object.assign({}, data.settings, { startedAt: (data.settings && data.settings.startedAt) || new Date().toISOString() });
-      await replaceAll(data);
-      toast('تم الاستيراد.');
+      if (await replaceAll(data)) toast('تم الاستيراد.');
     };
     fr.readAsText(file);
   }
@@ -2962,9 +3391,8 @@
     const [a, b] = range();
     document.getElementById('pFrom').value = a;
     document.getElementById('pTo').value = b;
-    document.getElementById('banner').innerHTML = APP.demo
-      ? `<div class="banner"><div><b>بيانات تجريبية لمطعم برقر</b> — جرّب كل شيء بحرية؛ لا يُحفظ أي تعديل. الأرقام أمثلة توضيحية وليست أسعاراً أو رسوماً رسمية.</div><div class="btn-row">${btn('ابدأ ببيانات مطعمك', 'start', '', 'primary sm')}${APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'sm ghost') : ''}</div></div>`
-      : '';
+    document.body.classList.toggle('readonly', !!APP.readOnly);
+    updateBanner();
     try {
       page.innerHTML = (PAGES[ui.page] || PAGES.dashboard)();
     } catch (e) {
@@ -2975,11 +3403,49 @@
     afterRender(page);
   }
 
+  // الأشرطة أعلى الصفحة: لا حفظ في المتصفح، انقطاع التحديث، حفظ لم يكتمل، عرض فقط، ووضع التجربة.
+  // تُرسم فقط إن تغيرت (لا تُعاد قراءتها لقارئ الشاشة مع كل تنقل)
+  let lastBanner = null;
+  function updateBanner() {
+    const el = document.getElementById('banner');
+    if (!el) return;
+    const bar = (cls, text, acts) => `<div class="banner ${cls}"><div>${text}</div>${acts ? `<div class="btn-row">${acts}</div>` : ''}</div>`;
+    let h = '';
+    if (APP.noStorage) h += bar('bad', '<b>هذا المتصفح لا يسمح بالحفظ (وضع خاص أو تخزين محظور) — لن تُحفظ بياناتك</b>', '');
+    if (APP.syncLost) h += bar('bad', 'انقطع التحديث المباشر للبيانات المشتركة، وقد لا تكون تعديلات شريكك الأخيرة ظاهرة. أعد تحميل الصفحة قبل أن تعدّل.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
+    if (APP.replaceFailed) h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (<span class="n">${APP.replaceFailed.n}</span> سجل) — البيانات في الشاشة غير محفوظة بالكامل</b>`, btn('أكمل الحفظ', 'resumereplace', '', 'sm primary'));
+    if (APP.replaceStale && !APP.replaceFailed) h += bar('warn', 'استيراد/مسح سابق لم يكتمل — أعد العملية', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
+    if (APP.readOnly && !APP.demo) h += bar('info', RO_MSG, '');
+    if (APP.demo)
+      h += bar(
+        'demo',
+        '<b>بيانات تجريبية لمطعم برقر</b> — جرّب كل شيء بحرية؛ لا يُحفظ أي تعديل. الأرقام أمثلة توضيحية وليست أسعاراً أو رسوماً رسمية.',
+        // فوق دفتر محفوظ: الرجوع إليه فقط (البدء من جديد يكون بمسح البيانات من الإعدادات)
+        APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary sm') : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary sm')
+      );
+    if (h !== lastBanner) {
+      el.innerHTML = h;
+      lastBanner = h;
+    }
+  }
+
+  // حالة الحفظ الحقيقية في الشريط الجانبي
   function updateSaveStatus() {
     const el = document.getElementById('saveStatus');
     if (!el) return;
     const kind = APP.backend ? APP.backend.kind : '';
-    el.innerHTML = APP.demo ? `<span class="dot warn"></span>وضع التجربة — لا يُحفظ` : kind === 'cloud' ? `<span class="dot good"></span>محفوظ ومشترك${APP.savedAt ? ' · ' + TIMEF.format(new Date(APP.savedAt)) : ''}` : kind === 'local' ? `<span class="dot good"></span>محفوظ في هذا المتصفح${APP.savedAt ? ' · ' + TIMEF.format(new Date(APP.savedAt)) : ''}` : '';
+    const f = APP.save.failed;
+    const at = APP.savedAt ? ' · ' + TIMEF.format(new Date(APP.savedAt)) : '';
+    const dot = (k) => `<span class="dot ${k}" aria-hidden="true"></span>`;
+    let h = '';
+    if (APP.demo) h = `${dot('warn')}وضع التجربة — لا يُحفظ`;
+    else if (f && f !== 'invalid_argument') h = `${dot('bad')}<span class="ss-t">لم يُحفظ آخر تعديل — صدّر نسخة احتياطية</span>${btn('تصدير', 'backup', '', 'sm ghost')}`;
+    else if (APP.syncLost) h = `${dot('bad')}غير متزامن`;
+    else if (APP.readOnly || f === 'invalid_argument') h = `${dot(f ? 'bad' : 'warn')}عرض فقط — لا تملك صلاحية التعديل`;
+    else if (APP.save.pending > 0) h = `${dot('warn')}جاري الحفظ…`;
+    else if (kind === 'cloud') h = `${dot('good')}محفوظ ومشترك${at}`;
+    else if (kind === 'local') h = `${dot('good')}محفوظ في هذا المتصفح${at}`;
+    el.innerHTML = h;
   }
 
   let rt = null;
@@ -3056,28 +3522,42 @@
     }, { passive: true });
     const flush = () => APP.backend && APP.backend.flush && APP.backend.flush();
     window.addEventListener('pagehide', flush);
+    // تعديل لم يُؤكَّد حفظه أو فشل حفظه: تنبيه قبل مغادرة الصفحة
+    window.addEventListener('beforeunload', (e) => {
+      const f = APP.save.failed;
+      if (APP.demo || !(APP.save.pending > 0 || (f && f !== 'invalid_argument'))) return;
+      e.preventDefault();
+      e.returnValue = '';
+    });
     document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flush());
   }
 
+  // بيانات وصلت من الخارج (شريك في البيانات المشتركة أو نافذة أخرى). يرجع true إن تغيّر شيء
   function onRemote(section, data) {
-    // تصنيفات المصاريف القديمة تُرحّل كما عند التحميل، فلا ترجع اللقطة المحفوظة بالتصنيف القديم
-    if (section === 'expenses' && Array.isArray(data)) data = data.map(RB.migrateExpense);
+    // أثناء الاستيراد أو المسح تصل لقطات جزئية: تُتجاهل، ويُطابق الدفتر بعد الانتهاء
+    if (APP.replacing) return false;
+    if (section === 'settings') {
+      if (!RB.isObj(data)) return false;
+      data = RB.normalize({ settings: data }).settings;
+    } else {
+      // كل سجل يُنظّف كما عند التحميل (المعيب يُعلَّم ولا يكسر الصفحات)، وتصنيفات المصاريف القديمة تُرحّل
+      data = (Array.isArray(data) ? data : []).map((x) => RB.sanitizeRecord(section, x)).filter(Boolean);
+      if (section === 'expenses') data = data.map(RB.migrateExpense);
+    }
     if (APP.demo) {
       if (APP.real) {
-        if (section === 'settings') APP.real.settings = RB.normalize({ settings: data }).settings;
-        else APP.real[section] = data;
+        APP.real[section] = data;
+        return true;
       }
-      return;
+      // التجربة بلا دفتر: لقطة فيها بيانات حقيقية تعني أن أحداً بدأ الدفتر (اللقطات الفارغة الأولى تُتجاهل)
+      if (section === 'settings' ? !!data.startedAt : data.length > 0) adoptSaved();
+      return false;
     }
-    if (section === 'settings') {
-      if (JSON.stringify(data) === JSON.stringify(S.settings)) return;
-      S.settings = RB.normalize({ settings: data }).settings;
-    } else {
-      if (JSON.stringify(data) === JSON.stringify(S[section])) return;
-      S[section] = data.filter((x) => x && x.id);
-    }
+    if (JSON.stringify(data) === JSON.stringify(S[section])) return false;
+    S[section] = data;
     bump();
     scheduleRender();
+    return true;
   }
 
   async function boot() {
@@ -3099,14 +3579,45 @@
       }
     }
     APP.backend = backend || new LocalBackend();
+    if (backend) {
+      // من لا يملك صلاحية تعديل البيانات المشتركة يرى الدفتر للعرض فقط (null = لم تحدد المنصة: يقرر أول حفظ)
+      try {
+        const u = await window.claude.use('user');
+        APP.canWrite = u && typeof u.can === 'function' ? await u.can('data.write') : null;
+      } catch (e) {
+        APP.canWrite = null;
+      }
+      APP.readOnly = APP.canWrite === false;
+    } else {
+      // وضع خاص أو تخزين محظور: لا يُحفظ شيء، فيُقال ذلك صراحة
+      const okLS = lsSet('rb-probe', '1');
+      try {
+        localStorage.removeItem('rb-probe');
+      } catch (e) {
+        /* محظور */
+      }
+      if (!okLS) {
+        APP.noStorage = true;
+        APP.save.failed = 'local';
+      }
+    }
     let data = null;
     try {
       data = await APP.backend.load();
     } catch (e) {
-      toast('تعذّر تحميل البيانات المحفوظة: ' + ((e && e.message) || (e && e.code) || ''), 'bad');
+      APP.loadFailed = true;
+      toast('تعذّر تحميل البيانات المحفوظة. أعد تحميل الصفحة قبل أن تبدأ.', 'bad');
     }
-    const real = data && ((data.settings && data.settings.startedAt) || !RB.isEmpty(RB.normalize(data)));
-    if (real) {
+    if (backend) {
+      // علامة استيراد أو مسح بدأ ولم ينتهِ
+      try {
+        const r = await backend.db.doc('config/replace').get();
+        APP.replaceStale = !!(r && r.exists);
+      } catch (e) {
+        /* لا تُعرف */
+      }
+    }
+    if (hasBooks(data)) {
       S = RB.normalize(data);
       APP.demo = false;
     } else {

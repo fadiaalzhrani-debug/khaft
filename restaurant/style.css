@@ -17,6 +17,7 @@
   --grill-2: #2f2720;
   --grill-ink: #efe7da;
   --grill-muted: #a99e8f;
+  --grill-bad: #e5604f; /* أحمر يُقرأ على الشريط الجانبي الداكن في الوضعين */
   --bun: #e7b46a;
   --patty: #7a4126;
   --good: #23784a;
@@ -172,10 +173,13 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
 .nav-g a:hover { background: var(--grill-2); }
 .nav-g a.on { background: var(--grill-2); color: #fff; font-weight: 600; }
 .nav-g a.on::before { content: ''; position: absolute; inset-inline-start: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 3px; background: var(--accent); }
-.side-foot { font-size: 0.78rem; color: var(--grill-muted); padding: 12px 10px 4px; border-top: 1px solid var(--grill-2); display: flex; align-items: center; gap: 8px; }
+.side-foot { font-size: 0.78rem; color: var(--grill-muted); padding: 12px 10px 4px; border-top: 1px solid var(--grill-2); display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; }
+.side-foot .ss-t { flex: 1 1 0; min-width: 0; color: var(--grill-ink); }
+.side-foot .btn { color: var(--grill-ink); border-color: var(--grill-muted); min-height: 28px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--muted); flex: none; }
 .dot.good { background: var(--good); }
 .dot.warn { background: var(--accent); }
+.dot.bad { background: var(--grill-bad); box-shadow: 0 0 0 2px color-mix(in srgb, var(--grill-bad) 35%, transparent); }
 .scrim { display: none; }
 
 .main { min-width: 0; display: flex; flex-direction: column; }
@@ -214,6 +218,12 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
   font-size: 0.92rem;
 }
 .banner > div:first-child { flex: 1 1 320px; min-width: 0; }
+.banner + .banner { margin-top: 8px; }
+.banner.bad { background: var(--bad-soft); border-color: color-mix(in srgb, var(--bad) 45%, transparent); }
+.banner.info { background: var(--surface-2); border-color: var(--line); }
+
+/* ─── عرض فقط: لا أزرار تعديل لمن لا يملك صلاحية تعديل البيانات المشتركة ─── */
+body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-act='del'], [data-act='renew'], [data-act='stopRenew'], [data-act='start'], [data-act='wipe'], [data-act='settings'], [data-act='channel'], [data-act='delchannel'], [data-act='resumereplace'], .file-btn) { display: none !important; }
 
 /* ─── رؤوس الصفحات ─── */
 .page-h { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
@@ -369,6 +379,11 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
 .al-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; background: var(--accent); }
 .al.bad .al-dot { background: var(--bad); }
 .al-a { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+/* سجلات تحتاج تصحيح */
+.fix-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.fix-list li { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: space-between; padding: 6px 10px; border-radius: var(--r-sm); background: var(--bad-soft); }
+.fix-list li > span:first-child { flex: 1 1 240px; min-width: 0; overflow-wrap: anywhere; }
+.card.fix { border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 
 /* ─── النوافذ والنماذج ─── */
 .overlay {

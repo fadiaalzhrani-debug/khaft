@@ -164,8 +164,8 @@
     const y0 = RB.addDays(today, -365);
     let last12 = 0;
     let first = '';
-    for (const s of S.sales || []) {
-      if (!s || !s.date || s.date > today) continue;
+    for (const s of good(S.sales)) {
+      if (!s.date || s.date > today) continue;
       const v = RB.saleTotal(s);
       if (s.date >= y0) last12 += v;
       if (v > 0 && (!first || s.date < first)) first = s.date;
@@ -174,7 +174,7 @@
     const start = open && first ? (open > first ? open : first) : open || first;
     let runRate = 0;
     if (start && RB.daysBetween(start, today) < 365) {
-      const since = sum((S.sales || []).filter((s) => s && s.date >= start && s.date <= today), RB.saleTotal);
+      const since = sum(good(S.sales).filter((s) => s.date >= start && s.date <= today), RB.saleTotal);
       runRate = r2((since / (RB.daysBetween(start, today) + 1)) * 365);
     }
     last12 = r2(last12);
@@ -232,22 +232,125 @@
     return s;
   };
 
-  // يكمل أي حقول ناقصة (نسخ احتياطية قديمة أو بيانات منقوصة)
+  // ───────────── سلامة البيانات ─────────────
+  const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+  RB.isObj = isObj;
+  // تاريخ ISO حقيقي في التقويم (2026-02-30 و15/03/2026 مرفوضان)
+  RB.isISODate = (s) => {
+    if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+    const d = new Date(s + 'T00:00:00Z');
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+  };
+  RB.isISOMonth = (s) => typeof s === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
+  // الأقسام التي لكل سجل فيها تاريخ عملية إلزامي
+  RB.DATED = ['capital', 'assets', 'expenses', 'payroll', 'purchases', 'supplierPayments', 'sales', 'payouts', 'transfers', 'stockCounts', 'vatPayments'];
+  const NAMED = ['partners', 'assets', 'employees', 'raw', 'composites', 'products'];
+  // أسماء لا تصلح مفاتيح في كائنات البرنامج (تلوّث النموذج الأولي للكائنات)
+  const PROTO = ['__proto__', 'constructor', 'prototype'];
+  const str = (v) => (typeof v === 'string' ? v : typeof v === 'number' || typeof v === 'boolean' ? String(v) : '');
+  const noNumKeys = (o) => Object.fromEntries(Object.entries(o).filter(([k]) => !/^\d+$/.test(k) && !PROTO.includes(k)));
+
+  // يصلح شكل السجل دون حذف بياناته: المعرّف نص، القوائم مصفوفات كائنات، الأسماء نصوص.
+  // التاريخ الناقص أو غير الصالح لا يُحذف بل يُعلَّم في _bad (يُحسب من جديد في كل مرة)،
+  // فيُستبعد السجل من الحسابات ويظهر للتصحيح. يرجع null لما ليس سجلاً (ليس كائناً أو بلا معرّف).
+  // لا يغيّر السجل الأصلي: يرجعه نفسه إن لم يحتج تصحيحاً، وإلا نسخة مصححة
+  RB.sanitizeRecord = (section, x) => {
+    if (!isObj(x) || x.id === undefined || x.id === null || x.id === '' || typeof x.id === 'object') return null;
+    let y = x;
+    const set = (k, v) => {
+      if (y === x) y = Object.assign({}, x);
+      y[k] = v;
+    };
+    if (typeof x.id !== 'string') set('id', String(x.id));
+    const bad = [];
+    for (const f of ['date', 'startDate', 'endDate']) {
+      const v = x[f];
+      if (v === undefined || v === null || v === '') {
+        if (f === 'date' && RB.DATED.includes(section)) bad.push(f);
+        continue;
+      }
+      if (typeof v !== 'string') set(f, str(v));
+      if (!RB.isISODate(y[f])) bad.push(f);
+    }
+    if (x.month !== undefined && x.month !== null && x.month !== '') {
+      if (typeof x.month !== 'string') set('month', str(x.month));
+      if (!RB.isISOMonth(y.month)) bad.push('month');
+    }
+    for (const f of ['lines', 'items', 'competitors']) {
+      const v = x[f];
+      if (v === undefined || (Array.isArray(v) && v.every(isObj))) continue;
+      set(f, Array.isArray(v) ? v.filter(isObj) : []);
+    }
+    if (section === 'sales') {
+      const ch = x.channels;
+      const okCh = (k) => isObj(ch[k]) && !PROTO.includes(k);
+      if (!isObj(ch)) set('channels', {});
+      else if (!Object.keys(ch).every(okCh)) set('channels', Object.fromEntries(Object.keys(ch).filter(okCh).map((k) => [k, ch[k]])));
+    }
+    for (const f of ['name', 'desc', 'supplier']) {
+      const v = x[f];
+      if (typeof v === 'string') continue;
+      if (v === undefined) {
+        if (f === 'name' && NAMED.includes(section)) set(f, '');
+      } else set(f, str(v));
+    }
+    if (bad.length) {
+      if (JSON.stringify(x._bad) !== JSON.stringify(bad)) set('_bad', bad);
+    } else if ('_bad' in x) {
+      if (y === x) y = Object.assign({}, x);
+      delete y._bad;
+    }
+    return y;
+  };
+
+  // معرّفات السجلات وقنوات البيع المقبولة من ملف خارجي: حروف لاتينية وأرقام و_ و- فقط
+  // (بلا «:» التي تفصل حسابات الشركاء ولا «.» التي تفصل مسارات الحقول)
+  RB.ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+  RB.validId = (id) => (typeof id === 'string' || typeof id === 'number') && RB.ID_RE.test(String(id)) && !PROTO.includes(String(id));
+  // المعرّفات غير الصالحة في بيانات (سجلات الأقسام وقنوات البيع)
+  RB.badIds = (st) => {
+    const out = [];
+    if (!isObj(st)) return out;
+    const has = (x) => isObj(x) && x.id !== undefined && x.id !== null && x.id !== '';
+    for (const k of RB.SECTIONS) if (Array.isArray(st[k])) for (const x of st[k]) if (has(x) && !RB.validId(x.id)) out.push(String(x.id));
+    const chs = isObj(st.settings) && Array.isArray(st.settings.channels) ? st.settings.channels : [];
+    for (const c of chs) if (isObj(c) && !RB.validId(c.id)) out.push(String(c.id));
+    return out;
+  };
+
+  // يكمل أي حقول ناقصة (نسخ احتياطية قديمة أو بيانات منقوصة)، ويصلح شكل الإعدادات والسجلات:
+  // الإعدادات كائن (بلا مفاتيح رقمية دخيلة)، قنوات البيع بمعرّف نصي، والمعرّف المكرر في القسم يُعطى معرّفاً جديداً
   RB.normalize = (src) => {
     const out = RB.emptyState();
-    if (!src || typeof src !== 'object') return out;
-    const d = RB.defaultSettings();
-    const s = src.settings || {};
-    out.settings = Object.assign(d, s);
-    out.settings.gosi = Object.assign(RB.defaultSettings().gosi, s.gosi || {});
-    out.settings.labor = Object.assign(RB.defaultSettings().labor, s.labor || {});
-    if (!Array.isArray(s.channels) || !s.channels.length) out.settings.channels = RB.defaultSettings().channels;
+    if (!isObj(src)) return out;
+    const s = isObj(src.settings) ? noNumKeys(src.settings) : {};
+    out.settings = Object.assign(RB.defaultSettings(), s);
+    out.settings.gosi = Object.assign(RB.defaultSettings().gosi, isObj(s.gosi) ? noNumKeys(s.gosi) : {});
+    out.settings.labor = Object.assign(RB.defaultSettings().labor, isObj(s.labor) ? noNumKeys(s.labor) : {});
+    const chs = (Array.isArray(s.channels) ? s.channels : [])
+      .filter((c) => isObj(c) && ((typeof c.id === 'string' && c.id && !PROTO.includes(c.id)) || typeof c.id === 'number'))
+      .map((c) => (typeof c.id === 'string' && typeof c.name === 'string' ? c : Object.assign({}, c, { id: String(c.id), name: str(c.name) || String(c.id) })));
+    out.settings.channels = chs.length ? chs : RB.defaultSettings().channels;
+    // تاريخ غير مفهوم في الإعدادات لا يمكن الحساب به (يكسر الإهلاك والإقرارات): يُفرَّغ ليُعاد تحديده
+    for (const f of ['openingDate', 'vatRegisteredFrom']) if (out.settings[f] && !RB.isISODate(out.settings[f])) out.settings[f] = '';
     RB.SECTIONS.forEach((k) => {
-      if (Array.isArray(src[k])) out[k] = src[k].filter((x) => x && typeof x === 'object' && x.id);
+      if (!Array.isArray(src[k])) return;
+      const seen = new Set();
+      out[k] = src[k]
+        .map((x) => RB.sanitizeRecord(k, x))
+        .filter(Boolean)
+        .map((x) => {
+          if (seen.has(x.id)) x = Object.assign({}, x, { id: RB.uid() });
+          seen.add(x.id);
+          return x;
+        });
     });
     out.expenses = out.expenses.map(RB.migrateExpense);
     return out;
   };
+  // السجلات السليمة فقط (بلا تاريخ ناقص أو غير صالح)
+  const good = (arr) => (arr || []).filter((x) => x && !x._bad);
+  RB.good = good;
 
   // تصنيفات أقدم: الزكاة كانت ضمن «رسوم حكومية»، وتأمين المحل ضمن «التأمين الطبي».
   // يرجع السجل نفسه إن لم يتغير، وإلا نسخة بالتصنيف الجديد
@@ -477,8 +580,8 @@
       }
     };
     const out = [];
-    const runs = (S.payroll || [])
-      .filter((pr) => pr && pr.date)
+    const runs = good(S.payroll)
+      .filter((pr) => pr.date)
       .map((pr) => {
         const ym = pr.month || pr.date.slice(0, 7);
         return { pr, ym, date: pr.date.slice(0, 7) === ym ? pr.date : RB.monthEnd(ym) };
@@ -569,12 +672,20 @@
     return (num(raw.price) * vf) / pack / (1 - waste);
   };
 
+  // errors: التداخل الدائري ({kind, id, path})، وسجل فشل حسابه ({section, id, msg}) فيُعامل بتكلفة صفر
   RB.costing = (S) => {
     const raw = {};
-    (S.raw || []).forEach((r) => (raw[r.id] = RB.rawUnitCost(r, S)));
-    const maps = { comp: byId(S.composites), prod: byId(S.products) };
-    const memo = { comp: {}, prod: {} };
     const errors = [];
+    const safe = (section, x, fn) => {
+      try {
+        fn();
+      } catch (e) {
+        errors.push({ section, id: x.id, msg: String((e && e.message) || e) });
+      }
+    };
+    good(S.raw).forEach((r) => safe('raw', r, () => (raw[r.id] = RB.rawUnitCost(r, S))));
+    const maps = { comp: byId(good(S.composites)), prod: byId(good(S.products)) };
+    const memo = { comp: {}, prod: {} };
     function unit(kind, id, stack) {
       if (kind === 'raw') return raw[id] || 0;
       if (!maps[kind]) return 0;
@@ -594,8 +705,8 @@
       memo[kind][id] = v;
       return v;
     }
-    (S.composites || []).forEach((c) => unit('comp', c.id, []));
-    (S.products || []).forEach((p) => unit('prod', p.id, []));
+    good(S.composites).forEach((c) => safe('composites', c, () => unit('comp', c.id, [])));
+    good(S.products).forEach((p) => safe('products', p, () => unit('prod', p.id, [])));
     return { raw, comp: memo.comp, prod: memo.prod, errors, unit: (k, id) => unit(k, id, []) };
   };
 
@@ -729,7 +840,22 @@
     asOf = asOf || RB.todayISO();
     const set = S.settings;
     const entries = [];
+    const errors = [];
     let rounding = 0;
+    // كل سجل على حدة: السجل المعلَّم بخطأ (_bad) لا يدخل، والسجل الذي يفشل حسابه لا يوقف الدفتر —
+    // تُحذف قيوده الجزئية ويُسجَّل في errors
+    const each = (section, list, fn) => {
+      for (const x of list) {
+        if (!x || x._bad) continue;
+        const mark = entries.length;
+        try {
+          fn(x);
+        } catch (e) {
+          entries.length = mark;
+          errors.push({ section, id: x.id, msg: String((e && e.message) || e) });
+        }
+      }
+    };
 
     function add(date, kind, ref, desc, lines) {
       if (!date || date > asOf) return;
@@ -753,26 +879,26 @@
     }
 
     // رأس المال والمسحوبات
-    for (const c of S.capital || []) {
+    each('capital', S.capital || [], (c) => {
       const amt = num(c.amount);
       const src = RB.srcAcc(c.account);
       const ref = { s: 'capital', id: c.id };
       if (c.type === 'withdrawal') add(c.date, 'withdrawal', ref, 'مسحوبات الشريك' + (c.note ? ' — ' + c.note : ''), [['drw:' + c.partnerId, amt], [src, -amt]]);
       else add(c.date, 'capital', ref, 'إيداع رأس مال' + (c.note ? ' — ' + c.note : ''), [[src, amt], ['cap:' + c.partnerId, -amt]]);
-    }
+    });
 
     // الأصول وإهلاكها الشهري
-    for (const a of S.assets || []) {
+    each('assets', S.assets || [], (a) => {
       const cat = RB.assetCat(a.category);
       const sp = RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date);
       const ref = { s: 'assets', id: a.id };
       add(a.date, 'asset', ref, 'شراء أصل: ' + a.name, [[cat.acc, sp.cost], ['2102', sp.vat, sp.net], [RB.srcAcc(a.account), -sp.gross]]);
       const sched = RB.depSchedule(a, S);
       for (const m of sched.months) add(m.date, 'dep', ref, 'إهلاك: ' + a.name, [['5501', m.amount], ['1290', -m.amount]]);
-    }
+    });
 
     // المصاريف التشغيلية (المدفوعة مقدماً توزّع على أشهر التغطية)
-    for (const x of S.expenses || []) {
+    each('expenses', S.expenses || [], (x) => {
       const cat = RB.expenseCat(x.category);
       const sp = RB.costSplit(x.amount, x.includesVat, x.taxable, set, x.date);
       const ref = { s: 'expenses', id: x.id };
@@ -788,22 +914,22 @@
         add(x.date, 'expense', ref, desc + (late ? ' (عن فترة سابقة)' : ' (مدفوع مقدماً)'), [['1105', sp.cost], ['2102', sp.vat, sp.net], [src, -sp.gross]]);
         for (const m of sched.months) add(m.date, 'amort', ref, 'تحميل شهري — ' + desc, [[cat.acc, m.amount], ['1105', -m.amount]]);
       }
-    }
+    });
 
     // المشتريات وسداد الموردين
-    for (const p of S.purchases || []) {
+    each('purchases', S.purchases || [], (p) => {
       const cat = RB.purchaseCat(p.category);
       const sp = RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, set, p.date);
       add(p.date, 'purchase', { s: 'purchases', id: p.id }, 'مشتريات: ' + (p.supplier || cat.name) + (p.invoiceNo ? ' — فاتورة ' + p.invoiceNo : ''), [[cat.acc, sp.cost], ['2102', sp.vat, sp.net], [RB.srcAcc(p.account), -sp.gross]]);
-    }
-    for (const p of S.supplierPayments || []) {
+    });
+    each('supplierPayments', S.supplierPayments || [], (p) => {
       const amt = num(p.amount);
       add(p.date, 'supplierpay', { s: 'supplierPayments', id: p.id }, 'سداد مورد: ' + (p.supplier || ''), [['2101', amt], [RB.srcAcc(p.account), -amt]]);
-    }
+    });
 
     // الرواتب والتأمينات الاجتماعية: التكلفة على شهر الخدمة مهما كان تاريخ الصرف
-    for (const pr of S.payroll || []) {
-      if (!pr.date) continue;
+    each('payroll', S.payroll || [], (pr) => {
+      if (!pr.date) return;
       const t = RB.payrollTotals(pr);
       const ref = { s: 'payroll', id: pr.id };
       const ym = pr.month || pr.date.slice(0, 7);
@@ -819,21 +945,27 @@
         add(RB.monthEnd(ym), 'payroll', ref, 'استحقاق ' + desc, [['5201', t.gross], ['5202', t.gosiEr], ['2103', -t.cost]]);
         add(pr.date, 'payroll', ref, 'صرف ' + desc, [['2103', t.cost], ...pay]);
       }
-    }
+    });
     // مخصص مكافأة نهاية الخدمة: يُستحق مع كل مسير في تاريخ استحقاق الرواتب، والمكافأة المصروفة تُخصم من المخصص
-    for (const ev of RB.eosbEvents(S)) {
+    let evs = [];
+    try {
+      evs = RB.eosbEvents(S);
+    } catch (e) {
+      errors.push({ section: 'payroll', id: '', msg: String((e && e.message) || e) });
+    }
+    each('payroll', evs, (ev) => {
       if (ev.kind === 'release') {
         // رد ما بقي من مخصص من ترك العمل إلى المصروف
         add(ev.date, 'eosb', ev.ref, 'رد مخصص نهاية الخدمة غير المصروف — ترك العمل' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.amount], ['5203', -ev.amount]]);
-        continue;
+        return;
       }
       const ref = { s: 'payroll', id: ev.pr.id };
       if (ev.kind === 'accrual') add(ev.date, 'eosb', ref, 'مخصص نهاية الخدمة — ' + RB.monthName(ev.ym), [['5203', ev.total], ['2201', -ev.total]]);
       else add(ev.date, 'eosb', ref, 'صرف مكافأة نهاية الخدمة' + (ev.name ? ': ' + ev.name : ''), [['2201', ev.fromProv], ['5203', ev.excess], [RB.srcAcc(ev.pr.account), -ev.paid]]);
-    }
+    });
 
     // المبيعات اليومية لكل قناة
-    for (const s of S.sales || []) {
+    each('sales', S.sales || [], (s) => {
       for (const chId of Object.keys(s.channels || {})) {
         const v = s.channels[chId];
         const x = RB.saleChannelSplit(S, chId, v, s.date);
@@ -850,13 +982,13 @@
           ['2102', -x.outVat, x.net],
         ]);
       }
-    }
+    });
 
     // تحويلات التطبيقات للبنك. خصومات التطبيق حسب نوعها (dedType):
     // sale = عرض أو مرتجع على طلبات العملاء يخفض المبيعات وضريبتها، fee = رسوم بفاتورة ضريبية (ضريبة مدخلات)،
     // other أو بدون نوع (السجلات القديمة) = غرامة أو تسوية بلا ضريبة
     const payRate = num(set.vatRate) / 100;
-    for (const p of S.payouts || []) {
+    each('payouts', S.payouts || [], (p) => {
       const amt = num(p.amount);
       const ded = num(p.deductions);
       const ch = RB.channelOf(S, p.channelId);
@@ -870,31 +1002,31 @@
         ['2102', dVat, t === 'sale' ? -dNet : dNet],
         ['1103', -(amt + ded)],
       ]);
-    }
+    });
 
     // التحويل بين الصندوق والبنك
-    for (const t of S.transfers || []) {
+    each('transfers', S.transfers || [], (t) => {
       const amt = num(t.amount);
       add(t.date, 'transfer', { s: 'transfers', id: t.id }, t.from === 'cash' ? 'إيداع نقدية الصندوق في البنك' : 'سحب من البنك إلى الصندوق', [[RB.srcAcc(t.to), amt], [RB.srcAcc(t.from), -amt]]);
-    }
+    });
 
     // الجرد: الفرق بين قيمة الجرد والجرد السابق
     let prevStock = 0;
-    for (const c of (S.stockCounts || []).slice().sort((a, b) => (a.date < b.date ? -1 : 1))) {
+    each('stockCounts', good(S.stockCounts).sort((a, b) => (a.date < b.date ? -1 : 1)), (c) => {
       const value = RB.stockValue(c, S);
       const delta = r2(value - prevStock);
       add(c.date, 'stock', { s: 'stockCounts', id: c.id }, 'جرد المخزون', [['1104', delta], ['5109', -delta]]);
       prevStock = value;
-    }
+    });
 
     // سداد ضريبة القيمة المضافة
-    for (const v of S.vatPayments || []) {
+    each('vatPayments', S.vatPayments || [], (v) => {
       const amt = num(v.amount);
       add(v.date, 'vatpay', { s: 'vatPayments', id: v.id }, 'سداد ضريبة القيمة المضافة ' + (v.period || ''), [['2102', amt], [RB.srcAcc(v.account), -amt]]);
-    }
+    });
 
     entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (KIND_ORDER[a.kind] || 0) - (KIND_ORDER[b.kind] || 0)));
-    return { entries, rounding: r2(rounding), asOf };
+    return { entries, rounding: r2(rounding), asOf, errors };
   };
 
   // سعر سطر الجرد للتقييم: الأسعار تُحفظ بدون ضريبة، وغير المسجل في الضريبة في تاريخ الجرد
@@ -1182,7 +1314,7 @@
     const own = pers.map(() => []);
     const loose = [];
     const before = [];
-    for (const x of S.vatPayments || []) {
+    for (const x of good(S.vatPayments)) {
       const amt = num(x.amount);
       if (!amt) continue;
       const i = pers.findIndex((q) => q.label === x.period);
@@ -1254,7 +1386,7 @@
   RB.salesByChannel = (S, from, to) => {
     const out = {};
     const days = {};
-    for (const s of S.sales || []) {
+    for (const s of good(S.sales)) {
       if (s.date < from || s.date > to) continue;
       for (const chId of Object.keys(s.channels || {})) {
         const x = RB.saleChannelSplit(S, chId, s.channels[chId], s.date);
@@ -1290,7 +1422,7 @@
   // رصيد مستحقات كل تطبيق توصيل حتى تاريخ
   RB.appReceivables = (S, asOf) => {
     const out = {};
-    for (const s of S.sales || []) {
+    for (const s of good(S.sales)) {
       if (s.date > asOf) continue;
       for (const chId of Object.keys(s.channels || {})) {
         const x = RB.saleChannelSplit(S, chId, s.channels[chId], s.date);
@@ -1298,13 +1430,13 @@
         out[chId] = r2((out[chId] || 0) + x.receive);
       }
     }
-    for (const p of S.payouts || []) {
+    for (const p of good(S.payouts)) {
       if (p.date > asOf) continue;
       out[p.channelId] = r2((out[p.channelId] || 0) - num(p.amount) - num(p.deductions));
     }
     return Object.keys(out).map((id) => {
       const ch = RB.channelOf(S, id);
-      const last = (S.payouts || []).filter((p) => p.channelId === id && p.date <= asOf).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+      const last = good(S.payouts).filter((p) => p.channelId === id && p.date <= asOf).sort((a, b) => (a.date < b.date ? 1 : -1))[0];
       return { id, name: ch ? ch.name : id, balance: out[id], lastPayout: last ? last.date : '' };
     });
   };
@@ -1319,19 +1451,19 @@
       out[k] = out[k] || { supplier: k, purchases: 0, paid: 0 };
       out[k].purchases = r2(out[k].purchases + amount);
     };
-    for (const p of S.purchases || []) {
+    for (const p of good(S.purchases)) {
       if (p.account !== 'payable' || p.date > asOf) continue;
       owe(p.supplier, RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, set, p.date).gross);
     }
-    for (const a of S.assets || []) {
+    for (const a of good(S.assets)) {
       if (a.account !== 'payable' || a.date > asOf) continue;
       owe(a.supplier, RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date).gross);
     }
-    for (const x of S.expenses || []) {
+    for (const x of good(S.expenses)) {
       if (x.account !== 'payable' || x.date > asOf) continue;
       owe(x.entity, RB.costSplit(x.amount, x.includesVat, x.taxable, set, x.date).gross);
     }
-    for (const p of S.supplierPayments || []) {
+    for (const p of good(S.supplierPayments)) {
       if (p.date > asOf) continue;
       const k = (p.supplier || 'بدون اسم').trim() || 'بدون اسم';
       out[k] = out[k] || { supplier: k, purchases: 0, paid: 0 };
@@ -1347,8 +1479,8 @@
   RB.renewals = (S, today) => {
     today = today || RB.todayISO();
     const groups = {};
-    for (const x of S.expenses || []) {
-      if (!x || !x.date) continue;
+    for (const x of good(S.expenses)) {
+      if (!x.date) continue;
       const months = Math.round(num(x.months) || 1);
       if (months < 1) continue;
       const zakat = x.category === 'zakat';
@@ -1407,7 +1539,7 @@
     L = L || RB.buildLedger(S, '9999-12-31');
     const set = S.settings;
     const open = set.openingDate;
-    const contributions = r2(sum((S.capital || []).filter((c) => c.type !== 'withdrawal'), (c) => num(c.amount)));
+    const contributions = r2(sum(good(S.capital).filter((c) => c.type !== 'withdrawal'), (c) => num(c.amount)));
     let direct = 0;
     for (const e of L.entries) for (const l of e.lines) if (l.a.startsWith('cap:') && l.v < 0 && e.kind !== 'capital') direct = r2(direct - l.v);
     // الأصول التأسيسية فقط: المشتراة حتى الافتتاح (نقداً أو بالآجل، مثل مشتريات ومصاريف ما قبل الافتتاح).
@@ -1415,7 +1547,7 @@
     const assets = {};
     const laterAssets = { amount: 0, count: 0 };
     let vatRecoverable = 0;
-    for (const a of S.assets || []) {
+    for (const a of good(S.assets)) {
       const c = RB.assetCat(a.category);
       const sp = RB.costSplit(a.amount, a.includesVat, RB.assetTaxable(a), set, a.date);
       if (open && a.date > open) {
@@ -1431,19 +1563,19 @@
     const assetList = Object.values(assets).sort((a, b) => b.amount - a.amount);
     let preopen = { expenses: 0, purchases: 0, payroll: 0 };
     if (open) {
-      for (const x of S.expenses || []) {
+      for (const x of good(S.expenses)) {
         if (x.date >= open) continue;
         const sp = RB.costSplit(x.amount, x.includesVat, x.taxable, set, x.date);
         preopen.expenses += sp.gross;
         vatRecoverable += sp.vat;
       }
-      for (const p of S.purchases || []) {
+      for (const p of good(S.purchases)) {
         if (p.date >= open) continue;
         const sp = RB.costSplit(RB.purchaseTotal(p), p.includesVat, p.taxable, set, p.date);
         preopen.purchases += sp.gross;
         vatRecoverable += sp.vat;
       }
-      for (const p of S.payroll || []) if (p.date < open) preopen.payroll += RB.payrollTotals(p).net + RB.payrollTotals(p).gosiEe + RB.payrollTotals(p).gosiEr;
+      for (const p of good(S.payroll)) if (p.date < open) preopen.payroll += RB.payrollTotals(p).net + RB.payrollTotals(p).gosiEe + RB.payrollTotals(p).gosiEr;
     }
     preopen = { expenses: r2(preopen.expenses), purchases: r2(preopen.purchases), payroll: r2(preopen.payroll) };
     const sources = r2(contributions + direct);
@@ -1465,10 +1597,10 @@
     // حتى نهاية شهر الافتتاح)، وإلا فالدفتر بدأ بعد الافتتاح (مطعم قائم) فمن أول يوم مبيعات؛ وبلا تاريخ افتتاح كذلك.
     // الأصول ورأس المال لا تُعد هنا لأن المطعم القائم قد يسجلها بتواريخها القديمة.
     let firstSale = '';
-    for (const s of S.sales || []) if (s.date && RB.saleTotal(s) > 0 && (!firstSale || s.date < firstSale)) firstSale = s.date;
+    for (const s of good(S.sales)) if (s.date && RB.saleTotal(s) > 0 && (!firstSale || s.date < firstSale)) firstSale = s.date;
     const open = set.openingDate || '';
     const openEnd = open ? RB.monthEnd(open.slice(0, 7)) : '';
-    const covered = !!open && ['sales', 'expenses', 'purchases', 'payroll'].some((k) => (S[k] || []).some((x) => x.date && x.date <= openEnd));
+    const covered = !!open && ['sales', 'expenses', 'purchases', 'payroll'].some((k) => good(S[k]).some((x) => x.date && x.date <= openEnd));
     const bySales = !!firstSale && !covered && firstSale > open;
     const first = bySales ? firstSale : open;
     const monthStart = (d) => (d.endsWith('-01') ? d : RB.ymAdd(d.slice(0, 7), 1) + '-01');
@@ -1540,7 +1672,7 @@
   // الكميات المباعة لكل منتج في فترة
   RB.itemsSold = (S, from, to) => {
     const q = {};
-    for (const s of S.sales || []) {
+    for (const s of good(S.sales)) {
       if (s.date < from || s.date > to) continue;
       for (const it of s.items || []) if (it.productId && num(it.qty)) q[it.productId] = (q[it.productId] || 0) + num(it.qty);
     }
