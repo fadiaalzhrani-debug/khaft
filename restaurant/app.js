@@ -2491,6 +2491,8 @@
   // ─── الشركاء ورأس المال ───
   // نسب الشريك السابقة: «حتى 31 ديسمبر 2025: 50%» لكل فترة
   const shareHistHTML = (p) => RB.shareHistory(p).map((h) => `<div class="muted sm">حتى ${dtText(h.until)}: ${pct(h.share, 0)}</div>`).join('');
+  // ما نُقل إلى الشريك أو منه بنقل الحقوق (RB.partnersReport: من رأس المال أولاً ثم من الأرباح)، تحت مساهمته أو أرباحه
+  const movedHTML = (inn, out) => (Math.abs(inn) >= 0.005 ? `<div class="muted sm">منها ${N(inn)} بنقل حقوق</div>` : '') + (Math.abs(out) >= 0.005 ? `<div class="muted sm">بعد نقل ${N(out)} منها</div>` : '');
   PAGES.partners = () => {
     const [from, asOf] = rangeToDate();
     const uses = RB.capitalUses(S, ledger());
@@ -2503,22 +2505,29 @@
           { h: 'الشريك', f: (r) => `<b>${esc(r.name)}</b>` },
           // النسبة في نهاية الفترة، وتحتها نسبه السابقة بتواريخها (RB.shareHistory)
           { h: 'النسبة<br>المتفق عليها', num: 1, f: (r) => pct(r.sharePct, 0) + shareHistHTML(S.partners.find((p) => p.id === r.id)) },
-          { h: 'إجمالي<br>مساهمته', num: 1, f: (r) => N(r.contributed) },
+          { h: 'إجمالي<br>مساهمته', num: 1, f: (r) => N(r.contributed) + movedHTML(r.capIn, r.capOut) },
           { h: 'منها دفعها<br>مباشرة', num: 1, f: (r) => N(r.direct) },
-          { h: 'المطلوب<br>حسب نسبته', num: 1, f: (r) => N(r.required) },
-          { h: 'الفرق', num: 1, f: (r) => (Math.abs(r.diff) < 0.5 ? '—' : `${N(r.diff)} ${r.diff > 0 ? chip('زيادة', 'good') : chip('ناقص', 'warn')}`) },
+          // الشريك الخارج (نسبته 0 ولا حقوق له، r.out): لا مطلوب عليه ولا فرق. وبنسبة 0 وله حقوق لم تُسوَّ كلها: يُقارن
+          // ما بقي له من رأس ماله في المطعم (r.capital)
+          { h: 'المطلوب<br>حسب نسبته', num: 1, f: (r) => (r.out ? '—' : N(r.required)) },
+          { h: 'الفرق', num: 1, f: (r) => (r.out || Math.abs(r.diff) < 0.5 ? '—' : `${N(r.diff)} ${r.diff > 0 ? chip('زيادة', 'good') : chip('ناقص', 'warn')}`) + (!r.out && Math.abs(r.capital - r.contributed) >= 0.5 ? `<div class="muted sm">الباقي من رأس ماله ${N(r.capital)}</div>` : '') },
           { h: 'المسحوبات', num: 1, f: (r) => N(r.drawings) },
           { h: 'نصيبه من<br>ربح الفترة', num: 1, f: (r) => N(r.profitPeriod) },
           // نصيبه من الأرباح المتراكمة − مسحوباته؛ بالسالب مع مسحوبات: سحب من رأس ماله (وبلا مسحوبات: خسارة فقط)
           // (العناوين على سطرين، والشارة قصيرة، والهوامش أضيق ليتسع الجدول على شاشة 1280)
-          { h: 'أرباح متاحة<br>للسحب', num: 1, f: (r) => N(r.undistributed) + (r.undistributed < -0.5 && r.drawings > 0.5 ? `<div class="sm" title="مسحوباته أكثر من نصيبه من الأرباح بمقدار ${fmt(-r.undistributed)}: الزيادة سحب من رأس ماله">${chip('من رأس المال', 'warn')}</div>` : '') },
+          { h: 'أرباح متاحة<br>للسحب', num: 1, f: (r) => N(r.undistributed) + (r.undistributed < -0.5 && r.drawings > 0.5 ? `<div class="sm" title="مسحوباته أكثر من نصيبه من الأرباح بمقدار ${fmt(-r.undistributed)}: الزيادة سحب من رأس ماله">${chip('من رأس المال', 'warn')}</div>` : '') + movedHTML(r.profitIn, r.profitOut) },
           { h: 'رصيد<br>حقوقه', num: 1, f: (r) => N(r.equity) },
           { h: '', cls: 'acts', f: (r) => rowActs('partners', r.id) },
         ],
         rep.rows,
-        { cards: 1, cls: 'dense', empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(rep.totalCap), '', '', '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(rep.undistributedTotal), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
+        { cards: 1, cls: 'dense', empty: 'أضف الشركاء أولاً مع نسبة كل شريك.', foot: ['الإجمالي', pct(rep.totalShare, 0), N(RB.sum(rep.rows, (r) => r.contributed)), '', N(RB.sum(rep.rows, (r) => r.required)), '', N(RB.sum(rep.rows, (r) => r.drawings)), N(rep.net), N(rep.undistributedTotal), N(RB.sum(rep.rows, (r) => r.equity)), ''] }
       ),
-      { sub: `ربح الفترة يوزّع حسب النسب السارية في أيامه (${periodLabel()})، والنسبة المعروضة في ${dtText(asOf)}. «المسحوبات» و«أرباح متاحة للسحب» تراكمية من بداية الدفتر حتى ${dtText(asOf)}: نصيبه من الأرباح المتراكمة كلها (لا ربح الفترة) − كل مسحوباته. «رصيد حقوقه» = مساهمته − مسحوباته + نصيبه من الأرباح المتراكمة.` }
+      {
+        sub:
+          `ربح الفترة يوزّع حسب النسب السارية في أيامه (${periodLabel()})، والنسبة المعروضة في ${dtText(asOf)}. «المسحوبات» و«أرباح متاحة للسحب» تراكمية من بداية الدفتر حتى ${dtText(asOf)}: نصيبه من الأرباح المتراكمة كلها (لا ربح الفترة) − كل مسحوباته. «رصيد حقوقه» = مساهمته − مسحوباته + نصيبه من الأرباح المتراكمة.` +
+          (rep.moves.length ? ' «نقل حقوق» بين الشركاء ليس سحباً ولا إيداعاً: يُنقل من مساهمة الناقل أولاً وما زاد عليها من أرباحه، ويُضاف للمنقول إليه بالقدر نفسه.' : '') +
+          (rep.rows.some((r) => !(r.sharePct > 0) && (Math.abs(r.contributed) >= 0.5 || Math.abs(r.equity) >= 0.5)) ? ' الشريك بنسبة 0 لا مطلوب عليه، ويُحسب له من رأس المال ما بقي من حقوقه فقط: ما سُحب منها أو نُقل لا يبقى مطلوباً من الباقين، وبعد تسويتها كلها لا فرق له (—).' : ''),
+      }
     );
     const useItems = uses.assets.map((a) => ({ label: a.name, v: a.amount }));
     if (uses.preopen.expenses) useItems.push({ label: 'مصاريف قبل الافتتاح (إيجار، رسوم، تأمين…)', v: uses.preopen.expenses });
@@ -3318,8 +3327,8 @@
   // ما يجعل مبيعات الإقرار غير إجمالي الإقفالات بدون الضريبة: عروض ومرتجعات التطبيقات (تخفضها كما في «صافي المبيعات»
   // بقائمة الدخل)، وثمن بيع الأصول (توريد خاضع لا يظهر في الإقفالات)
   const vatSalesNote = (v) =>
-    (v.sales.adj < -0.005 ? ` المبيعات هنا بعد خصم عروض ومرتجعات التطبيقات (${fmt(v.sales.adj)} بدون الضريبة) كـ«صافي المبيعات» في قائمة الدخل، فهي وضريبتها أقل من إجمالي الإقفالات في صفحة المبيعات.` : '') +
-    (v.sales.assets > 0.005 ? ` وتشمل ثمن بيع أصول (${fmt(v.sales.assets)} بدون الضريبة).` : '');
+    (v.sales.adj < -0.005 ? ` المبيعات هنا بعد خصم عروض ومرتجعات التطبيقات (<span class="n">${fmt(-v.sales.adj)}</span> بدون الضريبة) كـ«صافي المبيعات» في قائمة الدخل، فهي وضريبتها أقل من إجمالي الإقفالات في صفحة المبيعات.` : '') +
+    (v.sales.assets > 0.005 ? ` وتشمل ثمن بيع أصول (<span class="n">${fmt(v.sales.assets)}</span> بدون الضريبة).` : '');
   REPORT.vat = () => {
     const [from, to] = range();
     const asOf = minD(to, today());
@@ -3727,7 +3736,8 @@
     const avail = (v) => {
       const d = RB.isISODate(v.date) ? v.date : today();
       const L = ledger();
-      const row = RB.partnersReport(S, d, d, L).rows.find((r) => r.id === v.partnerId);
+      const rep = RB.partnersReport(S, d, d, L);
+      const row = rep.rows.find((r) => r.id === v.partnerId);
       const b = RB.balances(L.entries, null, d);
       let u = row ? row.undistributed : 0;
       let eq = row ? row.equity : 0;
@@ -3736,11 +3746,20 @@
       const old = isEdit ? find('capital', v.id) : null;
       if (old && !old._bad && old.date <= d) {
         const a = num(old.amount);
-        // السحب ونقل الحقوق من هذا الشريك نقصا من حقوقه؛ والإيداع أو النقل إليه زادها
-        if ((old.type === 'withdrawal' || old.type === 'transfer') && old.partnerId === v.partnerId) {
+        // السحب ونقل الحقوق من هذا الشريك نقصا من حقوقه؛ والإيداع أو النقل إليه زادها. النقل يغيّر أرباحه المتاحة بما
+        // نُقل منها فقط (والباقي من رأس ماله، RB.partnersReport)، والسحب بمبلغه كله
+        const mv = old.type === 'transfer' ? rep.moves.find((m) => m.id === old.id) : null;
+        const pr = mv ? mv.profit : 0;
+        if (old.type === 'withdrawal' && old.partnerId === v.partnerId) {
           u += a;
           eq += a;
-        } else if ((old.type === 'transfer' ? old.toPartnerId : old.type === 'withdrawal' ? '' : old.partnerId) === v.partnerId) eq -= a;
+        } else if (old.type === 'transfer' && old.partnerId === v.partnerId) {
+          u += pr;
+          eq += a;
+        } else if (old.type === 'transfer' && old.toPartnerId === v.partnerId) {
+          u -= pr;
+          eq -= a;
+        } else if (old.type !== 'withdrawal' && old.type !== 'transfer' && old.partnerId === v.partnerId) eq -= a;
         if (old.type !== 'transfer') {
           const sg = old.type === 'withdrawal' ? 1 : -1;
           if (old.account === 'cash') cash += a * sg;

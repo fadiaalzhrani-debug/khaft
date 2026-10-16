@@ -3543,10 +3543,17 @@ test('نسب الشركاء بتاريخ سريانها: تغييرها لا ي�
   assert.equal(LT.errors.length, 0);
   assert.equal(RB.balances(LT.entries, null, '2026-12-31')['1102'], 100000);
   const tr = RB.partnersReport(T, '2026-01-01', '2026-12-31', LT);
-  assert.deepEqual(tr.rows.map((r) => [r.contributed, r.equity]), [[142000, 182000], [56000, 0]]);
+  // النقل ليس إيداعاً ولا سحباً: رأس مال خالد كله (56,000) صار لأحمد، والباقي (30,000) نصيبه من أرباح 2025
+  assert.deepEqual(tr.rows.map((r) => [r.contributed, r.drawings, r.equity]), [[112000, 0, 182000], [0, 0, 0]]);
+  assert.deepEqual(tr.moves.map((m) => [m.from, m.to, m.amount, m.capital, m.profit]), [['p2', 'p1', 86000, 56000, 30000]]);
   assert.ok(RB.partnerUsed(T, 'p1'));
-  // الأرباح المتاحة للسحب لأحمد: نصيبه من أرباح 2025 (30,000) و2026 كلها (10,000)
-  assert.equal(tr.rows[0].undistributed, 40000);
+  // الأرباح المتاحة للسحب لأحمد: نصيبه من أرباح 2025 (30,000) و2026 كلها (10,000) وأرباح خالد التي اشتراها (30,000)
+  assert.equal(tr.rows[0].undistributed, 70000);
+  assert.equal(tr.undistributedTotal, 70000);
+  // ولا فرق في رأس المال: المطلوب منه 100% من 112,000، وخالد خارج بلا حقوق
+  assert.deepEqual([tr.totalCap, tr.rows[0].required, tr.rows[0].diff, tr.rows[1].out, tr.rows[1].diff], [112000, 112000, 0, true, 0]);
+  // وكذلك لو دفع المطعم حقوقه: ما سُحب من رأس ماله لا يبقى مطلوباً من أحمد
+  assert.deepEqual([xr.totalCap, xr.rows[0].required, xr.rows[0].diff, xr.rows[1].out, xr.rows[1].diff], [56000, 56000, 0, true, 0]);
   // بلا تاريخ نسب: كما كان (النسب الحالية في كل الأيام)
   const plain = mk();
   plain.partners[0].share = 80;
@@ -3556,6 +3563,95 @@ test('نسب الشركاء بتاريخ سريانها: تغييرها لا ي�
   const R = mk();
   R.partners = [{ id: 'p1', name: 'أ', share: 1 }, { id: 'p2', name: 'ب', share: 2 }, { id: 'p3', name: 'ج', share: 0 }];
   assert.deepEqual(RB.openingShares(R, 100, '2025-01-01').map((x) => x.amount), [33.33, 66.67, 0]);
+});
+
+test('نقل الحقوق بين الشركاء ينقل رأس المال: المطلوب حسب النسبة والفرق لا يحسبان المنقول مرتين (audit-r2)', () => {
+  const mk = (a, b) => {
+    const S = RB.emptyState();
+    S.settings.vatRegistered = false;
+    S.settings.openingDate = '2026-08-01';
+    S.partners = [{ id: 'a', name: 'أحمد', share: a }, { id: 'b', name: 'سالم', share: b }];
+    S.capital = [
+      { id: 'ca', date: '2026-08-01', partnerId: 'a', type: 'contribution', account: 'bank', amount: a * 1000 },
+      { id: 'cb', date: '2026-08-01', partnerId: 'b', type: 'contribution', account: 'bank', amount: b * 1000 },
+    ];
+    return S;
+  };
+  const sale = (S, amount) => S.sales.push({ id: 's' + S.sales.length, date: '2026-08-10', channels: { cash: { amount, orders: 1, type: 'cash', feePct: 0, feeVat: false } } });
+  const shares = (S, a, b) => (S.partners = [RB.shareFrom(S.partners[0], a, '2026-09-01'), RB.shareFrom(S.partners[1], b, '2026-09-01')]);
+  const move = (S, from, to, amount) => S.capital.push({ id: 't' + S.capital.length, date: '2026-09-01', partnerId: from, toPartnerId: to, type: 'transfer', amount });
+  const rep = (S) => {
+    const p = RB.partnersReport(S, '2026-08-01', '2026-12-31');
+    const tot = (f) => RB.r2(RB.sum(p.rows, f));
+    // الأسطر تجمع إلى رأس المال المطلوب والأرباح المتراكمة والمتاح للسحب وحقوق الشركاء في الميزانية
+    assert.equal(tot((r) => r.required), p.totalCap);
+    assert.equal(tot((r) => r.profitAll), p.retained);
+    assert.equal(tot((r) => r.undistributed), p.undistributedTotal);
+    assert.equal(tot((r) => r.equity), RB.balanceSheet(S, '2026-12-31').tEq);
+    for (const r of p.rows) close(r.equity, RB.r2(r.contributed - r.drawings + r.profitAll));
+    return p;
+  };
+  const cols = (p) => p.rows.map((r) => [r.contributed, r.required, r.diff, r.drawings, r.undistributed, r.equity, r.out]);
+
+  // خروج سالم كما يصفه البرنامج: 50,000 لكل منهما، ربح 10,000 في أغسطس، نسبته 0 وأحمد 100% من سبتمبر، ونقل حقوقه كلها
+  // (55,000) لأحمد. رأس المال 100,000 كله لأحمد ولا «ناقص»، وأرباح أغسطس كلها متاحة له، وسالم خارج بلا مطلوب ولا فرق
+  const X = mk(50, 50);
+  sale(X, 10000);
+  shares(X, 100, 0);
+  const eqB = RB.partnersReport(X, '2026-08-31', '2026-08-31').rows[1].equity;
+  assert.equal(eqB, 55000);
+  move(X, 'b', 'a', eqB);
+  const x = rep(X);
+  assert.equal(x.totalCap, 100000);
+  assert.deepEqual(cols(x), [[100000, 100000, 0, 0, 10000, 110000, false], [0, 0, 0, 0, 0, 0, true]]);
+  assert.deepEqual(x.rows.map((r) => [r.capIn, r.capOut, r.profitIn, r.profitOut]), [[50000, 0, 5000, 0], [0, 50000, 0, 5000]]);
+  assert.equal(x.undistributedTotal, 10000);
+  // قبل النقل كما كان: لكل منهما رأس ماله وأرباحه
+  assert.deepEqual(cols(RB.partnersReport(X, '2026-08-01', '2026-08-31')), [[50000, 50000, 0, 0, 5000, 55000, false], [50000, 50000, 0, 0, 5000, 55000, false]]);
+  // الخروج قبل النقل: سالم بنسبة 0 وله حقوقه كلها، فرأس ماله باقٍ في المطعم وزيادة له والنقص على أحمد حتى تُسوّى
+  const Y = mk(50, 50);
+  sale(Y, 10000);
+  shares(Y, 100, 0);
+  assert.deepEqual(cols(rep(Y)), [[50000, 100000, -50000, 0, 5000, 55000, false], [50000, 0, 50000, 0, 5000, 55000, false]]);
+
+  // إعادة التوازن من 60/40 إلى 50/50 بنقل 10,000 من أحمد إلى سالم: 50,000 لكل منهما ولا فرق
+  const R = mk(60, 40);
+  shares(R, 50, 50);
+  move(R, 'a', 'b', 10000);
+  const r = rep(R);
+  assert.equal(r.totalCap, 100000);
+  assert.deepEqual(cols(r), [[50000, 50000, 0, 0, 0, 50000, false], [50000, 50000, 0, 0, 0, 50000, false]]);
+  // ومع ربح قبل التغيير يبقى بنسبه السابقة (6,000 و4,000): النقل من رأس المال أولاً، فلا فرق في رأس المال
+  sale(R, 10000);
+  assert.deepEqual(cols(rep(R)), [[50000, 50000, 0, 0, 6000, 56000, false], [50000, 50000, 0, 0, 4000, 54000, false]]);
+  // ونقل حقوق أكثر من رأس ماله: الزائد من نصيبه من الأرباح
+  R.capital.pop();
+  move(R, 'a', 'b', 61000);
+  const r2 = rep(R);
+  assert.deepEqual(r2.moves.map((m) => [m.capital, m.profit]), [[60000, 1000]]);
+  assert.deepEqual(cols(r2), [[0, 50000, -50000, 0, 5000, 5000, false], [100000, 50000, 50000, 0, 5000, 105000, false]]);
+
+  // من سحب أكثر من نصيبه من الأرباح ثم خرج بنقل حقوقه كلها (40,000): رأس ماله كله يُنقل ومعه ما سحبه زيادة على أرباحه
+  const O = mk(50, 50);
+  O.capital.push({ id: 'w', date: '2026-08-15', partnerId: 'b', type: 'withdrawal', account: 'bank', amount: 10000 });
+  shares(O, 100, 0);
+  move(O, 'b', 'a', 40000);
+  const o = rep(O);
+  assert.deepEqual(o.moves.map((m) => [m.capital, m.profit]), [[50000, -10000]]);
+  assert.deepEqual(cols(o), [[100000, 100000, 0, 0, -10000, 90000, false], [0, 0, 0, 10000, 0, 0, true]]);
+  // ونقل نصف حقوقه (20,000) ينقل نصف رأس ماله
+  O.capital.pop();
+  move(O, 'b', 'a', 20000);
+  assert.deepEqual(rep(O).moves.map((m) => [m.capital, m.profit]), [[25000, -5000]]);
+
+  // شريك خرج ودُفع له جزء من حقوقه: يُحسب له من رأس المال ما بقي من حقوقه فقط
+  const P = mk(50, 50);
+  sale(P, 10000);
+  shares(P, 100, 0);
+  P.capital.push({ id: 'w', date: '2026-09-01', partnerId: 'b', type: 'withdrawal', account: 'bank', amount: 30000 });
+  const pp = rep(P);
+  assert.equal(pp.totalCap, 75000);
+  assert.deepEqual(cols(pp), [[50000, 75000, -25000, 0, 5000, 55000, false], [50000, 0, 25000, 30000, -25000, 25000, false]]);
 });
 
 test('مخصص نهاية الخدمة على الأجر الأخير: الزيادة تضيف الفرق عن الخدمة السابقة، والتخفيض ينقصه (الجولة 2)', () => {

@@ -2689,15 +2689,13 @@
   // الشركاء: المساهمات، المسحوبات، ونصيب الربح
   // الربح يوزَّع حسب النسب السارية في أيامه: الفترة تُقسم عند تواريخ تغيّر النسب (RB.shareCuts)، وربح كل جزء منها
   // (الإيرادات − المصاريف في قيوده) بنسب ذلك الجزء، فتغيير النسبة من تاريخ لا يغيّر أرباح ما قبله ولا حقوق من خرج.
-  // النسبة المعروضة ورأس المال المطلوب حسب النسب في «to»
+  // النسبة المعروضة ورأس المال المطلوب حسب النسب في «to». نقل الحقوق بين الشركاء يُقسم إلى رأس مال وأرباح (moves)
   RB.partnersReport = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
-    const all = RB.balances(L.entries, null, to);
     const inc = RB.incomeStatement(S, from, to, L);
     const bs = RB.balanceSheet(S, to, L);
     const ps = S.partners || [];
     const totalShare = sum(ps, (p) => RB.shareAt(p, to));
-    const totalCap = r2(sum(ps, (p) => -(all['cap:' + p.id] || 0)));
     // الدفتر المعطى قد يمتد بعد «to» (دفتر واحد لكل نسخة من البيانات): ما دفعه الشريك بعده لا يدخل
     const direct = {};
     for (const e of L.entries) {
@@ -2735,22 +2733,79 @@
     };
     const pPeriod = from <= to ? profitBy(from, to) : {};
     const pAll = profitBy('', to);
+    // نقل الحقوق (قيد 'capital' على drw: الناقل وcap: المنقول إليه) ليس إيداعاً ولا سحباً: يُخرج من الدفتر هنا ويُقسم.
+    // own/drw: ما أودعه الشريك أو دفعه أو له من الأرصدة الافتتاحية، وما سحبه، بلا نقل الحقوق حتى تاريخ d
+    const isMove = (e) => e.kind === 'capital' && e.lines.some((l) => l.a.startsWith('drw:'));
+    const ownAt = (pid, d) => {
+      let c = 0;
+      let w = 0;
+      for (const e of L.entries) {
+        if (e.date > d || isMove(e)) continue;
+        for (const l of e.lines) {
+          if (l.a === 'cap:' + pid) c -= l.v;
+          else if (l.a === 'drw:' + pid) w += l.v;
+        }
+      }
+      return { cap: r2(c), drw: r2(w) };
+    };
+    // كل نقل يُقسم بترتيبه في الدفتر: من رأس مال الناقل أولاً (بقدر مساهمته)، والزائد من نصيبه من الأرباح. ومن سحب أكثر
+    // من نصيبه من الأرباح (حقوقه أقل من مساهمته) يُنقل من رأس ماله بنسبة ما ينقله من حقوقه، فنقل حقوقه كلها ينقل رأس
+    // ماله كله ومعه ما سحبه زيادة على أرباحه. فيبقى مجموع رأس المال ما دفعه الشركاء فعلاً، ولا يُحسب المنقول مرتين
+    const mv = {};
+    const mvOf = (pid) => (mv[pid] = mv[pid] || { capIn: 0, capOut: 0, profitIn: 0, profitOut: 0 });
+    const moves = [];
+    const pAt = {};
+    for (const e of L.entries) {
+      if (e.date > to || !isMove(e)) continue;
+      const out = e.lines.find((l) => l.a.startsWith('drw:'));
+      const inn = e.lines.find((l) => l.a.startsWith('cap:'));
+      if (!out || !inn) continue;
+      const a = mvOf(out.a.slice(4));
+      const b = mvOf(inn.a.slice(4));
+      const o = ownAt(out.a.slice(4), e.date);
+      const prof = (pAt[e.date] = pAt[e.date] || profitBy('', e.date))[out.a.slice(4)] || 0;
+      const C = r2(o.cap + a.capIn - a.capOut);
+      const E = r2(C + prof + a.profitIn - a.profitOut - o.drw);
+      const T = out.v;
+      const capital = C > 0 && T > 0 ? r2(Math.min(C, E > 0 ? T * Math.max(1, C / E) : T)) : 0;
+      const profit = r2(T - capital);
+      a.capOut = r2(a.capOut + capital);
+      b.capIn = r2(b.capIn + capital);
+      a.profitOut = r2(a.profitOut + profit);
+      b.profitIn = r2(b.profitIn + profit);
+      moves.push({ id: e.ref && e.ref.id, date: e.date, from: out.a.slice(4), to: inn.a.slice(4), amount: T, capital, profit });
+    }
     const rows = ps.map((p) => {
       const sharePct = RB.shareAt(p, to);
       const share = totalShare ? sharePct / totalShare : 0;
-      const contributed = r2(-(all['cap:' + p.id] || 0));
-      const drawings = r2(all['drw:' + p.id] || 0);
-      const required = r2(totalCap * share);
+      const m = mvOf(p.id);
+      const o = ownAt(p.id, to);
+      // مساهمته: ما أودعه أو دفعه (وحقوقه الافتتاحية) + رأس المال المنقول إليه − المنقول منه. مسحوباته: ما سحبه فعلاً.
+      // نصيبه من الأرباح المتراكمة + ما نُقل إليه منها − ما نُقل منه. «رصيد حقوقه» كما في الدفتر
+      const contributed = r2(o.cap + m.capIn - m.capOut);
+      const drawings = o.drw;
       const profitPeriod = pPeriod[p.id] || 0;
-      const profitAll = pAll[p.id] || 0;
+      const profitAll = r2((pAll[p.id] || 0) + m.profitIn - m.profitOut);
+      const equity = r2(contributed - drawings + profitAll);
       return {
-        id: p.id, name: p.name, sharePct, share, contributed, direct: direct[p.id] || 0,
-        cashContrib: r2(contributed - (direct[p.id] || 0)), drawings, required, diff: r2(contributed - required),
-        profitPeriod, profitAll, equity: r2(contributed - drawings + profitAll),
+        id: p.id, name: p.name, sharePct, share, contributed, direct: r2(Math.max(0, Math.min(direct[p.id] || 0, contributed))),
+        drawings, profitPeriod, profitAll, equity,
         // أرباح متاحة للسحب: نصيبه من الأرباح المتراكمة − مسحوباته (بالسالب: سحب من رأس ماله)
         undistributed: r2(profitAll - drawings),
+        capIn: m.capIn, capOut: m.capOut, profitIn: m.profitIn, profitOut: m.profitOut,
       };
     });
+    // رأس المال المطلوب حسب النسب في «to» من رأس المال الباقي في المطعم: الشريك بنسبة صفر (خرج من الشراكة) يُحسب له منه
+    // ما بقي من حقوقه فقط (ما سُحب منه أو نُقل رُدّ إليه)، و«خارج» (out) إن لم تبقَ له حقوق: لا مطلوب عليه ولا فرق
+    for (const r of rows) {
+      r.capital = r.sharePct > 0 ? r.contributed : r2(Math.min(r.contributed, Math.max(0, r.equity)));
+      r.out = !(r.sharePct > 0) && Math.abs(r.equity) < 0.005;
+    }
+    const totalCap = r2(sum(rows, (r) => r.capital));
+    for (const r of rows) {
+      r.required = r2(totalCap * r.share);
+      r.diff = r2(r.capital - r.required);
+    }
     // فرق التقريب لآخر شريك له نسبة (كما في RB.openingShares)، فمجموع الأسطر = رأس المال المطلوب وربح الفترة والأرباح
     // المتراكمة بالضبط، ومجموع حقوقهم = حقوق الشركاء في الميزانية. الشريك بنسبة صفر (خرج من الشراكة) لا يأخذ منه شيئاً
     let k = -1;
@@ -2761,14 +2816,14 @@
       const r = rows[k];
       const others = (f) => sum(rows.filter((x) => x !== r), f);
       r.required = r2(totalCap - others((x) => x.required));
-      r.diff = r2(r.contributed - r.required);
+      r.diff = r2(r.capital - r.required);
       r.profitPeriod = r2(inc.net - others((x) => x.profitPeriod));
       r.profitAll = r2(bs.retained - others((x) => x.profitAll));
       r.equity = r2(r.contributed - r.drawings + r.profitAll);
       r.undistributed = r2(r.profitAll - r.drawings);
     }
     const undistributedTotal = r2(bs.retained - sum(rows, (r) => r.drawings));
-    return { rows, totalShare, totalCap, net: inc.net, retained: bs.retained, undistributedTotal };
+    return { rows, totalShare, totalCap, net: inc.net, retained: bs.retained, undistributedTotal, moves };
   };
 
   // أين ذهب رأس المال التأسيسي؟
