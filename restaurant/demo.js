@@ -56,7 +56,7 @@
       S.assets.push({ id: id('a'), date: RB.addDays(pre, d), name, category, amount, includesVat: false, taxable: true, account: 'bank', lifeMonths: cat.life, salvage: 0, supplier: '', note: '' });
     }
     S.assets.push({ id: id('a'), date: RB.addDays(pre, 15), name: 'لوحة المحل الخارجية', category: 'fitout', amount: 8500, includesVat: true, taxable: true, account: 'partner:p1', lifeMonths: 60, salvage: 0, supplier: '', note: 'دفعها الشريك الأول من حسابه' });
-    S.assets.push({ id: id('a'), date: RB.addDays(pre, 2), name: 'تأمين إيجار المحل (مسترد)', category: 'deposit', amount: 12000, includesVat: false, taxable: false, account: 'bank', lifeMonths: 0, salvage: 0, supplier: '', note: '' });
+    S.assets.push({ id: id('a'), date: RB.addDays(pre, 2), name: 'تأمين إيجار المحل', category: 'deposit', amount: 12000, includesVat: false, taxable: false, account: 'bank', lifeMonths: 0, salvage: 0, supplier: '', note: '' });
 
     // ─── الموظفون ───
     const empStart = RB.addDays(opening, -20);

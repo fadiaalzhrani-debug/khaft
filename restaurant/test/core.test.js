@@ -3832,3 +3832,58 @@ test('بداية التشغيل (RB.opStart) ونصيب الطلب من الإه
   const be = RB.breakEven(D, '2026-01-01', t, null, t);
   assert.deepEqual([be.start, be.startBy], [D.settings.openingDate, 'opening']);
 });
+
+test('الجرد: الكمية الفارغة «لم تُعدّ» والصفر المكتوب كمية (الواجهة والنصوص، الجولة 2)', () => {
+  assert.equal(RB.isBlankQty(''), true);
+  assert.equal(RB.isBlankQty('  '), true);
+  assert.equal(RB.isBlankQty(undefined), true);
+  assert.equal(RB.isBlankQty(null), true);
+  assert.equal(RB.isBlankQty(0), false);
+  assert.equal(RB.isBlankQty('0'), false);
+  assert.equal(RB.isBlankQty(1.5), false);
+  // سطر مكرر بكمية يكفي لمادته؛ والسطر بلا مادة لا يُعدّ
+  const lines = [
+    { rawId: 'a', qty: '' },
+    { rawId: 'b', qty: 0 },
+    { rawId: 'c', qty: '' },
+    { rawId: 'c', qty: 2 },
+    { rawId: '', qty: '' },
+    { rawId: 'd' },
+  ];
+  assert.deepEqual(RB.uncountedRaw(lines), ['a', 'd']);
+  assert.deepEqual(RB.uncountedRaw(null), []);
+  // الفارغ يُحسب صفراً في القيمة (معاينة الجرد قبل الحفظ)
+  const S = base();
+  S.raw = [{ id: 'a', name: 'لحم', price: 100, packQty: 1, useUnit: 'جم', taxable: true }];
+  assert.equal(RB.stockValue({ date: '2026-10-01', lines: [{ rawId: 'a', qty: '', price: 100 }] }, S), 0);
+});
+
+test('متوسط الفاتورة من الإقفالات التي سُجّل فيها عدد الطلبات فقط (الواجهة والنصوص، الجولة 2)', () => {
+  const S = base();
+  S.settings.channels = [{ id: 'cash', name: 'كاش', type: 'cash', feePct: 0, active: true }];
+  S.sales = [
+    { id: 's1', date: '2026-10-13', channels: { cash: { amount: 4000, orders: 0 } } },
+    { id: 's2', date: '2026-10-14', channels: { cash: { amount: 4100, orders: 0 } } },
+  ];
+  let r = RB.salesByChannel(S, '2026-10-01', '2026-10-31');
+  assert.equal(r.total.orders, 0);
+  assert.equal(r.total.avgTicket, 0);
+  close(r.total.gross, 8100);
+  // إقفال واحد بطلبات: المتوسط مبيعاته ÷ طلباته (50)، لا كل المبيعات ÷ طلباته (455)
+  S.sales.push({ id: 's3', date: '2026-10-15', channels: { cash: { amount: 1000, orders: 20 } } });
+  r = RB.salesByChannel(S, '2026-10-01', '2026-10-31');
+  close(r.total.avgTicket, 50);
+  close(r.list[0].avgTicket, 50);
+  close(r.total.gross, 9100);
+  assert.equal(r.total.orders, 20);
+});
+
+test('الميزانية: رصيد الضريبة المدين «لصالح المطعم» لا «مستردة»، والتأمين «قابل للاسترداد» (الجولة 2)', () => {
+  const D = RB.demoState('2026-10-16');
+  const b = RB.balanceSheet(D, '2026-07-15');
+  const names = b.cur.concat(b.fixed).map((x) => x.name);
+  assert.ok(!names.some((n) => /مستردة/.test(n)), names.join('، '));
+  assert.ok(names.includes('رصيد ضريبة القيمة المضافة لصالح المطعم'), names.join('، '));
+  assert.ok(names.includes('تأمينات قابلة للاسترداد'), names.join('، '));
+  assert.equal(RB.assetCat('deposit').name, 'تأمينات قابلة للاسترداد');
+});

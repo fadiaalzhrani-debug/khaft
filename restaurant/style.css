@@ -676,6 +676,10 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .tbl.cards tfoot tr { border-bottom: 0; border-top: 2px solid var(--line); }
   .tbl.cards tfoot td:first-child { grid-column: 1 / -1; }
   .tbl.cards tfoot td:first-child::before { content: none; }
+  /* أسطر النماذج: قائمة الاسم (المادة، المكوّن، الصنف) بثلاثة أرباع عرض عمودها المعلن بدل 76px فيُقرأ الاسم،
+     والوحدة تنكسر سطرين؛ ما بعد الكمية يتمرر جانبياً داخل الجدول كما كان */
+  .lines-tbl td.wsel select { min-width: min(calc(var(--w) * 0.75), 9.5rem); }
+  .lines-tbl .calc { white-space: normal; }
 }
 /* شاشات اللمس: أهداف لمس 44px تقريباً، ومسافة بين أزرار السطر (التعديل والنسخ والحذف) */
 @media (pointer: coarse) {

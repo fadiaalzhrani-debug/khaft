@@ -107,7 +107,7 @@
     { id: 'tech', name: 'أجهزة ونظام الكاشير', acc: '1205', life: 36, hint: 'جهاز كاشير، شاشات، طابعات، كاميرات' },
     { id: 'vehicle', name: 'سيارات ودراجات توصيل', acc: '1206', life: 60, hint: '' },
     { id: 'preop', name: 'مصاريف التأسيس وما قبل الافتتاح', acc: '1207', life: 36, hint: 'تصميم الهوية والمنيو، استشارات، رسوم التأسيس' },
-    { id: 'deposit', name: 'تأمينات مستردة', acc: '1208', life: 0, hint: 'تأمين الإيجار أو العدادات — لا يُستهلك ولا تُحتسب عليه ضريبة (يُسترد عند انتهاء العقد)' },
+    { id: 'deposit', name: 'تأمينات قابلة للاسترداد', acc: '1208', life: 0, hint: 'تأمين الإيجار أو العدادات — لا يُستهلك ولا تُحتسب عليه ضريبة (يُسترد عند انتهاء العقد)' },
   ];
 
   // المصاريف التشغيلية. group يحدد مكانها في قائمة الدخل
@@ -1871,6 +1871,17 @@
     }
     return { lines: [...by.values()], merged: [...merged] };
   };
+  // كمية الجرد الفارغة: لم تُعدّ المادة (والصفر المكتوب = عُدّت فنفدت)
+  RB.isBlankQty = (q) => q === '' || q === undefined || q === null || (typeof q === 'string' && !q.trim());
+  // المواد التي لم تُدخل لها كمية في الجرد: كل أسطرها بلا كمية (سطر مكرر بكمية يكفي)، بترتيب أول ظهور
+  RB.uncountedRaw = (lines) => {
+    const st = new Map();
+    for (const l of Array.isArray(lines) ? lines : []) {
+      if (!l || !l.rawId) continue;
+      st.set(l.rawId, (st.has(l.rawId) ? st.get(l.rawId) : true) && RB.isBlankQty(l.qty));
+    }
+    return [...st].filter((x) => x[1]).map((x) => x[0]);
+  };
   RB.stockValue = (c, S) => r2(sum(c.lines || [], (l) => num(l.qty) * RB.stockLinePrice(l, S, c.date)));
   // جرد قبل بدء الدفتر والأرصدة الافتتاحية فيها قيمة المخزون: لا يدخل الحسابات (المخزون الافتتاحي يحل محله).
   // op: RB.openingInfo(S) إن حُسب
@@ -2038,7 +2049,7 @@
       }
       if (code === '1105' && v < 0) liab.push({ code, name: 'مصروفات مستحقة (لم تُدفع بعد)', amount: -v });
       else if (code === '2103' && v > 0) cur.push({ code, name: 'رواتب مدفوعة مقدماً', amount: v });
-      else if (code === '2102' && v > 0) cur.push({ code, name: 'ضريبة قيمة مضافة مستردة', amount: v });
+      else if (code === '2102' && v > 0) cur.push({ code, name: 'رصيد ضريبة القيمة المضافة لصالح المطعم', amount: v });
       else if (info.type === 'A') (info.group === 'fixed' ? fixed : cur).push({ code, name: info.name, amount: v });
       else if (info.type === 'L') liab.push({ code, name: info.name, amount: -v });
       else equity.push({ code, name: info.name, amount: -v, partnerId: info.partnerId });
@@ -2434,13 +2445,16 @@
         o.fee = r2(o.fee + x.fee + x.feeVat);
         o.receive = r2(o.receive + x.receive);
         o.orders += x.orders;
+        // متوسط الفاتورة من الأسطر التي سُجّل فيها عدد الطلبات وحدها: إقفال بلا طلبات لا يُقسَم مبلغه على طلبات غيره
+        if (x.orders > 0) o.ordersGross = r2((o.ordersGross || 0) + x.gross);
       }
       days[s.date] = r2((days[s.date] || 0) + RB.saleTotal(s));
     }
     const list = Object.values(out).map((o) => {
       const ch = RB.channelOf(S, o.id);
       o.name = ch ? ch.name : o.id;
-      o.avgTicket = o.orders ? o.gross / o.orders : 0;
+      o.ordersGross = o.ordersGross || 0;
+      o.avgTicket = o.orders ? o.ordersGross / o.orders : 0;
       return o;
     });
     list.sort((a, b) => b.gross - a.gross);
@@ -2450,8 +2464,9 @@
       vat: r2(sum(list, (o) => o.vat)),
       fee: r2(sum(list, (o) => o.fee)),
       orders: sum(list, (o) => o.orders),
+      ordersGross: r2(sum(list, (o) => o.ordersGross)),
     };
-    total.avgTicket = total.orders ? total.gross / total.orders : 0;
+    total.avgTicket = total.orders ? total.ordersGross / total.orders : 0;
     return { list, total, days };
   };
 
