@@ -4007,3 +4007,41 @@ test('إكمال استيراد لم يكتمل لا يكتب ثانية ما ك
   // بلا written: كل الهدف يُكتب كما كان
   assert.equal(RB.replacePlan(target, idsOf(db), p1.known).sets.length, p1.sets.length);
 });
+
+test('غير المسجل في الضريبة لا يرى «بدون الضريبة»: اسم المبيعات في التقارير وحساب المبيعات في الميزان واليومية (audit-r2)', () => {
+  const today = '2026-10-14';
+  const reg = RB.demoState(today);
+  const unreg = RB.demoState(today);
+  unreg.settings.vatRegistered = false;
+  const later = RB.demoState(today);
+  later.settings.vatRegisteredFrom = '2026-10-01';
+  // اسم المبيعات في الفترة المنتهية بـ to: «بدون الضريبة» لمن عليه ضريبة مبيعات في يوم منها على الأقل
+  assert.equal(RB.salesLabel('المبيعات', reg.settings, today), 'المبيعات بدون الضريبة');
+  assert.equal(RB.salesLabel('صافي المبيعات', reg.settings, today), 'صافي المبيعات بدون الضريبة');
+  assert.equal(RB.salesLabel('المبيعات', unreg.settings, today), 'المبيعات');
+  assert.equal(RB.salesLabel('صافي المبيعات', unreg.settings, today), 'صافي المبيعات');
+  // فترة كلها قبل سريان التسجيل: بلا ضريبة مبيعات فلا «بدون الضريبة»؛ وفترة يسري التسجيل في آخرها: معها
+  assert.equal(RB.salesLabel('المبيعات', later.settings, '2026-09-30'), 'المبيعات');
+  assert.equal(RB.salesLabel('المبيعات', later.settings, '2026-10-01'), 'المبيعات بدون الضريبة');
+  // يطابق ضريبة المبيعات الفعلية في الفترة: بلا «بدون الضريبة» لا ضريبة مبيعات، ومعها ضريبة
+  const sep = RB.salesByChannel(later, '2026-09-01', '2026-09-30').total;
+  assert.ok(sep.gross > 0 && sep.vat === 0);
+  assert.ok(RB.salesByChannel(later, '2026-09-01', '2026-10-14').total.vat > 0);
+  assert.equal(RB.salesByChannel(unreg, '2026-01-01', today).total.vat, 0);
+  // حساب المبيعات 4101: «المبيعات» لغير المسجل في الميزان واليومية، وبقية خصائصه كما هي
+  assert.equal(RB.accInfo('4101', reg).name, 'المبيعات (بدون الضريبة)');
+  assert.equal(RB.accInfo('4101', later).name, 'المبيعات (بدون الضريبة)');
+  assert.equal(RB.accInfo('4101', unreg).name, 'المبيعات');
+  assert.equal(RB.accInfo(4101, unreg).name, 'المبيعات');
+  assert.deepEqual([RB.accInfo('4101', unreg).type, RB.accInfo('4101', unreg).group, RB.accInfo('4101', unreg).code], ['R', 'sales', '4101']);
+  assert.equal(RB.accInfo('4101').name, 'المبيعات (بدون الضريبة)');
+  const L = RB.buildLedger(unreg, today);
+  const tb = RB.trialBalance(unreg, '2026-01-01', today, L);
+  const row = tb.rows.find((r) => r.code === '4101');
+  assert.ok(row && row.name === 'المبيعات' && row.cr > 0);
+  assert.ok(!tb.rows.some((r) => /بدون الضريبة/.test(r.name)));
+  close(tb.dr, tb.cr);
+  // الاسم لا يغيّر الأرقام: قائمة الدخل كما هي
+  const bU = RB.balances(L.entries, '2026-01-01', today);
+  close(RB.incomeStatement(unreg, '2026-01-01', today, L).revenue, -bU['4101'] - (bU['4102'] || 0));
+});

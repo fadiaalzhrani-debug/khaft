@@ -1802,7 +1802,7 @@
     const total = o.total !== undefined ? o.total : items.reduce((s, x) => s + Math.max(x.v, 0), 0);
     return `<div class="hbars">${items
       .map(
-        (x) => `<div class="hbar" data-tip="${esc(x.label)}: ${fmt(x.v)} ${esc(S.settings.currency)}${total ? ' · ' + pctT((x.v / total) * 100) : ''}"><span class="hb-l">${esc(x.label)}</span><span class="hb-t"><i style="width:${Math.max((Math.abs(x.v) / max) * 100, 0.5).toFixed(2)}%"></i></span><span class="hb-v">${N(x.v)}${total ? `<small>${pct((x.v / total) * 100, 0)}</small>` : ''}</span></div>`
+        (x) => `<div class="hbar" data-tip="${esc(x.label)}: ${ltr(fmt(x.v))} ${esc(S.settings.currency)}${total ? ' · ' + ltr(pctT((x.v / total) * 100)) : ''}"><span class="hb-l">${esc(x.label)}</span><span class="hb-t"><i style="width:${Math.max((Math.abs(x.v) / max) * 100, 0.5).toFixed(2)}%"></i></span><span class="hb-v">${N(x.v)}${total ? `<small>${pct((x.v / total) * 100, 0)}</small>` : ''}</span></div>`
       )
       .join('')}</div>`;
   }
@@ -1848,6 +1848,8 @@
   // غير المسجل (أو الفترة كلها قبل سريان تسجيله) مبيعاته بلا ضريبة، فلا يُقال له «شاملة الضريبة» ولا تُعرض له خانة ضريبتها
   const vatIn = (to) => RB.isVatReg(S.settings, to || today());
   const inclVat = (to) => (vatIn(to) ? ' شاملة الضريبة' : '');
+  // «المبيعات بدون الضريبة» لمن عليه ضريبة مبيعات في الفترة المنتهية بـ to، و«المبيعات» لغير المسجل (RB.salesLabel)
+  const salesLbl = (base, to) => RB.salesLabel(base, S.settings, to || today());
   // account: طريقة الدفع — الآجل لم يُدفع بعد (يُسدَّد للمورد لاحقاً)، فإجماليه مستحق لا مدفوع
   const vatPreview = (amount, includesVat, taxable, date, account) => {
     const v = RB.vatSplit(amount, includesVat, taxable, S.settings);
@@ -2074,7 +2076,7 @@
     if (setup) h += setupCard();
     h += `<div class="kpis">
       ${kpi('المبيعات' + inclVat(asOf), money(sales.total.gross), sales.total.orders ? `${cnt(sales.total.orders, W.order)} · متوسط الفاتورة ${fmt(sales.total.avgTicket)}` : sales.total.gross ? 'سجّل عدد الطلبات في الإقفال لمعرفة متوسط الفاتورة' : noRev)}
-      ${kpi('صافي الربح', money(k.net), (inc.revenue ? `هامش ${pct(k.ratios.netMargin)} من المبيعات بدون الضريبة` : 'هامش الربح: ' + noRev) + estTag, k.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
+      ${kpi('صافي الربح', money(k.net), (inc.revenue ? `هامش ${pct(k.ratios.netMargin)} من ${salesLbl('المبيعات', asOf)}` : 'هامش الربح: ' + noRev) + estTag, k.net < 0 ? 'bad' : inc.revenue ? 'good' : '')}
       ${kpi('تكلفة المواد', inc.revenue ? pct(inc.ratios.foodCost) : dash, inc.revenue ? `المستهدف ${pct(target, 0)} · ${fmt(inc.tot.cogs)} ${cur()}` : noRev, fcState)}
       ${kpi('التكلفة الأساسية', inc.revenue ? pct(k.ratios.prime) : dash, (inc.revenue ? `المواد + العمالة${est ? ` (العمالة ${pct(k.ratios.labor)})` : ''} · الأفضل أقل من ${pct(60, 0)}` : noRev) + estTag, primeState)}
     </div>`;
@@ -2098,13 +2100,13 @@
       const end = ui.period === 'month' ? minD(to, today()) : to;
       for (let d = from; d <= end; d = RB.addDays(d, 1)) {
         const v = sales.days[d] || 0;
-        pts.push({ label: String(+d.slice(8, 10)), name: dtText(d), v, tip: `${dtText(d)}: ${fmt(v)} ${S.settings.currency}`, hl: d === today(), future: d > today() });
+        pts.push({ label: String(+d.slice(8, 10)), name: dtText(d), v, tip: `${dtText(d)}: ${ltr(fmt(v))} ${S.settings.currency}`, hl: d === today(), future: d > today() });
       }
     } else {
       const m = {};
       for (const d of Object.keys(sales.days)) m[d.slice(0, 7)] = (m[d.slice(0, 7)] || 0) + sales.days[d];
       const years = from.slice(0, 4) !== to.slice(0, 4);
-      for (let ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = RB.ymAdd(ym, 1)) pts.push({ label: monthTick(ym, years), name: RB.monthName(ym), v: m[ym] || 0, tip: `${RB.monthName(ym)}: ${fmt(m[ym] || 0)} ${S.settings.currency}`, future: ym > today().slice(0, 7) });
+      for (let ym = from.slice(0, 7); ym <= to.slice(0, 7); ym = RB.ymAdd(ym, 1)) pts.push({ label: monthTick(ym, years), name: RB.monthName(ym), v: m[ym] || 0, tip: `${RB.monthName(ym)}: ${ltr(fmt(m[ym] || 0))} ${S.settings.currency}`, future: ym > today().slice(0, 7) });
     }
     const best = Object.entries(sales.days).sort((a, b) => b[1] - a[1])[0];
     const chartLabel = (days <= 93 ? 'المبيعات اليومية' : 'المبيعات الشهرية') + inclVat(asOf);
@@ -2117,7 +2119,7 @@
     sales.list.forEach((c) => (typeTot[c.type] = (typeTot[c.type] || 0) + c.gross));
     const typeLine = sales.total.gross ? `كاش ${pct((typeTot.cash / sales.total.gross) * 100, 0)} · شبكة ${pct((typeTot.card / sales.total.gross) * 100, 0)} · تطبيقات ${pct((typeTot.app / sales.total.gross) * 100, 0)}` : '';
     const gItems = Object.keys(RB.GROUPS).map((g) => ({ label: RB.GROUPS[g], v: inc.tot[g] })).filter((x) => x.v);
-    h += `<div class="grid2">${card('المبيعات حسب القناة', hbars(chItems, { empty: 'لا توجد مبيعات.' }), { sub: typeLine })}${card('أين ذهبت الإيرادات؟', hbars(gItems, { total: inc.revenue, empty: 'لا توجد مصاريف في هذه الفترة.' }), { sub: `النسبة من المبيعات بدون الضريبة (${fmt(inc.revenue)} ${cur()})` })}</div>`;
+    h += `<div class="grid2">${card('المبيعات حسب القناة', hbars(chItems, { empty: 'لا توجد مبيعات.' }), { sub: typeLine })}${card('أين ذهبت الإيرادات؟', hbars(gItems, { total: inc.revenue, empty: 'لا توجد مصاريف في هذه الفترة.' }), { sub: `النسبة من ${salesLbl('المبيعات', asOf)} (${fmt(inc.revenue)} ${cur()})` })}</div>`;
     // التنبيهات
     h += card('تنبيهات تحتاج إلى متابعة', alertsHTML(asOf, setup), { sub: 'إقفالات ورواتب، تجديدات، ضريبة، أسعار، وأرصدة' });
     return h;
@@ -3283,8 +3285,8 @@
       ${
         // عروض ومرتجعات التطبيقات (4102) تخفض المبيعات: صافي المبيعات = أساس الإقرار، والنسب منه
         Math.abs(inc.salesDeductions) >= 0.005
-          ? `<tr><td class="ind">المبيعات بدون الضريبة</td><td class="num">${N(inc.grossSales)}</td><td class="num muted">${P(inc.grossSales)}</td></tr><tr><td class="ind">ناقص: خصومات ومرتجعات المبيعات (عروض التطبيقات)</td><td class="num">${N(-inc.salesDeductions)}</td><td class="num muted">${P(-inc.salesDeductions)}</td></tr><tr class="sum"><td>صافي المبيعات</td><td class="num">${N(rev)}</td><td class="num muted">${rev ? pct(100, 0) : dashN}</td></tr>`
-          : `<tr><td class="ind">المبيعات بدون الضريبة</td><td class="num">${N(rev)}</td><td class="num muted">${rev ? pct(100, 0) : dashN}</td></tr>`
+          ? `<tr><td class="ind">${salesLbl('المبيعات', asOf)}</td><td class="num">${N(inc.grossSales)}</td><td class="num muted">${P(inc.grossSales)}</td></tr><tr><td class="ind">ناقص: خصومات ومرتجعات المبيعات (عروض التطبيقات)</td><td class="num">${N(-inc.salesDeductions)}</td><td class="num muted">${P(-inc.salesDeductions)}</td></tr><tr class="sum"><td>صافي المبيعات</td><td class="num">${N(rev)}</td><td class="num muted">${rev ? pct(100, 0) : dashN}</td></tr>`
+          : `<tr><td class="ind">${salesLbl('المبيعات', asOf)}</td><td class="num">${N(rev)}</td><td class="num muted">${rev ? pct(100, 0) : dashN}</td></tr>`
       }
       ${G('cogs', RB.GROUPS.cogs)}
       <tr class="total"><td>مجمل الربح</td><td class="num">${N(inc.grossProfit)}</td><td class="num">${P(inc.grossProfit)}</td></tr>
@@ -3527,11 +3529,11 @@
     return { months, incs, from: months[0] + '-01', to: minD(RB.monthEnd(last), today()), own: a === from.slice(0, 7) };
   }
   REPORT.monthly = () => {
-    const { months, incs, own } = monthlyData();
+    const { months, incs, own, to } = monthlyData();
     const years = months[0].slice(0, 4) !== months[months.length - 1].slice(0, 4);
     const row = (label, f, cls) => `<tr class="${cls || ''}"><td>${label}</td>${incs.map((i) => `<td class="num">${f(i)}</td>`).join('')}</tr>`;
     const body = `<div class="tbl-wrap"><table class="tbl stmt"><thead><tr><th>البند</th>${months.map((m) => `<th class="num">${RB.monthName(m)}</th>`).join('')}</tr></thead><tbody>
-      ${row('صافي المبيعات بدون الضريبة', (i) => N(i.revenue))}
+      ${row(salesLbl('صافي المبيعات', to), (i) => N(i.revenue))}
       ${Object.keys(RB.GROUPS).map((g) => row(RB.GROUPS[g], (i) => N(i.tot[g]))).join('')}
       ${row('صافي الربح بعد الزكاة', (i) => N(i.net), 'total')}
       ${
@@ -3541,7 +3543,7 @@
       ${row('التكلفة الأساسية %', (i) => (i.revenue ? pct(i.ratios.prime) : '<span class="n">—</span>'))}
       ${row('صافي الهامش %', (i) => (i.revenue ? pct(i.ratios.netMargin) : '<span class="n">—</span>'))}
       </tbody></table></div>`;
-    return card('مقارنة الأشهر', body, { sub: own ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: monthTick(m, years), name: RB.monthName(m), v: incs[i].net, tip: `${RB.monthName(m)}: ${fmt(incs[i].net)} ${S.settings.currency}` })), label: 'صافي الربح الشهري بعد الزكاة', col: 'الشهر', lossLabel: 'الأشهر الخاسرة' }));
+    return card('مقارنة الأشهر', body, { sub: own ? periodLabel() : 'آخر 6 أشهر' }) + card('صافي الربح الشهري', chartSlot({ points: months.map((m, i) => ({ label: monthTick(m, years), name: RB.monthName(m), v: incs[i].net, tip: `${RB.monthName(m)}: ${ltr(fmt(incs[i].net))} ${S.settings.currency}` })), label: 'صافي الربح الشهري بعد الزكاة', col: 'الشهر', lossLabel: 'الأشهر الخاسرة' }));
   };
   REPORT.trial = () => {
     const [from, asOf] = rangeToDate();
@@ -6438,7 +6440,7 @@
           show: (v) => v.vatRegistered,
           help: 'اتركه فارغاً إن كان التسجيل سارياً قبل مشتريات التأسيس فتُخصم ضريبتها. العمليات قبل هذا التاريخ بلا ضريبة ولا تُسترد ضريبة مشترياتها، ويمكن تعديله لاحقاً من الإعدادات.',
         },
-        { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %', min: 0, max: 100, redraw: true, help: 'إذا كنت الشريك الوحيد اترك الثاني فارغاً وتصبح نسبتك 100%' }] },
+        { type: 'row', fields: [{ k: 'p1', label: 'الشريك الأول', req: 1 }, { k: 's1', type: 'num', label: 'نسبته %', min: 0, max: 100, redraw: true, help: 'إذا كنت الشريك الوحيد اترك الثاني فارغاً وتصبح نسبتك ' + rate(100) }] },
         { type: 'row', fields: [{ k: 'p2', label: 'الشريك الثاني', redraw: true }, { k: 's2', type: 'num', label: 'نسبته %', min: 0, max: 100 }] },
         { k: 'existing', type: 'check', label: 'المطعم يعمل من قبل — أبدأ الدفتر بأرصدة افتتاحية', help: 'بعد البدء يُفتح نموذج الأرصدة الافتتاحية: ما في الصندوق والبنك والمخزون، وما عند التطبيقات، وما عليك للموردين' },
       ],
@@ -6448,7 +6450,8 @@
         const s1 = two ? num(v.s1) : 100;
         const s2 = num(v.s2);
         if (two && (!(s1 > 0) || !(s2 > 0))) return 'يجب أن تكون نسبة كل شريك أكبر من صفر.';
-        if (two && Math.abs(s1 + s2 - 100) > 0.01) return 'يجب أن يكون مجموع نسبتي الشريكين 100% (يمكن إضافة شركاء آخرين لاحقاً من صفحة الشركاء).';
+        // الرسالة نص عادي (textContent): النسبة معزولة باتجاه من اليسار لليمين، وإلا ظهرت «%100» في السياق العربي
+        if (two && Math.abs(s1 + s2 - 100) > 0.01) return 'يجب أن يكون مجموع نسبتي الشريكين ' + ltr('100%') + ' (يمكن إضافة شركاء آخرين لاحقاً من صفحة الشركاء).';
         // الشريك يستورد أو يبدأ الدفتر الآن: يبقى النموذج مفتوحاً، وحين ينتهي يُفتح دفتره هنا
         if (otherReplacing()) return BUSY_MSG;
         // لا يُكتب فوق دفتر محفوظ: المشترك يُفتح كما هو، وفي المتصفح يلزم تأكيد حذفه
@@ -6714,7 +6717,7 @@
         const G = Object.keys(RB.GROUPS).filter((g) => g !== 'zakat');
         const row = (label, f) => rows.push([label, ...md.incs.map(f)]);
         rows.push(['البند', ...md.months.map((m) => RB.monthName(m))]);
-        row('صافي المبيعات بدون الضريبة', (i) => i.revenue);
+        row(salesLbl('صافي المبيعات', md.to), (i) => i.revenue);
         G.forEach((g) => row(RB.GROUPS[g], (i) => i.tot[g]));
         row('صافي الربح قبل الزكاة', (i) => i.netBeforeZakat);
         row(RB.GROUPS.zakat, (i) => i.tot.zakat);
@@ -6743,10 +6746,10 @@
         const inc = RB.incomeStatement(S, from, asOf, L);
         rows.push(['القسم', 'البند', 'المبلغ']);
         if (Math.abs(inc.salesDeductions) >= 0.005) {
-          rows.push(['الإيرادات', 'المبيعات بدون الضريبة', inc.grossSales]);
+          rows.push(['الإيرادات', salesLbl('المبيعات', asOf), inc.grossSales]);
           rows.push(['الإيرادات', 'ناقص: خصومات ومرتجعات المبيعات (عروض التطبيقات)', -inc.salesDeductions]);
           rows.push(['الإيرادات', 'صافي المبيعات', inc.revenue]);
-        } else rows.push(['الإيرادات', 'المبيعات بدون الضريبة', inc.revenue]);
+        } else rows.push(['الإيرادات', salesLbl('المبيعات', asOf), inc.revenue]);
         Object.keys(RB.GROUPS)
           .filter((g) => g !== 'zakat')
           .forEach((g) => {
@@ -7184,7 +7187,7 @@
       },
       true
     );
-    // تلميحات الرسوم البيانية
+    // تلميحات الرسوم البيانية: نص عادي (textContent)، فأرقامها ونسبها معزولة عند بنائها (ltr) وإلا ظهرت «%3.6» و«3,000.00-»
     const tip = document.getElementById('tip');
     const showTip = (el, x, y) => {
       tip.textContent = el.getAttribute('data-tip');

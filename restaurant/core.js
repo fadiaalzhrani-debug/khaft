@@ -742,6 +742,8 @@
   };
 
   RB.accInfo = (code, S) => {
+    // غير المسجل في الضريبة مبيعاته بلا ضريبة: حسابها «المبيعات» لا «المبيعات (بدون الضريبة)» في الميزان واليومية والكشف
+    if (String(code) === '4101' && S && S.settings && !S.settings.vatRegistered) return Object.assign({ code }, ACC[4101], { name: 'المبيعات' });
     if (ACC[code]) return Object.assign({ code }, ACC[code]);
     const [kind, pid] = String(code).split(':');
     const i = S ? (S.partners || []).findIndex((x) => x && x.id === pid) : -1;
@@ -820,6 +822,10 @@
   };
   // هل المطعم مسجل في الضريبة في هذا التاريخ؟ (بدون تاريخ = حسب الإعداد فقط)
   RB.isVatReg = (set, date) => !!set.vatRegistered && (!set.vatRegisteredFrom || !date || date >= set.vatRegisteredFrom);
+  // اسم المبيعات في تقارير الفترة المنتهية بـ to: «بدون الضريبة» لمن عليه ضريبة مبيعات في يوم منها على الأقل (التسجيل يسري من
+  // تاريخه فما بعده، فالمسجل في يوم من الفترة مسجل في آخرها، وضريبة كل إقفال من تسجيله في يومه). غير المسجل فيها مبيعاته بلا
+  // ضريبة: «المبيعات» و«صافي المبيعات» فقط، لا «بدون الضريبة»
+  RB.salesLabel = (base, set, to) => base + (RB.isVatReg(set || {}, to || RB.todayISO()) ? ' بدون الضريبة' : '');
   // غير المسجل في الضريبة يتحمّلها كتكلفة؛ المسجل يستردها. date = تاريخ العملية
   RB.costSplit = (amount, includesVat, taxable, settings, date) => {
     const v = RB.vatSplit(amount, includesVat, taxable, settings);
