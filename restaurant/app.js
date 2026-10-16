@@ -341,6 +341,8 @@
         return 'طلبات كثيرة على البيانات المشتركة. انتظر قليلاً ثم أعد المحاولة.';
       case 'busy':
         return BUSY_MSG;
+      case 'conflict':
+        return 'لم يُحفظ آخر تعديل: عدّل شريكك هذا السجل أو حذفه (أو مُسحت البيانات أو استُوردت) أثناء إعادة محاولة الحفظ، فلم يُكتب تعديلك فوقه. اضغط «أعد المحاولة» لتختار ما يُحفظ.';
       default:
         return 'تعذّر الحفظ في البيانات المشتركة (انقطاع مؤقت). أعد المحاولة بعد قليل.';
     }
@@ -365,6 +367,8 @@
       // (base) فيُعرف عند إعادة المحاولة وعند حفظ الإعدادات ما غيّره الشريك بعده
       this.raw = {};
       this.seenSettings = undefined;
+      // سجلات تعذّرت قراءتها عند حفظ نموذج تعديلها (fresh): حفظها التالي يقرأ المستند قبل الكتابة من أول محاولة
+      this.unsure = new Set();
     }
     seen(section, data) {
       this.raw[section] = new Map(data.map((x) => [String(x.id), clone(x)]));
@@ -460,10 +464,11 @@
       // الشريط مخفي خلف النموذج المفتوح: يُقال الآن قبل أن يكمل المستخدم الإدخال (الحفظ لن يُغلقه، فيُنسخ ما فيه)
       if (OPEN_FORMS.size) toast(lostMsg(), 'bad');
     }
+    // fn(i): رقم المحاولة (0 الأولى)
     async retry(fn) {
       for (let i = 0; ; i++) {
         try {
-          return await fn();
+          return await fn(i);
         } catch (e) {
           const code = e && e.code;
           if ((code === 'resource_exhausted' || code === 'unavailable') && i < 6) {
@@ -580,8 +585,9 @@
           continue;
         }
         if (p.kind === 'merged' || p.kind === 'clash') merged++;
-        // ما يُكتب الآن مبني على المحفوظ الآن: إن فشل ثانية يُقارن به
-        jobs.push(this.save(Object.assign({}, p.keep, { rec }, p.cur !== undefined ? { base: p.cur } : {}), (e) => (err = e)));
+        // ما يُكتب الآن مبني على المحفوظ حين قُرئ: إن فشل ثانية يُقارن به. وقد يكون الشريك حفظه ثانية أثناء السؤال:
+        // يُقرأ ثانية قبل الكتابة (verify) فيُكتب ما اختاره المستخدم وحده فوق نسخته، أو يبقى في الشريط ليُسأل عنه
+        jobs.push(this.save(Object.assign({}, p.keep, { rec }, p.cur !== undefined ? { base: p.cur, verify: true } : {}), (e) => (err = e)));
       }
       await Promise.all(jobs);
       if (!this.bad.size) APP.save.failed = null;
@@ -589,13 +595,20 @@
     }
     // السجل كما هو محفوظ الآن (لقطة هذه الصفحة قد تصل متأخرة) ومعه ما يُحفظ منها أو فشل حفظه كما في الشاشة: يُقارن به
     // نموذج التعديل عند الحفظ. undefined إن تعذّرت القراءة سريعاً (يُعتمد ما في الشاشة)
+    // تعذّرت: يُعلَّم السجل فيقرأ حفظُه المستندَ قبل أن يكتب (save)، فلا تُكتب نسخة الشاشة فوق تعديل لم يصل
     async fresh(section, id) {
+      const path = section + '/' + id;
       try {
         const d = await Promise.race([this.db.collection(section).doc(String(id)).get(), new Promise((r) => setTimeout(r, 5000))]);
-        if (!d) return undefined;
+        if (!d) {
+          this.unsure.add(path);
+          return undefined;
+        }
+        this.unsure.delete(path);
         const list = this.overlay(section, d.exists ? [docRec(d)] : []);
         return list.find((x) => RB.isObj(x) && String(x.id) === String(id)) || null;
       } catch (e) {
+        this.unsure.add(path);
         return undefined;
       }
     }
@@ -621,11 +634,16 @@
     }
     // المستند كما كان محفوظاً حين بدأ تعديل المستخدم (base؛ null: لم يكن موجوداً). تعديل ثانٍ لسجل يُحفظ الآن أو فشل حفظه
     // يبقى مبنياً على ما بُني عليه الأول (لم يُحفظ ما بينهما)
+    // own: ما أرادته الكتابات السابقة منها (إن وصلت قبله فليست تعديلاً من الشريك). verify: تعذّر التحقق عند الحفظ (fresh)
     based(keep) {
-      const prev = this.bad.keeps(keep.section + '/' + keep.id).find((k) => k.base !== undefined);
+      const path = keep.section + '/' + keep.id;
+      const prev = this.bad.keeps(path).find((k) => k.base !== undefined);
       const raw = this.raw[keep.section];
-      if (prev) keep.base = prev.base;
-      else if (raw) keep.base = raw.has(String(keep.id)) ? clone(raw.get(String(keep.id))) : null;
+      if (prev) {
+        keep.base = prev.base;
+        keep.own = (prev.own || []).concat([prev.rec]);
+      } else if (raw) keep.base = raw.has(String(keep.id)) ? clone(raw.get(String(keep.id))) : null;
+      if (this.unsure.delete(path)) keep.verify = true;
       return keep;
     }
     // keys: مفاتيح الإعدادات التي غيّرها هذا الحفظ، ومعها مفاتيح حفظ سابق للإعدادات يجري أو فشل (لا يضيع إن فشل).
@@ -650,8 +668,28 @@
           : () => ref.set(rec);
         return this.write('config/settings', fn, section, keep, onErr);
       }
-      const fn = rec ? () => this.db.collection(section).doc(id).set(rec) : () => this.db.collection(section).doc(id).delete();
-      return this.write(section + '/' + id, fn, section, keep, onErr);
+      const ref = this.db.collection(section).doc(id);
+      const put = (r) => (r ? ref.set(r) : ref.delete());
+      // كل إعادة تلقائية (انقطاع مؤقت أو حد الطلبات) — والمحاولة الأولى إن لم يُتحقق عند الحفظ — تقرأ المستند أولاً
+      // (RB.writePlan): وصل تعديل الشريك أثناء الانقطاع فيُكتب ما غيّره المستخدم وحده فوقه، أو حُذف السجل أو استُبدل
+      // الدفتر أو غيّرا الحقل نفسه فلا يُكتب (conflict) ويُترك في «لم يُحفظ آخر تعديل» ليختار المستخدم. واستيراد أو مسح
+      // يجري من جهاز آخر: لا يُكتب فيه (busy)
+      let merged = false;
+      const fn =
+        keep.base === undefined
+          ? () => put(rec)
+          : async (i) => {
+              if (!i && !keep.verify) return put(rec);
+              const [d, m] = await Promise.all([ref.get(), this.db.doc('config/replace').get()]);
+              if (m.exists && RB.replaceMarkerState(clone(m.data() || {}), Date.now(), SID) === 'running') throw { code: 'busy' };
+              const plan = RB.writePlan(keep.base, rec, d.exists ? docRec(d) : null, keep.own);
+              if (!plan) throw { code: 'conflict' };
+              await put(plan.rec);
+              merged = !!plan.merged;
+            };
+      return this.write(section + '/' + id, fn, section, keep, onErr).then(() => {
+        if (merged && !this.bad.has(section + '/' + id)) toast('عدّل شريكك هذا السجل أثناء إعادة محاولة الحفظ — حُفظ ما غيّرته أنت، وبقيت تعديلاته في الحقول الأخرى.');
+      });
     }
     // علامة config/replace: تُكتب عند البدء وتتجدد كل 30 ثانية ما دامت العملية جارية (فيعرف الجهاز الآخر
     // أنها جارية لا متوقفة)، وتصير failed إن توقفت، وتُحذف عند الاكتمال. كتاباتها متتالية لا تتداخل
@@ -880,6 +918,47 @@
     if (saveLog && !saveLog.length) saveLog.push({ section, rec });
     bump();
     persistPut(section, rec);
+  }
+  // شريك أو موظف يشير إليه ما يُحفظ وقد حُذف بعد فتح النموذج (غالباً من جهاز الشريك: التحقق عند الحذف يرى السجلات
+  // المحفوظة وحدها، فلم يرَ هذا السجل): يرجع {msg, path, inline} لرفض الحفظ تحت حقله، أو null. ما على السجل المحفوظ نفسه
+  // (old) لا يُرفض: سجل قديم لمرجع محذوف يبقى قابلاً للتعديل والحذف. المادة والصنف المحذوفان مسموحان (يظهران «محذوفة»)
+  function goneRef(v, old) {
+    if (!RB.isObj(v)) return null;
+    const was = (k) => (RB.isObj(old) ? old[k] : undefined);
+    const has = (list, id) => (S[list] || []).some((x) => x && String(x.id) === String(id));
+    const P = 'حُذف هذا الشريك من الشركاء بعد أن فتحت النموذج (غالباً من جهاز شريكك). اختر شريكاً آخر، أو أعد إضافته ثم احفظ.';
+    const E = 'حُذف هذا الموظف بعد أن فتحت النموذج (غالباً من جهاز شريكك). اختر موظفاً آخر، أو أعد إضافته ثم احفظ.';
+    for (const k of v.type === 'transfer' ? ['partnerId', 'toPartnerId'] : ['partnerId']) if (v[k] && v[k] !== was(k) && !has('partners', v[k])) return { msg: P, path: k, inline: 'الشريك حُذف' };
+    const acc = /^partner:(.+)$/.exec(String(v.account || ''));
+    if (acc && v.account !== was('account') && !has('partners', acc[1])) return { msg: P, path: 'account', inline: 'الشريك حُذف' };
+    if (v.employeeId && v.employeeId !== was('employeeId') && !has('employees', v.employeeId)) return { msg: E, path: 'employeeId', inline: 'الموظف حُذف' };
+    if (Array.isArray(v.lines)) {
+      const had = new Set((Array.isArray(was('lines')) ? was('lines') : []).map((l) => l && l.employeeId));
+      const i = v.lines.findIndex((l) => RB.isObj(l) && l.employeeId && !had.has(l.employeeId) && !has('employees', l.employeeId));
+      if (i >= 0) return { msg: E, path: `lines.${i}.employeeId`, inline: 'الموظف حُذف' };
+    }
+    return null;
+  }
+  // حقول تُغيَّر في سجل محفوظ من غير نموذجه (سعر المادة من الفاتورة، إيقاف متابعة التجديد وتراجعه): تُكتب فوق السجل كما
+  // هو محفوظ الآن (fresh) لا نسخة هذه الصفحة، فلا يُمحى تعديل للشريك لم تصل لقطته بعد، وما حُذف أثناءها لا يُعاد
+  // إنشاؤه. fields: الحقل ← قيمته (undefined يحذفه)، when(cur): شرط على السجل الآن. يرجع true إن كُتب
+  async function patchRec(section, id, fields, when) {
+    if (roBlock()) return false;
+    const demoAt = APP.demo;
+    let cur = APP.backend && APP.backend.fresh && !APP.demo ? await APP.backend.fresh(section, id) : undefined;
+    if (APP.demo !== demoAt) return false;
+    if (cur === undefined) cur = find(section, id);
+    else if (cur) {
+      cur = RB.sanitizeRecord(section, cur) || cur;
+      if (section === 'expenses') cur = RB.migrateExpense(cur);
+    }
+    if (!cur || (when && !when(cur))) return false;
+    const rec = clone(cur);
+    for (const k of Object.keys(fields)) {
+      if (fields[k] === undefined) delete rec[k];
+      else rec[k] = fields[k];
+    }
+    return upsert(section, rec) !== false;
   }
   function remove(section, id) {
     if (roBlock()) return false;
@@ -1595,30 +1674,43 @@
     };
     // السجل تغيّر بعد فتح النموذج (الشريك أو نافذة أخرى): لا يُكتب فوقه بصمت. حُذف: يُسأل أيُعاد إنشاؤه. عُدّل: ما غيّره
     // المستخدم في النموذج وحده يُكتب فوق أحدث نسخة (تبقى تعديلات الآخر في حقولها)، ويُسأل إن غيّرا الحقل نفسه.
-    // يرجع ما يُحفظ، أو null إن ألغى المستخدم (يبقى النموذج مفتوحاً)
+    // يرجع ما يُحفظ، أو null إن ألغى المستخدم (يبقى النموذج مفتوحاً).
+    // بعد كل سؤال يُقرأ السجل من جديد ويُدمج ثانية: ما حفظه الشريك والسؤال مفتوح يبقى في حقوله، ولا يُسأل ثانية إلا عن
+    // حقل غيّره الاثنان ولم يُسأل عنه، أو غيّر الشريك قيمته بعد الموافقة
     let mergedNote = false;
     async function editedSince(v) {
       mergedNote = false;
-      // السجل كما هو محفوظ الآن، لا كما في هذه الصفحة: لقطة تعديل الشريك قد تصل متأخرة (حتى نصف دقيقة إن انقطع التحديث
-      // المباشر)، فلا يُكتب فوقه بصمت. يُنظَّف كما عند التحميل. تعذّرت القراءة: ما في الصفحة
-      let cur = APP.backend && APP.backend.fresh && !APP.demo ? await APP.backend.fresh(editOf.s, editOf.rec.id) : undefined;
-      if (cur === undefined) cur = find(editOf.s, editOf.rec.id);
-      else if (cur) {
-        cur = RB.sanitizeRecord(editOf.s, cur) || cur;
-        if (editOf.s === 'expenses') cur = RB.migrateExpense(cur);
-      }
-      if (!cur) return (await confirmBox('حُذف هذا السجل بعد أن فتحته — حذفه شريكك أو نافذة أخرى، أو مُسحت البيانات. هل تعيد إنشاءه بما في النموذج؟', { ok: 'أعد إنشاءه' })) ? v : null;
-      if (RB.sameRec(cur, editOf.rec)) return v;
-      const mg = RB.editMerge(editOf.rec, JSON.parse(snap), v, cur);
-      // ما وافق عليه المستخدم مرة لا يُسأل عنه ثانية إن رُفض الحفظ لسبب آخر ثم أُعيد
-      if (mg.clash.length && !(editOf.seen && RB.sameRec(cur, editOf.seen))) {
-        const names = [...new Set(mg.clash.map(keyName))].map((x) => '«' + esc(x) + '»').join('، ');
-        const one = mg.clash.length === 1;
+      // ما وافق عليه المستخدم (الحقل ← قيمة الشريك حين سُئل): لا يُسأل عنه ثانية، ولو رُفض الحفظ لسبب آخر ثم أُعيد
+      const ok = editOf.ok || (editOf.ok = new Map());
+      let back = false;
+      for (;;) {
+        // السجل كما هو محفوظ الآن، لا كما في هذه الصفحة: لقطة تعديل الشريك قد تصل متأخرة (حتى نصف دقيقة إن انقطع
+        // التحديث المباشر)، فلا يُكتب فوقه بصمت. يُنظَّف كما عند التحميل. تعذّرت القراءة: ما في الصفحة (ويقرأ الحفظ
+        // المستند قبل أن يكتب، CloudBackend.save)
+        let cur = APP.backend && APP.backend.fresh && !APP.demo ? await APP.backend.fresh(editOf.s, editOf.rec.id) : undefined;
+        if (cur === undefined) cur = find(editOf.s, editOf.rec.id);
+        else if (cur) {
+          cur = RB.sanitizeRecord(editOf.s, cur) || cur;
+          if (editOf.s === 'expenses') cur = RB.migrateExpense(cur);
+        }
+        if (!cur) {
+          if (back) return v;
+          if (!(await confirmBox('حُذف هذا السجل بعد أن فتحته — حذفه شريكك أو نافذة أخرى، أو مُسحت البيانات. هل تعيد إنشاءه بما في النموذج؟', { ok: 'أعد إنشاءه' }))) return null;
+          back = true;
+          continue;
+        }
+        if (RB.sameRec(cur, editOf.rec)) return v;
+        const mg = RB.editMerge(editOf.rec, JSON.parse(snap), v, cur);
+        const ask = mg.clash.filter((k) => !(ok.has(k) && RB.sameRec(ok.get(k), cur[k])));
+        if (!ask.length) {
+          mergedNote = true;
+          return mg.rec;
+        }
+        const names = [...new Set(ask.map(keyName))].map((x) => '«' + esc(x) + '»').join('، ');
+        const one = ask.length === 1;
         if (!(await confirmBox(`عدّل شريكك أو نافذة أخرى هذا السجل بعد أن فتحته، وغيّرتَ أنت أيضاً ${names}. الحفظ يضع ما في النموذج مكان تعديله في ${one ? 'هذا الحقل' : 'هذه الحقول'}، وتبقى تعديلاته في غيرها. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return null;
-        editOf.seen = clone(cur);
+        for (const k of mg.clash) ok.set(k, cur[k] === undefined ? undefined : clone(cur[k]));
       }
-      mergedNote = true;
-      return mg.rec;
     }
     async function submit() {
       if (saving) return;
@@ -1665,6 +1757,20 @@
       try {
         let out = clone(val);
         if (editOf && !APP.readOnly && !(out = await editedSince(out))) return;
+        // الشريك أو الموظف المختار حُذف بعد فتح النموذج: لا يُحفظ له سجل (يُرفض تحت حقله كرفض onSave)
+        const gone = o.onSave && goneRef(out, editOf ? editOf.rec : null);
+        if (gone) {
+          const el = m.body.querySelector(pathSel(gone.path));
+          if (el) {
+            errs[gone.path] = gone.inline;
+            errAt[gone.path] = JSON.stringify(getPath(val, gone.path));
+            saveErrs.add(gone.path);
+            markErr(el, gone.inline);
+            el.focus();
+          }
+          toast(gone.msg, 'bad');
+          return;
+        }
         // onSave يعمل على نسخة: الحفظ المرفوض (رسالة خطأ أو إلغاء التأكيد) لا يغيّر بيانات النموذج المفتوح،
         // فتبقى الأسطر على الشاشة هي البيانات نفسها (كان حذف السطر الفارغ قبل الرفض يزيح أرقام الأسطر).
         // الرفض نص (رسالة)، أو {msg, path, inline}: الخطأ تحت حقله (aria-invalid) والتركيز إليه كأخطاء التحقق
@@ -3836,6 +3942,8 @@
     // نقل الحقوق إلى شريك آخر (اشترى حصة الخارج أو جزءاً منها من ماله): لا يدخل المطعم ولا يخرج منه شيء
     const types = [['contribution', 'إيداع في رأس المال'], ['withdrawal', 'سحب شريك (من الأرباح أو رأس المال)']].concat(S.partners.length > 1 || type === 'transfer' ? [['transfer', 'نقل حقوق إلى شريك آخر (اشتراها من ماله)']] : []);
     const others = (v) => S.partners.filter((p) => p.id !== v.partnerId).map((p) => [p.id, p.name]);
+    // حركة محفوظة لشريك حُذف: يظهر «شريك محذوف» لا الشريك الأول (الحفظ يبقيها له، goneRef)
+    const withGone = (opts, id) => (id && !opts.some((o) => o[0] === id) ? opts.concat([[id, 'شريك محذوف']]) : opts);
     const value = rec || { id: RB.uid(), date: today(), partnerId: S.partners[0].id, type: x || 'contribution', account: 'bank', amount: '', note: '' };
     return formModal({
       title: isEdit ? 'تعديل حركة رأس مال' : type === 'withdrawal' ? 'سحب شريك' : 'إيداع رأس مال',
@@ -3848,13 +3956,13 @@
         }
       },
       fields: (v) => [
-        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'partnerId', type: 'select', label: v.type === 'transfer' ? 'من الشريك' : 'الشريك', options: S.partners.map((p) => [p.id, p.name]), redraw: true }] },
+        { type: 'row', fields: [{ k: 'date', type: 'date', label: 'التاريخ', req: 1 }, { k: 'partnerId', type: 'select', label: v.type === 'transfer' ? 'من الشريك' : 'الشريك', options: withGone(S.partners.map((p) => [p.id, p.name]), v.partnerId), redraw: true }] },
         {
           type: 'row',
           fields: [
             { k: 'type', type: 'select', label: 'النوع', options: types, redraw: true },
             v.type === 'transfer'
-              ? { k: 'toPartnerId', type: 'select', label: 'إلى الشريك', options: others, check: (z) => (!z.toPartnerId || z.toPartnerId === z.partnerId ? 'اختر شريكاً آخر' : '') }
+              ? { k: 'toPartnerId', type: 'select', label: 'إلى الشريك', options: (z) => withGone(others(z), z.toPartnerId), check: (z) => (!z.toPartnerId || z.toPartnerId === z.partnerId ? 'اختر شريكاً آخر' : '') }
               : { k: 'account', type: 'select', label: 'الحساب', options: [['bank', RB.PAY_LABEL.bank], ['cash', RB.PAY_LABEL.cash]] },
           ],
         },
@@ -4925,11 +5033,12 @@
             return h.length && v.date < h[0].date;
           });
           const ch = all.filter((c) => !older.includes(c));
+          const jobs = [];
           for (const c of ch) {
-            const raw = S.raw.find((x) => x.id === c.id);
-            if (raw) upsert('raw', Object.assign({}, raw, { price: c.price, taxable: !!v.taxable }));
+            if (S.raw.some((x) => x.id === c.id)) jobs.push(patchRec('raw', c.id, { price: c.price, taxable: !!v.taxable }));
             set1.add(c.id);
           }
+          if (jobs.length) Promise.all(jobs).then(render);
           if (ch.length) msg.push(`تحدّث سعر ${ch.length} من المواد الخام وتكلفة الوصفات المرتبطة بها: ` + ch.map((c) => `${c.name}: ${ltr(fmt(c.old) + ' → ' + fmt(c.price))}`).join('، '));
           if (older.length) msg.push(`لم يُحدَّث سعر ${cnt(older.length, W.material, { gen: true })} لأن الفاتورة أقدم من آخر سعر مسجل`);
         }
@@ -4945,13 +5054,16 @@
   // يبقى سعره. يرجع نص الرسالة أو ''
   function restoreRawPrices(ids) {
     const out = [];
+    const jobs = [];
     for (const id of ids) {
       const raw = S.raw.find((x) => x.id === id);
       const nx = raw && RB.rawPriceRestore(S, id);
       if (!nx || Math.abs(nx.price - num(raw.price)) <= 0.004) continue;
-      if (upsert('raw', Object.assign({}, raw, { price: nx.price, taxable: nx.taxable })) === false) break;
+      if (APP.readOnly) break;
+      jobs.push(patchRec('raw', id, { price: nx.price, taxable: nx.taxable }));
       out.push(`${raw.name}: ${ltr(fmt(num(raw.price)) + ' → ' + fmt(nx.price))}`);
     }
+    if (jobs.length) Promise.all(jobs).then(render);
     return out.length ? 'أُعيد سعر المادة الخام إلى آخر فاتورة لها: ' + out.join('، ') : '';
   }
 
@@ -5735,19 +5847,32 @@
         const di = ids.findIndex((id, i) => id && ids.indexOf(id) !== i);
         if (di >= 0) return { msg: 'الموظف مكرر في مخصص نهاية الخدمة: ' + ((empOf(ids[di]) || {}).name || '') + '. اجمع مخصصه في سطر واحد.', path: `eosb.${di}.employeeId`, inline: 'مكرر' };
         // تغيّرت الأرصدة بعد فتح النموذج (الشريك أو نافذة أخرى): لا يُكتب فوقها بصمت كما كانت حين فُتح.
-        // حُذفت (أو مُسحت البيانات): يُسأل أتُعاد. عُدّلت: ما غيّره المستخدم وحده فوقها، ويُسأل عن الحقل الذي غيّراه كلاهما
+        // حُذفت (أو مُسحت البيانات): يُسأل أتُعاد. عُدّلت: ما غيّره المستخدم وحده فوقها، ويُسأل عن الحقل الذي غيّراه كلاهما.
+        // بعد السؤال يُدمج ثانية فوق الأرصدة الآن (قد يحفظ الشريك والسؤال مفتوح)، ويُسأل ثانية عن حقل جديد فقط
         const mg = await (async () => {
-          const curO = S.settings.opening;
-          if (orig && !RB.isObj(curO)) return (await confirmBox('حُذفت الأرصدة الافتتاحية بعد أن فتحت هذا النموذج — حذفها شريكك أو نافذة أخرى، أو مُسحت البيانات. هل تعيد حفظها بما في النموذج؟', { ok: 'أعد حفظها' })) ? { rec: c } : null;
-          if (!RB.isObj(curO) || (orig && RB.sameRec(clean(curO), orig))) return { rec: c };
-          const cur0 = clean(curO);
-          const pm = RB.pathMerge(orig || start, start, c, cur0, openPaths(orig, start, c, cur0));
-          if (pm.clash.length) {
+          const ok = new Map();
+          let back = false;
+          for (;;) {
+            const curO = S.settings.opening;
+            if (orig && !RB.isObj(curO)) {
+              if (back) return { rec: c };
+              if (!(await confirmBox('حُذفت الأرصدة الافتتاحية بعد أن فتحت هذا النموذج — حذفها شريكك أو نافذة أخرى، أو مُسحت البيانات. هل تعيد حفظها بما في النموذج؟', { ok: 'أعد حفظها' }))) return null;
+              back = true;
+              continue;
+            }
+            if (!RB.isObj(curO) || (orig && RB.sameRec(clean(curO), orig))) return { rec: c };
+            const cur0 = clean(curO);
+            const pm = RB.pathMerge(orig || start, start, c, cur0, openPaths(orig, start, c, cur0));
+            const ask = pm.clash.filter((p) => !(ok.has(p) && RB.sameRec(ok.get(p), getPath(cur0, p))));
+            if (!ask.length) return { rec: pm.rec, merged: true };
             const label = (p) => (p.startsWith('apps.') ? (RB.channelOf(S, p.slice(5)) || { name: p.slice(5) }).name : { date: 'تاريخ بدء الدفتر', cash: 'النقد في الصندوق', bank: 'رصيد الحساب البنكي', inventory: 'قيمة المخزون', vatCredit: 'رصيد ضريبة دائن', vatPayable: 'ضريبة مستحقة من إقرار سابق', vatCurrent: 'ضريبة الفترة الجارية', payables: 'مستحق للموردين', eosb: 'مخصص نهاية الخدمة' }[p] || p);
-            const names = pm.clash.map((p) => '«' + esc(label(p)) + '»').join('، ');
+            const names = ask.map((p) => '«' + esc(label(p)) + '»').join('، ');
             if (!(await confirmBox(`عدّل شريكك أو نافذة أخرى الأرصدة الافتتاحية بعد أن فتحت هذا النموذج، وغيّرتَ أنت أيضاً ${names}. الحفظ يضع ما في النموذج مكان تعديله فيها، وتبقى تعديلاته في غيرها. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return null;
+            for (const p of pm.clash) {
+              const x = getPath(cur0, p);
+              ok.set(p, x === undefined ? undefined : clone(x));
+            }
           }
-          return { rec: pm.rec, merged: true };
         })();
         if (!mg) return false;
         const merged = mg.rec;
@@ -5778,14 +5903,33 @@
       ],
       onSave: async (v) => {
         if (roBlock()) return false;
+        // بعد كل سؤال تُقرأ القناة من الإعدادات الآن ويُدمج ثانية: ما حفظه الشريك والسؤال مفتوح يبقى، ويُسأل ثانية عن
+        // حقل جديد غيّراه كلاهما فقط
         if (orig) {
-          const cur = S.settings.channels.find((x) => x.id === v.id);
-          if (!cur) {
-            if (!(await confirmBox('حُذفت هذه القناة بعد أن فتحت النموذج — حذفها شريكك أو نافذة أخرى. هل تعيد إضافتها بما في النموذج؟', { ok: 'أعد إضافتها' }))) return false;
-          } else if (!RB.sameRec(cur, orig)) {
-            const mg = RB.editMerge(orig, orig, v, cur);
-            if (mg.clash.length && !(await confirmBox(`عدّل شريكك أو نافذة أخرى هذه القناة بعد أن فتحت النموذج، وغيّرتَ أنت أيضاً ${mg.clash.map((k) => '«' + esc(names[k] || k) + '»').join('، ')}. الحفظ يضع ما في النموذج مكان تعديله، وتبقى تعديلاته في غيره. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return false;
-            v = Object.assign(mg.rec, { id: v.id });
+          const form = v;
+          const ok = new Map();
+          let back = false;
+          for (;;) {
+            const cur = S.settings.channels.find((x) => x.id === form.id);
+            if (!cur) {
+              v = form;
+              if (back) break;
+              if (!(await confirmBox('حُذفت هذه القناة بعد أن فتحت النموذج — حذفها شريكك أو نافذة أخرى. هل تعيد إضافتها بما في النموذج؟', { ok: 'أعد إضافتها' }))) return false;
+              back = true;
+              continue;
+            }
+            if (RB.sameRec(cur, orig)) {
+              v = form;
+              break;
+            }
+            const mg = RB.editMerge(orig, orig, form, cur);
+            const ask = mg.clash.filter((k) => !(ok.has(k) && RB.sameRec(ok.get(k), cur[k])));
+            if (!ask.length) {
+              v = Object.assign(mg.rec, { id: form.id });
+              break;
+            }
+            if (!(await confirmBox(`عدّل شريكك أو نافذة أخرى هذه القناة بعد أن فتحت النموذج، وغيّرتَ أنت أيضاً ${ask.map((k) => '«' + esc(names[k] || k) + '»').join('، ')}. الحفظ يضع ما في النموذج مكان تعديله، وتبقى تعديلاته في غيره. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return false;
+            for (const k of mg.clash) ok.set(k, cur[k] === undefined ? undefined : clone(cur[k]));
           }
           if (roBlock()) return false;
         }
@@ -6123,7 +6267,7 @@
       if (!(await confirmBox(`إيقاف متابعة تجديد «${esc(rec.desc || RB.expenseCat(rec.category).name)}»؟ لن يظهر في متابعة التجديد ولا في التنبيهات، ويعود إذا سجّلت تجديده لاحقاً.`, { ok: 'أوقف المتابعة' }))) return;
       const sel = '#page [data-act="stopRenew"]';
       const i = [...document.querySelectorAll(sel)].indexOf(el);
-      if (upsert('expenses', Object.assign(clone(rec), { noRenew: true })) === false) return;
+      if (!(await patchRec('expenses', id, { noRenew: true }))) return render();
       render();
       const focusOn = (b) => {
         if (b) b.focus();
@@ -6136,12 +6280,10 @@
       focusOn(i >= 0 ? nx[Math.min(i, nx.length - 1)] : null);
       toast('أُوقفت متابعة التجديد.', '', {
         label: 'تراجع',
-        run: () => {
+        run: async () => {
           const r = find('expenses', id);
           if (!r || !r.noRenew || roBlock()) return;
-          const c = clone(r);
-          delete c.noRenew;
-          if (upsert('expenses', c) === false) return;
+          if (!(await patchRec('expenses', id, { noRenew: undefined }, (x) => x.noRenew))) return;
           render();
           focusOn(document.querySelector(`${sel}[data-id="${CSS.escape(id)}"]`));
         },
@@ -7160,7 +7302,7 @@
       const stuck = sf === 'quota_exceeded' || sf === 'invalid';
       const first = retry && !stuck;
       const acts = (first ? btn(APP.retrying ? 'جارٍ إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm primary') : '') + btn('صدّر نسخة احتياطية', 'backup', '', first ? 'sm' : 'sm primary') + (retry && stuck ? btn(APP.retrying ? 'جارٍ إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm ghost') : '');
-      const why = !cloud ? 'تعذّر حفظه في هذا المتصفح' : sf === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة' : 'تعذّر حفظه أو حذفه في البيانات المشتركة';
+      const why = !cloud ? 'تعذّر حفظه في هذا المتصفح' : sf === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة' : sf === 'conflict' ? 'عدّل شريكك السجل أو حذفه أثناء حفظه' : 'تعذّر حفظه أو حذفه في البيانات المشتركة';
       const todo = first ? 'اضغط «أعد المحاولة»، وإن تكرر الفشل فصدّر نسخة احتياطية' : 'صدّر نسخة احتياطية';
       h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${why}. ${todo} الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.${sf === 'quota_exceeded' ? ' لا تحذف سجلات قديمة لتفريغ المساحة: حذفها يغيّر الأرصدة كلها.' : ''}`, acts);
     }

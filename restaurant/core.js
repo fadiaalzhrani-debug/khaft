@@ -509,6 +509,18 @@
     const clash = mine.filter((k) => !RB.sameRec(at(cur, k), at(orig, k)) && !RB.sameRec(at(form, k), at(cur, k)));
     return { rec, clash };
   };
+  // كتابة سجل في البيانات المشتركة تُعاد (انقطاع مؤقت) أو لم يُتحقق قبلها من أحدث نسخته: ما يُكتب فوق المستند كما هو الآن
+  // (cur؛ null: غير موجود). base: المستند حين بدأ التعديل، rec: ما أراده المستخدم (null للحذف)، own: ما كتبته هذه الصفحة
+  // للمستند نفسه قبله (حفظان متتاليان). لم يتغيّر بعد base (أو صار rec أو كتابة سابقة منها): rec. عدّله الشريك: ما غيّره
+  // المستخدم وحده فوق نسخته (merged). وإلا null (يُترك للمستخدم في «أعد المحاولة»): حُذف المستند أو مُسح الدفتر واستُورد،
+  // أو أراد المستخدم حذفه وقد عدّله الشريك، أو غيّرا الحقل نفسه — فلا تُعيد الكتابة المتأخرة سجلاً محذوفاً ولا تمحو تعديله
+  RB.writePlan = (base, rec, cur, own) => {
+    const same = (a, b) => (!isObj(a) || !isObj(b) ? !isObj(a) && !isObj(b) : RB.sameRec(a, b));
+    if (same(cur, base) || same(cur, rec) || (own || []).some((x) => same(cur, x))) return { rec };
+    if (!isObj(rec) || !isObj(cur)) return null;
+    const mg = RB.editMerge(base || {}, base || {}, rec, cur);
+    return mg.clash.length ? null : { rec: mg.rec, merged: true };
+  };
   // مثل editMerge لنموذج حقوله بمسارات (gosi.cap، apps.<قناة>): نماذج الإعدادات والأرصدة الافتتاحية. at: القيمة حين فُتح
   // النموذج، start: قيمة النموذج حين فُتح (بأرقامه بعد التهيئة)، form: قيمته الآن، cur: القيمة الآن، paths: مسارات حقوله.
   // يرجع {rec: نسخة من cur بما غيّره المستخدم وحده، mine: المسارات التي غيّرها، clash: ما غيّره الاثنان إلى قيمتين مختلفتين}

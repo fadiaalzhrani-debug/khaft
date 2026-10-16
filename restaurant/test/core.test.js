@@ -4386,3 +4386,29 @@ test('التسجيل في الضريبة منتصف ربع: أول إقرار م
   const tb = RB.trialBalance(D, '2026-07-01', '2026-07-31');
   assert.equal(tb.rows.find((r) => r.code === '4101').name, 'المبيعات');
 });
+
+test('كتابة مُعادة تلقائياً تُبنى على المستند الآن (RB.writePlan): تعديل الشريك يبقى، والمحذوف لا يعود (cloud r3)', () => {
+  const base = { id: 'x27', amount: 3182.95, desc: 'فاتورة الكهرباء', note: '' };
+  const mine = Object.assign({}, base, { desc: 'كهرباء أكتوبر' });
+  // لم يتغيّر بعد ما بُني عليه التعديل، أو وصلت محاولة سابقة: يُكتب كما هو
+  assert.deepEqual(RB.writePlan(base, mine, base).rec, mine);
+  assert.deepEqual(RB.writePlan(base, mine, Object.assign({}, mine)).rec, mine);
+  // حفظان متتاليان من الصفحة نفسها: الأول وصل قبل الثاني، فليس تعديلاً من الشريك
+  const first = Object.assign({}, base, { amount: 200 });
+  const second = Object.assign({}, base, { amount: 300 });
+  assert.equal(RB.writePlan(base, second, first), null);
+  assert.deepEqual(RB.writePlan(base, second, first, [first]).rec, second);
+  // عدّل الشريك حقلاً آخر أثناء الانقطاع: يبقى، ويُكتب ما غيّره المستخدم وحده
+  const p = RB.writePlan(base, mine, Object.assign({}, base, { amount: 1111 }));
+  assert.equal(p.merged, true);
+  assert.equal(p.rec.amount, 1111);
+  assert.equal(p.rec.desc, 'كهرباء أكتوبر');
+  // غيّرا الحقل نفسه، أو حُذف (مسح أو استيراد)، أو حذفه المستخدم وقد عدّله الشريك: لا يُكتب (يُسأل في «أعد المحاولة»)
+  assert.equal(RB.writePlan(base, mine, Object.assign({}, base, { desc: 'كهرباء سبتمبر' })), null);
+  assert.equal(RB.writePlan(base, mine, null), null);
+  assert.equal(RB.writePlan(base, null, Object.assign({}, base, { amount: 1111 })), null);
+  // حذف لم يتغيّر قبله، وسجل جديد لم يكن موجوداً
+  assert.deepEqual(RB.writePlan(base, null, base), { rec: null });
+  assert.deepEqual(RB.writePlan(null, mine, null).rec, mine);
+  assert.equal(RB.writePlan(null, mine, Object.assign({}, base, { amount: 5 })), null);
+});
