@@ -4412,3 +4412,49 @@ test('كتابة مُعادة تلقائياً تُبنى على المستند 
   assert.deepEqual(RB.writePlan(null, mine, null).rec, mine);
   assert.equal(RB.writePlan(null, mine, Object.assign({}, base, { amount: 5 })), null);
 });
+
+test('المتوسط الشهري المحمّل لفترة تبدأ منتصف الشهر: الأقساط على أوائل الأشهر والفواتير على الأيام (r3 fix5)', () => {
+  const t = '2026-10-16';
+  const D = RB.demoState(t);
+  const L = RB.buildLedger(D, t);
+  const accs = new Set(RB.EXPENSE_CATS.map((c) => c.acc));
+  const first = L.entries.find((e) => e.lines.some((l) => accs.has(l.a))).date;
+  // 15 سبتمبر — 16 أكتوبر: قسط إيجار واحد (1 أكتوبر) = 6,000 لا 3,913
+  const a = RB.chargeAverages(L.entries, accs, '2026-09-15', t, first);
+  close(a['5301'], 6000);
+  // «كل الفترات» وفترة تبدأ أول الشهر كما كانت
+  close(RB.chargeAverages(L.entries, accs, L.entries[0].date, t, first)['5301'], 6000);
+  close(RB.chargeAverages(L.entries, accs, '2026-10-01', t, first)['5301'], 6000);
+  // مصروف مقدم بدأت تغطيته أثناء الشهر الأول للفترة: قسطه الأول (بتاريخ بداية التغطية) وقسط الشهر التالي = شهران
+  const S = base();
+  S.settings.vatRegistered = false;
+  S.expenses = [
+    { id: 'h', date: '2026-09-20', category: 'housing', desc: 'سكن', amount: 4500, months: 3, startDate: '2026-09-20', taxable: false, includesVat: false, account: 'bank' },
+    { id: 'u1', date: '2026-09-20', category: 'utilities', desc: 'كهرباء', amount: 900, months: 1, taxable: false, includesVat: false, account: 'bank' },
+    { id: 'u2', date: '2026-10-10', category: 'utilities', desc: 'كهرباء', amount: 900, months: 1, taxable: false, includesVat: false, account: 'bank' },
+  ];
+  const L2 = RB.buildLedger(S, t);
+  const hAcc = RB.expenseCat('housing').acc;
+  const uAcc = RB.expenseCat('utilities').acc;
+  const b = RB.chargeAverages(L2.entries, accs, '2026-09-15', t);
+  close(b[hAcc], 1500);
+  // الفواتير بتاريخها: على أشهر الفترة بأيامها (16 يوماً من سبتمبر + أكتوبر كاملاً)
+  close(b[uAcc], 1800 / RB.chargeMonths('2026-09-15', t), 0.02);
+});
+
+test('جيل الدفتر المشترك: كتابة بُنيت على دفتر مُسح أو استُورد بعدها لا تُكتب فيه ولو كانت سجلاً جديداً (r3 fix5)', () => {
+  assert.equal(RB.bookGen({ bookGen: 'g1' }), 'g1');
+  assert.equal(RB.bookGen({}), null);
+  assert.equal(RB.bookGen(null), null);
+  assert.equal(RB.bookGen({ bookGen: 5 }), null);
+  // لم تُقرأ الإعدادات حين بدأت الكتابة: لا مقارنة
+  assert.equal(RB.genChanged(undefined, { bookGen: 'g2' }), false);
+  assert.equal(RB.genChanged('g1', { bookGen: 'g1' }), false);
+  assert.equal(RB.genChanged('g1', { bookGen: 'g2' }), true);
+  // دفتر أقدم بلا جيل ثم مُسح (صار له جيل)
+  assert.equal(RB.genChanged(null, { bookGen: 'g2' }), true);
+  assert.equal(RB.genChanged(null, {}), false);
+  assert.equal(RB.genChanged(null, null), false);
+  // الحقل يبقى في الإعدادات بعد التهيئة (يُحفظ مع الإعدادات ويُقرأ منها)
+  assert.equal(RB.normalize({ settings: { bookGen: 'g3' } }).settings.bookGen, 'g3');
+});

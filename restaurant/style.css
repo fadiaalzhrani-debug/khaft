@@ -312,6 +312,9 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .icon-btn:hover { background: var(--surface-2); border-color: var(--line); color: var(--ink); }
 /* زر القائمة ☰ للشاشات الصغيرة فقط (الشريط الجانبي ظاهر دائماً على الشاشات الواسعة) */
 .icon-btn.menu-btn { display: none; }
+/* إغلاق الدرج من داخله (للجوال فقط): الصفحة وزر ☰ خاملان والدرج مفتوح */
+.icon-btn.nav-close { display: none; margin-inline-start: auto; color: var(--grill-ink); }
+.icon-btn.nav-close:hover { background: var(--grill-2); border-color: transparent; color: var(--grill-ink); }
 .icon-btn.danger:hover { color: var(--bad); }
 .row-acts { display: flex; gap: 2px; justify-content: flex-end; }
 
@@ -366,11 +369,9 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .tbl tbody tr:hover td { background: var(--surface-2); }
 .tbl .num { text-align: end; }
 .tbl tfoot td { font-weight: 700; border-top: 1px solid var(--line); border-bottom: 0; }
-/* عمود أزرار السطر مثبّت على حافة الجدول فيبقى ظاهراً حين يُمرَّر الجدول العريض أفقياً */
-.tbl th.acts, .tbl td.acts { position: sticky; inset-inline-end: 0; background: var(--surface); z-index: 1; box-shadow: 6px 0 8px -6px var(--shade); }
-.tbl tbody tr:hover td.acts { background: var(--surface-2); }
-.tbl tfoot td.acts { background: var(--surface); }
-/* السطر غير المفعّل: بلون باهت مقروء (لا شفافية تُظهر ما تحت عمود الأزرار المثبّت) */
+/* عمود أزرار السطر غير مثبّت على حافة الجدول: الجدول العريض يتمرر أفقياً إليه كبقية الأعمدة. تثبيته كان يضعه فوق آخر
+   الأعمدة الظاهرة فيغطي المبالغ أو يقطعها في منتصفها (على الجوال والأجهزة اللوحية، وعلى الحاسب حين يضيق الجدول) */
+/* السطر غير المفعّل: بلون باهت مقروء (لا شفافية) */
 .tbl tr.off td { color: var(--muted); }
 .tbl tr.expired td:first-child, .tbl tr.soon td:first-child { box-shadow: inset -3px 0 0 var(--accent); }
 .tbl tr.expired td:first-child { box-shadow: inset -3px 0 0 var(--bad); }
@@ -632,7 +633,7 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   body.nav-open .scrim { display: block; position: fixed; inset: 0; background: var(--scrim); z-index: 55; }
   /* حالة الحفظ تغطي هامش الحافة السفلية في الجوال (فلا تظهر القائمة المتمررة تحتها) */
   .side-foot { bottom: calc(-12px - env(safe-area-inset-bottom, 0px)); margin-bottom: calc(-12px - env(safe-area-inset-bottom, 0px)); padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
-  .icon-btn.menu-btn { display: inline-grid; }
+  .icon-btn.menu-btn, .icon-btn.nav-close { display: inline-grid; }
   .topbar { padding: 8px 16px; }
   .page { padding: 16px 16px 48px; }
   .banner { margin: 12px 16px 0; }
@@ -660,8 +661,6 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .hb-v { min-width: 0; flex-direction: column; align-items: flex-end; gap: 0; line-height: 1.2; }
   .hb-v small { min-width: 0; font-size: 0.78rem; }
   .hb-l { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; overflow-wrap: anywhere; }
-  /* الجداول التي تتمرر جانبياً: عمود الأزرار لا يُثبَّت فوق الأعمدة الأخرى (كان يغطي نصف المساحة ويقطع المبالغ) */
-  .tbl:not(.cards) th.acts, .tbl:not(.cards) td.acts { position: static; box-shadow: none; }
   /* النافذة بارتفاع الشاشة: يتمرر محتواها ويبقى زر الحفظ ظاهراً في أسفلها */
   .dialog { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
   .overlay { padding: 8px; }
@@ -684,7 +683,7 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .tbl.cards td::before { content: attr(data-label); display: block; font-size: 0.8rem; font-weight: 500; color: var(--muted); }
   .tbl.cards td:empty { display: none; }
   .tbl.cards tbody tr:hover td { background: none; }
-  .tbl.cards td.acts { grid-column: 1 / -1; position: static; box-shadow: none; background: none; }
+  .tbl.cards td.acts { grid-column: 1 / -1; }
   .tbl.cards td.acts::before { content: none; }
   .tbl.cards td.acts .row-acts { justify-content: flex-start; }
   .tbl.cards tfoot tr { border-bottom: 0; border-top: 2px solid var(--line); }
@@ -720,5 +719,4 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .page { padding: 0; max-width: none; }
   .tbl th { background: #fff; }
   .tbl-wrap { background: none; }
-  .tbl th.acts, .tbl td.acts { position: static; box-shadow: none; }
 }

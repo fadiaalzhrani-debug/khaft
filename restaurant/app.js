@@ -541,10 +541,21 @@
       const list = this.bad.failed();
       if (!list.length) return null;
       let err = null;
+      // مُسح الدفتر أو استُورد بعد ما لم يُحفظ (جيل آخر): يُسأل عنه، فإن اختار المستخدم ما أدخله يُكتب في الدفتر الجديد
+      let setNow;
+      if (list.some(({ keep }) => keep.gen !== undefined))
+        try {
+          const d = await this.retry(() => this.db.doc('config/settings').get());
+          setNow = d.exists ? d.data() : null;
+        } catch (e) {
+          return { ok: false, err: e, merged: 0 };
+        }
+      const gen = RB.bookGen(setNow);
       const plans = (
         await Promise.all(
           list.map(async ({ path, keep }) => {
-            if (keep.section === 'settings' || keep.base === undefined) return { path, keep, rec: keep.rec };
+            const moved = RB.genChanged(keep.gen, setNow);
+            if (keep.section === 'settings' || keep.base === undefined) return moved ? { path, keep, rec: keep.rec, kind: 'replaced', gen } : { path, keep, rec: keep.rec };
             let cur;
             try {
               const d = await this.retry(() => this.db.collection(keep.section).doc(String(keep.id)).get());
@@ -553,6 +564,8 @@
               err = e;
               return null;
             }
+            // حذفٌ لسجل لا وجود له في الدفتر الجديد: لا شيء يُسأل عنه
+            if (moved) return !keep.rec && !cur ? { path, keep, rec: null, cur, gen } : { path, keep, rec: keep.rec, cur, kind: 'replaced', gen };
             const base = keep.base;
             const same = (a, b) => (a === null || b === null ? a === b : RB.sameRec(a, b));
             if (same(cur, base) || same(cur, keep.rec)) return { path, keep, rec: keep.rec, cur };
@@ -578,7 +591,7 @@
             else rec[f] = clone(p.cur[f]);
           }
         }
-        if (!mine && (p.kind === 'deleted' || p.kind === 'edited' || (p.kind === 'clash' && RB.sameRec(rec, p.cur)))) {
+        if (!mine && (p.kind === 'deleted' || p.kind === 'edited' || p.kind === 'replaced' || (p.kind === 'clash' && RB.sameRec(rec, p.cur)))) {
           // أبقى المستخدم ما حفظه الشريك: لا كتابة، وتعود الشاشة للبيانات المشتركة
           this.bad.drop(p.path);
           this.resync(p.keep.section);
@@ -587,7 +600,7 @@
         if (p.kind === 'merged' || p.kind === 'clash') merged++;
         // ما يُكتب الآن مبني على المحفوظ حين قُرئ: إن فشل ثانية يُقارن به. وقد يكون الشريك حفظه ثانية أثناء السؤال:
         // يُقرأ ثانية قبل الكتابة (verify) فيُكتب ما اختاره المستخدم وحده فوق نسخته، أو يبقى في الشريط ليُسأل عنه
-        jobs.push(this.save(Object.assign({}, p.keep, { rec }, p.cur !== undefined ? { base: p.cur, verify: true } : {}), (e) => (err = e)));
+        jobs.push(this.save(Object.assign({}, p.keep, { rec }, p.cur !== undefined ? { base: p.cur, verify: true } : {}, p.gen !== undefined ? { gen: p.gen } : {}), (e) => (err = e)));
       }
       await Promise.all(jobs);
       if (!this.bad.size) APP.save.failed = null;
@@ -642,16 +655,25 @@
       if (prev) {
         keep.base = prev.base;
         keep.own = (prev.own || []).concat([prev.rec]);
+        if (prev.gen !== undefined) keep.gen = prev.gen;
       } else if (raw) keep.base = raw.has(String(keep.id)) ? clone(raw.get(String(keep.id))) : null;
+      this.genOf(keep);
       if (this.unsure.delete(path)) keep.verify = true;
+      return keep;
+    }
+    // جيل الدفتر الذي بُنيت عليه الكتابة (RB.genChanged): لا يُكتب في دفتر مُسح أو استُورد بعدها، ولا سجل جديد
+    genOf(keep) {
+      if (keep.gen === undefined && this.seenSettings !== undefined) keep.gen = RB.bookGen(this.seenSettings);
       return keep;
     }
     // keys: مفاتيح الإعدادات التي غيّرها هذا الحفظ، ومعها مفاتيح حفظ سابق للإعدادات يجري أو فشل (لا يضيع إن فشل).
     // base: الإعدادات كما رأتها هذه الصفحة محفوظة الآن؛ يُدمج بها كل مفتاح فوق أحدث نسخة (RB.settingsWith)
     saveSettings(settings, keys) {
-      const k = RB.settingsKeys(this.bad.keeps('config/settings'), keys);
+      const prevs = this.bad.keeps('config/settings');
+      const k = RB.settingsKeys(prevs, keys);
       const base = this.seenSettings === undefined ? {} : { base: clone(this.seenSettings) };
-      return this.save(Object.assign({ section: 'settings', id: 'settings', rec: clone(settings) }, k ? { keys: k } : {}, base));
+      const pg = prevs.find((p) => p.gen !== undefined);
+      return this.save(this.genOf(Object.assign({ section: 'settings', id: 'settings', rec: clone(settings) }, k ? { keys: k } : {}, base, pg ? { gen: pg.gen } : {})));
     }
     // كتابة مستند كما يصفه keep ({section, id, rec}؛ rec = null للحذف): الحفظ العادي وإعادة المحاولة بالطريقة نفسها
     save(keep, onErr) {
@@ -659,13 +681,17 @@
       if (section === 'settings') {
         // المفاتيح التي غيّرها الحفظ فقط تُكتب فوق أحدث نسخة مشتركة: نسخة هذا الجهاز قد تكون أقدم (تحديثات تصل متأخرة،
         // أو نموذج فُتح قبل تعديل الشريك) فلا تمحو ما حفظه الشريك في غيرها. القراءة والكتابة متتاليتان في سلسلة المستند
+        // ومُسح الدفتر أو استُورد بعد أن بدأ هذا الحفظ (جيل آخر): لا يُكتب فيه (conflict) ويبقى في «لم يُحفظ آخر تعديل»
         const ref = this.db.doc('config/settings');
-        const fn = keep.keys
-          ? async () => {
-              const d = await ref.get();
-              return ref.set(RB.settingsWith(d.exists ? d.data() : null, rec, d.exists ? keep.keys : null, keep.base));
-            }
-          : () => ref.set(rec);
+        const fn =
+          keep.keys || keep.gen !== undefined
+            ? async () => {
+                const d = await ref.get();
+                const cur = d.exists ? d.data() : null;
+                if (RB.genChanged(keep.gen, cur)) throw { code: 'conflict' };
+                return ref.set(keep.keys ? RB.settingsWith(cur, rec, d.exists ? keep.keys : null, keep.base) : rec);
+              }
+            : () => ref.set(rec);
         return this.write('config/settings', fn, section, keep, onErr);
       }
       const ref = this.db.collection(section).doc(id);
@@ -673,15 +699,17 @@
       // كل إعادة تلقائية (انقطاع مؤقت أو حد الطلبات) — والمحاولة الأولى إن لم يُتحقق عند الحفظ — تقرأ المستند أولاً
       // (RB.writePlan): وصل تعديل الشريك أثناء الانقطاع فيُكتب ما غيّره المستخدم وحده فوقه، أو حُذف السجل أو استُبدل
       // الدفتر أو غيّرا الحقل نفسه فلا يُكتب (conflict) ويُترك في «لم يُحفظ آخر تعديل» ليختار المستخدم. واستيراد أو مسح
-      // يجري من جهاز آخر: لا يُكتب فيه (busy)
+      // يجري من جهاز آخر: لا يُكتب فيه (busy). وانتهى بعد أن بدأ هذا الحفظ (جيل آخر للدفتر، RB.genChanged): لا يُكتب فيه
+      // تعديل ولا سجل جديد (conflict)
       let merged = false;
       const fn =
         keep.base === undefined
           ? () => put(rec)
           : async (i) => {
               if (!i && !keep.verify) return put(rec);
-              const [d, m] = await Promise.all([ref.get(), this.db.doc('config/replace').get()]);
+              const [d, m, st] = await Promise.all([ref.get(), this.db.doc('config/replace').get(), keep.gen === undefined ? null : this.db.doc('config/settings').get()]);
               if (m.exists && RB.replaceMarkerState(clone(m.data() || {}), Date.now(), SID) === 'running') throw { code: 'busy' };
+              if (st && RB.genChanged(keep.gen, st.exists ? st.data() : null)) throw { code: 'conflict' };
               const plan = RB.writePlan(keep.base, rec, d.exists ? docRec(d) : null, keep.own);
               if (!plan) throw { code: 'conflict' };
               await put(plan.rec);
@@ -772,7 +800,8 @@
         return [k + '/' + r.id, () => this.db.collection(k).doc(r.id).set(body).then(() => run.written.set(k + '/' + r.id, json))];
       });
       const dels = plan.dels.map(([k, id]) => [k + '/' + id, () => this.db.collection(k).doc(id).delete()]);
-      const st = clone(state.settings);
+      // جيل جديد للدفتر: ما بقي ينتظر الحفظ في جهاز آخر من الدفتر السابق لا يُكتب فيه (RB.genChanged)
+      const st = Object.assign(clone(state.settings), { bookGen: RB.uid() });
       const total = sets.length + dels.length + 1;
       let beat = Date.now();
       if (progress) progress(0, total);
@@ -803,6 +832,7 @@
       if (!run.failed) await phase(dels);
       const delsDone = run.done - setsDone;
       if (!run.failed) await phase([['config/settings', () => this.db.doc('config/settings').set(st)]]);
+      if (!run.failed) this.seenSettings = clone(st);
       if (run.failed) {
         // العقد مع جهاز آخر الآن: علامته الجارية تبقى
         if (run.code !== 'busy') this.mark('failed').catch(() => {});
@@ -2784,11 +2814,12 @@
       const paid = RB.sum(inPer.filter((x) => x.category === c.id && !RB.isOpeningExpense(x)), (x) => RB.vatSplit(x.amount, x.includesVat, x.taxable, S.settings).gross);
       return { c, paid, charged: b[c.acc] || 0 };
     }).filter((r) => r.paid || r.charged);
-    // الإيجار والإهلاك يُحمّلان كاملين أول الشهر، فالشهر الجاري يُحسب شهراً كاملاً في المتوسط؛ والفترة التي تبدأ عند أول
-    // تحميل في الدفتر أو قبله («كل الفترات») أشهرها من شهره كاملاً (RB.chargeMonths)
+    // المتوسط الشهري: أقساط الإيجار والمدفوع مقدماً (أول كل شهر) على عدد أوائل الأشهر في الفترة، والفواتير الأخرى على أشهر
+    // الفترة بأيامها، فالفترة التي تبدأ أثناء شهر لا تُنقص متوسط الإيجار. والفترة التي تبدأ عند أول تحميل في الدفتر أو قبله
+    // («كل الفترات») أشهرها من شهره (RB.chargeAverages)
     const accs = new Set(RB.EXPENSE_CATS.map((c) => c.acc));
     const first = (ledger().entries.find((e) => e.lines.some((l) => accs.has(l.a))) || {}).date;
-    const months = RB.chargeMonths(from, asOf, first);
+    const avg = RB.chargeAverages(ledger().entries, accs, from, asOf, first);
     let h = pageHead('المصاريف التشغيلية', 'إيجار المحل وسكن العمال والكهرباء والصيانة والتسويق وغيرها. المصروف المدفوع لعدة أشهر يُوزّع تلقائياً على أشهره.', btn('+ مصروف', 'add', 'data-s="expenses"', 'primary'));
     h += `<div class="quick">${['rent', 'housing', 'utilities', 'telecom', 'maintenance', 'marketing', 'cleaning'].map((k) => btn('+ ' + RB.expenseCat(k).name, 'add', `data-s="expenses" data-x="${k}"`, 'sm ghost')).join('')}</div>`;
     h += fixCard('expenses');
@@ -2799,12 +2830,12 @@
           { h: 'التصنيف', f: (r) => esc(r.c.name) },
           { h: 'المدفوع في الفترة', num: 1, f: (r) => N(r.paid) },
           { h: 'المحمّل على الفترة', num: 1, f: (r) => N(r.charged) },
-          { h: 'المتوسط الشهري المحمّل', num: 1, f: (r) => N(r.charged / months) },
+          { h: 'المتوسط الشهري المحمّل', num: 1, f: (r) => N(avg[r.c.acc] || 0) },
         ],
         catRows,
-        { foot: ['الإجمالي', N(RB.sum(catRows, (r) => r.paid)), N(RB.sum(catRows, (r) => r.charged)), N(RB.sum(catRows, (r) => r.charged) / months)], empty: 'لا مصاريف في هذه الفترة.' }
+        { foot: ['الإجمالي', N(RB.sum(catRows, (r) => r.paid)), N(RB.sum(catRows, (r) => r.charged)), N(RB.sum(catRows, (r) => avg[r.c.acc] || 0))], empty: 'لا مصاريف في هذه الفترة.' }
       ),
-      { sub: '«المدفوع» شامل الضريبة كما خرج من الحساب. «المحمّل» هو نصيب الفترة من المصروف بدون ضريبة المدخلات التي تُخصم في الإقرار (مثلاً: إيجار 6 أشهر يُحمّل سدسه كل شهر). الرواتب والمشتريات في صفحاتها.' + (!from.endsWith('-01') && !(first && from <= first) ? ` تبدأ الفترة أثناء شهر فيُحسب ذلك الشهر بأيامه في المتوسط، والإيجار والمدفوع مقدماً يُحمّلان أول كل شهر: لمتوسط شهري دقيق اختر فترة تبدأ أول الشهر.` : '') }
+      { sub: '«المدفوع» شامل الضريبة كما خرج من الحساب. «المحمّل» هو نصيب الفترة من المصروف بدون ضريبة المدخلات التي تُخصم في الإقرار (مثلاً: إيجار 6 أشهر يُحمّل سدسه كل شهر). «المتوسط الشهري»: ما يُحمّل أول كل شهر (الإيجار والمدفوع مقدماً) على عدد الأشهر التي بدأت في الفترة، وبقية المصاريف على أشهرها بأيامها. الرواتب والمشتريات في صفحاتها.' }
     );
     h += card('المدفوعات', filterChips('expCat', RB.EXPENSE_CATS, counts) + expensesTable(list, ui.expCat ? `لا توجد مصاريف من تصنيف «${esc(RB.expenseCat(ui.expCat).name)}» في هذه الفترة — اختر «الكل».` : 'لا توجد مصاريف في هذه الفترة.'), { actions: btn('تصدير CSV', 'csv', 'data-v="expenses"', 'sm ghost') });
     return h;
@@ -5587,7 +5618,9 @@
     const lastClose = good(S.sales).reduce((m, z) => (z.date > m ? z.date : m), '');
     const yest = RB.addDays(today(), -1);
     const cashToday = () => ledger().entries.some((e) => e.date === today() && e.lines.some((l) => l.a === '1101'));
-    const day0 = lastClose === yest && !good(S.cashCounts).some((c) => c.date >= yest) && !cashToday() ? yest : today();
+    // قبل الظهر فقط (كافتراضي تاريخ الإقفال): جرد مساءً قبل إقفال اليوم هو جرد اليوم، ودرجه فيه مبيعات اليوم النقدية
+    const early = () => new Date().getHours() < 12;
+    const day0 = early() && lastClose === yest && !good(S.cashCounts).some((c) => c.date >= yest) && !cashToday() ? yest : today();
     return formModal({
       title: isEdit ? 'تعديل جرد الصندوق' : 'جرد الصندوق (عدّ الدرج)',
       value: rec || { id: RB.uid(), date: day0, counted: '', note: '' },
@@ -5602,7 +5635,9 @@
         const day = RB.isISODate(v.date) ? v.date : today();
         // يوم بلا إقفال وبعد آخر إقفال: الجرد يُقارن بنهايته، فإقفاله لاحقاً (أو جرد بعد منتصف ليل يوم الإقفال) لا يطابقه
         const noClose = !!lastClose && day > lastClose;
-        return `<div class="pv-grid"><div><span>الرصيد المتوقع</span>${money(e)}<small>رصيد الصندوق في الدفتر نهاية يوم ${dtText(day)}</small></div>${has(v) ? `<div><span>الفرق</span>${money(d)}<small>${st}</small></div>` : ''}</div>${noClose ? `<p class="note bad">لا إقفال مسجّل في ${dtText(day)} بعد (آخر إقفال ${dtText(lastClose)}). إن عددت الدرج بعد إقفال ${dtText(lastClose)} (بعد منتصف الليل مثلاً) فاجعل تاريخ الجرد ${dtText(lastClose)}، وإلا فسجّل إقفال هذا اليوم قبل عدّ الدرج: إقفاله بعد الجرد يجعله غير مطابق.</p>` : ''}<p class="note">سجّل إقفال اليوم ومصروفاته النقدية قبل عدّ الدرج. العجز يُسجَّل مصروفاً في «عجز وزيادة الصندوق» والزيادة تخفضه، فيصبح رصيد الصندوق في الدفتر = المعدود.</p>`;
+        // جرد بتاريخ يوم سابق بعد الظهر واليوم بلا إقفال بعد: الدرج الآن فيه مبيعات اليوم النقدية غالباً، فتُحسب زيادةً
+        const late = !noClose && day < today() && !early() && lastClose < today();
+        return `<div class="pv-grid"><div><span>الرصيد المتوقع</span>${money(e)}<small>رصيد الصندوق في الدفتر نهاية يوم ${dtText(day)}</small></div>${has(v) ? `<div><span>الفرق</span>${money(d)}<small>${st}</small></div>` : ''}</div>${noClose ? `<p class="note bad">لا إقفال مسجّل في ${dtText(day)} بعد (آخر إقفال ${dtText(lastClose)}). إن عددت الدرج بعد إقفال ${dtText(lastClose)} (بعد منتصف الليل مثلاً) فاجعل تاريخ الجرد ${dtText(lastClose)}، وإلا فسجّل إقفال هذا اليوم قبل عدّ الدرج: إقفاله بعد الجرد يجعله غير مطابق.</p>` : ''}${late ? `<p class="note bad">تاريخ الجرد ${dtText(day)} واليوم ${dtText(today())} بلا إقفال بعد: إن كان في الدرج الآن نقد مبيعات اليوم فاجعل تاريخ الجرد اليوم وسجّل إقفاله أولاً، وإلا ظهر نقد اليوم زيادةً في ${dtText(day)}.</p>` : ''}<p class="note">سجّل إقفال اليوم ومصروفاته النقدية قبل عدّ الدرج. العجز يُسجَّل مصروفاً في «عجز وزيادة الصندوق» والزيادة تخفضه، فيصبح رصيد الصندوق في الدفتر = المعدود.</p>`;
       },
       onSave: (v) => {
         v.counted = num(v.counted);
@@ -6416,6 +6451,8 @@
       focusPageTitle();
     },
     menu: () => setNav(!document.body.classList.contains('nav-open')),
+    // زر الإغلاق داخل الدرج: ☰ في الشريط العلوي خامل والدرج مفتوح، فهذا ما يصل إليه قارئ الشاشة باللمس
+    navclose: () => setNav(false),
     skip: () => focusPageTitle(),
     // زر حقيقي يصله Tab ويفتح اختيار الملف (حقل الملف نفسه مخفي)
     import: () => {
@@ -6537,12 +6574,13 @@
     const line = (p) => {
       const s = p.keep.section;
       const r = p.keep.rec || p.cur || {};
-      const what = `${esc(SECTION_NAME[s] || 'سجل')} «${esc(recLabel(s, r))}»`;
+      const what = s === 'settings' ? 'الإعدادات' : `${esc(SECTION_NAME[s] || 'سجل')} «${esc(recLabel(s, r))}»`;
+      if (p.kind === 'replaced') return `${what}: ${p.keep.rec ? 'أدخلته' : 'حذفته'} قبل أن يُمسح الدفتر المشترك أو يُستورد`;
       if (p.kind === 'deleted') return `${what}: حذفه وكنت عدّلته`;
       if (p.kind === 'edited') return `${what}: عدّله وكنت حذفته`;
       return `${what}: غيّرتما كلاكما ${[...new Set(p.clash.map((k) => RETRY_FIELD[k] || fieldName(s, k)))].map((x) => '«' + esc(x) + '»').join('، ')}`;
     };
-    return confirmBox(`عدّل شريكك أو نافذة أخرى بعد فشل الحفظ سجلات لم يُحفظ تعديلك عليها:<br>${items.map((p) => '• ' + line(p)).join('<br>')}<br>«احفظ ما أدخلته» يضع تعديلك فيها (ويعيد ما حذفه ويحذف ما حذفته)، و«أبقِ تعديله» يتركها كما حفظها. بقية تعديلاتك تُحفظ في الحالتين.`, { title: 'تعديل شريكك أثناء انقطاع الحفظ', ok: 'احفظ ما أدخلته', cancel: 'أبقِ تعديله' });
+    return confirmBox(`عدّل شريكك أو نافذة أخرى بعد فشل الحفظ سجلات لم يُحفظ تعديلك عليها:<br>${items.map((p) => '• ' + line(p)).join('<br>')}<br>«احفظ ما أدخلته» يضع تعديلك فيها (ويعيد ما حذفه ويحذف ما حذفته${items.some((p) => p.kind === 'replaced') ? '، ويكتب في الدفتر الجديد ما أدخلته قبل مسحه أو استيراده' : ''})، و«أبقِ تعديله» يتركها كما حفظها. بقية تعديلاتك تُحفظ في الحالتين.`, { title: 'تعديل شريكك أثناء انقطاع الحفظ', ok: 'احفظ ما أدخلته', cancel: 'أبقِ تعديله' });
   }
 
   function go(page) {
@@ -7171,7 +7209,7 @@
     return `<div class="shell">
       <a class="skip" href="#page" data-act="skip">تخطَّ إلى المحتوى</a>
       <aside class="side" id="side" aria-label="القائمة الرئيسية">
-        <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div><b>دفتر المطعم</b><small id="restName"></small></div></div>
+        <div class="brand"><span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><div><b>دفتر المطعم</b><small id="restName"></small></div><button type="button" class="icon-btn nav-close" data-act="navclose" aria-label="إغلاق القائمة">✕</button></div>
         <nav id="nav"></nav>
         <div class="side-foot" id="saveStatus"></div>
       </aside>
@@ -7302,7 +7340,7 @@
       const stuck = sf === 'quota_exceeded' || sf === 'invalid';
       const first = retry && !stuck;
       const acts = (first ? btn(APP.retrying ? 'جارٍ إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm primary') : '') + btn('صدّر نسخة احتياطية', 'backup', '', first ? 'sm' : 'sm primary') + (retry && stuck ? btn(APP.retrying ? 'جارٍ إعادة المحاولة…' : 'أعد المحاولة', 'retrysave', APP.retrying ? 'aria-disabled="true"' : '', 'sm ghost') : '');
-      const why = !cloud ? 'تعذّر حفظه في هذا المتصفح' : sf === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة' : sf === 'conflict' ? 'عدّل شريكك السجل أو حذفه أثناء حفظه' : 'تعذّر حفظه أو حذفه في البيانات المشتركة';
+      const why = !cloud ? 'تعذّر حفظه في هذا المتصفح' : sf === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة' : sf === 'conflict' ? 'عدّل شريكك السجل أو حذفه، أو مُسح الدفتر المشترك أو استُورد، أثناء حفظه' : 'تعذّر حفظه أو حذفه في البيانات المشتركة';
       const todo = first ? 'اضغط «أعد المحاولة»، وإن تكرر الفشل فصدّر نسخة احتياطية' : 'صدّر نسخة احتياطية';
       h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${why}. ${todo} الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.${sf === 'quota_exceeded' ? ' لا تحذف سجلات قديمة لتفريغ المساحة: حذفها يغيّر الأرصدة كلها.' : ''}`, acts);
     }

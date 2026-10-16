@@ -514,6 +514,11 @@
   // للمستند نفسه قبله (حفظان متتاليان). لم يتغيّر بعد base (أو صار rec أو كتابة سابقة منها): rec. عدّله الشريك: ما غيّره
   // المستخدم وحده فوق نسخته (merged). وإلا null (يُترك للمستخدم في «أعد المحاولة»): حُذف المستند أو مُسح الدفتر واستُورد،
   // أو أراد المستخدم حذفه وقد عدّله الشريك، أو غيّرا الحقل نفسه — فلا تُعيد الكتابة المتأخرة سجلاً محذوفاً ولا تمحو تعديله
+  // جيل الدفتر المشترك (settings.bookGen): يتغيّر بكل مسح أو استيراد أو بداية دفتر (استبدال الدفتر كله). كل كتابة تحمل
+  // الجيل الذي رأته الصفحة حين بدأت (gen؛ undefined: لم تُقرأ الإعدادات بعد فلا مقارنة)، فكتابة بقيت تنتظر (انقطاع) ثم وصلت
+  // بعد مسح الدفتر أو استيراده لا تُكتب فيه — ولا سجل جديد (لا base له يُقارن به). null: دفتر بلا جيل (أقدم من هذا الحقل)
+  RB.bookGen = (settings) => (isObj(settings) && typeof settings.bookGen === 'string' && settings.bookGen ? settings.bookGen : null);
+  RB.genChanged = (gen, settings) => gen !== undefined && (gen || null) !== RB.bookGen(settings);
   RB.writePlan = (base, rec, cur, own) => {
     const same = (a, b) => (!isObj(a) || !isObj(b) ? !isObj(a) && !isObj(b) : RB.sameRec(a, b));
     if (same(cur, base) || same(cur, rec) || (own || []).some((x) => same(cur, x))) return { rec };
@@ -2126,6 +2131,32 @@
   // first (اختياري): تاريخ أول تحميل في الدفتر — الفترة التي تبدأ عنده أو قبله («كل الفترات» تبدأ بأول سجل، أو سنة بدأ
   // الدفتر أثناءها) أشهرها من شهره كاملاً: لا شيء من ذلك الشهر خارجها، ولا تحميل في أشهر قبله
   RB.chargeMonths = (from, to, first) => RB.monthsIn(first && from <= first ? first.slice(0, 7) + '-01' : from, RB.monthEnd(to.slice(0, 7)));
+  // المتوسط الشهري المحمّل لكل حساب مصروف (accs) في الفترة from..to (to: حتى اليوم). أقساط التحميل الشهري (amort: الإيجار
+  // والمدفوع مقدماً) تقع أول كل شهر، فتُقسم على عدد أشهر الفترة التي يقع أولها فيها (ومعها شهر قسط بدأت تغطيته أثناءه):
+  // فترة من 15 سبتمبر إلى 16 أكتوبر فيها قسط إيجار واحد (1 أكتوبر) فمتوسطه قسط شهر واحد لا 6,000 ÷ 1.53. وما سواها
+  // (فواتير الشهر الواحد) يقع بتاريخه فيُقسم على أشهر الفترة بأيامها (RB.chargeMonths). first: أول تحميل في الدفتر،
+  // فالفترة التي تبدأ عنده أو قبله تبدأ من شهره. يرجع {acc: المتوسط}
+  RB.chargeAverages = (entries, accs, from, to, first) => {
+    const f = first && from <= first ? first.slice(0, 7) + '-01' : from;
+    const starts = new Set();
+    for (let ym = f.slice(0, 7); ym <= to.slice(0, 7); ym = RB.ymAdd(ym, 1)) if (ym + '-01' >= f && ym + '-01' <= to) starts.add(ym);
+    const dayMonths = RB.chargeMonths(from, to, first);
+    const per = {};
+    for (const e of entries || []) {
+      if (e.date < from || e.date > to) continue;
+      for (const l of e.lines) {
+        if (!accs.has(l.a)) continue;
+        const x = per[l.a] || (per[l.a] = { inst: 0, other: 0, yms: new Set(starts) });
+        if (e.kind === 'amort') {
+          x.inst += l.v;
+          x.yms.add(e.date.slice(0, 7));
+        } else x.other += l.v;
+      }
+    }
+    const out = {};
+    for (const a of Object.keys(per)) out[a] = r2((per[a].inst ? per[a].inst / Math.max(1, per[a].yms.size) : 0) + per[a].other / dayMonths);
+    return out;
+  };
 
   RB.incomeStatement = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
