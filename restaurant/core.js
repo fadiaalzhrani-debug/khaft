@@ -869,6 +869,26 @@
     out.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : b.i - a.i));
     return out.map(({ i, ...x }) => x);
   };
+  // المواد الخام التي سعرها الحالي من فاتورة purchaseId: هي أحدث فاتورة للمادة وسعر المادة سعر سطرها فيها (لا سعر
+  // عُدّل يدوياً بعدها ولا من فاتورة أحدث). تعديل الفاتورة أو حذفها يُرجع سعر هذه المواد إلى آخر فاتورة باقية لها
+  // (RB.rawPriceRestore)، فلا يبقى سعر كُتب خطأ ثم صُحّح في الفاتورة. يرجع معرّفات المواد
+  RB.rawPriceSources = (S, purchaseId) => {
+    const p = good(S.purchases).find((x) => String(x.id) === String(purchaseId));
+    if (!p) return [];
+    const ids = [...new Set((p.lines || []).filter((l) => l && l.rawId).map((l) => l.rawId))];
+    return ids.filter((id) => {
+      const raw = good(S.raw).find((x) => x.id === id);
+      const h = RB.rawPriceHistory(S, id);
+      return !!raw && !!h.length && h[0].purchaseId === p.id && h.some((x) => x.purchaseId === p.id && Math.abs(num(raw.price) - x.priceNet) <= 0.004);
+    });
+  };
+  // سعر المادة من آخر فاتورة باقية لها {price, taxable}، أو null إن لم تبقَ لها فاتورة (يبقى سعرها كما هو)
+  RB.rawPriceRestore = (S, rawId) => {
+    const h = RB.rawPriceHistory(S, rawId);
+    if (!h.length) return null;
+    const p = good(S.purchases).find((x) => x.id === h[0].purchaseId);
+    return { price: h[0].priceNet, taxable: !!(p && p.taxable) };
+  };
   // تغيّر سعر المادة: آخر سعر شراء، والسعر الذي سبقه (آخر سعر مختلف عنه)، ونسبة التغيّر؛ null إن لم يتغير
   RB.rawPriceChange = (S, rawId) => {
     const h = RB.rawPriceHistory(S, rawId);
@@ -2085,8 +2105,10 @@
     return total > 0 ? total : 1 / 31;
   };
   // عدد الأشهر لمتوسط المحمّل شهرياً: الإيجار والمدفوع مقدماً والإهلاك تُحمّل كاملة أول كل شهر،
-  // فالشهر الذي دخل أول يومه في الفترة يُحسب كاملاً ولو لم ينتهِ (الشهر الجاري أو فترة تنتهي منتصف الشهر)
-  RB.chargeMonths = (from, to) => RB.monthsIn(from, RB.monthEnd(to.slice(0, 7)));
+  // فالشهر الذي دخل أول يومه في الفترة يُحسب كاملاً ولو لم ينتهِ (الشهر الجاري أو فترة تنتهي منتصف الشهر).
+  // first (اختياري): تاريخ أول تحميل في الدفتر — الفترة التي تبدأ عنده أو قبله («كل الفترات» تبدأ بأول سجل، أو سنة بدأ
+  // الدفتر أثناءها) أشهرها من شهره كاملاً: لا شيء من ذلك الشهر خارجها، ولا تحميل في أشهر قبله
+  RB.chargeMonths = (from, to, first) => RB.monthsIn(first && from <= first ? first.slice(0, 7) + '-01' : from, RB.monthEnd(to.slice(0, 7)));
 
   RB.incomeStatement = (S, from, to, L) => {
     L = L || RB.buildLedger(S, to);
@@ -2628,9 +2650,18 @@
     return Object.values(out).map((o) => Object.assign(o, { balance: r2(o.purchases - o.paid) }));
   };
 
+  // مفتاح البند المتكرر في متابعة التجديد: التصنيف والجهة والوصف والموظف، فتجديد البند له مفتاحه نفسه
+  RB.renewKey = (x) => [x.category, (x.entity || '').trim(), (x.desc || '').trim(), x.employeeId || ''].join('|');
+  // مدة عقد البند كاملاً: من القائمة الجاهزة (RB.GOV_PRESETS) بتصنيفه ووصفه، وإلا مدة تصنيفه. المصروف القائم قبل بدء
+  // الدفتر (RB.isOpeningExpense) أشهره الباقية فقط، فمدة عقده الكاملة منها
+  RB.expenseTerm = (x) => {
+    const pr = RB.GOV_PRESETS.find((p) => p.category === x.category && p.desc === String(x.desc || '').trim());
+    return pr && pr.months ? pr.months : RB.expenseCat(x.category).months;
+  };
   // متابعة التجديد: آخر تغطية لكل بند حكومي أو اشتراك أو عقد، ويُتابع إن كان آخر سجل له يغطي 3 أشهر فأكثر
   // (والزكاة دائماً). لا يُتابع البند إن كان آخر سجل له رسماً لمرة واحدة (oneOff) أو أوقف المستخدم متابعته
-  // (noRenew؛ تجديده لاحقاً يعيده) أو يغطي أقل من 3 أشهر، فلا يظهر سجل أقدم منه منتهياً.
+  // (noRenew؛ تجديده لاحقاً يعيده) أو يغطي أقل من 3 أشهر، فلا يظهر سجل أقدم منه منتهياً. والمدفوع قبل بدء الدفتر
+  // (أشهره الباقية فقط) يُتابع بنهاية تغطيته إن كان عقده الكامل 3 أشهر فأكثر (RB.expenseTerm)، ولو بقي منه شهر.
   // ولا تُتابع رسوم عامل غادر أو حُذف أو انتهى عمله قبل نهاية التغطية
   RB.renewals = (S, today) => {
     today = today || RB.todayISO();
@@ -2640,10 +2671,11 @@
       const months = Math.round(num(x.months) || 1);
       if (months < 1) continue;
       const zakat = x.category === 'zakat';
-      const key = [x.category, (x.entity || '').trim(), (x.desc || '').trim(), x.employeeId || ''].join('|');
+      const key = RB.renewKey(x);
       // الزكاة تُدفع عن سنة سابقة: التذكير سنوي من تاريخ الدفع لا من بداية السنة التي تخصها
       const end = zakat ? RB.coverageEnd(x.date, 12) : RB.coverageEnd(x.startDate || x.date, months);
-      if (!groups[key] || groups[key].end < end) groups[key] = { key, rec: x, end, short: months < 3 && !zakat };
+      const short = months < 3 && !zakat && !(RB.isOpeningExpense(x) && RB.expenseTerm(x) >= 3);
+      if (!groups[key] || groups[key].end < end) groups[key] = { key, rec: x, end, short };
     }
     const emps = byId(S.employees);
     const staffGone = (g) => {
@@ -2697,10 +2729,11 @@
     const ps = S.partners || [];
     const totalShare = sum(ps, (p) => RB.shareAt(p, to));
     // الدفتر المعطى قد يمتد بعد «to» (دفتر واحد لكل نسخة من البيانات): ما دفعه الشريك بعده لا يدخل
+    // صافي ما دفعه كل شريك من حسابه: ما دفعه ناقص ما رُدّ إليه منه (مرتجع أو إشعار دائن قُيّد على حسابه)
     const direct = {};
     for (const e of L.entries) {
       if (e.kind === 'capital' || e.kind === 'opening' || e.date > to) continue;
-      for (const l of e.lines) if (l.a.startsWith('cap:') && l.v < 0) direct[l.a.slice(4)] = r2((direct[l.a.slice(4)] || 0) - l.v);
+      for (const l of e.lines) if (l.a.startsWith('cap:') && l.v) direct[l.a.slice(4)] = r2((direct[l.a.slice(4)] || 0) - l.v);
     }
     // ربح [a, b] من قيود الدفتر (a فارغ = من البداية)، ونصيب كل شريك منه بنسب كل جزء بين تواريخ تغيّر النسب
     const types = {};
@@ -2856,11 +2889,12 @@
     contributions = r2(contributions);
     preWithdrawals = r2(preWithdrawals);
     later.contributions = r2(later.contributions);
+    // صافي ما دفعه الشركاء من حساباتهم: ما رُدّ إلى أحدهم منه (مرتجع أو إشعار دائن على حسابه) ينقصه، كما نقص به المستخدَم من رأس المال
     let direct = 0;
     for (const e of L.entries) {
       if (e.kind === 'capital' || e.kind === 'opening') continue;
       for (const l of e.lines) {
-        if (!l.a.startsWith('cap:') || !(l.v < 0)) continue;
+        if (!l.a.startsWith('cap:') || !l.v) continue;
         if (founding(e.date, e.kind)) direct = r2(direct - l.v);
         else later.direct = r2(later.direct - l.v);
       }
@@ -2987,7 +3021,27 @@
     const rate = RB.isVatReg(set, today) ? num(set.vatRate) / 100 : 0;
     const variable = r2(inc.tot.cogs + inc.tot.sell);
     const varRatio = inc.revenue ? variable / inc.revenue : 0;
-    const fixedMonthly = r2((inc.tot.labor + inc.tot.occ + inc.tot.opex + inc.tot.dep) / months);
+    const fixedParts = { labor: inc.tot.labor / months, occ: inc.tot.occ / months, opex: inc.tot.opex / months, dep: inc.tot.dep / months };
+    if (estimate) {
+      // التقدير من فترة جزئية (أول شهر تشغيل): الإيجار والمدفوع مقدماً والإهلاك قسط شهر كامل في تاريخه، وكذلك دفعة عقد
+      // لشهر واحد (تصنيف مدته 3 أشهر فأكثر كالإيجار والسكن)، فيُحسب كل منها بمتوسط أقساطه في الفترة لا بأيامها، فلا
+      // يتضاعف إيجار الشهر في أسبوعيه الأولين. والفواتير الشهرية والمصاريف الأخرى بأيام الفترة كما هي
+      const xs = byId(good(S.expenses));
+      const key = (e) => e.kind + '|' + (e.ref ? e.ref.s + '|' + e.ref.id : '');
+      const whole = (e) => e.date >= wFrom && e.date <= wTo && (e.kind === 'amort' || e.kind === 'dep' || (e.kind === 'expense' && !!e.ref && !!xs[e.ref.id] && RB.expenseCat(xs[e.ref.id].category).months >= 3));
+      const n = {};
+      for (const e of L.entries) if (whole(e)) n[key(e)] = (n[key(e)] || 0) + 1;
+      for (const e of L.entries) {
+        if (!whole(e)) continue;
+        for (const l of e.lines) {
+          const info = RB.accInfo(l.a, S);
+          if (info.type !== 'X') continue;
+          const g = ['cogs', 'sell', 'disp', 'zakat'].includes(info.group) ? '' : info.group in fixedParts ? info.group : 'opex';
+          if (g) fixedParts[g] += l.v / n[key(e)] - l.v / months;
+        }
+      }
+    }
+    const fixedMonthly = r2(fixedParts.labor + fixedParts.occ + fixedParts.opex + fixedParts.dep);
     const sales = RB.salesByChannel(S, wFrom, wTo);
     const beNet = varRatio < 1 ? fixedMonthly / (1 - varRatio) : 0;
     const beGross = beNet * (1 + rate);
@@ -2995,7 +3049,7 @@
     const avgMonthlyNet = inc.revenue / months;
     return {
       months, revenue: inc.revenue, variable, varRatio, fixedMonthly,
-      fixedParts: { labor: inc.tot.labor / months, occ: inc.tot.occ / months, opex: inc.tot.opex / months, dep: inc.tot.dep / months },
+      fixedParts,
       beNet, beGross, beDaily, beOrders: sales.total.avgTicket ? beGross / sales.total.avgTicket : 0,
       avgTicket: sales.total.avgTicket, avgMonthlyNet, safety: avgMonthlyNet ? ((avgMonthlyNet - beNet) / avgMonthlyNet) * 100 : 0,
       basisFrom: wFrom, basisTo: wTo, estimate, fallback, beforeOpen,

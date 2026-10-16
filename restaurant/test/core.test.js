@@ -4141,3 +4141,208 @@ test('غير المسجل في الضريبة لا يرى «بدون الضري�
   const bU = RB.balances(L.entries, '2026-01-01', today);
   close(RB.incomeStatement(unreg, '2026-01-01', today, L).revenue, -bU['4101'] - (bU['4102'] || 0));
 });
+
+// ───────────── مراجعة المحاسبة والبيانات (audit-r3) ─────────────
+
+test('خروج شريك: نسبته 0 من تاريخ خروجه أولاً ثم تسوية حقوقه بتاريخه، فلا أرباح له بعد خروجه ولا حقوق بالسالب (audit-r3)', () => {
+  const mk = () => {
+    const S = RB.emptyState();
+    S.settings.vatRegistered = false;
+    S.partners = [{ id: 'P', name: 'فهد', share: 70 }, { id: 'Q', name: 'قاسم', share: 30 }];
+    S.capital = [
+      { id: 'c1', date: '2026-03-01', partnerId: 'P', type: 'contribution', account: 'bank', amount: 70000 },
+      { id: 'c2', date: '2026-03-01', partnerId: 'Q', type: 'contribution', account: 'bank', amount: 30000 },
+    ];
+    S.sales = [];
+    for (let d = 1; d <= 31; d++) S.sales.push({ id: 's' + d, date: '2026-03-' + String(d).padStart(2, '0'), channels: { cash: { amount: 1000, orders: 10, type: 'cash', feePct: 0, feeVat: false } } });
+    return S;
+  };
+  const D = '2026-03-16';
+  const eq = (S, d, id) => RB.partnersReport(S, d, d).rows.find((r) => r.id === id).equity;
+  // حقوقه حتى اليوم السابق لخروجه: 30,000 + 30% من ربح 15 يوماً
+  const S = mk();
+  const before = eq(S, '2026-03-15', 'Q');
+  close(before, 34500);
+  // النسبة 0 من يوم الخروج أولاً: نموذج النقل يعرض حقوقه في يوم الخروج = حقوقه عند خروجه، بلا ربح ذلك اليوم
+  S.partners = [RB.shareFrom(S.partners[0], 100, D), RB.shareFrom(S.partners[1], 0, D)];
+  close(eq(S, D, 'Q'), before);
+  S.capital.push({ id: 't', date: D, partnerId: 'Q', toPartnerId: 'P', type: 'transfer', amount: eq(S, D, 'Q') });
+  const r = RB.partnersReport(S, '2026-03-01', '2026-03-31');
+  const q = r.rows.find((x) => x.id === 'Q');
+  assert.deepEqual([q.equity, q.out], [0, true]);
+  close(r.rows.find((x) => x.id === 'P').equity, 131000);
+  // الترتيب المعاكس (التسوية بنسبته القديمة ثم 0 من اليوم نفسه): تدخل التسوية نصيبه من ربح يوم الخروج فتصير حقوقه بالسالب
+  const O = mk();
+  const paid = eq(O, D, 'Q');
+  close(paid, 34800);
+  O.capital.push({ id: 't', date: D, partnerId: 'Q', toPartnerId: 'P', type: 'transfer', amount: paid });
+  O.partners = [RB.shareFrom(O.partners[0], 100, D), RB.shareFrom(O.partners[1], 0, D)];
+  const qo = RB.partnersReport(O, '2026-03-01', '2026-03-31').rows.find((x) => x.id === 'Q');
+  assert.deepEqual([qo.equity, qo.out], [-300, false]);
+  // نموذج الشريك يحسب الباقي بعد كل الحركات بنسبته الجديدة: −300 (زاد ما سُجّل له على حقوقه عند خروجه)
+  close(RB.partnersReport(O, '9999-12-31', '9999-12-31').rows.find((x) => x.id === 'Q').equity, before - paid);
+});
+
+test('تاريخ نسبة قبل تغيير مسجل يحل محل ما بعده، ويُعاد التغيير اللاحق بتاريخه (audit-r3)', () => {
+  // خرج قاسم من 16 مارس (0%)، ثم سُجّل تغيير نسي: باع 5% من 1 فبراير
+  const Q = { id: 'Q', name: 'قاسم', share: 0, shareHist: [{ until: '2026-03-15', share: 30 }] };
+  const q1 = RB.shareFrom(Q, 25, '2026-02-01');
+  assert.deepEqual([q1.share, q1.shareHist], [25, [{ until: '2026-01-31', share: 30 }]]);
+  assert.equal(RB.shareAt(q1, '2026-03-20'), 25);
+  // إعادة الخروج بتاريخه بعد ذلك تُرجع النسب كلها
+  const q2 = RB.shareFrom(q1, 0, '2026-03-16');
+  assert.deepEqual([q2.share, q2.shareHist], [0, [{ until: '2026-01-31', share: 30 }, { until: '2026-03-15', share: 25 }]]);
+  assert.deepEqual(['2026-01-31', '2026-02-01', '2026-03-15', '2026-03-16'].map((d) => RB.shareAt(q2, d)), [30, 25, 25, 0]);
+});
+
+test('مكافأة نهاية الخدمة على الأجر الأخير: مسير شهر ترك العمل بأجره الجديد يدخل قبل حفظه، ومسير التسوية بلا أجر لا يغيّره (audit-r3)', () => {
+  const S = base();
+  S.settings.vatRegistered = false;
+  S.employees = [{ id: 'E', name: 'عامل', basic: 5000, housing: 0, transport: 0, otherAllow: 0, startDate: '2023-06-01', endDate: '2026-05-20', active: false }];
+  S.payroll = [];
+  for (let ym = '2023-06'; ym <= '2026-04'; ym = RB.ymAdd(ym, 1)) S.payroll.push({ id: 'p' + ym, month: ym, date: RB.monthEnd(ym), account: 'bank', lines: [{ employeeId: 'E', basic: 4000, housing: 0, allowances: 0, additions: 0, deductions: 0, gosiEe: 0, gosiEr: 0 }] });
+  assert.equal(RB.lastWage(S, 'E'), 4000);
+  close(RB.eosbAward(RB.lastWage(S, 'E'), '2023-06-01', '2026-05-20').full, 5941.14);
+  // مسير مايو بعد الزيادة (أيامه الأخيرة في الخصومات) كما يكون في النموذج قبل حفظه
+  const draft = { id: 'may', month: '2026-05', date: '2026-05-31', account: 'bank', lines: [{ employeeId: 'E', basic: 5000, housing: 0, allowances: 0, additions: 0, deductions: 1666.67, gosiEe: 0, gosiEr: 0 }] };
+  const W = Object.assign({}, S, { payroll: S.payroll.concat([draft]) });
+  assert.equal(RB.lastWage(W, 'E'), 5000);
+  close(RB.eosbAward(RB.lastWage(W, 'E'), '2023-06-01', '2026-05-20').full, 7426.42);
+  const settle = { id: 'st', month: '2026-05', date: '2026-05-20', lines: [{ employeeId: 'E', basic: 0, housing: 0, allowances: 0, eosbPaid: 100 }] };
+  assert.equal(RB.lastWage(Object.assign({}, W, { payroll: W.payroll.concat([settle]) }), 'E'), 5000);
+});
+
+test('رأس المال التأسيسي ومدفوعات الشريك المباشرة: ما رُدّ إليه من فاتورة دفعها (مرتجع على حسابه) يُخصم منها (audit-r3)', () => {
+  const S = RB.emptyState();
+  S.settings.vatRegistered = false;
+  S.settings.openingDate = '2026-03-01';
+  S.partners = [{ id: 'A', name: 'أحمد', share: 50 }, { id: 'B', name: 'بدر', share: 50 }];
+  S.capital = [
+    { id: 'c1', date: '2026-02-01', partnerId: 'A', type: 'contribution', account: 'bank', amount: 50000 },
+    { id: 'c2', date: '2026-02-01', partnerId: 'B', type: 'contribution', account: 'bank', amount: 50000 },
+  ];
+  const inv = (id, date, qty) => ({ id, date, supplier: 'مورد', category: 'food', account: 'partner:A', taxable: false, includesVat: false, lines: [{ desc: 'لحم', qty, price: 575 }] });
+  S.purchases = [inv('p1', '2026-02-10', 10), inv('p2', '2026-02-15', -2)];
+  const L = RB.buildLedger(S, '2026-12-31');
+  const b = RB.balances(L.entries, null, '2026-02-28');
+  close(-b['cap:A'], 54600);
+  const cu = RB.capitalUses(S, L);
+  close(cu.direct, 4600);
+  // المتبقي = الصندوق + البنك − المستحق للموردين عند الافتتاح
+  close(cu.remaining, (b['1101'] || 0) + (b['1102'] || 0) + (b['2101'] || 0));
+  close(cu.remaining, 100000);
+  const pr = RB.partnersReport(S, '2026-02-01', '2026-02-28', L);
+  close(pr.rows.find((r) => r.id === 'A').direct, 4600);
+  assert.ok(pr.rows.find((r) => r.id === 'A').direct <= pr.rows.find((r) => r.id === 'A').contributed);
+});
+
+test('سعر المادة الخام من فاتورة عُدّلت أو حُذفت يرجع إلى آخر فاتورة باقية، ولا يُلمس سعر عُدّل يدوياً أو من فاتورة أحدث (audit-r3)', () => {
+  const S = base();
+  S.settings.vatRegistered = false;
+  S.raw = [{ id: 'm', name: 'لحم', price: 4200, packQty: 10000, useUnit: 'جم', taxable: false, wastePct: 0 }];
+  const inv = (id, date, price) => ({ id, date, supplier: 'مورد', category: 'food', account: 'bank', taxable: false, includesVat: false, lines: [{ rawId: 'm', desc: 'لحم', qty: 6, price }] });
+  // فاتورة 4200 خطأً (420) حدّثت سعر المادة
+  S.purchases = [inv('a', '2026-09-01', 420), inv('b', '2026-10-01', 4200)];
+  assert.deepEqual(RB.rawPriceSources(S, 'b'), ['m']);
+  assert.deepEqual(RB.rawPriceSources(S, 'a'), [], 'الفاتورة الأقدم ليست مصدر السعر');
+  // تصحيح سعرها في الفاتورة: يرجع السعر إلى السطر المصحح
+  const E = Object.assign({}, S, { purchases: [inv('a', '2026-09-01', 420), inv('b', '2026-10-01', 425)] });
+  assert.deepEqual(RB.rawPriceRestore(E, 'm'), { price: 425, taxable: false });
+  // حذفها: إلى الفاتورة السابقة
+  assert.deepEqual(RB.rawPriceRestore(Object.assign({}, S, { purchases: [inv('a', '2026-09-01', 420)] }), 'm'), { price: 420, taxable: false });
+  // لا فاتورة باقية: يبقى السعر كما هو
+  assert.equal(RB.rawPriceRestore(Object.assign({}, S, { purchases: [] }), 'm'), null);
+  // سعر عُدّل يدوياً بعد الفاتورة: ليست مصدره فلا يُلمس
+  S.raw[0].price = 450;
+  assert.deepEqual(RB.rawPriceSources(S, 'b'), []);
+  // فاتورة أحدث حدّدت السعر: تعديل الأقدم لا يغيّره
+  S.raw[0].price = 430;
+  S.purchases.push(inv('c', '2026-10-05', 430));
+  assert.deepEqual(RB.rawPriceSources(S, 'b'), []);
+  assert.deepEqual(RB.rawPriceSources(S, 'c'), ['m']);
+  // الضريبة: فاتورة شاملة الضريبة سعرها بدونها
+  const T = base();
+  T.raw = [{ id: 'm', name: 'لحم', price: 400, packQty: 1, useUnit: 'جم', taxable: true, wastePct: 0 }];
+  T.purchases = [Object.assign(inv('x', '2026-10-01', 460), { taxable: true, includesVat: true })];
+  assert.deepEqual(RB.rawPriceSources(T, 'x'), ['m']);
+  assert.deepEqual(RB.rawPriceRestore(T, 'm'), { price: 400, taxable: true });
+});
+
+test('متابعة التجديد: المدفوع قبل بدء الدفتر يُتابع بنهاية تغطيته ولو بقي منه شهر، ومفتاح البند واحد لتجديده (audit-r3)', () => {
+  const S = base();
+  const op = (id, category, desc, months, entity) => ({ id, date: '2026-09-01', category, desc, entity: entity || '', amount: 300, months, account: 'opening', taxable: false, includesVat: false });
+  S.expenses = [
+    op('l1', 'gov', 'رخصة المحل التجاري', 1, 'بلدي (أمانة المنطقة)'),
+    op('c2', 'gov', 'شهادة السلامة', 2, 'الدفاع المدني (سلامة)'),
+    op('rent', 'rent', 'إيجار المحل', 4),
+    op('u', 'utilities', 'كهرباء', 1),
+    // رسم مدفوع من البنك يغطي شهراً: لا يُتابع كما كان
+    { id: 'g1', date: '2026-09-10', category: 'gov', desc: 'رسم شهري', entity: '', amount: 100, months: 1, account: 'bank', taxable: false, includesVat: false },
+  ];
+  assert.equal(RB.expenseTerm(S.expenses[0]), 12);
+  assert.equal(RB.expenseTerm(S.expenses[2]), 6);
+  assert.equal(RB.expenseTerm(S.expenses[3]), 1);
+  const R = RB.renewals(S, '2026-10-06').map((r) => [r.rec.id, r.end, r.status]);
+  assert.deepEqual(R, [
+    ['l1', '2026-09-30', 'expired'],
+    ['c2', '2026-10-31', 'soon'],
+    ['rent', '2026-12-31', 'ok'],
+  ]);
+  // التجديد بمفتاح البند نفسه (التصنيف والجهة والوصف والموظف): يحل محل السجل الافتتاحي في المتابعة
+  const ren = { id: 'l1b', date: '2026-10-06', startDate: '2026-10-01', category: 'gov', desc: 'رخصة المحل التجاري', entity: 'بلدي (أمانة المنطقة)', amount: 250, months: 12, account: 'bank' };
+  assert.equal(RB.renewKey(ren), RB.renewKey(S.expenses[0]));
+  S.expenses.push(ren);
+  assert.deepEqual(RB.renewals(S, '2026-10-06').map((r) => r.rec.id), ['c2', 'rent', 'l1b']);
+});
+
+test('نقطة التعادل في أول شهر تشغيل: الإيجار والإهلاك قسط شهر كامل لا يُقسم على أيام الفترة (audit-r3)', () => {
+  const N = base();
+  N.settings.vatRegistered = false;
+  N.settings.openingDate = '2026-10-01';
+  N.expenses = [{ id: 'r', date: '2026-09-25', category: 'rent', desc: 'إيجار', amount: 36000, months: 6, startDate: '2026-10-01', taxable: false, includesVat: false, account: 'bank' }];
+  N.assets = [{ id: 'k', date: '2026-09-20', name: 'معدات', category: 'kitchen', amount: 12000, includesVat: false, taxable: false, account: 'bank', lifeMonths: 60, salvage: 0 }];
+  N.sales = [{ id: 's', date: '2026-10-02', channels: { cash: { amount: 5000, orders: 100, type: 'cash', feePct: 0, feeVat: false } } }];
+  for (const t of ['2026-10-02', '2026-10-16', '2026-10-30']) {
+    const e = RB.breakEven(N, '2026-10-01', t, null, t);
+    assert.equal(e.estimate, true, t);
+    close(e.fixedParts.occ, 6000);
+    close(e.fixedParts.dep, 200);
+    close(e.fixedMonthly, 6200);
+    close(e.beGross, 6200 * (1 + 0));
+  }
+  // إيجار يُدفع شهرياً (مصروف شهر واحد بتصنيف الإيجار) قسط شهر كامل كذلك؛ وفاتورة الكهرباء بأيام الفترة كما كانت
+  N.expenses = [
+    { id: 'r1', date: '2026-10-01', category: 'rent', desc: 'إيجار أكتوبر', amount: 6000, months: 1, taxable: false, includesVat: false, account: 'bank' },
+    { id: 'u', date: '2026-10-01', category: 'utilities', desc: 'كهرباء', amount: 1000, months: 1, taxable: false, includesVat: false, account: 'bank' },
+  ];
+  const e2 = RB.breakEven(N, '2026-10-01', '2026-10-14', null, '2026-10-14');
+  close(e2.fixedParts.occ, 6000);
+  close(e2.fixedParts.opex, 1000 / (14 / 31));
+  // فترة تعبر نهاية الشهر قبل أول شهر كامل (افتتاح منتصف الشهر): قسطان في الفترة = متوسطهما
+  const M = base();
+  M.settings.vatRegistered = false;
+  M.settings.openingDate = '2026-10-15';
+  M.expenses = [{ id: 'r', date: '2026-10-10', category: 'rent', desc: 'إيجار', amount: 36000, months: 6, startDate: '2026-10-15', taxable: false, includesVat: false, account: 'bank' }];
+  M.sales = [{ id: 's', date: '2026-10-16', channels: { cash: { amount: 5000, orders: 100, type: 'cash', feePct: 0, feeVat: false } } }];
+  const e3 = RB.breakEven(M, '2026-10-01', '2026-11-05', null, '2026-11-05');
+  assert.equal(e3.estimate, true);
+  close(e3.fixedParts.occ, 6000);
+});
+
+test('متوسط المحمّل شهرياً لـ«كل الفترات» أو سنة بدأ الدفتر أثناءها: من أول شهر فيه تحميل كاملاً (audit-r3)', () => {
+  const t = '2026-10-16';
+  const D = RB.demoState(t);
+  const L = RB.buildLedger(D, t);
+  const accs = new Set(RB.EXPENSE_CATS.map((c) => c.acc));
+  const first = L.entries.find((e) => e.lines.some((l) => accs.has(l.a))).date;
+  // «كل الفترات» تبدأ بأول قيد (منتصف مايو)
+  const from = L.entries[0].date;
+  const b = RB.balances(L.entries, from, t);
+  close(b['5301'], 36000);
+  close(b['5301'] / RB.chargeMonths(from, t, first), 6000);
+  // «هذه السنة» والدفتر بدأ في مايو
+  close(RB.balances(L.entries, '2026-01-01', t)['5301'] / RB.chargeMonths('2026-01-01', t, first), 6000);
+  // فترة تبدأ منتصف شهر بعد أول تحميل: ذلك الشهر بأيامه كما كان
+  close(RB.chargeMonths('2026-09-16', '2026-10-14', first), 15 / 30 + 1, 1e-9);
+  close(RB.chargeMonths('2026-10-01', '2026-10-14', first), 1, 1e-9);
+});
