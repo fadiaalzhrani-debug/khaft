@@ -22,6 +22,8 @@
     mode: 'loading', demo: false, backend: null, savedAt: 0, real: null, warnedDemo: false,
     save: { pending: 0, failed: null }, canWrite: null, readOnly: false, syncLost: false, noStorage: false,
     replacing: false, replaceFailed: null, replaceMarker: null, adopting: false, loadFailed: false, retrying: false, revoked: false, noShared: false,
+    // عدد اللقطات التي وصلت من الخارج (loadSettled: قراءة وصلت أثناءها لقطة تُعاد)
+    remoteSeq: 0,
   };
   // معرّف هذه الزيارة: يميّز علامة الاستيراد التي كتبتها هذه الصفحة عن علامة جهاز آخر
   const SID = Math.random().toString(36).slice(2, 10);
@@ -359,6 +361,13 @@
       // كل منها، وما في الشاشة يبقى كما أدخله المستخدم (لقطة البيانات المشتركة لا تمحوه) فتشمله النسخة الاحتياطية.
       // إعادة حفظه أو حذفه تحل محله من بدايتها، فلا تُعيد لقطتها أثناء الحفظ القيمة القديمة إلى الشاشة
       this.bad = RB.unsavedWrites();
+      // آخر ما رأته هذه الصفحة محفوظاً (قبل ما يُحفظ منها): كل قسم بمعرّفات سجلاته، والإعدادات. يُبنى عليه كل تعديل
+      // (base) فيُعرف عند إعادة المحاولة وعند حفظ الإعدادات ما غيّره الشريك بعده
+      this.raw = {};
+      this.seenSettings = undefined;
+    }
+    seen(section, data) {
+      this.raw[section] = new Map(data.map((x) => [String(x.id), clone(x)]));
     }
     async load() {
       // الإعدادات وكل المجموعات معاً لا واحدة بعد الأخرى (فتح أسرع). ولكل قراءة إعادة محاولة عند الانقطاع المؤقت
@@ -368,7 +377,11 @@
         ...RB.SECTIONS.map((k) => this.retry(() => this.db.collection(k).get())),
       ]);
       const out = { settings: st.exists ? clone(st.data()) : null };
-      RB.SECTIONS.forEach((k, i) => (out[k] = snaps[i].docs.map(docRec)));
+      this.seenSettings = st.exists ? clone(st.data()) : null;
+      RB.SECTIONS.forEach((k, i) => {
+        out[k] = snaps[i].docs.map(docRec);
+        this.seen(k, out[k]);
+      });
       if (!out.settings && RB.SECTIONS.every((k) => !out[k].length)) return null;
       out.settings = out.settings || {};
       return out;
@@ -380,10 +393,22 @@
         this.subs[key] = { ref, deliver, unsub: null, tries: 0, timer: null, dead: false };
         this.listen(key);
       };
-      add('settings', () => this.db.doc('config/settings'), (s) => s.exists && cb('settings', clone(s.data())));
+      add('settings', () => this.db.doc('config/settings'), (s) => {
+        this.seenSettings = s.exists ? clone(s.data()) : null;
+        if (s.exists) cb('settings', clone(s.data()));
+      });
       // علامة الاستيراد أو المسح: يظهر أن جهازاً آخر يستورد الآن، ويختفي التنبيه حين ينتهي
       add('replace', () => this.db.doc('config/replace'), (s) => cb('replace', s.exists ? clone(s.data()) : null));
-      for (const k of RB.SECTIONS) add(k, () => this.db.collection(k), (snap) => cb(k, snap.docs.map(docRec)));
+      for (const k of RB.SECTIONS)
+        add(
+          k,
+          () => this.db.collection(k),
+          (snap) => {
+            const data = snap.docs.map(docRec);
+            this.seen(k, data);
+            cb(k, data);
+          }
+        );
     }
     listen(key) {
       const s = this.subs[key];
@@ -432,6 +457,8 @@
       if (APP.revoked) return;
       APP.revoked = APP.syncLost = APP.readOnly = true;
       render();
+      // الشريط مخفي خلف النموذج المفتوح: يُقال الآن قبل أن يكمل المستخدم الإدخال (الحفظ لن يُغلقه، فيُنسخ ما فيه)
+      if (OPEN_FORMS.size) toast(LOST_MSG, 'bad');
     }
     async retry(fn) {
       for (let i = 0; ; i++) {
@@ -499,14 +526,78 @@
       return un.length ? RB.withUnsaved(section, data, un) : data;
     }
     // زر «أعد المحاولة» في شريط «لم يُحفظ آخر تعديل»: كل ما فشل حفظه أو حذفه ولا تجري له كتابة الآن يُعاد بآخر ما
-    // أراده المستخدم (يُحفظ السجل، أو يُحذف، أو تُحفظ الإعدادات). يرجع null إن لم يبقَ ما يُعاد، وإلا {ok, err}:
-    // ok إن لم يبقَ شيء لم يُحفظ، وerr آخر خطأ (للتنبيه مرة واحدة)
-    async retryFailed() {
+    // أراده المستخدم (يُحفظ السجل، أو يُحذف، أو تُحفظ الإعدادات). السجل يُقرأ أولاً كما هو محفوظ الآن: إن عدّله الشريك بعد
+    // ما بُني عليه التعديل (base) يُكتب ما غيّره المستخدم وحده فوق نسخة الشريك (RB.editMerge)، ويُسأل مرة واحدة (ask) عمّا
+    // غيّراه كلاهما، وعن سجل حذفه الشريك وكان المستخدم عدّله، وسجل عدّله الشريك وكان المستخدم حذفه — فلا يمحو الضغط على
+    // الزر تعديلات الشريك بصمت. ask(items) يرجع true لما أدخله المستخدم، وfalse لما حفظه الشريك.
+    // يرجع null إن لم يبقَ ما يُعاد، وإلا {ok, err, merged}: ok إن لم يبقَ شيء لم يُحفظ، وerr آخر خطأ (للتنبيه مرة
+    // واحدة)، وmerged عدد السجلات التي دُمج فيها تعديل المستخدم مع تعديل الشريك
+    async retryFailed(ask) {
       const list = this.bad.failed();
       if (!list.length) return null;
       let err = null;
-      await Promise.all(list.map(({ keep }) => this.save(keep, (e) => (err = e))));
-      return { ok: !this.bad.size, err };
+      const plans = (
+        await Promise.all(
+          list.map(async ({ path, keep }) => {
+            if (keep.section === 'settings' || keep.base === undefined) return { path, keep, rec: keep.rec };
+            let cur;
+            try {
+              const d = await this.retry(() => this.db.collection(keep.section).doc(String(keep.id)).get());
+              cur = d.exists ? docRec(d) : null;
+            } catch (e) {
+              err = e;
+              return null;
+            }
+            const base = keep.base;
+            const same = (a, b) => (a === null || b === null ? a === b : RB.sameRec(a, b));
+            if (same(cur, base) || same(cur, keep.rec)) return { path, keep, rec: keep.rec, cur };
+            if (!keep.rec) return { path, keep, rec: null, cur, kind: 'edited' };
+            if (!cur) return { path, keep, rec: keep.rec, cur, kind: 'deleted' };
+            const mg = RB.editMerge(base || {}, base || {}, keep.rec, cur);
+            return { path, keep, rec: mg.rec, cur, clash: mg.clash, kind: mg.clash.length ? 'clash' : 'merged' };
+          })
+        )
+      ).filter(Boolean);
+      const asks = plans.filter((p) => p.kind && p.kind !== 'merged');
+      const mine = !asks.length || !ask || (await ask(asks));
+      let merged = 0;
+      const jobs = [];
+      for (const p of plans) {
+        // أثناء السؤال حفظه المستخدم من جديد أو حُفظ: الكتابة الأحدث هي التي تقرر
+        if (!this.bad.failed().some((f) => f.path === p.path && f.keep === p.keep)) continue;
+        let rec = p.rec;
+        if (!mine && p.kind === 'clash') {
+          rec = clone(p.rec);
+          for (const f of p.clash) {
+            if (p.cur[f] === undefined) delete rec[f];
+            else rec[f] = clone(p.cur[f]);
+          }
+        }
+        if (!mine && (p.kind === 'deleted' || p.kind === 'edited' || (p.kind === 'clash' && RB.sameRec(rec, p.cur)))) {
+          // أبقى المستخدم ما حفظه الشريك: لا كتابة، وتعود الشاشة للبيانات المشتركة
+          this.bad.drop(p.path);
+          this.resync(p.keep.section);
+          continue;
+        }
+        if (p.kind === 'merged' || p.kind === 'clash') merged++;
+        // ما يُكتب الآن مبني على المحفوظ الآن: إن فشل ثانية يُقارن به
+        jobs.push(this.save(Object.assign({}, p.keep, { rec }, p.cur !== undefined ? { base: p.cur } : {}), (e) => (err = e)));
+      }
+      await Promise.all(jobs);
+      if (!this.bad.size) APP.save.failed = null;
+      return { ok: !this.bad.size, err, merged };
+    }
+    // السجل كما هو محفوظ الآن (لقطة هذه الصفحة قد تصل متأخرة) ومعه ما يُحفظ منها أو فشل حفظه كما في الشاشة: يُقارن به
+    // نموذج التعديل عند الحفظ. undefined إن تعذّرت القراءة سريعاً (يُعتمد ما في الشاشة)
+    async fresh(section, id) {
+      try {
+        const d = await Promise.race([this.db.collection(section).doc(String(id)).get(), new Promise((r) => setTimeout(r, 5000))]);
+        if (!d) return undefined;
+        const list = this.overlay(section, d.exists ? [docRec(d)] : []);
+        return list.find((x) => RB.isObj(x) && String(x.id) === String(id)) || null;
+      } catch (e) {
+        return undefined;
+      }
     }
     async resync(section) {
       try {
@@ -523,15 +614,26 @@
       render();
     }
     put(section, rec) {
-      return this.save({ section, id: rec.id, rec: clone(rec) });
+      return this.save(this.based({ section, id: rec.id, rec: clone(rec) }));
     }
     del(section, id) {
-      return this.save({ section, id, rec: null });
+      return this.save(this.based({ section, id, rec: null }));
     }
-    // keys: مفاتيح الإعدادات التي غيّرها هذا الحفظ، ومعها مفاتيح حفظ سابق للإعدادات يجري أو فشل (لا يضيع إن فشل)
+    // المستند كما كان محفوظاً حين بدأ تعديل المستخدم (base؛ null: لم يكن موجوداً). تعديل ثانٍ لسجل يُحفظ الآن أو فشل حفظه
+    // يبقى مبنياً على ما بُني عليه الأول (لم يُحفظ ما بينهما)
+    based(keep) {
+      const prev = this.bad.keeps(keep.section + '/' + keep.id).find((k) => k.base !== undefined);
+      const raw = this.raw[keep.section];
+      if (prev) keep.base = prev.base;
+      else if (raw) keep.base = raw.has(String(keep.id)) ? clone(raw.get(String(keep.id))) : null;
+      return keep;
+    }
+    // keys: مفاتيح الإعدادات التي غيّرها هذا الحفظ، ومعها مفاتيح حفظ سابق للإعدادات يجري أو فشل (لا يضيع إن فشل).
+    // base: الإعدادات كما رأتها هذه الصفحة محفوظة الآن؛ يُدمج بها كل مفتاح فوق أحدث نسخة (RB.settingsWith)
     saveSettings(settings, keys) {
       const k = RB.settingsKeys(this.bad.keeps('config/settings'), keys);
-      return this.save(Object.assign({ section: 'settings', id: 'settings', rec: clone(settings) }, k ? { keys: k } : {}));
+      const base = this.seenSettings === undefined ? {} : { base: clone(this.seenSettings) };
+      return this.save(Object.assign({ section: 'settings', id: 'settings', rec: clone(settings) }, k ? { keys: k } : {}, base));
     }
     // كتابة مستند كما يصفه keep ({section, id, rec}؛ rec = null للحذف): الحفظ العادي وإعادة المحاولة بالطريقة نفسها
     save(keep, onErr) {
@@ -543,7 +645,7 @@
         const fn = keep.keys
           ? async () => {
               const d = await ref.get();
-              return ref.set(RB.settingsWith(d.exists ? d.data() : null, rec, d.exists ? keep.keys : null));
+              return ref.set(RB.settingsWith(d.exists ? d.data() : null, rec, d.exists ? keep.keys : null, keep.base));
             }
           : () => ref.set(rec);
         return this.write('config/settings', fn, section, keep, onErr);
@@ -571,11 +673,15 @@
     // before: المستندات التي كانت موجودة حين بدأت العملية أول مرة وما كتبته العملية. عند إكمال عملية فشلت
     // يُمرَّر prev = before، فلا يُحذف إلا منها: ما أضافه الشريك بعد الفشل يبقى
     // busy (untouched: لم يُكتب شيء): جهاز آخر يستبدل الدفتر الآن (علامته جارية أو العقد معه)، أو فقدت هذه الصفحة
-    // العقد أثناء الكتابة (تأخر تجديده حتى أخذه جهاز آخر) فتتوقف ولا تكتب علامة فوق علامته
-    async replaceAll(state, progress, prev) {
+    // العقد أثناء الكتابة (تأخر تجديده حتى أخذه جهاز آخر) فتتوقف ولا تكتب علامة فوق علامته.
+    // written (ومعه prev عند الإكمال): ما كتبته المحاولات السابقة (المسار ← نصه)، يرجع في نتيجة الفشل؛ السجل الذي كُتب ولم
+    // يتغيّر بعدها في هذه الصفحة لا يُكتب ثانية (RB.replacePlan)، فلا يُمحى ما عدّله الشريك فيه بعد الفشل.
+    // عند النجاح: extra السجلات التي في الدفتر المشترك وليست في الدفتر المطلوب، وmissing عكسها — أضافها جهاز آخر أو حذفها
+    // أثناء العملية (أو بعد فشلها)، فيُنبَّه لها بدل «تم» وحدها
+    async replaceAll(state, progress, prev, written) {
       const bad = RB.badIds(state);
-      if (bad.length) return { ok: false, failed: countRecs(state), code: 'invalid_id', badIds: bad, before: prev };
-      const run = { done: 0, failed: false, code: null };
+      if (bad.length) return { ok: false, failed: countRecs(state), code: 'invalid_id', badIds: bad, before: prev, written };
+      const run = { done: 0, failed: false, code: null, written: new Map(written || []) };
       let renew = null;
       try {
         return await this.replaceRun(state, progress, prev, run, (t) => (renew = t));
@@ -591,13 +697,13 @@
       let marked = false;
       const fail = (e) => {
         if (marked) this.mark('failed').catch(() => {});
-        return { ok: false, failed: countRecs(state), code: (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error'), before: prev };
+        return { ok: false, failed: countRecs(state), code: (e && e.code) || (e instanceof TypeError ? 'invalid_id' : 'error'), before: prev, written: run.written };
       };
       let plan;
       try {
         const m = await this.retry(() => this.db.doc('config/replace').get());
         const live = m.exists && RB.replaceMarkerState(clone(m.data() || {}), Date.now(), SID) === 'running';
-        if (live || !(await this.lease())) return { ok: false, code: 'busy', untouched: true, failed: 0, before: prev };
+        if (live || !(await this.lease())) return { ok: false, code: 'busy', untouched: true, failed: 0, before: prev, written: run.written };
         onRenew(
           setInterval(() => {
             this.lease().then(
@@ -617,14 +723,15 @@
         const snaps = await Promise.all(RB.SECTIONS.map((k) => this.retry(() => this.db.collection(k).get())));
         const existing = {};
         RB.SECTIONS.forEach((k, i) => (existing[k] = snaps[i].docs.map((d) => d.id)));
-        plan = RB.replacePlan(state, existing, prev);
+        plan = RB.replacePlan(state, existing, prev, run.written);
       } catch (e) {
         return fail(e);
       }
       const before = plan.known;
       const sets = plan.sets.map(([k, r]) => {
         const body = clone(r);
-        return [k + '/' + r.id, () => this.db.collection(k).doc(r.id).set(body)];
+        const json = JSON.stringify(r);
+        return [k + '/' + r.id, () => this.db.collection(k).doc(r.id).set(body).then(() => run.written.set(k + '/' + r.id, json))];
       });
       const dels = plan.dels.map(([k, id]) => [k + '/' + id, () => this.db.collection(k).doc(id).delete()]);
       const st = clone(state.settings);
@@ -661,7 +768,22 @@
       if (run.failed) {
         // العقد مع جهاز آخر الآن: علامته الجارية تبقى
         if (run.code !== 'busy') this.mark('failed').catch(() => {});
-        return { ok: false, failed: nSets - setsDone, dels: nDels - delsDone, code: run.code, before };
+        return { ok: false, failed: nSets - setsDone, dels: nDels - delsDone, code: run.code, before, written: run.written };
+      }
+      // الدفتر المشترك الآن مقابل الدفتر المطلوب، قبل أن تزول العلامة: سجل حفظه جهاز آخر قبل أن تصله العلامة (أو بعد فشل
+      // سابق) يبقى أو يُحذف بلا علم من بدأ العملية، فيُذكر له. تعذّرت القراءة: لا تنبيه
+      let extra = 0;
+      let missing = 0;
+      try {
+        const now = await Promise.all(RB.SECTIONS.map((k) => this.retry(() => this.db.collection(k).get())));
+        RB.SECTIONS.forEach((k, i) => {
+          const want = new Set((Array.isArray(state[k]) ? state[k] : []).map((r) => String(r.id)));
+          const have = new Set(now[i].docs.map((d) => String(d.id)));
+          for (const id of have) if (!want.has(id)) extra++;
+          for (const id of want) if (!have.has(id)) missing++;
+        });
+      } catch (e) {
+        /* بلا مقارنة */
       }
       try {
         // العلامة تُحذف إن كانت لهذه الصفحة فقط: لا يزول تنبيه عملية بدأها جهاز آخر بعدها
@@ -677,7 +799,7 @@
       // الدفتر كله حُفظ كما في الشاشة: لا يبقى تعديل سابق فشل حفظه
       this.bad.clear();
       APP.savedAt = Date.now();
-      return { ok: true, failed: 0 };
+      return { ok: true, failed: 0, extra, missing };
     }
   }
 
@@ -703,9 +825,18 @@
   // توقف الوصول (revoked): لا يُدّعى أن السبب الصلاحية (قد يكون المشاركة أو الإتاحة)
   const LOST_MSG = 'توقف الوصول إلى البيانات المشتركة فلا يمكن التعديل الآن — صدّر نسخة احتياطية ثم أعد تحميل الصفحة';
   const roMsg = () => (APP.revoked ? LOST_MSG : RO_MSG);
+  // استيراد أو مسح للدفتر المشترك يجري من هذه الصفحة
+  const OWN_BUSY_MSG = 'يجري الاستيراد أو المسح من هذه الصفحة — انتظر حتى ينتهي ثم احفظ.';
+  // لا تعديل الآن (يُنبَّه ويرجع true): عرض فقط أو توقف الوصول، أو استيراد أو مسح للدفتر المشترك يجري الآن من هذه
+  // الصفحة أو من جهاز آخر — العملية تكتب الدفتر كله وتحذف ما ليس فيه، فتعديل يُحفظ أثناءها يبقى في دفتر ممسوح أو يُضاف
+  // إلى النسخة المستوردة أو يُستبدل بها. وضع التجربة مستثنى لأنه لا يُحفظ. ما يُرفض أثناء حفظ نموذج يُعلَّم في سجله
+  // (saveLog.refused) فيبقى النموذج مفتوحاً بما فيه
   function roBlock() {
-    if (!APP.readOnly || APP.demo) return false;
-    toast(roMsg(), 'bad');
+    if (APP.demo) return false;
+    const msg = APP.readOnly ? roMsg() : APP.replacing ? OWN_BUSY_MSG : otherReplacing() ? BUSY_MSG : '';
+    if (!msg) return false;
+    if (saveLog) saveLog.refused = true;
+    toast(msg, 'bad');
     return true;
   }
   // بدء دفتر أو استيراده أو مسحه والبيانات المشتركة غير متاحة: يُكتب في هذا المتصفح وحده فلا يراه الشريك، ولا تعرضه
@@ -757,7 +888,7 @@
   // هذه الصفحة (قد تكون أقدم) ما حفظه الشريك أو نافذة أخرى في غيرها. بلا keys تُحفظ الإعدادات كلها
   function saveSettings(keys) {
     bump();
-    if (APP.readOnly && !APP.demo) return;
+    if (roBlock()) return false;
     persistSettings(keys);
   }
 
@@ -947,7 +1078,7 @@
       let done = false;
       const m = openModal({ title: opt.title || 'تأكيد', onClose: () => !done && resolve(false) });
       m.body.innerHTML = `<p class="confirm-msg">${msg}</p>`;
-      m.foot.innerHTML = `<button type="button" class="btn ${opt.danger ? 'danger' : 'primary'}" data-ok>${esc(opt.ok || 'نعم')}</button><button type="button" class="btn ghost" data-close>إلغاء</button>`;
+      m.foot.innerHTML = `<button type="button" class="btn ${opt.danger ? 'danger' : 'primary'}" data-ok>${esc(opt.ok || 'نعم')}</button><button type="button" class="btn ghost" data-close>${esc(opt.cancel || 'إلغاء')}</button>`;
       m.foot.querySelector('[data-ok]').addEventListener('click', () => {
         done = true;
         resolve(true);
@@ -1457,7 +1588,14 @@
     let mergedNote = false;
     async function editedSince(v) {
       mergedNote = false;
-      const cur = find(editOf.s, editOf.rec.id);
+      // السجل كما هو محفوظ الآن، لا كما في هذه الصفحة: لقطة تعديل الشريك قد تصل متأخرة (حتى نصف دقيقة إن انقطع التحديث
+      // المباشر)، فلا يُكتب فوقه بصمت. يُنظَّف كما عند التحميل. تعذّرت القراءة: ما في الصفحة
+      let cur = APP.backend && APP.backend.fresh && !APP.demo ? await APP.backend.fresh(editOf.s, editOf.rec.id) : undefined;
+      if (cur === undefined) cur = find(editOf.s, editOf.rec.id);
+      else if (cur) {
+        cur = RB.sanitizeRecord(editOf.s, cur) || cur;
+        if (editOf.s === 'expenses') cur = RB.migrateExpense(cur);
+      }
       if (!cur) return (await confirmBox('حُذف هذا السجل بعد أن فتحته — حذفه شريكك أو نافذة أخرى، أو مُسحت البيانات. هل تعيد إنشاءه بما في النموذج؟', { ok: 'أعد إنشاءه' })) ? v : null;
       if (RB.sameRec(cur, editOf.rec)) return v;
       const mg = RB.editMerge(editOf.rec, JSON.parse(snap), v, cur);
@@ -1508,6 +1646,9 @@
         if (fe) fe.focus();
         return;
       }
+      // عرض فقط (توقف الوصول والنموذج مفتوح) أو استيراد أو مسح جارٍ: لا يُحفظ ولا يُغلق النموذج، فيبقى ما أُدخل فيه
+      // ليُنسخ أو يُحفظ بعد انتهاء العملية
+      if (roBlock()) return;
       saving = true;
       let log = null;
       try {
@@ -1532,7 +1673,8 @@
           toast(r.msg, 'bad');
           return;
         }
-        if (res === false) return; // ألغى المستخدم التأكيد: يبقى النموذج مفتوحاً
+        // ألغى المستخدم التأكيد، أو رُفض الحفظ (صار عرضاً فقط أو بدأ استيراد أثناء سؤال في onSave): يبقى النموذج مفتوحاً
+        if (res === false || log.refused) return;
         m.close();
         render();
         savedHint(log, o.done);
@@ -3439,10 +3581,14 @@
         ? 'البيانات المشتركة غير متاحة في هذه الزيارة — بيانات تجريبية لا يُحفظ منها شيء'
         : 'نسخة خاصة بهذا المتصفح من زيارة سابقة لم تتح فيها البيانات المشتركة — لا يراها شريكك. صدّرها نسخة احتياطية.'
       : APP.demo
-        ? APP.readOnly && !APP.revoked
-          ? 'وضع التجربة — للعرض فقط (لديك صلاحية العرض فقط)'
-          : 'وضع التجربة — لا يُحفظ شيء'
-        : backend === 'cloud' ? 'قاعدة بيانات مشتركة لهذه الصفحة: يراها ويعدّلها كل من لديه صلاحية التعديل عليها (مثل شريكك).' : 'هذا المتصفح على هذا الجهاز فقط. اجعل الإدخال من جهاز واحد، وصدّر نسخة احتياطية بانتظام. الاستيراد يستبدل كل البيانات ولا يدمجها؛ للعمل مع شريكك على نفس الدفتر استخدما نسخة Claude المشتركة.';
+        ? APP.loadFailed && !APP.real
+          ? 'تعذّر تحميل دفتر المطعم المشترك في هذه الزيارة — ما تراه بيانات تجريبية. أعد تحميل الصفحة'
+          : APP.readOnly && !APP.revoked
+            ? 'وضع التجربة — للعرض فقط (لديك صلاحية العرض فقط)'
+            : 'وضع التجربة — لا يُحفظ شيء'
+        : backend === 'cloud'
+          ? 'قاعدة بيانات مشتركة لهذه الصفحة: يقرؤها كل من تُفتح له الصفحة، ولو بصلاحية العرض فقط أو برابط عام بعد تسجيل الدخول، ويعدّلها من لديه صلاحية التعديل (مثل شريكك). راجع من شاركت الصفحة معه.'
+          : 'هذا المتصفح على هذا الجهاز فقط. اجعل الإدخال من جهاز واحد، وصدّر نسخة احتياطية بانتظام. الاستيراد يستبدل كل البيانات ولا يدمجها؛ للعمل مع شريكك على نفس الدفتر استخدما نسخة Claude المشتركة.';
     const kv = (k, v) => `<div class="kv"><span>${k}</span><b>${v}</b></div>`;
     let h = pageHead('الإعدادات والنسخ الاحتياطي', 'بيانات المطعم، الضريبة، نسب التأمينات، قنوات البيع، والنسخ الاحتياطي');
     h += `<div class="grid2">`;
@@ -3462,7 +3608,7 @@
       'الحفظ والنسخ الاحتياطي',
       `<p class="note">مكان الحفظ: <b>${where}</b>${APP.savedAt ? `<br>آخر حفظ: ${TIMEF.format(new Date(APP.savedAt))}` : ''}${backend === 'local' && !APP.demo ? `<br>آخر نسخة احتياطية من هذا المتصفح: ${lastBackupText()}` : ''}</p>
       <div class="btn-row">${btn('تصدير نسخة احتياطية', 'backup', '', 'primary')}${btn('نسخ النسخة للحافظة', 'copybackup', '', 'ghost')}${APP.noShared ? '' : btn('استيراد نسخة', 'import', '', 'ghost')}<input type="file" accept=".json,application/json" id="importFile" hidden></div>
-      <div class="btn-row">${APP.demo ? (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary') : APP.noShared ? '' : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary')) : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + (APP.noShared ? '' : btn('مسح كل البيانات', 'wipe', '', 'danger ghost'))}</div>`
+      <div class="btn-row">${APP.demo ? (APP.real ? btn('الرجوع لبياناتي', 'leavedemo', '', 'primary') : APP.noShared || APP.loadFailed ? '' : btn('ابدأ ببيانات مطعمك', 'start', '', 'primary')) : btn('عرض البيانات التجريبية', 'showdemo', '', 'ghost') + (APP.noShared ? '' : btn('مسح كل البيانات', 'wipe', '', 'danger ghost'))}</div>`
     );
     h += `</div>`;
     h += card(
@@ -5276,6 +5422,12 @@
       out.eosb = (v.eosb || []).filter((x) => x && (x.employeeId || num(x.amount))).map((x) => ({ employeeId: String(x.employeeId || ''), amount: num(x.amount) }));
       return out;
     };
+    // الأرصدة حين فُتح النموذج (null: لم تكن، فيُقارن ما حفظه الآخر بعدها بالنموذج الفارغ)، وقيمة النموذج حينها: يُعرف عند
+    // الحفظ ما غيّره المستخدم وما غيّره الشريك أو نافذة أخرى بعدها (أو حذفه، أو مسح البيانات)
+    const orig = RB.isObj(o) ? clean(o) : null;
+    const start = clean(val);
+    // حقول الأرصدة بمساراتها: كل مبلغ وحده، ومستحق كل تطبيق وحده، وقائمتا الموردين ومخصص نهاية الخدمة كل منهما وحدها
+    const openPaths = (...vs) => ['date', 'cash', 'bank', 'inventory', 'vatCredit', 'vatPayable', 'vatCurrent', 'payables', 'eosb'].concat([...new Set(vs.flatMap((x) => (RB.isObj(x) && RB.isObj(x.apps) ? Object.keys(x.apps) : [])))].map((id) => 'apps.' + id));
     formModal({
       title: 'أرصدة افتتاحية',
       wide: true,
@@ -5381,7 +5533,7 @@
         const liab = parts.length > 1 ? `<small>${parts.map((x) => `${x[0]} ${fmt(x[1])}`).join(' + ')}</small>` : '';
         return `<div class="pv-grid"><div><span>الأصول</span>${money(info.assets)}</div><div><span>الالتزامات</span>${money(info.liab)}${liab}</div><div><span>الصافي (حقوق الشركاء)</span>${money(info.net)}</div></div>${sh.length ? `<p class="note">${sh.map((x) => `${esc((S.partners.find((p) => p.id === x.partnerId) || {}).name || '')}: <b class="n">${fmt(x.amount)}</b>`).join(' · ')}</p>` : '<p class="note bad">أضف الشركاء أولاً: الصافي يُسجَّل حقوقاً لهم.</p>'}`;
       },
-      onSave: (v) => {
+      onSave: async (v) => {
         if (roBlock()) return false;
         if (!S.partners.length) return 'أضف الشركاء أولاً: صافي الأرصدة الافتتاحية يُسجَّل حقوقاً لهم.';
         const c = clean(v);
@@ -5396,8 +5548,29 @@
         const ids = (v.eosb || []).map((x) => (x && (x.employeeId || num(x.amount)) ? String(x.employeeId || '') : ''));
         const di = ids.findIndex((id, i) => id && ids.indexOf(id) !== i);
         if (di >= 0) return { msg: 'الموظف مكرر في مخصص نهاية الخدمة: ' + ((empOf(ids[di]) || {}).name || '') + '. اجمع مخصصه في سطر واحد.', path: `eosb.${di}.employeeId`, inline: 'مكرر' };
-        S.settings.opening = c;
-        saveSettings(['opening']);
+        // تغيّرت الأرصدة بعد فتح النموذج (الشريك أو نافذة أخرى): لا يُكتب فوقها بصمت كما كانت حين فُتح.
+        // حُذفت (أو مُسحت البيانات): يُسأل أتُعاد. عُدّلت: ما غيّره المستخدم وحده فوقها، ويُسأل عن الحقل الذي غيّراه كلاهما
+        const mg = await (async () => {
+          const curO = S.settings.opening;
+          if (orig && !RB.isObj(curO)) return (await confirmBox('حُذفت الأرصدة الافتتاحية بعد أن فتحت هذا النموذج — حذفها شريكك أو نافذة أخرى، أو مُسحت البيانات. هل تعيد حفظها بما في النموذج؟', { ok: 'أعد حفظها' })) ? { rec: c } : null;
+          if (!RB.isObj(curO) || (orig && RB.sameRec(clean(curO), orig))) return { rec: c };
+          const cur0 = clean(curO);
+          const pm = RB.pathMerge(orig || start, start, c, cur0, openPaths(orig, start, c, cur0));
+          if (pm.clash.length) {
+            const label = (p) => (p.startsWith('apps.') ? (RB.channelOf(S, p.slice(5)) || { name: p.slice(5) }).name : { date: 'تاريخ بدء الدفتر', cash: 'النقد في الصندوق', bank: 'رصيد الحساب البنكي', inventory: 'قيمة المخزون', vatCredit: 'رصيد ضريبة دائن', vatPayable: 'ضريبة مستحقة من إقرار سابق', vatCurrent: 'ضريبة الفترة الجارية', payables: 'مستحق للموردين', eosb: 'مخصص نهاية الخدمة' }[p] || p);
+            const names = pm.clash.map((p) => '«' + esc(label(p)) + '»').join('، ');
+            if (!(await confirmBox(`عدّل شريكك أو نافذة أخرى الأرصدة الافتتاحية بعد أن فتحت هذا النموذج، وغيّرتَ أنت أيضاً ${names}. الحفظ يضع ما في النموذج مكان تعديله فيها، وتبقى تعديلاته في غيرها. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return null;
+          }
+          return { rec: pm.rec, merged: true };
+        })();
+        if (!mg) return false;
+        const merged = mg.rec;
+        // الدمج قد يجمع ما لا يجتمع (رصيد دائن من الشريك ومستحق من المستخدم): لا يُحفظ
+        if ((merged.vatCredit > 0 && merged.vatPayable > 0) || (merged.vatCurrent && !(vatPer(merged.date) || {}).cur)) return 'عدّل شريكك أو نافذة أخرى الأرصدة الافتتاحية بعد أن فتحت هذا النموذج، ودمج تعديله مع ما أدخلته يجعل الضريبة من الإقرار السابق أو ضريبة الفترة الجارية غير متسقة. أغلق النموذج وافتحه من جديد ثم عدّل.';
+        if (roBlock()) return false;
+        S.settings.opening = merged;
+        if (saveSettings(['opening']) === false) return false;
+        if (mg.merged) toast('عدّل شريكك أو نافذة أخرى الأرصدة الافتتاحية بعد أن فتحت النموذج — حُفظ ما غيّرته أنت، وبقيت تعديلاته في الحقول الأخرى.');
       },
       done: 'حُفظت الأرصدة الافتتاحية.',
     });
@@ -5405,6 +5578,10 @@
 
   function channelForm(id) {
     const c = id ? S.settings.channels.find((x) => x.id === id) : null;
+    // القناة حين فُتح النموذج: إن عدّلها الشريك أو نافذة أخرى بعدها يُكتب ما غيّره المستخدم وحده (ويُسأل عن الحقل الذي
+    // غيّراه كلاهما)، وإن حذفها يُسأل أتُعاد
+    const orig = c ? clone(c) : null;
+    const names = { name: 'الاسم', type: 'النوع', feePct: 'العمولة أو الرسوم %', active: 'مفعّلة' };
     formModal({
       title: c ? 'تعديل قناة بيع' : 'قناة أو تطبيق جديد',
       value: c ? clone(c) : { id: 'ch' + Date.now().toString(36), name: '', type: 'app', feePct: 20, active: true },
@@ -5413,8 +5590,19 @@
         { type: 'row', fields: [{ k: 'type', type: 'select', label: 'النوع', options: Object.entries(RB.CHANNEL_TYPES), redraw: true }, { k: 'feePct', type: 'num', label: 'العمولة أو الرسوم %', min: 0, max: 100, show: (v) => v.type !== 'cash', help: 'نسبة من قيمة الطلب شاملة الضريبة' }] },
         { k: 'active', type: 'check', label: 'مفعّلة' },
       ],
-      onSave: (v) => {
+      onSave: async (v) => {
         if (roBlock()) return false;
+        if (orig) {
+          const cur = S.settings.channels.find((x) => x.id === v.id);
+          if (!cur) {
+            if (!(await confirmBox('حُذفت هذه القناة بعد أن فتحت النموذج — حذفها شريكك أو نافذة أخرى. هل تعيد إضافتها بما في النموذج؟', { ok: 'أعد إضافتها' }))) return false;
+          } else if (!RB.sameRec(cur, orig)) {
+            const mg = RB.editMerge(orig, orig, v, cur);
+            if (mg.clash.length && !(await confirmBox(`عدّل شريكك أو نافذة أخرى هذه القناة بعد أن فتحت النموذج، وغيّرتَ أنت أيضاً ${mg.clash.map((k) => '«' + esc(names[k] || k) + '»').join('، ')}. الحفظ يضع ما في النموذج مكان تعديله، وتبقى تعديلاته في غيره. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return false;
+            v = Object.assign(mg.rec, { id: v.id });
+          }
+          if (roBlock()) return false;
+        }
         const i = S.settings.channels.findIndex((x) => x.id === v.id);
         if (i >= 0) S.settings.channels[i] = v;
         else S.settings.channels.push(v);
@@ -5425,8 +5613,9 @@
     });
   }
 
-  // النموذج يُفتح بنسخة من الإعدادات للعرض والتحقق، ويكتب حقوله وحدها فوق الإعدادات الحالية عند الحفظ (S.settings تتحدث
-  // أثناء فتحه بما يحفظه الشريك أو نافذة أخرى: قناة جديدة، أرصدة افتتاحية، يوم مغلق… فتبقى)
+  // النموذج يُفتح بنسخة من الإعدادات للعرض والتحقق، ويكتب عند الحفظ ما غيّره المستخدم من حقوله وحدها فوق الإعدادات الحالية
+  // (S.settings تتحدث أثناء فتحه بما يحفظه الشريك أو نافذة أخرى: قناة جديدة، أرصدة افتتاحية، يوم مغلق، أو حقل في النموذج
+  // نفسه… فيبقى). حقل غيّره الآخر بعد فتح النموذج وغيّره المستخدم أيضاً يُسأل عنه كنماذج السجلات
   function settingsForm(which) {
     const defs = {
       general: [
@@ -5466,6 +5655,8 @@
         { type: 'row', fields: [{ k: 'labor.workPermitAnnual', type: 'num', label: 'رخصة العمل سنوياً', min: 0 }, { k: 'labor.medicalAnnual', type: 'num', label: 'التأمين الطبي سنوياً', min: 0, help: MED_HELP }] },
       ],
     };
+    // الإعدادات حين فُتح النموذج
+    const at = clone(S.settings);
     formModal({
       title: { general: 'بيانات المطعم', vat: 'ضريبة القيمة المضافة', labor: 'التأمينات ورسوم العمالة' }[which],
       value: clone(S.settings),
@@ -5481,19 +5672,31 @@
         if (roBlock()) return false;
         // الأرقام تُحفظ أرقاماً: الحقل الفارغ (الحد الأعلى للأجر مثلاً) صفر لا نص فارغ
         const list = typeof defs[which] === 'function' ? defs[which](v) : defs[which];
-        for (const f of flatFields(list)) if (f.k && (f.type === 'num' || f.type === 'money')) setPath(v, f.k, num(getPath(v, f.k)));
-        // حقول هذا النموذج وحدها (gosi.cap مثلاً لا التأمينات كلها) فوق الإعدادات الحالية، لا النسخة التي فُتح بها
-        const ks = flatFields(list).filter((f) => f.k).map((f) => f.k);
-        const onto = (base) => {
-          for (const k of ks) setPath(base, k, getPath(v, k));
-          return base;
+        const nums = (o) => {
+          for (const f of flatFields(list)) if (f.k && (f.type === 'num' || f.type === 'money')) setPath(o, f.k, num(getPath(o, f.k)));
+          return o;
         };
-        const warn = which === 'vat' ? vatHistoryChanges(S.settings, onto(clone(S.settings))) : '';
+        nums(v);
+        // ما غيّره المستخدم من حقول هذا النموذج وحده (gosi.cap مثلاً لا التأمينات كلها) فوق الإعدادات الحالية، لا النسخة
+        // التي فُتح بها: حقل لم يلمسه وحفظه الشريك بعد فتح النموذج يبقى بقيمة الشريك
+        const ks = flatFields(list).filter((f) => f.k).map((f) => f.k);
+        const start = nums(clone(at));
+        const merge = () => RB.pathMerge(at, start, v, S.settings, ks);
+        const mg = merge();
+        if (mg.clash.length) {
+          const names = mg.clash.map((k) => '«' + esc((flatFields(list).find((f) => f.k === k) || {}).label || k) + '»').join('، ');
+          const one = mg.clash.length === 1;
+          if (!(await confirmBox(`عدّل شريكك أو نافذة أخرى ${names} بعد أن فتحت هذا النموذج، وغيّرتَ ${one ? 'الحقل' : 'الحقول'} أنت أيضاً. الحفظ يضع ما في النموذج مكان تعديله في ${one ? 'هذا الحقل' : 'هذه الحقول'}، وتبقى تعديلاته في غيرها. هل تحفظ؟`, { ok: 'احفظ ما في النموذج' }))) return false;
+        }
+        const warn = which === 'vat' ? vatHistoryChanges(S.settings, merge().rec) : '';
         if (warn && !(await confirmBox(warn + ' متابعة؟', { danger: true }))) return false;
-        // بعد التأكيد: فوق أحدث إعدادات (قد تصل أثناء السؤال)
-        onto(S.settings);
+        // بعد الأسئلة: صار عرضاً فقط أو بدأ استيراد أثناءها فلا يُغيَّر شيء، وإلا فوق أحدث إعدادات (قد تصل أثناء السؤال)
+        if (roBlock()) return false;
+        const fin = merge();
+        for (const k of fin.mine) setPath(S.settings, k, getPath(v, k));
         S.settings.reviewedAt = new Date().toISOString();
-        saveSettings(['reviewedAt', ...new Set(ks.map((k) => k.split('.')[0]))]);
+        saveSettings(['reviewedAt', ...new Set(fin.mine.map((k) => k.split('.')[0]))]);
+        if (ks.some((k) => !fin.mine.includes(k) && !RB.sameRec(getPath(S.settings, k), getPath(at, k)))) toast('عدّل شريكك أو نافذة أخرى هذا النموذج بعد أن فتحته — حُفظ ما غيّرته أنت، وبقيت تعديلاته في الحقول الأخرى.');
       },
     });
   }
@@ -5600,7 +5803,7 @@
 
   // علامة «كان مغلقاً» ليوم أو إلغاؤها (say: رسالة بالإلغاء)
   function setClosedDay(d, on, say) {
-    if (roBlock()) return;
+    if (roBlock()) return false;
     const rest = (S.settings.closedDays || []).filter((x) => x !== d);
     S.settings.closedDays = on ? rest.concat([d]).sort().slice(-60) : rest;
     saveSettings(['closedDays']);
@@ -5639,6 +5842,7 @@
     del: async (el) => {
       const s = el.dataset.s;
       const id = el.dataset.id;
+      if (roBlock()) return;
       if (refCheck[s] && refCheck[s](id)) return toast(refMsg[s], 'bad');
       const rec = find(s, id);
       // سلفة استُقطعت في مسير: حذفها يجعل رصيد سلف الموظف سالباً
@@ -5655,7 +5859,8 @@
       const card0 = el.closest('#page .card');
       const ci = card0 ? [...document.querySelectorAll('#page .card')].indexOf(card0) : -1;
       const i = card0 ? [...card0.querySelectorAll(sel)].indexOf(el) : -1;
-      remove(s, id);
+      // صار عرضاً فقط (توقف الوصول) أو بدأ استيراد أثناء السؤال: لم يُحذف، فلا «تم الحذف.»
+      if (remove(s, id) === false) return;
       render();
       toast('تم الحذف.');
       const c2 = ci >= 0 ? document.querySelectorAll('#page .card')[ci] : null;
@@ -5724,7 +5929,7 @@
       if (!(await confirmBox(`إيقاف متابعة تجديد «${esc(rec.desc || RB.expenseCat(rec.category).name)}»؟ لن يظهر في متابعة التجديد ولا في التنبيهات، ويعود إذا سجّلت تجديده لاحقاً.`, { ok: 'أوقف المتابعة' }))) return;
       const sel = '#page [data-act="stopRenew"]';
       const i = [...document.querySelectorAll(sel)].indexOf(el);
-      upsert('expenses', Object.assign(clone(rec), { noRenew: true }));
+      if (upsert('expenses', Object.assign(clone(rec), { noRenew: true })) === false) return;
       render();
       const focusOn = (b) => {
         if (b) b.focus();
@@ -5742,7 +5947,7 @@
           if (!r || !r.noRenew || roBlock()) return;
           const c = clone(r);
           delete c.noRenew;
-          upsert('expenses', c);
+          if (upsert('expenses', c) === false) return;
           render();
           focusOn(document.querySelector(`${sel}[data-id="${CSS.escape(id)}"]`));
         },
@@ -5795,7 +6000,7 @@
       // ومستحقاتها في الأرصدة الافتتاحية: حذفها يُبقي المبلغ في الدفاتر ويخفيه من نموذج الأرصدة
       const opApps = (RB.openingInfo(S) || {}).appsBy || {};
       if (Object.prototype.hasOwnProperty.call(opApps, id) && num(opApps[id])) return toast('لهذه القناة مستحقات في الأرصدة الافتتاحية. أوقفها (غير مفعّلة) بدلاً من حذفها، أو صفّر مستحقاتها في الأرصدة الافتتاحية أولاً.', 'bad');
-      if (!(await confirmBox('حذف قناة البيع؟', { danger: true, ok: 'احذف' }))) return;
+      if (!(await confirmBox('حذف قناة البيع؟', { danger: true, ok: 'احذف' })) || roBlock()) return;
       S.settings.channels = S.settings.channels.filter((c) => c.id !== id);
       saveSettings(['channels']);
       render();
@@ -5809,11 +6014,11 @@
       const d = el.dataset.d;
       if (!RB.isISODate(d)) return;
       if (!(await confirmBox(`تسجيل ${esc(dtText(d))} يوماً كان المطعم فيه مغلقاً؟ لن يُنبَّه بعدها إلى أنه بلا إقفال يومي. إن كانت فيه مبيعات فسجّل إقفاله بدلاً من ذلك.`, { ok: 'كان مغلقاً' }))) return;
-      setClosedDay(d, true);
+      if (setClosedDay(d, true) === false) return;
       toast('سُجّل ' + dtText(d) + ' يوماً مغلقاً، فلا تنبيه له.', '', {
         label: 'تراجع',
         run: () => {
-          setClosedDay(d, false, true);
+          if (setClosedDay(d, false, true) === false) return;
           // زر «تراجع» زال: التركيز إلى زر اليوم في تنبيهه العائد (أو زر التنبيه الذي يذكره)، وإلا المحتوى الرئيسي
           const b = document.querySelector(`#page [data-act="closedDay"][data-d="${d}"]`) || document.querySelector('#page [data-act="closedDay"]');
           if (b) b.focus();
@@ -5831,7 +6036,7 @@
       // التركيز إلى زر «إلغاء» التالي في القائمة، أو عنوان البطاقة إن فرغت
       const list = [...document.querySelectorAll('#page [data-act="unclosedDay"]')];
       const i = list.indexOf(el);
-      setClosedDay(d, false, true);
+      if (setClosedDay(d, false, true) === false) return;
       const next = document.querySelectorAll('#page [data-act="unclosedDay"]');
       const h = document.querySelector('#page .closed-card h2') || document.querySelector('#page h1');
       const to = next[Math.min(i, next.length - 1)] || h;
@@ -5857,7 +6062,7 @@
     },
     delopening: async () => {
       if (roBlock()) return;
-      if (!(await confirmBox('حذف الأرصدة الافتتاحية؟ يُحذف قيدها من الدفاتر (الصندوق والبنك والمخزون والموردون ومخصص نهاية الخدمة وحقوق الشركاء).', { danger: true, ok: 'احذف' }))) return;
+      if (!(await confirmBox('حذف الأرصدة الافتتاحية؟ يُحذف قيدها من الدفاتر (الصندوق والبنك والمخزون والموردون ومخصص نهاية الخدمة وحقوق الشركاء).', { danger: true, ok: 'احذف' })) || roBlock()) return;
       S.settings.opening = null;
       saveSettings(['opening']);
       render();
@@ -5865,6 +6070,7 @@
     },
     // «إخفاء» خطوات البداية (يُحفظ في الإعدادات، فتختفي عند الشريك كذلك)
     setupdone: () => {
+      if (roBlock()) return;
       S.settings.setupDone = true;
       saveSettings(['setupDone']);
       render();
@@ -5944,7 +6150,7 @@
         delete c.shareHist;
         return c;
       });
-      if (await replaceAll(fresh)) toast('تم مسح البيانات.');
+      await replaceAll(fresh, { done: 'تم مسح البيانات.' });
     },
     reload: () => location.reload(),
     // إعادة حفظ ما لم يُحفظ في البيانات المشتركة (شريط «لم يُحفظ آخر تعديل»): تنبيه واحد بالنتيجة
@@ -5955,13 +6161,13 @@
       updateBanner();
       let res = null;
       try {
-        res = await be.retryFailed();
+        res = await be.retryFailed(retryAsk);
       } finally {
         APP.retrying = false;
         updateSaveStatus();
       }
       if (!res) toast('جارٍ الحفظ الآن…');
-      else if (res.ok) toast('حُفظ كل ما لم يُحفظ في البيانات المشتركة.');
+      else if (res.ok) toast(res.merged ? 'حُفظ كل ما لم يُحفظ في البيانات المشتركة، ودُمج مع ما عدّله شريكك أو نافذة أخرى في السجلات نفسها أثناء ذلك.' : 'حُفظ كل ما لم يُحفظ في البيانات المشتركة.');
       else if (res.err) toast(dbErrMsg(res.err), 'bad');
     },
     // إكمال استيراد أو مسح لم يكتمل في البيانات المشتركة: إعادة كتابة الدفتر المطلوب (آمنة إن تكررت).
@@ -5969,7 +6175,7 @@
     resumereplace: async () => {
       const f = APP.replaceFailed;
       if (!f || APP.replacing) return;
-      if (await replaceAll(f.state, f.before)) toast('اكتمل الحفظ في البيانات المشتركة.');
+      await replaceAll(f.state, { before: f.before, written: f.written, done: 'اكتمل الحفظ في البيانات المشتركة.' });
     },
     dismissreplace: async () => {
       APP.replaceMarker = null;
@@ -5984,6 +6190,21 @@
       }
     },
   };
+
+  // «أعد المحاولة» وقد عدّل الشريك أو نافذة أخرى بعض ما لم يُحفظ (CloudBackend.retryFailed): سؤال واحد عنها كلها.
+  // true: يُحفظ ما أدخله المستخدم فيها، false (ومنه الإغلاق): يبقى ما حفظه الآخر، وتُحفظ بقية تعديلات المستخدم في الحالتين
+  const RETRY_FIELD = { amount: 'المبلغ', desc: 'البيان', note: 'الملاحظة', name: 'الاسم', category: 'التصنيف', account: 'الحساب', months: 'عدد الأشهر', supplier: 'المورد', price: 'السعر', lines: 'الأسطر', items: 'الأصناف', channels: 'مبالغ القنوات', share: 'النسبة', type: 'النوع' };
+  function retryAsk(items) {
+    const line = (p) => {
+      const s = p.keep.section;
+      const r = p.keep.rec || p.cur || {};
+      const what = `${esc(SECTION_NAME[s] || 'سجل')} «${esc(recLabel(s, r))}»`;
+      if (p.kind === 'deleted') return `${what}: حذفه وكنت عدّلته`;
+      if (p.kind === 'edited') return `${what}: عدّله وكنت حذفته`;
+      return `${what}: غيّرتما كلاكما ${[...new Set(p.clash.map((k) => RETRY_FIELD[k] || fieldName(s, k)))].map((x) => '«' + esc(x) + '»').join('، ')}`;
+    };
+    return confirmBox(`عدّل شريكك أو نافذة أخرى بعد فشل الحفظ سجلات لم يُحفظ تعديلك عليها:<br>${items.map((p) => '• ' + line(p)).join('<br>')}<br>«احفظ ما أدخلته» يضع تعديلك فيها (ويعيد ما حذفه ويحذف ما حذفته)، و«أبقِ تعديله» يتركها كما حفظها. بقية تعديلاتك تُحفظ في الحالتين.`, { title: 'تعديل شريكك أثناء انقطاع الحفظ', ok: 'احفظ ما أدخلته', cancel: 'أبقِ تعديله' });
+  }
 
   function go(page) {
     if (!isPage(page)) page = 'dashboard';
@@ -6022,8 +6243,11 @@
   // جهاز آخر يستورد أو يمسح البيانات المشتركة الآن (علامته جارية): لا تبدأ عملية استبدال ثانية فوقها
   const otherReplacing = () => !!APP.backend && APP.backend.kind === 'cloud' && RB.replaceMarkerState(APP.replaceMarker, Date.now(), SID) === 'running';
   // استبدال الدفتر كله (البداية، الاستيراد، المسح، إكمال الحفظ). يرجع true فقط إن حُفظ كاملاً.
-  // before: عند إكمال عملية فشلت، المستندات التي كانت قبلها (لا يُحذف غيرها)
-  async function replaceAll(state, before) {
+  // o.before وo.written: عند إكمال عملية فشلت، المستندات التي كانت قبلها (لا يُحذف غيرها) وما كُتب منها (لا يُكتب ثانية
+  // ما لم يتغيّر). o.done: رسالة النجاح؛ وإن تغيّر الدفتر المشترك أثناء العملية من جهاز آخر (سجلات أُضيفت أو حُذفت) تُذكر معها
+  async function replaceAll(state, o) {
+    o = o || {};
+    const before = o.before;
     if (APP.readOnly) {
       toast(roMsg(), 'bad');
       return false;
@@ -6038,7 +6262,11 @@
     APP.real = null;
     bump();
     render();
-    if (APP.backend.kind !== 'cloud') return APP.backend.replaceAll(S);
+    if (APP.backend.kind !== 'cloud') {
+      const ok = await APP.backend.replaceAll(S);
+      if (ok && o.done) toast(o.done);
+      return ok;
+    }
     // اللقطات الجزئية أثناء الكتابة لا تُعرض؛ يُطابق الدفتر مع البيانات المشتركة بعد الانتهاء
     APP.replacing = true;
     APP.save.pending++;
@@ -6048,16 +6276,18 @@
     document.getElementById('toast').appendChild(t);
     let res;
     try {
+      // التعديل أثناءها يُرفض (roBlock)، فيُقال ذلك مع التقدم
       res = await APP.backend.replaceAll(
         S,
         (done, total) => {
           if (total) t.dataset.total = total;
-          t.textContent = `جارٍ الحفظ… ${done} من ${t.dataset.total || '?'}`;
+          t.textContent = `جارٍ الحفظ… ${done} من ${t.dataset.total || '?'} — لا تعدّل حتى ينتهي`;
         },
-        before
+        before,
+        o.written
       );
     } catch (e) {
-      res = { ok: false, failed: countRecs(S), code: (e && e.code) || 'error', before };
+      res = { ok: false, failed: countRecs(S), code: (e && e.code) || 'error', before, written: o.written };
     }
     t.remove();
     APP.replacing = false;
@@ -6071,7 +6301,7 @@
       toast(BUSY_MSG, 'bad');
       if (!APP.replaceFailed) {
         try {
-          const d = await APP.backend.load();
+          const d = await loadSettled();
           if (APP.demo) {
             if (APP.real && d) APP.real = RB.normalize(d);
           } else if (hasBooks(d)) S = RB.normalize(d);
@@ -6088,13 +6318,16 @@
       APP.replaceMarker = null;
       APP.save.failed = null;
       try {
-        const d = await APP.backend.load();
+        const d = await loadSettled();
         if (d) S = RB.normalize(d);
       } catch (e) {
         /* يبقى ما كُتب */
       }
       bump();
       render();
+      const other = [res.extra ? 'سجلات أضافها فبقيت فيه: ' + fmt0(res.extra) : '', res.missing ? 'سجلات حذفها منه: ' + fmt0(res.missing) : ''].filter(Boolean).join('، و');
+      if (other) toast(`${o.done || 'حُفظ الدفتر.'} لكن جهازاً آخر (شريكك غالباً) غيّر الدفتر المشترك أثناء العملية — ${other}. راجعها.`, 'bad');
+      else if (o.done) toast(o.done);
       return true;
     }
     if (res.code === 'invalid_argument' && APP.canWrite !== true) {
@@ -6112,7 +6345,7 @@
     }
     // الدفتر المطلوب يبقى كما هو حتى يُحفظ كاملاً: لقطات البيانات المشتركة (خليط القديم وما كُتب) لا تُطبَّق عليه،
     // وهو نفسه الدفتر في الشاشة فتدخل فيه تعديلات المستخدم بعد الفشل. «أكمل الحفظ» يكتبه هو
-    APP.replaceFailed = { n: res.failed, d: res.dels || 0, state: S, before: res.before };
+    APP.replaceFailed = { n: res.failed, d: res.dels || 0, state: S, before: res.before, written: res.written, code: res.code };
     APP.save.failed = failCode(res.code);
     // توقف الوصول أثناء العملية: لا «أكمل الحفظ» (لن ينجح)، والدفتر المطلوب في الشاشة وفي النسخة الاحتياطية
     if (res.code === 'revoked' && APP.backend.lost) APP.backend.lost();
@@ -6137,23 +6370,39 @@
   // وضع التجربة بلا دفتر: بدأ أحدٌ الدفتر (الشريك في البيانات المشتركة أو نافذة أخرى) فيُفتح بدل التجربة
   // القفل يمنع تحميلين متزامنين فقط (لقطات الأقسام تصل متتابعة)، ويُفك بعد الفتح: إن رجعت النافذة
   // إلى التجربة لاحقاً (مسح الدفتر في نافذة أخرى) يُفتح الدفتر الجديد كذلك
+  // قراءة الدفتر المشترك كله لفتحه. الإعدادات والمجموعات تُقرأ معاً والشريك قد يكتب الدفتر الآن (سجلاته أولاً ثم
+  // إعداداته)، فقراءة تتقاطع مع كتابته تجمع الجديد والقديم (شركاؤه بإعدادات افتراضية)، ولقطاته أثناءها لا تُطبَّق في وضع
+  // التجربة ولا تتكرر بعدها. فتُعاد القراءة ما دامت لقطة وصلت أثناءها (بحد أقصى)
+  async function loadSettled() {
+    for (let i = 0; ; i++) {
+      const seq = APP.remoteSeq;
+      const d = await APP.backend.load();
+      if (seq === APP.remoteSeq || i >= 20) return d;
+    }
+  }
   async function adoptSaved() {
     if (APP.adopting) return;
     APP.adopting = true;
     let d = null;
     try {
-      d = await APP.backend.load();
+      d = await loadSettled();
     } catch (e) {
       return;
     } finally {
       APP.adopting = false;
     }
-    if (!(APP.demo && !APP.real && hasBooks(d))) return;
+    // تعذّر التحميل عند الفتح ثم نجح الآن: يزول شريطه (ويعود «ابدأ» إن لم يبدأ أحد الدفتر بعد)
+    const wasFailed = APP.loadFailed;
+    APP.loadFailed = false;
+    if (!(APP.demo && !APP.real && hasBooks(d))) {
+      if (wasFailed) render();
+      return;
+    }
     // نموذج مفتوح من التجربة (غير معالج البداية) لا يُحفظ في الدفتر (formModal)، فيُقال ذلك الآن قبل أن يُكمله المستخدم
     const form = !!document.querySelector('#modals .overlay[data-demo-form]');
     openBooks(d);
     // تعذّر التحميل عند الفتح ثم وصلت البيانات: ليست بداية جديدة من الشريك
-    toast((APP.loadFailed ? 'تم فتح دفتر المطعم بعد تعذّر تحميله أول مرة.' : APP.backend.kind === 'cloud' ? 'بدأ شريكك دفتر المطعم — تم فتح البيانات المشتركة.' : 'بدأ دفتر المطعم في نافذة أخرى — تم فتحه هنا.') + (form ? ' النموذج المفتوح من البيانات التجريبية لن يُحفظ.' : ''));
+    toast((wasFailed ? 'تم فتح دفتر المطعم بعد تعذّر تحميله أول مرة.' : APP.backend.kind === 'cloud' ? 'بدأ شريكك دفتر المطعم — تم فتح البيانات المشتركة.' : 'بدأ دفتر المطعم في نافذة أخرى — تم فتحه هنا.') + (form ? ' النموذج المفتوح من البيانات التجريبية لن يُحفظ.' : ''));
   }
 
   function startWizard() {
@@ -6206,10 +6455,11 @@
         let existing = APP.real;
         if (!existing) {
           try {
-            existing = await APP.backend.load();
+            existing = await loadSettled();
           } catch (e) {
             return 'تعذّر التحقق من البيانات المحفوظة، أعد المحاولة.';
           }
+          APP.loadFailed = false;
         }
         if (hasBooks(existing)) {
           if (APP.backend.kind === 'cloud') {
@@ -6558,7 +6808,7 @@
       if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${cnt(n, W.rec)}؟ ${repl}${demoNote}${notes}`, { danger: true, ok: 'استورد' }))) return;
       delete data.demo;
       data.settings = Object.assign({}, data.settings, { startedAt: (data.settings && data.settings.startedAt) || new Date().toISOString() });
-      if (await replaceAll(data)) toast('تم الاستيراد.');
+      await replaceAll(data, { done: 'تم الاستيراد.' });
     };
     fr.readAsText(file);
   }
@@ -6664,24 +6914,36 @@
       h += bar('bad', `<b>لم يُحفظ آخر تعديل</b> — ${why}. ${todo} الآن حتى لا يضيع، ولا تُغلق الصفحة قبلها.${sf === 'quota_exceeded' ? ' لا تحذف سجلات قديمة لتفريغ المساحة: حذفها يغيّر الأرصدة كلها.' : ''}`, acts);
     }
     // توقف الوصول: شريط واحد بلا ادعاء سبب (لا «انقطع التحديث» ولا «ليست لديك صلاحية» معه)
-    const hasBackupBtn = failBar || (APP.revoked && APP.replaceFailed);
+    const hasBackupBtn = failBar || !!APP.replaceFailed;
     if (APP.revoked) h += bar('bad', `<b>${LOST_MSG}</b>`, (hasBackupBtn ? '' : btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary')) + btn('إعادة تحميل الصفحة', 'reload', '', hasBackupBtn ? 'sm primary' : 'sm'));
     else if (APP.syncLost) h += bar('bad', 'انقطع التحديث المباشر للبيانات المشتركة، وقد لا تكون تعديلات شريكك الأخيرة ظاهرة. أعد تحميل الصفحة قبل أن تعدّل.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
     if (APP.replaceFailed) {
       // ما بقي من العملية: سجلات الدفتر التي لم تُكتب، والقديمة التي لم تُحذف، أو الإعدادات وحدها (تُكتب آخراً)
       const f = APP.replaceFailed;
       const left = [f.n ? 'لم يُكتب: ' + cnt(f.n, W.rec, { wrap: numSpan }) : '', f.d ? 'لم يُحذف من القديم: ' + cnt(f.d, W.rec, { wrap: numSpan }) : ''].filter(Boolean).join('، و');
-      h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (${left || 'بقيت الإعدادات'}) — البيانات في الشاشة غير محفوظة بالكامل</b>`, APP.revoked ? btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary') : btn('أكمل الحفظ', 'resumereplace', '', 'sm primary'));
+      // السبب، والتصدير دائماً (الشريط الجانبي مخفي في درج الجوال). امتلاء المساحة أو سجل مرفوض: الإكمال لا ينجح غالباً،
+      // فالتصدير هو الزر الأول ويبقى «أكمل الحفظ» ثانوياً (كشريط «لم يُحفظ آخر تعديل»)
+      const fc = failCode(f.code);
+      const stuck = fc === 'quota_exceeded' || fc === 'invalid' || fc === 'invalid_id' || fc === 'transform_error';
+      const why = fc === 'quota_exceeded' ? 'امتلأت مساحة البيانات المشتركة' : stuck ? 'سجل غير صالح أو أكبر من الحجم المسموح' : fc === 'revoked' ? 'توقف الوصول' : 'انقطع الاتصال أو رُفض الحفظ';
+      const todo = APP.revoked ? '' : stuck ? ' صدّر نسخة احتياطية الآن ففيها الدفتر المطلوب كاملاً.' : ' اضغط «أكمل الحفظ»، وإن تكرر الفشل فصدّر نسخة احتياطية.';
+      const acts = APP.revoked ? btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary') : stuck ? btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary') + btn('أكمل الحفظ', 'resumereplace', '', 'sm ghost') : btn('أكمل الحفظ', 'resumereplace', '', 'sm primary') + btn('صدّر نسخة احتياطية', 'backup', '', 'sm');
+      h += bar('bad', `<b>لم يكتمل الحفظ في البيانات المشتركة (${left || 'بقيت الإعدادات'}) — البيانات في الشاشة غير محفوظة بالكامل</b>. ${why}.${todo}`, acts);
     }
     const mk = markerState();
     if (mk === 'running') h += bar('warn', '<b>يجري الآن استيراد أو مسح للبيانات المشتركة من جهاز آخر</b> — انتظر حتى ينتهي قبل أن تعدّل.', '');
-    if (mk === 'stale') h += bar('warn', 'استيراد/مسح سابق لم يكتمل — أعد العملية', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
+    // علامة جهاز آخر أو زيارة سابقة (علامة هذه الصفحة لها شريط «أكمل الحفظ»): من بدأها هو من يكملها
+    if (mk === 'stale') h += bar('warn', '<b>استيراد أو مسح للبيانات المشتركة لم يكتمل، فقد يكون الدفتر ناقصاً أو خليطاً من القديم والجديد</b> — إن بدأته أنت في زيارة سابقة فأعد العملية، وإلا فاطلب ممن بدأه أن يكمله قبل أن تعدّل.', btn('إخفاء', 'dismissreplace', '', 'sm ghost'));
     if (APP.readOnly && !APP.demo && !APP.revoked) h += bar('info', RO_MSG, '');
     if (APP.noShared)
       h += APP.demo
         ? bar('bad', '<b>البيانات المشتركة غير متاحة في هذه الزيارة</b> — ما تراه بيانات تجريبية وليس دفتر مطعمك المشترك. أعد تحميل الصفحة، أو افتحها من Claude وأنت مسجّل الدخول. لا تبدأ دفتراً هنا: لن يراه شريكك.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'))
         : bar('bad', '<b>البيانات المشتركة غير متاحة في هذه الزيارة</b> — هذه نسخة خاصة بهذا المتصفح (من زيارة سابقة) لا يراها شريكك، وما تُدخله فيها لا يصل إلى الدفتر المشترك. صدّرها نسخة احتياطية، ثم أعد تحميل الصفحة.', btn('صدّر نسخة احتياطية', 'backup', '', 'sm primary') + btn('إعادة تحميل الصفحة', 'reload', '', 'sm'));
-    if (APP.demo) {
+    // تعذّرت قراءة البيانات المشتركة عند الفتح (انقطاع مؤقت): الدفتر قد يكون محفوظاً ولم يُقرأ، وما يُعرض تجربة. شريط دائم
+    // لا رسالة عابرة، ولا «ابدأ ببيانات مطعمك» حتى تنجح القراءة (يُفتح الدفتر تلقائياً حين تعود)
+    const loadBad = APP.loadFailed && APP.demo && !APP.real && !APP.noShared;
+    if (loadBad) h += bar('bad', '<b>تعذّر تحميل دفتر المطعم المشترك</b> — قد يكون دفترك محفوظاً ولم يُقرأ بعد، وما تراه بيانات تجريبية وليس دفترك. يُفتح تلقائياً حين يعود الاتصال، أو أعد تحميل الصفحة. لا تبدأ دفتراً جديداً ولا تستورد نسخة قبل أن يظهر.', btn('إعادة تحميل الصفحة', 'reload', '', 'sm primary'));
+    else if (APP.demo) {
       // صلاحية العرض فقط: أزرار الإضافة والتعديل مخفية في التجربة أيضاً، فلا «جرّب بحرية»، ويُذكر أن الدفتر المشترك لم
       // يبدأ بعد (يظهر هنا حين يبدؤه شريك) — لا شريط «عرض فقط» آخر معه
       const ro = APP.readOnly && !APP.revoked;
@@ -6719,7 +6981,8 @@
     const at = APP.savedAt ? ' · ' + TIMEF.format(new Date(APP.savedAt)) : '';
     const dot = (k) => `<span class="dot ${k}" aria-hidden="true"></span>`;
     let h = '';
-    if (APP.demo) h = `${dot('warn')}${APP.readOnly && !APP.revoked ? 'وضع التجربة — عرض فقط' : 'وضع التجربة — لا يُحفظ'}`;
+    if (APP.demo && APP.loadFailed && !APP.real && !APP.noShared) h = `${dot('bad')}تعذّر تحميل الدفتر — بيانات تجريبية`;
+    else if (APP.demo) h = `${dot('warn')}${APP.readOnly && !APP.revoked ? 'وضع التجربة — عرض فقط' : 'وضع التجربة — لا يُحفظ'}`;
     else if (f === 'replace') h = `${dot('bad')}<span class="ss-t">لم يكتمل الحفظ في البيانات المشتركة</span>`;
     else if (f && f !== 'invalid_argument') h = `${dot('bad')}<span class="ss-t">لم يُحفظ آخر تعديل — صدّر نسخة احتياطية</span>${btn('تصدير', 'backup', '', 'sm ghost')}`;
     else if (APP.revoked) h = `${dot('bad')}توقف الوصول إلى البيانات المشتركة`;
@@ -6960,6 +7223,7 @@
       updateBanner();
       return false;
     }
+    APP.remoteSeq++;
     // أثناء الاستيراد أو المسح تصل لقطات جزئية، وبعد فشله تحمل خليط القديم وما كُتب: تُتجاهل حتى يكتمل الحفظ،
     // ثم يُطابق الدفتر مع البيانات المشتركة
     if (APP.replacing || APP.replaceFailed) return false;
@@ -6978,8 +7242,9 @@
         APP.real[section] = data;
         return true;
       }
-      // التجربة بلا دفتر: لقطة فيها بيانات حقيقية تعني أن أحداً بدأ الدفتر (اللقطات الفارغة الأولى تُتجاهل)
-      if (section === 'settings' ? !!data.startedAt : data.length > 0) adoptSaved();
+      // التجربة بلا دفتر: لقطة فيها بيانات حقيقية تعني أن أحداً بدأ الدفتر (اللقطات الفارغة الأولى تُتجاهل). وإن تعذّر
+      // التحميل عند الفتح فأي لقطة تعني أن القراءة عادت: يُعاد التحميل (يُفتح الدفتر، أو يزول شريط التعذّر)
+      if (APP.loadFailed || (section === 'settings' ? !!data.startedAt : data.length > 0)) adoptSaved();
       return false;
     }
     if (JSON.stringify(data) === JSON.stringify(S[section])) return false;

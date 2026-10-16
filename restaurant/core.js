@@ -382,8 +382,10 @@
   // خطة استبدال الدفتر المشترك (استيراد، مسح، بداية): كتابة كل سجلات الهدف، وحذف ما ليس فيه.
   // existing: {قسم: [معرّفات المستندات الموجودة الآن]}. prev (عند إكمال عملية فشلت): المستندات المعروفة من
   // المحاولات السابقة (ما كان قبلها وما كتبته)؛ لا يُحذف غيرها، فما أضافه الشريك بعد الفشل يبقى.
+  // written (عند الإكمال): Map المسار ← نص JSON لما كتبته المحاولات السابقة. السجل الذي كُتب ولم يتغيّر بعدها في هذه
+  // الصفحة لا يُكتب ثانية، فما عدّله الشريك فيه أو حذفه بعد الفشل يبقى (لم يره المستورد ليكتب فوقه).
   // يرجع {sets: [[قسم، سجل]], dels: [[قسم، معرّف]], known} وknown هو prev للإكمال التالي
-  RB.replacePlan = (state, existing, prev) => {
+  RB.replacePlan = (state, existing, prev, written) => {
     const known = new Set(prev || []);
     const sets = [];
     const dels = [];
@@ -396,22 +398,80 @@
         if (!keep.has(id) && known.has(p)) dels.push([k, id]);
       }
       for (const r of recs) {
+        const p = k + '/' + r.id;
+        known.add(p);
+        if (written && typeof written.get === 'function' && written.get(p) === JSON.stringify(r)) continue;
         sets.push([k, r]);
-        known.add(k + '/' + r.id);
       }
     }
     return { sets, dels, known };
   };
+  // دمج ثلاثي لقيمة: base ما رأته هذه الصفحة محفوظاً، mine ما تحفظه الآن، theirs أحدث نسخة محفوظة (قد يكون الشريك غيّرها
+  // ولم تصل هذه الصفحة لقطتها بعد). ما لم تغيّره هذه الصفحة يبقى كما في الأحدث، وما غيّرته يُكتب: الكائن حقلاً حقلاً،
+  // وقائمة سجلات بمعرّفات (قنوات البيع) سجلاً سجلاً بالمعرّف (المضاف والمحذوف والمعدَّل)، وقائمة قيم (الأيام المغلقة) بما
+  // أُضيف إليها وما حُذف منها. ما غيّره الاثنان إلى قيمتين مختلفتين يأخذ ما في هذه الصفحة. لا تُعدَّل المدخلات
+  const cp = (x) => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
+  RB.merge3 = (base, mine, theirs) => {
+    if (RB.sameRec(mine, base)) return cp(theirs);
+    if (RB.sameRec(theirs, base) || RB.sameRec(theirs, mine)) return cp(mine);
+    if (isObj(base) && isObj(mine) && isObj(theirs)) {
+      const out = {};
+      for (const k of new Set([...Object.keys(theirs), ...Object.keys(mine), ...Object.keys(base)])) {
+        if (PROTO.includes(k)) continue;
+        const v = RB.merge3(base[k], mine[k], theirs[k]);
+        if (v !== undefined) out[k] = v;
+      }
+      return out;
+    }
+    if (Array.isArray(base) && Array.isArray(mine) && Array.isArray(theirs)) {
+      const ided = (a) => a.every((x) => isObj(x) && (typeof x.id === 'string' || typeof x.id === 'number'));
+      if (ided(base) && ided(mine) && ided(theirs)) {
+        const by = (a) => new Map(a.map((x) => [String(x.id), x]));
+        const B = by(base);
+        const M = by(mine);
+        const T = by(theirs);
+        const out = [];
+        for (const t of theirs) {
+          const id = String(t.id);
+          // حذفته هذه الصفحة: يُحذف ولو عدّله الآخر
+          if (B.has(id) && !M.has(id)) continue;
+          out.push(M.has(id) ? RB.merge3(B.get(id), M.get(id), t) : cp(t));
+        }
+        // أضافته هذه الصفحة، أو عدّلته وقد حذفه الآخر
+        for (const m of mine) if (!T.has(String(m.id)) && (!B.has(String(m.id)) || !RB.sameRec(B.get(String(m.id)), m))) out.push(cp(m));
+        return out;
+      }
+      const flat = (a) => a.every((x) => x === null || typeof x !== 'object');
+      if (flat(base) && flat(mine) && flat(theirs)) {
+        const key = (x) => JSON.stringify(x);
+        const B = new Set(base.map(key));
+        const M = new Set(mine.map(key));
+        const out = theirs.filter((x) => !(B.has(key(x)) && !M.has(key(x))));
+        const has = new Set(out.map(key));
+        for (const x of mine) if (!B.has(key(x)) && !has.has(key(x))) out.push(x), has.add(key(x));
+        // قائمة نصوص مرتبة (الأيام المغلقة) تبقى مرتبة
+        const sorted = mine.every((x, i) => typeof x === 'string' && (!i || mine[i - 1] <= x));
+        return sorted && out.every((x) => typeof x === 'string') ? out.sort() : out;
+      }
+    }
+    return cp(mine);
+  };
   // الإعدادات مستند واحد فيه حقول مستقلة (الأرصدة الافتتاحية، قنوات البيع، الأيام المغلقة، الضريبة، التأمينات…):
-  // كل حفظ يكتب المفاتيح التي غيّرها فقط (keys) فوق أحدث نسخة (base)، فلا تمحو نسخةُ جهاز وصلته التحديثات متأخرة، ولا
-  // نموذج فُتح قبل تعديل الشريك أو نافذة أخرى، ما حُفظ بعدها. keys غير قائمة = الإعدادات كلها (rec). لا تُعدَّل base ولا rec
-  RB.settingsWith = (base, rec, keys) => {
-    if (!Array.isArray(keys) || !isObj(base)) return JSON.parse(JSON.stringify(isObj(rec) ? rec : {}));
-    const out = JSON.parse(JSON.stringify(base));
+  // كل حفظ يكتب المفاتيح التي غيّرها فقط (keys) فوق أحدث نسخة (cur)، فلا تمحو نسخةُ جهاز وصلته التحديثات متأخرة، ولا
+  // نموذج فُتح قبل تعديل الشريك أو نافذة أخرى، ما حُفظ بعدها. keys غير قائمة = الإعدادات كلها (rec).
+  // seen (اختياري): الإعدادات المحفوظة كما رأتها الصفحة حين حفظت؛ معها يُدمج كل مفتاح دمجاً ثلاثياً (RB.merge3)، فقناة أو يوم
+  // مغلق أو رصيد افتتاحي حفظه الشريك في المفتاح نفسه ولم تره هذه الصفحة بعد يبقى. لا تُعدَّل المدخلات
+  RB.settingsWith = (cur, rec, keys, seen) => {
+    if (!Array.isArray(keys) || !isObj(cur)) return JSON.parse(JSON.stringify(isObj(rec) ? rec : {}));
+    const out = JSON.parse(JSON.stringify(cur));
+    // المقارنة بالشكل الذي تعرضه الصفحة (rec): مفتاح ناقص في مستند قديم يُقارن بقيمته الافتراضية
+    const nb = isObj(seen) ? RB.normalize({ settings: seen }).settings : null;
+    const nc = nb && RB.normalize({ settings: cur }).settings;
     for (const k of keys) {
       if (typeof k !== 'string' || PROTO.includes(k)) continue;
-      if (!isObj(rec) || rec[k] === undefined) delete out[k];
-      else out[k] = JSON.parse(JSON.stringify(rec[k]));
+      const v = !isObj(rec) ? undefined : nb ? RB.merge3(nb[k], rec[k], nc[k]) : cp(rec[k]);
+      if (v === undefined) delete out[k];
+      else out[k] = v;
     }
     return out;
   };
@@ -449,19 +509,46 @@
     const clash = mine.filter((k) => !RB.sameRec(at(cur, k), at(orig, k)) && !RB.sameRec(at(form, k), at(cur, k)));
     return { rec, clash };
   };
-  // لقطة قسم من البيانات المشتركة ومعها ما فشل حفظه من هذه الصفحة ولم يُحفظ بعده (unsaved: [{section, id, rec}]؛
+  // مثل editMerge لنموذج حقوله بمسارات (gosi.cap، apps.<قناة>): نماذج الإعدادات والأرصدة الافتتاحية. at: القيمة حين فُتح
+  // النموذج، start: قيمة النموذج حين فُتح (بأرقامه بعد التهيئة)، form: قيمته الآن، cur: القيمة الآن، paths: مسارات حقوله.
+  // يرجع {rec: نسخة من cur بما غيّره المستخدم وحده، mine: المسارات التي غيّرها، clash: ما غيّره الاثنان إلى قيمتين مختلفتين}
+  RB.pathMerge = (at, start, form, cur, paths) => {
+    const get = (o, p) => p.split('.').reduce((a, k) => (isObj(a) ? a[k] : undefined), o);
+    const mine = [...new Set(paths || [])].filter((p) => typeof p === 'string' && p && !p.split('.').some((k) => PROTO.includes(k)) && !RB.sameRec(get(form, p), get(start, p)));
+    const rec = isObj(cur) ? JSON.parse(JSON.stringify(cur)) : {};
+    for (const p of mine) {
+      const ks = p.split('.');
+      let a = rec;
+      for (const k of ks.slice(0, -1)) {
+        if (!isObj(a[k])) a[k] = {};
+        a = a[k];
+      }
+      const v = get(form, p);
+      if (v === undefined) delete a[ks[ks.length - 1]];
+      else a[ks[ks.length - 1]] = JSON.parse(JSON.stringify(v));
+    }
+    const clash = mine.filter((p) => !RB.sameRec(get(cur, p), get(at, p)) && !RB.sameRec(get(form, p), get(cur, p)));
+    return { rec, mine, clash };
+  };
+  // لقطة قسم من البيانات المشتركة ومعها ما فشل حفظه من هذه الصفحة ولم يُحفظ بعده (unsaved: [{section, id, rec, base}]؛
   // rec = null للحذف، وللإعدادات rec الإعدادات كلها ومعها keys ما غيّره الحفظ منها): ما في الشاشة يبقى كما أدخله
-  // المستخدم، وما حفظه الشريك في مفاتيح الإعدادات الأخرى يظهر. لا تُعدَّل data
+  // المستخدم، وما حفظه الشريك في مفاتيح الإعدادات الأخرى يظهر. base: المستند كما كان محفوظاً حين بدأ هذا التعديل (null: لم
+  // يكن موجوداً)؛ إن عدّله الشريك بعدها تظهر تعديلاته في الحقول التي لم يغيّرها المستخدم (وما حذفه المستخدم ثم عدّله
+  // الشريك يظهر بتعديله)، فلا يُخفيها تعديل لم يُحفظ. لا تُعدَّل data
   RB.withUnsaved = (section, data, unsaved) => {
     let out = data;
     for (const u of unsaved || []) {
       if (!isObj(u) || u.section !== section) continue;
       if (section === 'settings') {
-        if (isObj(u.rec)) out = RB.settingsWith(out, u.rec, u.keys);
+        if (isObj(u.rec)) out = RB.settingsWith(out, u.rec, u.keys, u.base);
         continue;
       }
-      out = (Array.isArray(out) ? out : []).filter((x) => !(isObj(x) && String(x.id) === String(u.id)));
-      if (isObj(u.rec)) out.push(JSON.parse(JSON.stringify(u.rec)));
+      const arr = Array.isArray(out) ? out : [];
+      const snap = arr.find((x) => isObj(x) && String(x.id) === String(u.id));
+      out = arr.filter((x) => !(isObj(x) && String(x.id) === String(u.id)));
+      let show = u.rec;
+      if (u.base !== undefined && snap && !RB.sameRec(snap, u.base) && !RB.sameRec(snap, u.rec)) show = isObj(u.rec) ? RB.editMerge(u.base || {}, u.base || {}, u.rec, snap).rec : snap;
+      if (isObj(show)) out.push(JSON.parse(JSON.stringify(show)));
     }
     return out;
   };
@@ -509,6 +596,12 @@
         if (!settle(path, n)) return false;
         bad.delete(path);
         return true;
+      },
+      // ما فشل حفظه ولا تجري له كتابة الآن يُترك (عند إعادة المحاولة اختار المستخدم ما حفظه الشريك بعده): تعود الشاشة
+      // للبيانات المشتركة
+      drop(path) {
+        if (last.has(path)) return false;
+        return bad.delete(path);
       },
       has: (path) => bad.has(path),
       busy: (path) => last.has(path),

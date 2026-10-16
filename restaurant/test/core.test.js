@@ -3887,3 +3887,123 @@ test('الميزانية: رصيد الضريبة المدين «لصالح ال
   assert.ok(names.includes('تأمينات قابلة للاسترداد'), names.join('، '));
   assert.equal(RB.assetCat('deposit').name, 'تأمينات قابلة للاسترداد');
 });
+
+test('حفظ الإعدادات فوق نسخة أحدث لم تصل هذه الصفحة: دمج ثلاثي لكل مفتاح — القنوات بالمعرّف، والأيام المغلقة بالمضاف والمحذوف، والكائنات حقلاً حقلاً (السحابة، الجولة 2)', () => {
+  // ما رأته هذه الصفحة محفوظاً حين حفظت
+  const seen = { channels: [{ id: 'cash', name: 'كاش' }, { id: 'hs', name: 'هنقرستيشن', feePct: 20 }], closedDays: ['2026-10-01'], gosi: { saudiEr: 11.75, cap: 45000 }, opening: { date: '2026-08-01', cash: 0, bank: 0, apps: {} } };
+  // الشريك (ولم تصل لقطته): أضاف قناة، وعلّم يوماً مغلقاً، وغيّر نسبة التأمينات والنقد الافتتاحي
+  const cur = { channels: [...seen.channels, { id: 'chA', name: 'تطبيق أ' }], closedDays: ['2026-10-01', '2026-10-05'], gosi: { saudiEr: 12, cap: 45000 }, opening: { date: '2026-08-01', cash: 5000, bank: 0, apps: {} } };
+  // هذه الصفحة: أضافت قناة وعدّلت عمولة أخرى، وعلّمت يوماً آخر، وغيّرت الحد الأعلى للأجر والبنك الافتتاحي
+  const mine = { channels: [{ id: 'cash', name: 'كاش' }, { id: 'hs', name: 'هنقرستيشن', feePct: 22 }, { id: 'chB', name: 'تطبيق ب' }], closedDays: ['2026-10-01', '2026-10-06'], gosi: { saudiEr: 11.75, cap: 50000 }, opening: { date: '2026-08-01', cash: 0, bank: 20000, apps: {} } };
+  const out = RB.settingsWith(cur, mine, ['channels', 'closedDays', 'gosi', 'opening'], seen);
+  assert.deepEqual(out.channels.map((c) => c.id), ['cash', 'hs', 'chA', 'chB']);
+  assert.equal(out.channels[1].feePct, 22);
+  assert.deepEqual(out.closedDays, ['2026-10-01', '2026-10-05', '2026-10-06']);
+  assert.deepEqual(out.gosi, { saudiEr: 12, cap: 50000 });
+  assert.deepEqual(out.opening, { date: '2026-08-01', cash: 5000, bank: 20000, apps: {} });
+  // المدخلات لا تتغير
+  assert.equal(cur.channels.length, 3);
+  assert.equal(mine.closedDays.length, 2);
+  // حذف قناة وإلغاء يوم من هذه الصفحة يبقيان محذوفين، وما أضافه الشريك يبقى
+  const mine2 = { channels: [{ id: 'cash', name: 'كاش' }], closedDays: [] };
+  const out2 = RB.settingsWith(cur, mine2, ['channels', 'closedDays'], seen);
+  assert.deepEqual(out2.channels.map((c) => c.id), ['cash', 'chA']);
+  assert.deepEqual(out2.closedDays, ['2026-10-05']);
+  // الحقل نفسه غيّراه كلاهما: ما في هذه الصفحة
+  assert.deepEqual(RB.merge3({ cash: 0 }, { cash: 1 }, { cash: 2 }), { cash: 1 });
+  // لم تغيّر هذه الصفحة المفتاح (مفاتيح حفظ سابق): يبقى الأحدث
+  assert.deepEqual(RB.settingsWith(cur, Object.assign({}, mine, { gosi: seen.gosi }), ['gosi'], seen).gosi, cur.gosi);
+  // حذف الأرصدة الافتتاحية (null) من هذه الصفحة يُكتب، وبلا seen يبقى السلوك السابق (المفتاح كله من هذه الصفحة)
+  assert.equal(RB.settingsWith(cur, { opening: null }, ['opening'], seen).opening, null);
+  assert.deepEqual(RB.settingsWith(cur, mine, ['channels']).channels, mine.channels);
+  // قناة عدّلتها هذه الصفحة وحذفها الشريك تبقى بتعديلها، ولا خصائص للنموذج الأولي
+  assert.deepEqual(RB.merge3([{ id: 'x', f: 1 }], [{ id: 'x', f: 2 }], []), [{ id: 'x', f: 2 }]);
+  assert.deepEqual(RB.merge3([{ id: 'x', f: 1 }], [{ id: 'x', f: 1 }], []), []);
+  RB.merge3({}, JSON.parse('{"__proto__": {"polluted": 1}, "a": 1}'), { b: 2 });
+  assert.equal({}.polluted, undefined);
+  // مستند قديم بلا مفتاح (الأيام المغلقة): يُقارن بقيمته الافتراضية، فيبقى يوم الشريك مع يوم هذه الصفحة
+  const old = { name: 'برقر' };
+  assert.deepEqual(RB.settingsWith(Object.assign({}, old, { closedDays: ['2026-10-05'] }), Object.assign(RB.normalize({ settings: old }).settings, { closedDays: ['2026-10-06'] }), ['closedDays'], old).closedDays, ['2026-10-05', '2026-10-06']);
+  // العرض فوق اللقطة بالدمج نفسه: قناة الشريك تظهر مع ما يُحفظ الآن
+  const shown = RB.withUnsaved('settings', cur, [{ section: 'settings', id: 'settings', rec: mine, keys: ['channels'], base: seen }]);
+  assert.deepEqual(shown.channels.map((c) => c.id), ['cash', 'hs', 'chA', 'chB']);
+});
+
+test('نموذج الإعدادات أو الأرصدة الافتتاحية بحقول بمسارات: ما غيّره المستخدم وحده فوق أحدث نسخة، والتعارض في الحقل نفسه (السحابة، الجولة 2)', () => {
+  const at = { name: 'برقر', city: '', targetFoodCost: 30, gosi: { cap: 45000, saudiEr: 11.75 }, apps: { hs: 100 } };
+  const paths = ['name', 'city', 'targetFoodCost', 'gosi.cap', 'gosi.saudiEr', 'apps.hs', 'apps.toyou'];
+  // الشريك غيّر المستهدف والنسبة بعد فتح النموذج، والمستخدم غيّر المدينة والحد الأعلى
+  const cur = { name: 'برقر', city: '', targetFoodCost: 27, gosi: { cap: 45000, saudiEr: 12 }, apps: { hs: 100 }, opening: { cash: 5 } };
+  const form = { name: 'برقر', city: 'جدة', targetFoodCost: 30, gosi: { cap: 50000, saudiEr: 11.75 }, apps: { hs: 100, toyou: 40 } };
+  let r = RB.pathMerge(at, at, form, cur, paths);
+  assert.deepEqual(r.mine.sort(), ['apps.toyou', 'city', 'gosi.cap']);
+  assert.deepEqual(r.clash, []);
+  assert.equal(r.rec.targetFoodCost, 27);
+  assert.deepEqual(r.rec.gosi, { cap: 50000, saudiEr: 12 });
+  assert.deepEqual(r.rec.apps, { hs: 100, toyou: 40 });
+  assert.deepEqual(r.rec.opening, { cash: 5 });
+  // كلاهما غيّر المستهدف إلى قيمتين مختلفتين: تعارض (وما في النموذج يُكتب إن وافق)
+  r = RB.pathMerge(at, at, Object.assign({}, form, { targetFoodCost: 33 }), cur, paths);
+  assert.deepEqual(r.clash, ['targetFoodCost']);
+  assert.equal(r.rec.targetFoodCost, 33);
+  // إلى القيمة نفسها: لا تعارض
+  assert.deepEqual(RB.pathMerge(at, at, Object.assign({}, form, { targetFoodCost: 27 }), cur, paths).clash, []);
+  // مسار للنموذج الأولي لا يُكتب، ولا cur
+  RB.pathMerge({}, {}, { __proto__: { x: 1 } }, null, ['__proto__.x', 'constructor.prototype.y']);
+  assert.equal({}.x, undefined);
+  assert.deepEqual(RB.pathMerge({}, {}, { a: 1 }, null, ['a']).rec, { a: 1 });
+});
+
+test('ما فشل حفظه والشريك عدّل السجل بعده: يظهر تعديل الشريك في الحقول الأخرى، والحذف الفاشل لا يُخفي سجلاً عدّله الشريك (السحابة، الجولة 2)', () => {
+  const base = { id: 'x', desc: 'إيجار', amount: 30000, note: '' };
+  const snap = [{ id: 'x', desc: 'إيجار المحل — عقد جديد', amount: 30000, note: 'رقم العقد 5521' }];
+  const mine = { section: 'expenses', id: 'x', rec: { id: 'x', desc: 'إيجار', amount: 31000, note: '' }, base };
+  assert.deepEqual(RB.withUnsaved('expenses', snap, [mine]), [{ id: 'x', desc: 'إيجار المحل — عقد جديد', amount: 31000, note: 'رقم العقد 5521' }]);
+  // لم يتغيّر بعد التعديل (أو اللقطة هي التعديل نفسه): التعديل كما هو
+  assert.deepEqual(RB.withUnsaved('expenses', [base], [mine]), [mine.rec]);
+  assert.deepEqual(RB.withUnsaved('expenses', [mine.rec], [mine]), [mine.rec]);
+  // حذف فشل: يُخفي السجل ما لم يعدّله الشريك بعده
+  assert.deepEqual(RB.withUnsaved('expenses', [base], [{ section: 'expenses', id: 'x', rec: null, base }]), []);
+  assert.deepEqual(RB.withUnsaved('expenses', snap, [{ section: 'expenses', id: 'x', rec: null, base }]), snap);
+  // بلا base (كتابة قديمة): كما كان
+  assert.deepEqual(RB.withUnsaved('expenses', snap, [{ section: 'expenses', id: 'x', rec: mine.rec }]), [mine.rec]);
+  // drop: يُترك ما فشل ولا تجري له كتابة الآن
+  const u = RB.unsavedWrites();
+  const n = u.start('expenses/x', mine);
+  assert.equal(u.drop('expenses/x'), false); // جارية
+  u.fail('expenses/x', n, mine);
+  assert.equal(u.size, 1);
+  assert.equal(u.drop('expenses/x'), true);
+  assert.equal(u.size, 0);
+  assert.deepEqual(u.values(), []);
+});
+
+test('إكمال استيراد لم يكتمل لا يكتب ثانية ما كُتب ولم يتغيّر في الصفحة، فيبقى ما عدّله الشريك فيه أو حذفه بعد الفشل (السحابة، الجولة 2)', () => {
+  const target = RB.normalize(RB.demoState('2026-10-14'));
+  const db = new Map();
+  const p1 = RB.replacePlan(target, idsOf(db));
+  const written = new Map();
+  let n = 0;
+  for (const [k, r] of p1.sets) {
+    if (n++ >= 20) break;
+    db.set(k + '/' + r.id, Object.assign({}, r));
+    written.set(k + '/' + r.id, JSON.stringify(r));
+  }
+  const [k0, r0] = p1.sets[0];
+  const [k1, r1] = p1.sets[1];
+  const [k2, r2] = p1.sets[2];
+  // الشريك عدّل الأول وحذف الثاني، والمستخدم عدّل الثالث في الشاشة بعد الفشل
+  db.set(k0 + '/' + r0.id, Object.assign({}, r0, { note: 'من الشريك' }));
+  db.delete(k1 + '/' + r1.id);
+  const i2 = target[k2].findIndex((x) => x.id === r2.id);
+  target[k2][i2] = Object.assign({}, r2, { note: 'من المستخدم' });
+  const p2 = RB.replacePlan(target, idsOf(db), p1.known, written);
+  assert.equal(p2.sets.length, p1.sets.length - 19);
+  assert.ok(!p2.sets.some(([k, r]) => r.id === r0.id || r.id === r1.id));
+  assert.ok(p2.sets.some(([k, r]) => r.id === r2.id && r.note === 'من المستخدم'));
+  assert.equal(runPlan(db, p2), true);
+  assert.equal(db.get(k0 + '/' + r0.id).note, 'من الشريك');
+  assert.equal(db.has(k1 + '/' + r1.id), false);
+  // بلا written: كل الهدف يُكتب كما كان
+  assert.equal(RB.replacePlan(target, idsOf(db), p1.known).sets.length, p1.sets.length);
+});
