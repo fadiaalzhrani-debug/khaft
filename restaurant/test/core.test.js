@@ -4346,3 +4346,43 @@ test('متوسط المحمّل شهرياً لـ«كل الفترات» أو س
   close(RB.chargeMonths('2026-09-16', '2026-10-14', first), 15 / 30 + 1, 1e-9);
   close(RB.chargeMonths('2026-10-01', '2026-10-14', first), 1, 1e-9);
 });
+
+test('كشف البنك يسمّي الشريك في مسحوباته وإيداعاته، واسترداد الضريبة «استرداد» ومنفصل عن المسدد (audit-r3 ui)', () => {
+  const t = '2026-10-16';
+  const D = RB.demoState(t);
+  D.capital.push(
+    { id: 'w1', date: '2026-10-03', partnerId: 'p1', type: 'withdrawal', account: 'bank', amount: 300 },
+    { id: 'w2', date: '2026-10-03', partnerId: 'p2', type: 'withdrawal', account: 'bank', amount: 200, note: 'شخصي' },
+    { id: 'd1', date: '2026-10-03', partnerId: 'p2', type: 'contribution', account: 'bank', amount: 500 }
+  );
+  D.vatPayments = [
+    { id: 'v1', date: '2026-10-05', period: 'الربع الثاني 2026', amount: 400, account: 'bank' },
+    { id: 'v2', date: '2026-10-06', period: 'الربع الثالث 2026', amount: -900, account: 'bank' },
+  ];
+  const st = RB.accountStatement(D, '1102', '2026-10-03', '2026-10-06');
+  const d = st.rows.map((r) => r.desc);
+  assert.ok(d.includes('مسحوبات الشريك: الشريك الأول'));
+  assert.ok(d.includes('مسحوبات الشريك: الشريك الثاني — شخصي'));
+  assert.ok(d.includes('إيداع رأس مال: الشريك الثاني'));
+  assert.ok(d.includes('سداد ضريبة القيمة المضافة الربع الثاني 2026'));
+  assert.ok(d.includes('استرداد ضريبة القيمة المضافة الربع الثالث 2026'));
+  const v = RB.vatReport(D, '2026-10-01', t);
+  close(v.paid, 400);
+  close(v.refunded, 900);
+});
+
+test('التسجيل في الضريبة منتصف ربع: أول إقرار من تاريخ السريان، ومبيعات ما قبله «المبيعات» في الميزان (audit-r3 ui)', () => {
+  const t = '2026-10-16';
+  const D = RB.demoState(t);
+  D.settings.vatRegisteredFrom = '2026-08-15';
+  const ps = RB.vatPeriodsBetween(D, '2026-01-01', '2026-12-31');
+  assert.equal(ps[0].key, '2026-Q3');
+  assert.equal(ps[0].from, '2026-08-15');
+  assert.equal(ps[0].to, '2026-09-30');
+  assert.equal(ps[1].from, '2026-10-01');
+  assert.equal(RB.accInfo('4101', D, '2026-07-31').name, 'المبيعات');
+  assert.equal(RB.accInfo('4101', D, '2026-08-31').name, 'المبيعات (بدون الضريبة)');
+  assert.equal(RB.accInfo('4101', D).name, 'المبيعات (بدون الضريبة)');
+  const tb = RB.trialBalance(D, '2026-07-01', '2026-07-31');
+  assert.equal(tb.rows.find((r) => r.code === '4101').name, 'المبيعات');
+});

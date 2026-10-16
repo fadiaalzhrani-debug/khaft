@@ -120,7 +120,9 @@
 * { box-sizing: border-box; }
 /* السمة hidden تخفي العنصر دائماً، حتى لو أعطته قاعدة أخرى display (مثل .form-preview) */
 [hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; }
+/* الشريط العلوي ثابت فوق الصفحة: التمرير إلى عنصر يتركّز عليه (Shift+Tab، عودة التركيز) يحجز ارتفاعه فلا يختفي العنصر
+   تحته؛ --topbar-h يتبع ارتفاعه الفعلي (app.js)، فهو أطول مع الفترة المخصصة على الجوال */
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(env(safe-area-inset-top, 0px) + var(--topbar-h, 64px) + 8px); }
 body {
   margin: 0;
   background: var(--bg);
@@ -387,6 +389,10 @@ body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-a
 .tbl.journal tr.jh td { background: var(--surface-2); font-weight: 600; border-top: 1px solid var(--line); }
 .tbl details { margin-top: 4px; }
 .tbl summary { cursor: pointer; color: var(--accent-text); font-size: 0.8rem; }
+/* تفصيل مكوّن مجمّع في سطر بعرض الجدول تحت سطره: لا يوسّع عمود «المكوّن» فيدفع بقية الأعمدة خارج الشاشة */
+.tbl tr.has-sub > td { border-bottom: 0; }
+.tbl tr.sub > td { padding-top: 0; padding-inline-start: 18px; }
+.tbl tr.sub details > .tbl-wrap { width: 0; min-width: 100%; }
 .empty-box { padding: 18px; border: 1px dashed var(--line); border-radius: var(--r-sm); color: var(--muted); text-align: center; font-size: 0.9rem; }
 .empty-box.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); }
 .empty-box.bad { color: var(--bad); }
@@ -585,6 +591,8 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
 .be-hero > div { display: flex; flex-direction: column; min-width: 0; }
 .be-hero > div > span:first-child { font-size: 0.8rem; color: var(--ink-2); }
 .be-hero > div > b { font-size: 1.6rem; font-weight: 700; }
+/* «ر.س» على خلفية الصندوق: لون العناوين لا --muted (تباينه أقل من 4.5:1 عليها في الوضع الداكن) */
+.be-hero .cur { color: var(--ink-2); }
 .kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--line-2); font-size: 0.9rem; }
 .kv:last-child { border-bottom: 0; }
 .kv span { color: var(--ink-2); }
@@ -643,11 +651,17 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .be-hero { grid-template-columns: 1fr 1fr; }
   .be-hero > div:first-child { grid-column: 1 / -1; }
   .crumb { display: none; }
-  .period { flex: 1; justify-content: flex-start; }
-  .custom-range input { width: 9.5em; }
+  /* الفترة المخصصة: الحقلان يتقاسمان عرض الشريط وينزلان سطرين على الشاشة الأضيق، فلا يتجاوز الشريط الشاشة */
+  .period { flex: 1; justify-content: flex-start; min-width: 0; }
+  .custom-range { display: flex; flex: 1 1 100%; min-width: 0; flex-wrap: wrap; row-gap: 8px; }
+  .custom-range input { flex: 1 1 7.8em; min-width: 0; width: auto; }
+  /* الأشرطة: النسبة تحت المبلغ لا مخفية، والاسم ينكسر سطرين بدل قطعه */
   .hbar { grid-template-columns: minmax(70px, 38%) minmax(0, 1fr) auto; gap: 8px; }
-  .hb-v { min-width: 0; }
-  .hb-v small { display: none; }
+  .hb-v { min-width: 0; flex-direction: column; align-items: flex-end; gap: 0; line-height: 1.2; }
+  .hb-v small { min-width: 0; font-size: 0.78rem; }
+  .hb-l { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.25; overflow-wrap: anywhere; }
+  /* الجداول التي تتمرر جانبياً: عمود الأزرار لا يُثبَّت فوق الأعمدة الأخرى (كان يغطي نصف المساحة ويقطع المبالغ) */
+  .tbl:not(.cards) th.acts, .tbl:not(.cards) td.acts { position: static; box-shadow: none; }
   /* النافذة بارتفاع الشاشة: يتمرر محتواها ويبقى زر الحفظ ظاهراً في أسفلها */
   .dialog { max-height: calc(100vh - 16px); max-height: calc(100dvh - 16px); }
   .overlay { padding: 8px; }
@@ -691,6 +705,9 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .tab { min-height: 40px; }
   .nav-g a { padding-block: 11px; }
   .period select, .period input, .custom-range input { min-height: 44px; }
+  /* iOS Safari يكبّر الصفحة عند التركيز على حقل خطه أقل من 16px ولا يعيدها: حقول اللمس 16px على الأقل */
+  input, select, textarea, .copy-area { font-size: max(16px, 1em); }
+  .tbl summary { padding-block: 10px; }
 }
 @media (prefers-reduced-motion: reduce) { .side { transition: none; } }
 

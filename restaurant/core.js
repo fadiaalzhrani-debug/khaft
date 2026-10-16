@@ -741,9 +741,10 @@
     zakat: 'الزكاة',
   };
 
-  RB.accInfo = (code, S) => {
-    // غير المسجل في الضريبة مبيعاته بلا ضريبة: حسابها «المبيعات» لا «المبيعات (بدون الضريبة)» في الميزان واليومية والكشف
-    if (String(code) === '4101' && S && S.settings && !S.settings.vatRegistered) return Object.assign({ code }, ACC[4101], { name: 'المبيعات' });
+  RB.accInfo = (code, S, to) => {
+    // غير المسجل في الضريبة مبيعاته بلا ضريبة: حسابها «المبيعات» لا «المبيعات (بدون الضريبة)» في الميزان واليومية والكشف؛
+    // to: نهاية الفترة المعروضة، فالمسجل لاحقاً تُسمّى مبيعاته قبل التسجيل «المبيعات» كما في قائمة الدخل (RB.salesLabel)
+    if (String(code) === '4101' && S && S.settings && !RB.isVatReg(S.settings, to || '')) return Object.assign({ code }, ACC[4101], { name: 'المبيعات' });
     if (ACC[code]) return Object.assign({ code }, ACC[code]);
     const [kind, pid] = String(code).split(':');
     const i = S ? (S.partners || []).findIndex((x) => x && x.id === pid) : -1;
@@ -1742,18 +1743,22 @@
       }
     }
 
-    // رأس المال والمسحوبات
+    // رأس المال والمسحوبات: البيان يسمّي الشريك فتتميز حركات الشريكين في كشف الصندوق والبنك
+    const pnm = (id) => {
+      const p = (S.partners || []).find((x) => x && x.id === id);
+      return p ? p.name : 'شريك محذوف';
+    };
     each('capital', S.capital || [], (c) => {
       const amt = num(c.amount);
       const src = RB.srcAcc(c.account);
       const ref = { s: 'capital', id: c.id };
-      if (c.type === 'withdrawal') add(c.date, 'withdrawal', ref, 'مسحوبات الشريك' + (c.note ? ' — ' + c.note : ''), [['drw:' + c.partnerId, amt], [src, -amt]]);
+      if (c.type === 'withdrawal') add(c.date, 'withdrawal', ref, 'مسحوبات الشريك: ' + pnm(c.partnerId) + (c.note ? ' — ' + c.note : ''), [['drw:' + c.partnerId, amt], [src, -amt]]);
       else if (c.type === 'transfer') {
         // نقل حقوق شريك (أو جزء منها) إلى شريك آخر اشتراها من ماله: لا يدخل المطعم ولا يخرج منه شيء. على الناقل كسحب،
         // وللمشتري كإيداع في رأس ماله
         if (!c.toPartnerId || c.toPartnerId === c.partnerId) throw new Error('اختر الشريك الذي تُنقل إليه الحقوق');
-        add(c.date, 'capital', ref, 'نقل حقوق شريك' + (c.note ? ' — ' + c.note : ''), [['drw:' + c.partnerId, amt], ['cap:' + c.toPartnerId, -amt]]);
-      } else add(c.date, 'capital', ref, 'إيداع رأس مال' + (c.note ? ' — ' + c.note : ''), [[src, amt], ['cap:' + c.partnerId, -amt]]);
+        add(c.date, 'capital', ref, 'نقل حقوق شريك: ' + pnm(c.partnerId) + ' ← ' + pnm(c.toPartnerId) + (c.note ? ' — ' + c.note : ''), [['drw:' + c.partnerId, amt], ['cap:' + c.toPartnerId, -amt]]);
+      } else add(c.date, 'capital', ref, 'إيداع رأس مال: ' + pnm(c.partnerId) + (c.note ? ' — ' + c.note : ''), [[src, amt], ['cap:' + c.partnerId, -amt]]);
     });
 
     // الأصول وإهلاكها الشهري
@@ -1959,7 +1964,7 @@
     // سداد ضريبة القيمة المضافة
     each('vatPayments', S.vatPayments || [], (v) => {
       const amt = num(v.amount);
-      add(v.date, 'vatpay', { s: 'vatPayments', id: v.id }, 'سداد ضريبة القيمة المضافة ' + (v.period || ''), [['2102', amt], [RB.srcAcc(v.account), -amt]]);
+      add(v.date, 'vatpay', { s: 'vatPayments', id: v.id }, (amt < 0 ? 'استرداد ضريبة القيمة المضافة ' : 'سداد ضريبة القيمة المضافة ') + (v.period || ''), [['2102', amt], [RB.srcAcc(v.account), -amt]]);
     });
 
     entries.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (KIND_ORDER[a.kind] || 0) - (KIND_ORDER[b.kind] || 0)));
@@ -2116,7 +2121,7 @@
     const groups = { cogs: [], sell: [], labor: [], occ: [], opex: [], dep: [], disp: [], zakat: [] };
     let revenue = 0;
     for (const code of Object.keys(b)) {
-      const info = RB.accInfo(code, S);
+      const info = RB.accInfo(code, S, to);
       if (info.type === 'R') revenue += -b[code];
       if (info.type !== 'X') continue;
       const g = groups[info.group] ? info.group : 'opex';
@@ -2191,7 +2196,7 @@
     const rows = Object.keys(b)
       .filter((c) => Math.abs(b[c]) >= 0.005)
       .map((code) => {
-        const info = RB.accInfo(code, S);
+        const info = RB.accInfo(code, S, to);
         return { code, disp: info.disp || code, name: info.name, type: info.type, dr: b[code] > 0 ? b[code] : 0, cr: b[code] < 0 ? -b[code] : 0 };
       })
       .sort((x, y) => (x.disp < y.disp ? -1 : x.disp > y.disp ? 1 : x.code < y.code ? -1 : 1));
@@ -2338,7 +2343,8 @@
       const endYm = q ? RB.ymAdd(ym, 2) : ym;
       const key = q ? ym.slice(0, 4) + '-Q' + (Math.floor((+ym.slice(5, 7) - 1) / 3) + 1) : ym;
       const label = q ? 'الربع ' + ['الأول', 'الثاني', 'الثالث', 'الرابع'][Math.floor((+ym.slice(5, 7) - 1) / 3)] + ' ' + ym.slice(0, 4) : RB.monthName(ym);
-      out.push({ key, label, from: ym + '-01', to: RB.monthEnd(endYm) });
+      // أول إقرار بعد التسجيل في منتصف فترة يبدأ من تاريخ سريانه لا من أول الربع أو الشهر
+      out.push({ key, label, from: !out.length && regFrom && regFrom > ym + '-01' ? regFrom : ym + '-01', to: RB.monthEnd(endYm) });
       ym = RB.ymAdd(endYm, 1);
     }
     return out;
@@ -2349,7 +2355,8 @@
     L = L || RB.buildLedger(S, to);
     // sales.adj: ما خفّضه من المبيعات خصمُ «عرض أو مرتجع» في تحويلات التطبيقات (أساس بالسالب)، وsales.assets: ثمن بيع
     // الأصول (بدون الضريبة) — كلاهما داخل في المبيعات هنا، ولا يظهر في الإقفالات اليومية
-    const out = { sales: { base: 0, vat: 0, adj: 0, assets: 0 }, inputs: {}, inBase: 0, inVat: 0, paid: 0 };
+    // paid: ما سُدّد للهيئة في الفترة، وrefunded: ما استُرد منها (موجباً) — لا يُجمعان فيظهر المسدد بالسالب
+    const out = { sales: { base: 0, vat: 0, adj: 0, assets: 0 }, inputs: {}, inBase: 0, inVat: 0, paid: 0, refunded: 0 };
     const labels = { purchase: 'المشتريات', expense: 'المصاريف التشغيلية', asset: 'الأصول والمعدات', sale: 'عمولات التطبيقات ورسوم الشبكة', payout: 'عمولات التطبيقات ورسوم الشبكة' };
     for (const e of L.entries) {
       // الرصيد الدائن الافتتاحي من إقرار قبل الدفتر لا يدخل في إقرار الفترة (يُرحّل في RB.vatReturns)
@@ -2357,7 +2364,8 @@
       for (const l of e.lines) {
         if (l.a !== '2102') continue;
         if (e.kind === 'vatpay') {
-          out.paid = r2(out.paid + l.v);
+          if (l.v < 0) out.refunded = r2(out.refunded - l.v);
+          else out.paid = r2(out.paid + l.v);
           continue;
         }
         // الخانة من مصدر السطر لا من إشارته: ضريبة المبيعات وخصم العروض والمرتجعات من التطبيق (أساس سالب)
