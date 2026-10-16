@@ -257,7 +257,7 @@ nav { display: flex; flex-direction: column; gap: 14px; padding-block: 6px; flex
 .banner.info { background: var(--surface-2); border-color: var(--line); }
 
 /* ─── عرض فقط: لا أزرار تعديل لمن لا يملك صلاحية تعديل البيانات المشتركة ─── */
-body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-act='del'], [data-act='renew'], [data-act='stopRenew'], [data-act='start'], [data-act='wipe'], [data-act='settings'], [data-act='channel'], [data-act='delchannel'], [data-act='resumereplace'], [data-act='import'], [data-act='closedDay'], [data-act='unclosedDay'], [data-act='opening'], [data-act='delopening']) { display: none !important; }
+body.readonly :is([data-act='add'], [data-act='edit'], [data-act='dup'], [data-act='del'], [data-act='renew'], [data-act='stopRenew'], [data-act='start'], [data-act='wipe'], [data-act='settings'], [data-act='channel'], [data-act='delchannel'], [data-act='resumereplace'], [data-act='import'], [data-act='closedDay'], [data-act='unclosedDay'], [data-act='opening'], [data-act='delopening'], [data-act='dispose']) { display: none !important; }
 
 /* ─── رؤوس الصفحات ─── */
 .page-h { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
