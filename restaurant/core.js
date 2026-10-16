@@ -3075,20 +3075,30 @@
     const fixedParts = { labor: inc.tot.labor / months, occ: inc.tot.occ / months, opex: inc.tot.opex / months, dep: inc.tot.dep / months };
     if (estimate) {
       // التقدير من فترة جزئية (أول شهر تشغيل): الإيجار والمدفوع مقدماً والإهلاك قسط شهر كامل في تاريخه، وكذلك دفعة عقد
-      // لشهر واحد (تصنيف مدته 3 أشهر فأكثر كالإيجار والسكن)، فيُحسب كل منها بمتوسط أقساطه في الفترة لا بأيامها، فلا
-      // يتضاعف إيجار الشهر في أسبوعيه الأولين. والفواتير الشهرية والمصاريف الأخرى بأيام الفترة كما هي
+      // لشهر واحد (تصنيف مدته 3 أشهر فأكثر كالإيجار والسكن)، فيُحسب كل منها بمتوسط أقساطه لا بأيام الفترة، فلا
+      // يتضاعف إيجار الشهر في أسبوعيه الأولين. والقسط المؤرخ قبل بداية الفترة بأقل من شهر (تغطية الإيجار من أول الشهر
+      // والافتتاح بعدها بأيام) يُحسب كذلك، فلا يسقط إيجار الشهر. البند الواحد بمفتاح تجديده (RB.renewKey) فلا يُعد إيجار
+      // شهرين متتاليين يُدفعان شهرياً إيجارين. والفواتير الشهرية والمصاريف الأخرى بأيام الفترة كما هي
       const xs = byId(good(S.expenses));
-      const key = (e) => e.kind + '|' + (e.ref ? e.ref.s + '|' + e.ref.id : '');
-      const whole = (e) => e.date >= wFrom && e.date <= wTo && (e.kind === 'amort' || e.kind === 'dep' || (e.kind === 'expense' && !!e.ref && !!xs[e.ref.id] && RB.expenseCat(xs[e.ref.id].category).months >= 3));
+      const back = RB.addDays(RB.addMonths(wFrom, -1), 1);
+      const key = (e) => (e.ref && e.ref.s === 'expenses' && xs[e.ref.id] ? 'x|' + RB.renewKey(xs[e.ref.id]) : e.kind + '|' + (e.ref ? e.ref.s + '|' + e.ref.id : ''));
+      const grp = (a) => {
+        const info = RB.accInfo(a, S);
+        if (info.type !== 'X' || ['cogs', 'sell', 'disp', 'zakat'].includes(info.group)) return '';
+        return info.group in fixedParts ? info.group : 'opex';
+      };
+      const whole = (e) =>
+        e.date >= back && e.date <= wTo &&
+        (e.kind === 'amort' || e.kind === 'dep' || (e.kind === 'expense' && !!e.ref && !!xs[e.ref.id] && RB.expenseCat(xs[e.ref.id].category).months >= 3)) &&
+        e.lines.some((l) => grp(l.a));
       const n = {};
       for (const e of L.entries) if (whole(e)) n[key(e)] = (n[key(e)] || 0) + 1;
       for (const e of L.entries) {
         if (!whole(e)) continue;
+        const inWin = e.date >= wFrom;
         for (const l of e.lines) {
-          const info = RB.accInfo(l.a, S);
-          if (info.type !== 'X') continue;
-          const g = ['cogs', 'sell', 'disp', 'zakat'].includes(info.group) ? '' : info.group in fixedParts ? info.group : 'opex';
-          if (g) fixedParts[g] += l.v / n[key(e)] - l.v / months;
+          const g = grp(l.a);
+          if (g) fixedParts[g] += l.v / n[key(e)] - (inWin ? l.v / months : 0);
         }
       }
     }

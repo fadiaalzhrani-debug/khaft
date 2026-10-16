@@ -3752,7 +3752,7 @@
     const shown = es.slice(-300).reverse();
     const body = shown
       .map(
-        (e) => `<tr class="jh"><td>${dt(e.date)}</td><td colspan="2">${esc(e.desc)}</td></tr>${e.lines.map((l) => `<tr><td></td><td class="ind">${l.v > 0 ? '' : '&emsp;'}${esc(RB.accInfo(l.a, S, asOf).name)}${l.memo ? ` <span class="muted sm">— ${esc(l.memo)}</span>` : ''}</td><td class="num">${l.v > 0 ? N(l.v) : ''}</td><td class="num">${l.v < 0 ? N(-l.v) : ''}</td></tr>`).join('')}`
+        (e) => `<tr class="jh"><td>${dt(e.date)}</td><td colspan="2">${esc(e.desc)}</td></tr>${e.lines.map((l) => `<tr><td></td><td class="ind">${l.v > 0 ? '' : '&emsp;'}${esc(RB.accInfo(l.a, S, e.date).name)}${l.memo ? ` <span class="muted sm">— ${esc(l.memo)}</span>` : ''}</td><td class="num">${l.v > 0 ? N(l.v) : ''}</td><td class="num">${l.v < 0 ? N(-l.v) : ''}</td></tr>`).join('')}`
       )
       .join('');
     return card('دفتر اليومية', es.length ? `<div class="tbl-wrap"><table class="tbl journal"><thead><tr><th>التاريخ</th><th>الحساب</th><th class="num">مدين</th><th class="num">دائن</th></tr></thead><tbody>${body}</tbody></table></div>${es.length > 300 ? `<p class="note">يظهر آخر 300 قيد من ${fmt0(es.length)}. صدّر الكل بصيغة CSV.</p>` : ''}` : `<div class="empty-box">لا قيود في هذه الفترة.</div>`, { sub: `${cnt(es.length, W.entry)} · تُنشأ تلقائياً` });
@@ -3874,6 +3874,8 @@
       const h = isEdit && from ? RB.shareHistory(rec) : [];
       return h.map((z, i) => (z.until >= from ? `من ${dtText(RB.addDays(z.until, 1))}: ${pct(i + 1 < h.length ? h[i + 1].share : num(rec.share), 0)}` : '')).filter(Boolean);
     };
+    // ما يحذفه حفظ النموذج من تاريخ نسبته: النسبة «لكل الفترات» (تصحيح، أو تاريخ أول قيد في الدفتر) تحذفه كله، كخروجه بنسبة 0
+    const lostOf = (v) => (changed(v) ? laterChanges(fromOf(v) || '0000-00-00') : []);
     return formModal({
       title: isEdit ? 'تعديل شريك' : 'شريك جديد',
       value,
@@ -3887,7 +3889,10 @@
       preview: (v) => {
         if (!changed(v)) return '';
         const from = fromOf(v);
-        if (!from) return `<p class="note">النسبة ${pct(num(v.share), 0)} لكل الفترات من بداية الدفتر: يُعاد بها توزيع الأرصدة الافتتاحية والأرباح السابقة كلها.</p>`;
+        if (!from) {
+          const all = lostOf(v);
+          return `<p class="note">النسبة ${pct(num(v.share), 0)} لكل الفترات من بداية الدفتر: يُعاد بها توزيع الأرصدة الافتتاحية والأرباح السابقة كلها.</p>` + (all.length ? `<p class="note bad">ويحذف ما سُجّل من تغييرات نسبته (${all.join('، ')})، فتكون ${pct(num(v.share), 0)} في كل الفترات. لإبقاء ما بعد البداية: احفظ هذا، ثم أعد كل تغيير لاحق بتاريخه (مثل نسبة 0 من تاريخ الخروج).</p>` : '');
+        }
         const prev = RB.addDays(from, -1);
         const was = isEdit ? RB.shareAt(rec, prev) : 0;
         let h = `<p class="note">من ${dtText(from)}: ${pct(num(v.share), 0)}، وحتى ${dtText(prev)} تبقى ${pct(was, 0)} كما كانت.</p>`;
@@ -3915,8 +3920,9 @@
       onSave: async (v) => {
         // تاريخ قبل تغييرات مسجلة لنسبته: الحفظ يحذفها (يُؤكَّد، فقد تكون خروجه من الشراكة)
         const from = fromOf(v);
-        const lost = laterChanges(from);
-        if (lost.length && !(await confirmBox(`حفظ نسبة ${esc(v.name || rec.name)} من ${dtText(from)} يحذف ما سُجّل بعده من تغييرات نسبته: ${lost.join('، ')}. متابعة؟`, { ok: 'احفظ' }))) return false;
+        const lost = lostOf(v);
+        const when = from ? `من ${dtText(from)} يحذف ما سُجّل بعده` : 'لكل الفترات يحذف ما سُجّل';
+        if (lost.length && !(await confirmBox(`حفظ نسبة ${esc(v.name || rec.name)} ${when} من تغييرات نسبته: ${lost.join('، ')}. متابعة؟`, { ok: 'احفظ' }))) return false;
         return upsert('partners', result(v));
       },
     });
@@ -7025,7 +7031,7 @@
       end = asOf;
       if (rep === 'journal') {
         rows.push(['التاريخ', 'البيان', 'الحساب', 'مدين', 'دائن']);
-        L.entries.filter((e) => e.date >= from && e.date <= asOf).forEach((e) => e.lines.forEach((l) => rows.push([e.date, l.memo ? e.desc + ' — ' + l.memo : e.desc, RB.accInfo(l.a, S, asOf).name, l.v > 0 ? l.v : '', l.v < 0 ? -l.v : ''])));
+        L.entries.filter((e) => e.date >= from && e.date <= asOf).forEach((e) => e.lines.forEach((l) => rows.push([e.date, l.memo ? e.desc + ' — ' + l.memo : e.desc, RB.accInfo(l.a, S, e.date).name, l.v > 0 ? l.v : '', l.v < 0 ? -l.v : ''])));
       } else if (rep === 'trial') {
         const t = RB.trialBalance(S, from, asOf, L);
         rows.push(['الرمز', 'الحساب', 'مدين', 'دائن']);
@@ -7713,6 +7719,18 @@
     const setTb = () => document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px');
     setTb();
     if (window.ResizeObserver) new ResizeObserver(setTb).observe(tb);
+    // عنصر في الصفحة أطول من المساحة تحت الشريط (جدول قابل للتمرير بلوحة المفاتيح مع الفترة المخصصة على الجوال):
+    // scroll-padding-top لا يحرّكه، فيبقى رأسه وإطار تركيزه تحت الشريط. يُمرَّر فيبدأ تحته مباشرة
+    document.addEventListener('focusin', (e) => {
+      const el = e.target;
+      if (!(el instanceof Element) || !el.closest('#page')) return;
+      requestAnimationFrame(() => {
+        if (document.activeElement !== el || getComputedStyle(tb).position === 'static') return;
+        const top = el.getBoundingClientRect().top;
+        const bar = tb.getBoundingClientRect().bottom;
+        if (top < bar) window.scrollBy(0, top - bar - 8);
+      });
+    });
     bindGlobal();
     // صفحة أو تقرير محفوظ لم يعد صالحاً (أو من خصائص الكائنات الموروثة) يعود للبداية
     const uiWas = JSON.stringify(ui);

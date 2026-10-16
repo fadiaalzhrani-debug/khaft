@@ -4329,6 +4329,35 @@ test('نقطة التعادل في أول شهر تشغيل: الإيجار وا
   close(e3.fixedParts.occ, 6000);
 });
 
+test('نقطة التعادل في أول شهر تشغيل: قسط الإيجار المؤرخ قبل الافتتاح في الشهر نفسه يُحسب شهراً كاملاً (r3)', () => {
+  const N = base();
+  N.settings.vatRegistered = false;
+  N.expenses = [
+    { id: 'r', date: '2026-09-20', startDate: '2026-10-01', category: 'rent', desc: 'إيجار', amount: 36000, months: 6, taxable: false, includesVat: false, account: 'bank' },
+    { id: 'h', date: '2026-10-01', category: 'housing', desc: 'سكن شهر', amount: 1500, months: 1, taxable: false, includesVat: false, account: 'bank' },
+  ];
+  N.assets = [{ id: 'k', date: '2026-09-15', name: 'معدات', category: 'kitchen', amount: 60000, includesVat: false, taxable: false, account: 'bank', lifeMonths: 60, salvage: 0 }];
+  for (const od of ['2026-10-01', '2026-10-05', '2026-10-12']) {
+    N.settings.openingDate = od;
+    N.sales = [{ id: 's', date: od, channels: { cash: { amount: 5000, orders: 100, type: 'cash', feePct: 0, feeVat: false } } }];
+    const e = RB.breakEven(N, '2026-10-01', '2026-10-31', null, '2026-10-16');
+    assert.equal(e.estimate, true, od);
+    assert.equal(e.basisFrom, od);
+    close(e.fixedParts.occ, 6000);
+    close(e.fixedParts.labor, 1500);
+    close(e.fixedParts.dep, 1000);
+  }
+  // إيجار يُدفع شهرياً في العاشر (سجل لكل شهر): قسطا سبتمبر وأكتوبر للبند نفسه = إيجار شهر واحد لا شهرين
+  N.settings.openingDate = '2026-10-05';
+  N.sales = [{ id: 's', date: '2026-10-05', channels: { cash: { amount: 5000, orders: 100, type: 'cash', feePct: 0, feeVat: false } } }];
+  N.assets = [];
+  N.expenses = ['2026-09-10', '2026-10-10'].map((d, i) => ({ id: 'm' + i, date: d, category: 'rent', desc: 'إيجار المحل', amount: 6000, months: 1, taxable: false, includesVat: false, account: 'bank' }));
+  close(RB.breakEven(N, '2026-10-01', '2026-10-31', null, '2026-10-16').fixedParts.occ, 6000);
+  // عقد مدفوع مقدماً في يوم التقدير نفسه: قيد الدفع (مدفوع مقدماً) لا يُعد قسطاً
+  N.expenses = [{ id: 'r', date: '2026-10-05', startDate: '2026-10-05', category: 'rent', desc: 'إيجار', amount: 36000, months: 6, taxable: false, includesVat: false, account: 'bank' }];
+  close(RB.breakEven(N, '2026-10-01', '2026-10-31', null, '2026-10-16').fixedParts.occ, 6000);
+});
+
 test('متوسط المحمّل شهرياً لـ«كل الفترات» أو سنة بدأ الدفتر أثناءها: من أول شهر فيه تحميل كاملاً (audit-r3)', () => {
   const t = '2026-10-16';
   const D = RB.demoState(t);
