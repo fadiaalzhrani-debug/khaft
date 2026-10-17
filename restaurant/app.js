@@ -943,11 +943,13 @@
     if (rec._bad) toast('حُفظ، لكن السجل ما زال يحتاج إلى تصحيح: ' + badWhy(section, rec), 'bad');
     const arr = S[section];
     const i = arr.findIndex((x) => String(x.id) === String(rec.id));
+    const prev = i >= 0 ? arr[i] : null;
     if (i >= 0) arr[i] = rec;
     else arr.push(rec);
     if (saveLog && !saveLog.length) saveLog.push({ section, rec });
     bump();
     persistPut(section, rec);
+    if (JSON.stringify(prev) !== JSON.stringify(rec)) ACTLOG.add(prev ? 'edit' : 'add', section, rec, prev);
   }
   // شريك أو موظف يشير إليه ما يُحفظ وقد حُذف بعد فتح النموذج (غالباً من جهاز الشريك: التحقق عند الحذف يرى السجلات
   // المحفوظة وحدها، فلم يرَ هذا السجل): يرجع {msg, path, inline} لرفض الحفظ تحت حقله، أو null. ما على السجل المحفوظ نفسه
@@ -992,9 +994,11 @@
   }
   function remove(section, id) {
     if (roBlock()) return false;
+    const prev = find(section, id);
     S[section] = S[section].filter((x) => String(x.id) !== String(id));
     bump();
     persistDel(section, id);
+    if (prev) ACTLOG.add('del', section, null, prev);
   }
   // keys: مفاتيح الإعدادات التي غيّرها هذا الحفظ (opening، channels…): تُكتب وحدها فوق أحدث نسخة محفوظة، فلا تمحو نسخةُ
   // هذه الصفحة (قد تكون أقدم) ما حفظه الشريك أو نافذة أخرى في غيرها. بلا keys تُحفظ الإعدادات كلها
@@ -1002,6 +1006,8 @@
     bump();
     if (roBlock()) return false;
     persistSettings(keys);
+    const ks = (Array.isArray(keys) ? keys : keys ? [keys] : []).filter((k) => typeof k === 'string');
+    ACTLOG.add('settings', '', null, null, { label: ks.length ? 'حُفظت: ' + ks.join('، ') : 'حُفظت الإعدادات' });
   }
 
   // ═════════════ أدوات الواجهة ═════════════
@@ -2128,7 +2134,7 @@
     ['المنيو والتكلفة', [['raw', 'المواد الخام'], ['composites', 'المنتجات المجمّعة'], ['products', 'المنيو والتسعير']]],
     ['المبيعات والنقد', [['sales', 'المبيعات اليومية'], ['cash', 'الصندوق والبنك']]],
     ['التقارير', [['reports', 'التقارير المالية'], ['settings', 'الإعدادات والنسخ الاحتياطي']]],
-    ['المساعدة', [['guide', 'دليل الاستخدام']]],
+    ['المراجعة والمساعدة', [['activity', 'سجل التعديلات'], ['guide', 'دليل الاستخدام']]],
   ];
   const PAGE_TITLES = Object.fromEntries(NAV.flatMap((g) => g[1]));
   const PAGES = {};
@@ -2302,6 +2308,16 @@
   }
   function alertsHTML(asOf, setup) {
     const out = [];
+    if (!APP.demo && ACTLOG.loaded) {
+      const all = ACTLOG.all();
+      const seen = lsGet(lastSeenKey()) || '';
+      const n = all.filter((e) => e.by !== ACTLOG.me && e.at > seen).length;
+      if (n && ACTLOG.me !== 'local') out.push(['warn', `غيّر شريكك <span class="n">${n}</span> سجلاً منذ آخر مرة فتحت فيها سجل التعديلات`, btn('سجل التعديلات', 'go', 'data-v="activity"', 'sm')]);
+      const g = ACTLOG.gaps();
+      if (g.length) out.push(['bad', 'سجل التعديلات فيه قيود محذوفة — راجعه مع شريكك', btn('سجل التعديلات', 'go', 'data-v="activity"', 'sm')]);
+      const lk = all.filter(actLocked).length;
+      if (lk) out.push(['bad', `<span class="n">${lk}</span> تعديل على فترة سبق اعتمادها (قبل ${dtText(S.settings.reviewedUntil)})`, btn('اعرضها', 'go', 'data-v="activity"', 'sm')]);
+    }
     const bad = badRecords();
     if (bad.length) out.push(['bad', `سجلات تحتاج إلى تصحيح: <span class="n">${bad.length}</span> — لا تدخل في الحسابات حتى تُصحَّح${fixList(bad, true)}`, '']);
     const bk = backupAge();
@@ -3761,6 +3777,220 @@
   };
 
   // ─── الإعدادات ───
+  // ─── سجل التعديلات: من أضاف أو عدّل أو حذف ماذا ومتى، وقيمته قبل وبعد ───
+  // في البيانات المشتركة لكل شخص سجله تحت act/<معرّفه>/e (لا يكتب فيه غيره)، مرقّماً تسلسلياً: رقم ناقص = سجل حُذف.
+  // في هذا المتصفح يُحفظ في localStorage. وضع التجربة لا يُسجَّل
+  const ACT_LS = 'rb-restaurant-activity-v1';
+  const ACT_NAMES = { add: 'إضافة', edit: 'تعديل', del: 'حذف', settings: 'الإعدادات', import: 'استيراد', wipe: 'مسح الدفتر', start: 'بدء الدفتر' };
+  const SEC_NAMES = { partners: 'الشركاء', capital: 'رأس المال', assets: 'الأصول', expenses: 'المصاريف', employees: 'العمال', payroll: 'الرواتب', raw: 'المواد الخام', purchases: 'المشتريات', supplierPayments: 'سداد الموردين', composites: 'المنتجات المجمّعة', products: 'المنيو', sales: 'المبيعات', payouts: 'تحويلات التطبيقات', transfers: 'التحويلات', stockCounts: 'الجرد', vatPayments: 'الضريبة', cashCounts: 'جرد الصندوق', advances: 'السلف' };
+  const ACTLOG = {
+    me: null, user: null, seq: 0, entries: [], others: {}, loaded: false, names: {},
+    recLabel(r) {
+      if (!RB.isObj(r)) return '';
+      const nm = (list, id) => { const x = id && (S[list] || []).find((y) => y && String(y.id) === String(id)); return x ? x.name : ''; };
+      const ch = r.channelId && RB.channelOf(S, r.channelId);
+      const parts = [r.name, r.desc, r.supplier, r.entity, nm('partners', r.partnerId), nm('employees', r.employeeId), ch ? ch.name : '', r.month && /^\d{4}-\d{2}$/.test(r.month) ? RB.monthName(r.month) : ''].filter((x) => x && typeof x === 'string');
+      return parts.slice(0, 2).join(' — ');
+    },
+    recAmount(section, r) {
+      if (!RB.isObj(r)) return null;
+      try {
+        if (section === 'sales') return RB.saleTotal(r);
+        if (section === 'purchases') return RB.purchaseTotal(r);
+        if (section === 'payroll') return RB.payrollTotals(r).gross;
+        if (section === 'stockCounts') return RB.stockValue(r, S);
+      } catch (e) {
+        return null;
+      }
+      return r.amount !== undefined && r.amount !== '' ? num(r.amount) : r.counted !== undefined ? num(r.counted) : null;
+    },
+    small(r) {
+      try {
+        const s = JSON.stringify(r);
+        return s && s.length < 60000 ? JSON.parse(s) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    async init() {
+      this.entries = [];
+      this.others = {};
+      if (APP.backend && APP.backend.kind === 'cloud') {
+        try {
+          const u = await window.claude.use('user');
+          this.user = u;
+          this.me = u && typeof u.id === 'function' ? await u.id() : null;
+        } catch (e) {
+          this.me = null;
+        }
+        if (!this.me) {
+          this.loaded = true;
+          return;
+        }
+        try {
+          const db = APP.backend.db;
+          const users = await db.collection('act').get();
+          for (const d of users.docs) {
+            const info = d.data() || {};
+            const snap = await db.collection('act/' + d.id + '/e').get();
+            const list = snap.docs.map((x) => Object.assign(clone(x.data()), { by: d.id }));
+            this.others[d.id] = { lastSeq: num(info.lastSeq), list };
+            if (d.id === this.me) this.seq = Math.max(num(info.lastSeq), ...list.map((x) => num(x.seq)), 0);
+          }
+          const ids = Object.keys(this.others);
+          if (ids.length && this.user && typeof this.user.profiles === 'function') {
+            try {
+              const ps = await this.user.profiles(ids);
+              for (const id of ids) this.names[id] = (ps[id] && ps[id].name) || '';
+            } catch (e) {
+              /* بلا أسماء */
+            }
+          }
+          if (!this.unsub)
+            this.unsub = db.collection('act').onSnapshot(
+              () => {
+                clearTimeout(this.rt);
+                this.rt = setTimeout(() => this.init().then(() => (ui.page === 'activity' || ui.page === 'dashboard') && scheduleRender()), 1500);
+              },
+              () => {}
+            );
+        } catch (e) {
+          /* القراءة تعذّرت: يُعرض ما سُجل في هذه الجلسة */
+        }
+      } else {
+        const list = safeJSON(lsGet(ACT_LS)) || [];
+        this.me = 'local';
+        this.others = { local: { lastSeq: list.length ? num(list[list.length - 1].seq) : 0, list: list.map((x) => Object.assign(x, { by: 'local' })) } };
+        this.seq = this.others.local.lastSeq;
+      }
+      this.loaded = true;
+    },
+    all() {
+      return Object.values(this.others).flatMap((o) => o.list).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
+    },
+    // أرقام ناقصة في تسلسل سجل كل شخص = سجلات حُذفت من السجل
+    gaps() {
+      const out = [];
+      for (const id of Object.keys(this.others)) {
+        const o = this.others[id];
+        const have = new Set(o.list.map((x) => num(x.seq)));
+        const top = Math.max(o.lastSeq, ...o.list.map((x) => num(x.seq)), 0);
+        let miss = 0;
+        for (let i = 1; i <= top; i++) if (!have.has(i)) miss++;
+        if (miss) out.push({ by: id, miss });
+      }
+      return out;
+    },
+    who(id) {
+      if (id === 'local') return 'هذا الجهاز';
+      if (id === this.me) return 'أنت';
+      return this.names[id] || 'الشريك';
+    },
+    add(action, section, rec, prev, extra) {
+      if (APP.demo || !this.loaded || !this.me) return;
+      const r = rec || prev;
+      const dates = [rec && rec.date, prev && prev.date].filter((d) => RB.isISODate && RB.isISODate(d));
+      const e = {
+        seq: ++this.seq,
+        at: new Date().toISOString(),
+        action,
+        section: section || '',
+        id: r && r.id ? String(r.id) : '',
+        label: extra && extra.label ? extra.label : this.recLabel(r),
+        date: dates.sort()[0] || '',
+        amount: this.recAmount(section, rec),
+        prevAmount: this.recAmount(section, prev),
+        before: action === 'add' ? null : this.small(prev),
+        after: action === 'del' ? null : this.small(rec),
+        by: this.me,
+      };
+      const mine = (this.others[this.me] = this.others[this.me] || { lastSeq: 0, list: [] });
+      mine.list.push(e);
+      mine.lastSeq = e.seq;
+      if (APP.backend.kind === 'cloud') {
+        const db = APP.backend.db;
+        const body = Object.assign({}, e);
+        delete body.by;
+        const id = String(e.seq).padStart(7, '0');
+        db.collection('act/' + this.me + '/e').doc(id).set(body)
+          .then(() => db.doc('act/' + this.me).set({ lastSeq: e.seq, at: e.at }))
+          .catch(() => {});
+      } else {
+        const list = mine.list.map((x) => Object.assign({}, x));
+        while (list.length > 3000) list.shift();
+        lsSet(ACT_LS, JSON.stringify(list));
+      }
+    },
+  };
+  const actDate = (at) => new Date(at);
+  const actDay = (at) => { const d = actDate(at); return isNaN(d) ? String(at).slice(0, 10) : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const actTime = (at) => { const d = actDate(at); return isNaN(d) ? '' : String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  const lastSeenKey = () => 'rb-act-seen-' + (ACTLOG.me || 'x');
+  // تعديل يمس فترة سبق اعتمادها (settings.reviewedUntil) أو أقدم من 35 يوماً من وقت التعديل
+  const actOld = (e) => !!e.date && ((S.settings.reviewedUntil && e.date <= S.settings.reviewedUntil) || RB.daysBetween(e.date, actDay(e.at)) > 35);
+  const actLocked = (e) => !!e.date && !!S.settings.reviewedUntil && e.date <= S.settings.reviewedUntil && actDay(e.at) > S.settings.reviewedUntil;
+  function actDiff(e) {
+    const a = RB.isObj(e.before) ? e.before : {};
+    const b = RB.isObj(e.after) ? e.after : {};
+    const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => !['id', '_bad', 'catV'].includes(k));
+    const rows = keys
+      .filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]))
+      .map((k) => {
+        const f = (v) => (v === undefined ? '—' : typeof v === 'object' ? `<code class="act-json">${esc(JSON.stringify(v)).slice(0, 600)}</code>` : esc(String(v)));
+        return `<tr><td>${esc(k)}</td><td>${f(a[k])}</td><td>${f(b[k])}</td></tr>`;
+      });
+    if (!rows.length) return '<p class="note">لا توجد تفاصيل محفوظة لهذا التغيير.</p>';
+    return `<div class="tbl-wrap"><table class="tbl mini"><thead><tr><th>الحقل</th><th>قبل</th><th>بعد</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+  }
+  PAGES.activity = () => {
+    const all = ACTLOG.all();
+    const seen = lsGet(lastSeenKey()) || '';
+    const fromOthers = all.filter((e) => e.by !== ACTLOG.me && e.at > seen);
+    const gaps = ACTLOG.gaps();
+    const people = Object.keys(ACTLOG.others);
+    const filt = ui.actBy && people.includes(ui.actBy) ? ui.actBy : '';
+    const onlyOld = ui.actOld === '1';
+    const list = all.filter((e) => (!filt || e.by === filt) && (!onlyOld || actOld(e)));
+    let h = pageHead('سجل التعديلات', 'كل إضافة وتعديل وحذف في الدفتر: من قام به ومتى، والقيمة قبل التعديل وبعده', btn('اعتماد الدفتر حتى تاريخ', 'review', '', 'primary'));
+    if (!ACTLOG.me) h += `<div class="empty-box bad">تعذّر تحديد هويتك في هذه الصفحة، فلا تُسجَّل تعديلاتك في السجل. افتح البرنامج وأنت مسجّل الدخول.</div>`;
+    if (APP.demo) h += `<div class="empty-box">وضع التجربة لا يُسجَّل في سجل التعديلات. يبدأ التسجيل بعد «ابدأ ببيانات مطعمك».</div>`;
+    const kp = [
+      kpi('كل التعديلات المسجلة', `<span class="n">${all.length}</span>`, people.length > 1 ? `من ${people.length} أشخاص` : ''),
+      kpi('من غيرك منذ آخر زيارة لك', `<span class="n">${fromOthers.length}</span>`, seen ? 'منذ ' + dtText(seen.slice(0, 10)) : 'أول زيارة لهذه الصفحة', fromOthers.length ? 'warn' : ''),
+      kpi('تعديلات على فترات قديمة', `<span class="n">${all.filter(actOld).length}</span>`, S.settings.reviewedUntil ? 'الدفتر معتمد حتى ' + dtText(S.settings.reviewedUntil) : 'أقدم من 35 يوماً وقت التعديل', all.some(actLocked) ? 'bad' : ''),
+      kpi('سجلات محذوفة من السجل', `<span class="n">${gaps.reduce((s, g) => s + g.miss, 0)}</span>`, gaps.length ? gaps.map((g) => ACTLOG.who(g.by)).join('، ') : 'التسلسل مكتمل', gaps.length ? 'bad' : 'good'),
+    ];
+    h += `<div class="kpis small">${kp.join('')}</div>`;
+    if (gaps.length) h += `<div class="empty-box bad">في السجل أرقام ناقصة: ${gaps.map((g) => `${esc(ACTLOG.who(g.by))} (${g.miss})`).join('، ')}. هذا يعني أن قيوداً من سجل التعديلات حُذفت. راجع ذلك مع شريكك، وقارن بآخر نسخة احتياطية.</div>`;
+    const chips = `<div class="chips"><button type="button" class="fchip ${!filt ? 'on' : ''}" data-act="filter" data-f="actBy" data-v="">الكل</button>${people.map((p) => `<button type="button" class="fchip ${filt === p ? 'on' : ''}" data-act="filter" data-f="actBy" data-v="${esc(p)}">${esc(ACTLOG.who(p))}</button>`).join('')}<button type="button" class="fchip ${onlyOld ? 'on' : ''}" data-act="filter" data-f="actOld" data-v="${onlyOld ? '' : '1'}">تعديلات على فترات قديمة فقط</button></div>`;
+    const rows = list.slice(0, ui.rowLimit || 300);
+    h += card(
+      'التعديلات',
+      chips +
+        table(
+          [
+            { h: 'الوقت', f: (e) => `${dtText(actDay(e.at))}<div class="muted sm n">${esc(actTime(e.at))}</div>` },
+            { h: 'من', f: (e) => esc(ACTLOG.who(e.by)) + (e.at > seen && e.by !== ACTLOG.me ? ' ' + chip('جديد', 'accent') : '') },
+            { h: 'العملية', f: (e) => chip(ACT_NAMES[e.action] || esc(e.action), e.action === 'del' || e.action === 'wipe' ? 'bad' : e.action === 'edit' || e.action === 'settings' ? 'warn' : 'good') },
+            { h: 'القسم', f: (e) => esc(SEC_NAMES[e.section] || (e.action === 'settings' ? 'الإعدادات' : e.section || '—')) },
+            { h: 'البيان', f: (e) => `${esc(e.label || '—')}${e.date ? `<div class="muted sm">بتاريخ ${dtText(e.date)}${actLocked(e) ? ' ' + chip('فترة معتمدة', 'bad') : actOld(e) ? ' ' + chip('فترة قديمة', 'warn') : ''}</div>` : ''}` },
+            { h: 'المبلغ', num: 1, f: (e) => (e.action === 'edit' && e.prevAmount !== null && e.amount !== null && Math.abs(e.prevAmount - e.amount) > 0.004 ? `${N(e.prevAmount)} ← ${N(e.amount)}` : e.amount !== null ? N(e.amount) : e.prevAmount !== null ? N(e.prevAmount) : '') },
+            { h: '', f: (e) => (e.before || e.after ? `<button type="button" class="btn ghost sm" data-act="actdetail" data-id="${esc(e.by)}" data-x="${esc(String(e.seq))}">التفاصيل</button>` : '') },
+          ],
+          rows,
+          { empty: 'لا توجد تعديلات مسجلة بعد. كل ما تضيفه أو تعدّله أو تحذفه من الآن يظهر هنا.' }
+        ) +
+        (list.length > rows.length ? `<p class="note">يظهر أحدث ${rows.length} من ${list.length}.</p>` : ''),
+      { sub: 'السجل يبدأ من وقت إضافة هذه الميزة. تعديلات شريكك تظهر باسمه، وما لم تره بعد عليه «جديد».' }
+    );
+    try {
+      lsSet(lastSeenKey(), new Date().toISOString());
+    } catch (e) {
+      /* */
+    }
+    return h;
+  };
+
   // ─── الشرح داخل البرنامج: شرح لكل صفحة + صفحة «دليل الاستخدام» ───
   const HELP = {
     dashboard: {
@@ -3841,6 +4071,12 @@
       how: ['اختر الفترة من أعلى الشاشة ثم التقرير من التبويبات.', 'زر «تصدير CSV» يحفظ التقرير ليفتح في Excel.', 'في تقرير الضريبة سجّل سداد كل إقرار أو استرداد الرصيد الدائن.'],
       tips: ['القيود المحاسبية تُنشأ تلقائياً من كل عملية تسجلها؛ لا تحتاج كتابة قيود.', 'نقطة التعادل = المبيعات الشهرية اللازمة لتغطية المصاريف الثابتة.', 'تحليل المنيو يصنف الأصناف: نجم، حصان عمل، لغز، ضعيف — مع توصية لكل منها.'],
     },
+    activity: {
+      t: 'سجل التعديلات',
+      what: 'كل إضافة وتعديل وحذف في الدفتر، من قام به ومتى، والقيمة قبل التعديل وبعده — لتعرف كل ما تغيّر حتى لو كان شريكك هو من يسجّل.',
+      how: ['افتح هذه الصفحة دورياً: ما غيّره شريكك منذ آخر زيارة لك عليه علامة «جديد».', 'اضغط «التفاصيل» لترى كل حقل تغيّر: قبل وبعد.', 'بعد مراجعة كل شهر اضغط «اعتماد الدفتر حتى تاريخ»؛ أي تعديل لاحق على ذلك الشهر يظهر بعلامة حمراء وفي تنبيهات لوحة المتابعة.'],
+      tips: ['لكل شخص تسلسل أرقام في السجل، فأي قيد يُحذف من السجل يظهر كرقم ناقص وتنبيه.', 'تعديل سجل بتاريخ أقدم من 35 يوماً يُعلَّم «فترة قديمة» حتى لو لم تعتمد الدفتر.'],
+    },
     settings: {
       t: 'الإعدادات والنسخ الاحتياطي',
       what: 'بيانات المطعم، الضريبة، نسب التأمينات ورسوم العمالة، قنوات البيع وعمولاتها، الأرصدة الافتتاحية، والنسخ الاحتياطي.',
@@ -3872,7 +4108,29 @@
       <dt>نقطة التعادل</dt><dd>المبيعات الشهرية التي تغطي كل المصاريف بلا ربح ولا خسارة.</dd>
       <dt>ضريبة المدخلات والمخرجات</dt><dd>المخرجات: ضريبة مبيعاتك. المدخلات: ضريبة مشترياتك القابلة للخصم. الفرق هو ما تدفعه للهيئة.</dd>
       <dt>مخصص نهاية الخدمة</dt><dd>مكافأة العامل عند انتهاء خدمته، تُحتسب شهرياً حتى لا تفاجئك عند الصرف.</dd></dl>`);
-    h += order.map((k) => card(HELP[k].t, helpBody(HELP[k]), { actions: btn('افتح الصفحة', 'go', `data-v="${k}"`, 'sm') })).join('');
+    h += card('كيف تعرف كل شيء ابتداءً من اليوم', `<ol class="help-list">
+      <li><b>لوحة المتابعة كل يوم:</b> المبيعات والربح والأرصدة، والتنبيهات (أيام بلا إقفال، تعديلات الشريك، فترات معتمدة عُدّلت، رصيد بالسالب).</li>
+      <li><b>سجل التعديلات:</b> ما أضافه أو عدّله أو حذفه شريكك منذ آخر زيارة لك، بالقيمة قبل وبعد.</li>
+      <li><b>الصندوق والبنك:</b> كل ريال دخل أو خرج، ورصيد كل يوم.</li>
+      <li><b>التقارير:</b> قائمة الدخل والميزانية ونصيب كل شريك من الأرباح.</li>
+      <li>إذا كانت لك بيانات سابقة لم تُسجَّل، ابدأ من اليوم بـ«الأرصدة الافتتاحية» في الإعدادات: رصيد الصندوق والبنك والمخزون والديون كما هي اليوم، وما بعده يُسجَّل يوماً بيوم.</li></ol>`);
+    h += card('منع التلاعب: كيف تتأكد أن الأرقام صحيحة حتى لو كان الإدخال عند شريكك', `<ol class="help-list">
+      <li><b>الرابط والصلاحيات:</b> صاحب الرابط يبقى المالك، ويُعطى الشريك صلاحية «تعديل» من قائمة المشاركة. كل شخص له سجل تعديلات خاص باسمه لا يستطيع الآخر الكتابة فيه.</li>
+      <li><b>طابِق مع مصادر لا يتحكم فيها أحد منكما (أهم خطوة):</b>
+        <ul class="help-list">
+          <li>رصيد البنك في البرنامج آخر كل شهر = رصيد كشف الحساب من البنك. أي فرق يعني حركة لم تُسجل أو سُجلت خطأ.</li>
+          <li>الإقفال اليومي = تقرير نهاية اليوم من جهاز الكاشير ونقاط البيع، ومبيعات الشبكة = إيداعات مدى في كشف البنك.</li>
+          <li>مبيعات كل تطبيق وعمولته = كشف الحساب الذي يرسله التطبيق، والتحويلات = ما وصل البنك فعلاً.</li>
+          <li>المشتريات = فواتير الموردين الأصلية (اطلب صورتها أو أصلها)، والرواتب = ملف «مدد» وإيصالات التأمينات.</li>
+          <li>الرسوم الحكومية = الإيصالات من المنصات (قوى، مقيم، بلدي…).</li>
+        </ul></li>
+      <li><b>عدّ الصندوق بنفسك</b> في وقت غير متوقع وسجّله في «جرد الصندوق»؛ البرنامج يظهر أي عجز.</li>
+      <li><b>الجرد الفعلي للمخزون</b> آخر الشهر، ثم تقرير «تحليل المنيو»: فرق كبير بين التكلفة النظرية والفعلية يعني هدراً أو نقصاً أو سرقة.</li>
+      <li><b>اعتماد الشهر:</b> بعد المطابقة اضغط «اعتماد الدفتر حتى تاريخ» في سجل التعديلات. أي تعديل لاحق على شهر معتمد يظهر بالأحمر.</li>
+      <li><b>نسخة احتياطية شهرية لكل شريك:</b> يحتفظ كل منكما بنسخة الشهر عنده؛ هي مرجع ثابت لو اختلفتما على رقم.</li>
+      <li><b>لاحظ الإشارات:</b> حذف سجلات قديمة، تعديل مبالغ بعد أيام، إقفالات ناقصة، عجز متكرر في الصندوق، مشتريات من مورد جديد بأسعار أعلى (البرنامج يظهر تغيّر سعر المادة).</li></ol>
+      <p class="note">ملاحظة صريحة: صاحب الرابط (المالك) يستطيع تقنياً حذف أي بيانات، ولا يوجد برنامج يمنع ذلك تماماً. لذلك المطابقة الشهرية مع البنك والكاشير والتطبيقات، والنسخة الاحتياطية عند كل شريك، هي الضمان الحقيقي.</p>`);
+    h += order.concat(['activity']).map((k) => card(HELP[k].t, helpBody(HELP[k]), { actions: btn('افتح الصفحة', 'go', `data-v="${k}"`, 'sm') })).join('');
     return h;
   };
 
@@ -6305,6 +6563,25 @@
   }
   const ACT = {
     go: (el) => go(el.dataset.v),
+    actdetail: (el) => {
+      const o = ACTLOG.others[el.dataset.id];
+      const e = o && o.list.find((x) => String(x.seq) === el.dataset.x);
+      if (e) infoBox(`${ACT_NAMES[e.action] || ''}: ${e.label || ''}`, `<p class="note">${esc(ACTLOG.who(e.by))} · ${dtText(actDay(e.at))} ${esc(actTime(e.at))}${e.date ? ' · السجل بتاريخ ' + dtText(e.date) : ''}</p>` + actDiff(e), true);
+    },
+    review: () =>
+      formModal({
+        title: 'اعتماد الدفتر حتى تاريخ',
+        value: { reviewedUntil: S.settings.reviewedUntil || RB.monthEnd(RB.ymAdd(today().slice(0, 7), -1)) },
+        fields: [
+          { type: 'html', html: () => '<p class="note">بعد مراجعة الشهر مع شريكك ومطابقته مع كشف البنك وتقارير الكاشير والتطبيقات، اعتمده. أي إضافة أو تعديل أو حذف لاحق على سجل بتاريخ قبل هذا اليوم يظهر في السجل بعلامة «فترة معتمدة» وفي تنبيهات لوحة المتابعة.</p>' },
+          { k: 'reviewedUntil', type: 'date', label: 'الدفتر معتمد حتى', req: 1 },
+        ],
+        onSave: (v) => {
+          S.settings.reviewedUntil = v.reviewedUntil;
+          saveSettings(['reviewedUntil']);
+        },
+        done: 'تم اعتماد الدفتر.',
+      }),
     help: (el) => {
       const h = HELP[el.dataset.v];
       if (h) infoBox('شرح: ' + h.t, helpBody(h) + `<p class="note">الدليل الكامل في صفحة «دليل الاستخدام» من القائمة.</p>`);
@@ -6653,7 +6930,7 @@
         delete c.shareHist;
         return c;
       });
-      await replaceAll(fresh, { done: 'تم مسح البيانات.' });
+      if (await replaceAll(fresh, { done: 'تم مسح البيانات.' })) ACTLOG.add('wipe', '', null, null, { label: 'مُسح الدفتر كله' });
     },
     reload: () => location.reload(),
     // إعادة حفظ ما لم يُحفظ في البيانات المشتركة (شريط «لم يُحفظ آخر تعديل»): تنبيه واحد بالنتيجة
@@ -6983,6 +7260,7 @@
         st.partners.push({ id: RB.uid(), name: v.p1.trim(), share: s1, phone: '', note: '' });
         if (two) st.partners.push({ id: RB.uid() + 'b', name: v.p2.trim(), share: s2, phone: '', note: '' });
         const ok = await replaceAll(st);
+        if (ok) ACTLOG.add('start', '', null, null, { label: 'بدء الدفتر: ' + (st.settings.name || '') });
         go('dashboard');
         if (ok && v.existing) {
           // بعد إغلاق نافذة البداية
@@ -7326,7 +7604,7 @@
       if (!(await confirmBox(`استيراد نسخة «${esc((data.settings && data.settings.name) || '')}» فيها ${cnt(n, W.rec)}؟ ${repl}${demoNote}${notes}`, { danger: true, ok: 'استورد' }))) return;
       delete data.demo;
       data.settings = Object.assign({}, data.settings, { startedAt: (data.settings && data.settings.startedAt) || new Date().toISOString() });
-      await replaceAll(data, { done: 'تم الاستيراد.' });
+      if (await replaceAll(data, { done: 'تم الاستيراد.' })) ACTLOG.add('import', '', null, null, { label: 'استُورد ملف نسخة احتياطية حل محل الدفتر' });
     };
     fr.readAsText(file);
   }
@@ -7930,6 +8208,7 @@
     }
     bump();
     if (APP.backend.subscribe) APP.backend.subscribe(onRemote);
+    ACTLOG.init().then(() => (ui.page === 'activity' || ui.page === 'dashboard') && scheduleRender());
     render();
   }
 

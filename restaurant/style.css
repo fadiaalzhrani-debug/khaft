@@ -727,3 +727,5 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
 .help-dl dt { font-weight: 700; }
 .help-dl dd { margin: 0; color: var(--ink-2); }
 @media (max-width: 560px) { .help-dl { grid-template-columns: 1fr; } .help-dl dd { margin-bottom: 6px; } }
+.act-json { font-size: 0.75rem; direction: ltr; unicode-bidi: isolate; word-break: break-all; }
+.help-list .help-list { margin-top: 6px; }
