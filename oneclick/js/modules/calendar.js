@@ -47,10 +47,16 @@ OC.modules = OC.modules || {};
   const awayOn = iso => OC.db.leaves.filter(l => l.from <= iso && l.to >= iso && person(l.personId));
   OC.awayOn = awayOn;
 
+  const member = () => OC.auth.enabled() && !OC.auth.isAdmin();
+  const myPerson = () => { const u = OC.auth.current(); return u ? u.personId : ''; };
   function leaveForm(id, preset) {
     const l = id ? OC.find('leaves', id) : null;
     if (!OC.db.team.length) { OC.toast(t('cal.needTeam'), 'info'); return; }
-    const team = OC.db.team.slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (member()) {
+      if (!myPerson()) { OC.toast(t('auth.noPersonLink'), 'info', 4500); return; }
+      if ((l && l.personId !== myPerson()) || (preset && preset.personId && preset.personId !== myPerson())) { OC.toast(t('auth.ownRowOnly'), 'info'); return; }
+    }
+    const team = OC.db.team.slice().sort((a, b) => a.name.localeCompare(b.name)).filter(p => !member() || p.id === myPerson());
     const m = OC.form({
       title: l ? t('cal.editLeave') : t('cal.addLeave'),
       extraButtons: l ? `<button class="btn danger" type="button" data-ldel>${I('trash')}${esc(t('delete'))}</button>` : '',
@@ -135,13 +141,14 @@ OC.modules = OC.modules || {};
       if (we || d === ti) bg += `<i class="yp-col${we ? ' we' : ''}${d === ti ? ' today' : ''}" style="inset-inline-start:${d * dw}px;width:${dw}px"></i>`;
       if (counts[d]) off += `<span class="yp-o${counts[d] > max ? ' over' : ''}" style="inset-inline-start:${d * dw}px;width:${dw}px;--a:${Math.min(1, counts[d] / Math.max(1, max)).toFixed(2)}" title="${esc(OC.fmtDate(iso) + ' · ' + t('cal.offN', { n: counts[d] }) + ': ' + names[d].join('، '))}">${dw >= 20 ? counts[d] : ''}</span>`;
     }
-    const ly = yearLeaves(Y), ent = OC.db.settings.annualDays;
+    const ly = yearLeaves(Y), ent = OC.db.settings.annualDays, pendingLv = OC.auth.pendingLeaves().filter(l => l.to >= y0 && l.from <= `${Y}-12-31`);
     const rows = ppl.map(p => {
-      const mine = ly.filter(l => l.personId === p.id);
+      const mine = ly.filter(l => l.personId === p.id).concat(pendingLv.filter(l => l.personId === p.id));
       const used = mine.filter(l => l.type === 'annual').reduce((s, l) => s + leaveDays(l, l.from < y0 ? y0 : l.from, l.to > `${Y}-12-31` ? `${Y}-12-31` : l.to), 0);
       const bars = mine.map(l => {
         const a = Math.max(0, U.daysBetween(y0, l.from)), b = Math.min(n - 1, U.daysBetween(y0, l.to)), w = (b - a + 1) * dw - 2, days = leaveDays(l);
         const tip = `${p.name} · ${ltLabel(l.type)} · ${OC.fmtDate(l.from)} – ${OC.fmtDate(l.to)} (${t('cal.daysN', { n: days })})${l.notes ? ' · ' + l.notes : ''}`;
+        if (l._pending) return `<span class="yp-bar lv-${l.type} pending" style="inset-inline-start:${a * dw + 1}px;width:${Math.max(4, w)}px" title="${esc(tip + ' · ' + t('auth.waiting'))}">${w >= 64 ? `<span>${esc(t('auth.waitingShort'))}</span>` : ''}</span>`;
         return `<button type="button" class="yp-bar lv-${l.type}" data-act="leave" data-id="${l.id}" style="inset-inline-start:${a * dw + 1}px;width:${Math.max(4, w)}px" title="${esc(tip)}" aria-label="${esc(tip)}">${w >= 64 ? `<span>${esc(ltLabel(l.type))} · ${days}</span>` : ''}</button>`;
       }).join('');
       return `<div class="yp-row"><div class="yp-name"><div class="who">${OC.avatar(p.name)}<div><b>${esc(p.name)}</b><small>${esc(p.group || p.role || '')}</small></div></div><span class="yp-bal${used > ent ? ' over' : ''}" title="${esc(t('cal.balanceTip', { used, ent }))}">${used}/${ent}</span></div><div class="yp-track" data-track data-pid="${p.id}"><span class="yp-rule"></span>${bars}</div></div>`;

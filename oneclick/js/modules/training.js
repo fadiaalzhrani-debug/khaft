@@ -32,7 +32,17 @@ OC.modules = OC.modules || {};
     return { done, expired, n, pct: n ? Math.round(done / n * 100) : 0 };
   }
   const cellTitle = (m, c, v) => { const s = state(c, v), e = expiry(c, v); return `${m.name} · ${c.name} · ${s === 'none' ? t('training.notDone') : (v === '1' ? t('training.doneNoDate') : t('training.doneOn', { date: OC.fmtDate(v) })) + (e ? ' · ' + t(s === 'expired' ? 'training.expiredOn' : 'training.validUntil', { date: OC.fmtDate(e) }) : '')}`; };
-  const cellIcon = s => s === 'done' ? I('check') : s === 'soon' ? I('clock') : s === 'expired' ? I('alert') : '';
+  const cellIcon = s => s === 'done' ? I('check') : s === 'soon' ? I('clock') : s === 'expired' ? I('alert') : s === 'pending' ? I('clock') : '';
+  const A = () => OC.auth;
+  const member = () => A().enabled() && !A().isAdmin();
+  const myPerson = () => { const u = A().current(); return u ? u.personId : ''; };
+  /* members may only tick their own row; the admin may tick anyone */
+  function mayTick(pid) {
+    if (!member()) return true;
+    if (!myPerson()) { OC.toast(t('auth.noPersonLink'), 'info', 4500); return false; }
+    if (pid !== myPerson()) { OC.toast(t('auth.ownRowOnly'), 'info'); return false; }
+    return true;
+  }
 
   function courseForm(id) {
     const c = id ? OC.find('courses', id) : null;
@@ -123,11 +133,13 @@ OC.modules = OC.modules || {};
     render() {
       const cs = OC.db.courses, list = people(), tot = totals(), gs = groups();
       const head = `<div class="page-head"><div><h2>${esc(t('training.title'))}</h2><p>${esc(t('training.desc'))}</p></div>
-        <div class="actions">${cs.length ? `<button class="btn" data-act="export">${I('download')}${esc(t('inv.exportXlsx'))}</button>` : ''}<button class="btn" data-act="addCourse">${I('plus')}${esc(t('training.addCourse'))}</button><button class="btn primary" data-act="import">${I('upload')}${esc(t('imp.button'))}</button></div></div>`;
+        <div class="actions">${cs.length ? `<button class="btn" data-act="export">${I('download')}${esc(t('inv.exportXlsx'))}</button>` : ''}${member() ? '' : `<button class="btn" data-act="addCourse">${I('plus')}${esc(t('training.addCourse'))}</button><button class="btn primary" data-act="import">${I('upload')}${esc(t('imp.button'))}</button>`}</div></div>`;
       if (!OC.db.team.length) return head + OC.empty('users', t('training.noTeam'), t('training.noTeamHint'));
       if (!cs.length) return head + OC.empty('grad', t('training.noCourses'), t('training.noCoursesHint'));
+      const pend = A().pendingTraining(), me = myPerson();
+      const banner = member() ? `<div class="card pad mine-banner">${I('user')} ${esc(me ? t('auth.tickHint') : t('auth.noPersonLink'))}</div>` : '';
       const colStats = cs.map(c => { let d = 0; list.forEach(m => { const s = state(c, rec(c.id, m.id)); if (s === 'done' || s === 'soon') d++; }); return d; });
-      return head + `
+      return head + banner + `
       <div class="kpis">
         <div class="card kpi"><span class="lbl">${I('grad')}${esc(t('training.courses'))}</span><span class="val">${cs.length}</span></div>
         <div class="card kpi"><span class="lbl">${I('users')}${esc(t('training.people'))}</span><span class="val">${OC.db.team.length}</span></div>
@@ -141,10 +153,10 @@ OC.modules = OC.modules || {};
         <thead><tr><th class="mx-name">${esc(t('training.person'))} <span class="muted small">(${list.length})</span></th>
           ${cs.map((c, k) => `<th class="mx-h"><button type="button" data-act="course" data-id="${c.id}" title="${esc(c.name)}${c.validity ? ' · ' + esc(t('training.validityN', { n: c.validity })) : ''}"><span class="mx-cname">${esc(c.name)}</span><span class="mx-cstat">${colStats[k]}/${list.length}${c.validity ? ` · ${esc(t('training.validityShort', { n: c.validity }))}` : ''}</span><span class="progress"><i style="width:${list.length ? Math.round(colStats[k] / list.length * 100) : 0}%"></i></span></button></th>`).join('')}
           <th class="mx-pct">%</th></tr></thead>
-        <tbody>${list.map(m => { let d = 0; const cells = cs.map(c => { const v = rec(c.id, m.id), s = state(c, v); if (s === 'done' || s === 'soon') d++; return `<td class="mx-cell"><button type="button" class="mx-b ${s}" data-act="cell" data-c="${c.id}" data-p="${m.id}" title="${esc(cellTitle(m, c, v))}" aria-label="${esc(cellTitle(m, c, v))}">${cellIcon(s)}</button></td>`; }).join(''); const pct = Math.round(d / cs.length * 100);
-          return `<tr><th class="mx-name"><div class="who">${OC.avatar(m.name)}<div><b>${esc(m.name)}</b><small>${esc([m.group, m.role].filter(Boolean).join(' · '))}</small></div></div></th>${cells}<td class="mx-pct">${OC.pill(pct === 100 ? 'good' : pct >= 60 ? 'accent' : 'warn', pct + '%', pct === 100 ? 'check' : 'circle')}</td></tr>`; }).join('') || `<tr><td colspan="${cs.length + 2}">${OC.empty('search', t('team.empty'), t('tryFilters'))}</td></tr>`}</tbody>
+        <tbody>${list.map(m => { let d = 0; const cells = cs.map(c => { const v = rec(c.id, m.id), s0 = state(c, v); if (s0 === 'done' || s0 === 'soon') d++; const pv = (pend[c.id] || {})[m.id]; const s = pv !== undefined ? 'pending' : s0; const tip = pv !== undefined ? `${m.name} · ${c.name} · ${t('auth.waiting')}` : cellTitle(m, c, v); return `<td class="mx-cell"><button type="button" class="mx-b ${s}" data-act="cell" data-c="${c.id}" data-p="${m.id}" title="${esc(tip)}" aria-label="${esc(tip)}">${cellIcon(s)}</button></td>`; }).join(''); const pct = Math.round(d / cs.length * 100);
+          return `<tr class="${member() && m.id === me ? 'mine' : ''}"><th class="mx-name"><div class="who">${OC.avatar(m.name)}<div><b>${esc(m.name)}</b><small>${esc([m.group, m.role].filter(Boolean).join(' · '))}</small></div></div></th>${cells}<td class="mx-pct">${OC.pill(pct === 100 ? 'good' : pct >= 60 ? 'accent' : 'warn', pct + '%', pct === 100 ? 'check' : 'circle')}</td></tr>`; }).join('') || `<tr><td colspan="${cs.length + 2}">${OC.empty('search', t('team.empty'), t('tryFilters'))}</td></tr>`}</tbody>
       </table></div>
-      <div class="legend mt"><span><i class="mx-b done">${I('check')}</i>${esc(t('training.lgDone'))}</span><span><i class="mx-b soon">${I('clock')}</i>${esc(t('training.lgSoon'))}</span><span><i class="mx-b expired">${I('alert')}</i>${esc(t('training.lgExpired'))}</span><span><i class="mx-b none"></i>${esc(t('training.lgNone'))}</span><span class="muted">${esc(t('training.clickHint'))}</span></div>`;
+      <div class="legend mt"><span><i class="mx-b done">${I('check')}</i>${esc(t('training.lgDone'))}</span><span><i class="mx-b soon">${I('clock')}</i>${esc(t('training.lgSoon'))}</span><span><i class="mx-b expired">${I('alert')}</i>${esc(t('training.lgExpired'))}</span><span><i class="mx-b none"></i>${esc(t('training.lgNone'))}</span>${A().enabled() ? `<span><i class="mx-b pending">${I('clock')}</i>${esc(t('auth.waiting'))}</span>` : ''}<span class="muted">${esc(t('training.clickHint'))}</span></div>`;
     },
     actions: {
       import: () => OC.importer.open(importSpec), export: () => exportExcel(),
@@ -154,6 +166,8 @@ OC.modules = OC.modules || {};
       show: d => { st.show = d.v; OC.refresh(); },
       cell: d => {
         const c = OC.find('courses', d.c), m = OC.find('team', d.p); if (!c || !m) return;
+        if (!mayTick(m.id)) return;
+        if (((A().pendingTraining()[c.id]) || {})[m.id] !== undefined) { OC.toast(t('auth.alreadyWaiting'), 'info'); return; }
         if (rec(c.id, m.id)) { cellDialog(c, m); return; }
         setRec(c.id, m.id, U.today()); OC.save(); OC.refresh();
         OC.toast(t('training.ticked', { name: m.name, course: c.name }), 'ok', 4000, { label: t('undo'), fn: () => { setRec(c.id, m.id, ''); OC.save(); OC.refresh(); } });

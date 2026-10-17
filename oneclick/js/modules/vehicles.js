@@ -1,4 +1,4 @@
-/* OneClick · Vehicles: fleet cards with illustrations / photos, 3D viewer, check-out / check-in,
+/* OneClick · Vehicles: fleet cards, check-out / check-in,
    maintenance, service by date & km, registration and insurance expiry alerts */
 window.OC = window.OC || {};
 OC.modules = OC.modules || {};
@@ -8,7 +8,6 @@ OC.modules = OC.modules || {};
   const TYPES = ['suv', 'singlecab', 'doublecab', 'pickup', 'van', 'truck', 'bus', 'forklift', 'other'];
   const STATUS = ['available', 'inuse', 'maintenance'];
   const SVC_SOON_DAYS = 14, SVC_SOON_KM = 500, DOC_SOON_DAYS = 30;
-  const DEFAULT_COLOR = '#e8ecef';
   const st = { filter: 'all', q: '' };
 
   const daysTo = iso => iso ? U.daysBetween(U.today(), iso) : null;
@@ -24,7 +23,7 @@ OC.modules = OC.modules || {};
   const stateOf = (v, kind) => { const a = alerts(v).find(x => x.kind === kind); return a ? a.state : 'ok'; };
   const tone = s => s === 'overdue' || s === 'expired' ? 'color:var(--crit);font-weight:800' : s === 'soon' || s === 'expiresSoon' ? 'color:var(--warn);font-weight:800' : '';
   const statusPill = v => OC.pill(v.status === 'available' ? 'good' : v.status === 'inuse' ? 'info' : 'warn', t('vehicles.s.' + v.status), v.status === 'available' ? 'check' : v.status === 'inuse' ? 'key' : 'wrench');
-  const typeIcon = v => (OC.vehicleKind(v.type) === 'suv' || OC.vehicleKind(v.type) === 'van') ? 'car' : 'truck';
+  const typeIcon = v => ['suv', 'van', 'bus'].includes(v.type) ? 'car' : 'truck';
 
   function fields() {
     return [
@@ -32,7 +31,6 @@ OC.modules = OC.modules || {};
       { key: 'plate', label: t('vehicles.f.plate'), required: true, placeholder: 'HSD 7421' },
       { key: 'type', label: t('vehicles.f.type'), type: 'select', options: TYPES.map(x => ({ value: x, label: t('vehicles.t.' + x) })) },
       { key: 'year', label: t('vehicles.f.year'), type: 'number', min: 1990, max: 2100, step: 1 },
-      { key: 'color', label: t('vehicles.f.color'), type: 'color', default: DEFAULT_COLOR },
       { key: 'status', label: t('status'), type: 'select', options: STATUS.map(x => ({ value: x, label: t('vehicles.s.' + x) })) },
       { key: 'assignedTo', label: t('vehicles.f.assigned'), list: OC.db.team.map(m => m.name) },
       { key: 'mileage', label: t('vehicles.f.mileage'), type: 'number', min: 0, step: 1 },
@@ -46,7 +44,7 @@ OC.modules = OC.modules || {};
   function openForm(id) {
     const existing = id ? OC.find('vehicles', id) : null;
     OC.form({
-      title: existing ? t('vehicles.edit') : t('vehicles.add'), fields: fields(), values: existing || { type: 'suv', status: 'available', mileage: 0, color: DEFAULT_COLOR },
+      title: existing ? t('vehicles.edit') : t('vehicles.add'), fields: fields(), values: existing || { type: 'suv', status: 'available', mileage: 0 },
       onSubmit(v) {
         if (v.status !== 'inuse') v.assignedTo = '';
         if (existing) Object.assign(existing, v); else OC.db.vehicles.push(Object.assign({ id: U.uid() }, v));
@@ -72,33 +70,6 @@ OC.modules = OC.modules || {};
       onSubmit(x) { if (x.mileage !== '' && x.mileage < v.mileage) return t('vehicles.mileageErr'); v.status = 'available'; v.assignedTo = ''; if (x.mileage !== '') v.mileage = x.mileage; OC.save(); OC.toast(t('vehicles.checkedIn', { name: v.name })); OC.refresh(); }
     });
   }
-  function view3d(id) {
-    const v = OC.find('vehicles', id); if (!v) return;
-    const body = document.createElement('div');
-    body.innerHTML = `<canvas class="car3d" aria-label="${esc(t('vehicles.view3d'))}"></canvas>
-      <div class="row between mt"><div class="row">${statusPill(v)}${OC.pill('', t('vehicles.t.' + (v.type || 'other')), typeIcon(v))}<span class="plate">${esc(v.plate)}</span>${v.year ? `<span class="muted small">${esc(v.year)}</span>` : ''}</div>
-        <label class="row small muted" style="gap:8px">${esc(t('vehicles.f.color'))}<input type="color" value="${esc(/^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : DEFAULT_COLOR)}" data-color style="width:38px;height:30px;border:none;background:none;padding:0;cursor:pointer"/></label></div>
-      <p class="muted small mt">${I('refresh')} ${esc(t('vehicles.dragHint'))}</p>`;
-    let viewer = null;
-    const m = OC.modal({ title: v.name, body, footer: false, onClose: () => viewer && viewer.destroy() });
-    viewer = OC.car3d.mount(body.querySelector('canvas'), { type: v.type, color: v.color });
-    body.querySelector('[data-color]').addEventListener('input', e => { v.color = e.target.value; viewer.setColor(v.color); });
-    body.querySelector('[data-color]').addEventListener('change', () => { OC.save(); OC.refresh(); });
-    return m;
-  }
-  function setPhoto(id, file) {
-    const v = OC.find('vehicles', id); if (!v || !file) return;
-    const url = URL.createObjectURL(file), img = new Image();
-    img.onload = () => {
-      const max = 720, sc = Math.min(1, max / img.width), c = document.createElement('canvas');
-      c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
-      const prev = v.photo; v.photo = c.toDataURL('image/jpeg', .8);
-      if (OC.save()) { OC.toast(t('vehicles.photoSaved')); OC.refresh(); } else { v.photo = prev; }
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); OC.toast(t('vehicles.photoErr'), 'err'); };
-    img.src = url;
-  }
   const kv = (label, value, style) => `<div><span>${esc(label)}</span><b${style ? ` style="${style}"` : ''}>${value}</b></div>`;
 
   function card(v) {
@@ -106,10 +77,7 @@ OC.modules = OC.modules || {};
     const svcText = [v.nextService ? esc(OC.fmtDate(v.nextService)) : '', svc !== 'ok' ? esc(t('vehicles.sv.' + svc)) : ''].filter(Boolean).join(' · ') || '—';
     const kmText = v.nextServiceKm != null && v.nextServiceKm !== '' ? `<small class="muted" style="display:block;font-weight:600">${esc(t('vehicles.atKm', { n: OC.fmtNum(v.nextServiceKm) }))} · ${esc(k < 0 ? t('vehicles.kmOver', { n: OC.fmtNum(-k) }) : t('vehicles.kmLeft', { n: OC.fmtNum(k) }))}</small>` : '';
     const doc = (iso, state) => iso ? `${esc(OC.fmtDate(iso))}${state !== 'ok' ? ' · ' + esc(t('vehicles.sv.' + state)) : ''}` : '—';
-    const color = /^#[0-9a-f]{6}$/i.test(v.color || '') ? v.color : DEFAULT_COLOR;
     return `<div class="card vcard">
-      <div class="vart-wrap"><div class="vart" data-act="view3d" data-id="${v.id}" role="button" tabindex="0" aria-label="${esc(t('vehicles.view3d'))}">
-        ${v.photo ? `<img src="${esc(v.photo)}" alt="${esc(v.name)}"/>` : OC.vehicleArt(v.type, color)}<span class="v3d">3D</span></div></div>
       <div class="top"><div class="row" style="gap:12px"><span class="ico">${I(typeIcon(v))}</span><div><h4>${esc(v.name)}</h4><span class="plate">${esc(v.plate)}</span>${v.year ? ` <span class="muted small">${esc(v.year)}</span>` : ''}</div></div>${statusPill(v)}</div>
       <div class="kv">
         ${kv(t('vehicles.f.type'), esc(t('vehicles.t.' + (v.type || 'other'))))}
@@ -125,8 +93,6 @@ OC.modules = OC.modules || {};
         ${v.status === 'inuse' ? `<button class="btn sm primary" data-act="checkin" data-id="${v.id}">${I('check')}${esc(t('vehicles.checkinBtn'))}</button>` : ''}
         ${v.status !== 'maintenance' ? `<button class="btn sm" data-act="maint" data-id="${v.id}">${I('wrench')}${esc(t('vehicles.toMaint'))}</button>` : `<button class="btn sm" data-act="ready" data-id="${v.id}">${I('check')}${esc(t('vehicles.backInService'))}</button>`}
         <span style="flex:1"></span>
-        ${v.photo ? `<button class="btn ghost icon sm" data-act="removePhoto" data-id="${v.id}" title="${esc(t('vehicles.removePhoto'))}" aria-label="${esc(t('vehicles.removePhoto'))}">${I('x')}</button>` : ''}
-        <label class="btn ghost icon sm" title="${esc(t('vehicles.addPhoto'))}" aria-label="${esc(t('vehicles.addPhoto'))}">${I('camera')}<input type="file" accept="image/*" class="sr-only" data-change="photo" data-id="${v.id}"/></label>
         <button class="btn ghost icon sm" data-act="edit" data-id="${v.id}" aria-label="${esc(t('edit'))}">${I('edit')}</button><button class="btn ghost icon sm" data-act="del" data-id="${v.id}" aria-label="${esc(t('delete'))}">${I('trash')}</button>
       </div></div>`;
   }
@@ -154,25 +120,11 @@ OC.modules = OC.modules || {};
       <div class="toolbar">${OC.search(st.q, t('vehicles.search'))}${OC.seg('filter', [{ value: 'all', label: t('all') }].concat(STATUS.map(s => ({ value: s, label: t('vehicles.s.' + s) }))).concat([{ value: 'attention', label: t('vehicles.attention') + (attention.length ? ` (${attention.length})` : '') }]), st.filter)}</div>
       ${list.length ? `<div class="grid-cards">${list.map(card).join('')}</div>` : OC.empty('truck', t('vehicles.empty'), all.length ? t('tryFilters') : t('vehicles.emptyHint'))}`;
     },
-    mount(root) {
-      /* pointer tilt on the illustrations */
-      root.addEventListener('pointermove', e => {
-        const el = e.target.closest('.vart'); if (!el || e.pointerType === 'touch') return;
-        const r = el.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
-        el.classList.add('live'); el.style.setProperty('--ry', ((px - .5) * 16).toFixed(2) + 'deg'); el.style.setProperty('--rx', ((.5 - py) * 10).toFixed(2) + 'deg');
-        el.style.setProperty('--mx', (px * 100).toFixed(1) + '%'); el.style.setProperty('--my', (py * 100).toFixed(1) + '%');
-      });
-      root.addEventListener('pointerout', e => { const el = e.target.closest('.vart'); if (el && !el.contains(e.relatedTarget)) { el.classList.remove('live'); el.style.setProperty('--rx', '0deg'); el.style.setProperty('--ry', '0deg'); } });
-      root.addEventListener('keydown', e => { const el = e.target.closest('.vart'); if (el && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); view3d(el.dataset.id); } });
-    },
     actions: {
       add: () => openForm(), edit: d => openForm(d.id),
       q: (d, el) => { st.q = el.value; OC.refresh(); },
       filter: d => { st.filter = d.v; OC.refresh(); },
-      view3d: d => view3d(d.id),
       checkout: d => checkout(d.id), checkin: d => checkin(d.id),
-      photo: (d, el) => setPhoto(d.id, el.files && el.files[0]),
-      removePhoto: d => { const v = OC.find('vehicles', d.id); if (!v) return; delete v.photo; OC.save(); OC.refresh(); },
       maint: d => { const v = OC.find('vehicles', d.id); if (!v) return; v.status = 'maintenance'; v.assignedTo = ''; OC.save(); OC.toast(t('vehicles.sentMaint', { name: v.name }), 'info'); OC.refresh(); },
       ready: d => { const v = OC.find('vehicles', d.id); if (!v) return; v.status = 'available'; OC.save(); OC.toast(t('vehicles.nowAvailable', { name: v.name })); OC.refresh(); },
       async del(d) { const v = OC.find('vehicles', d.id); if (!v) return; if (await OC.confirm({ title: t('vehicles.delete'), message: t('vehicles.deleteMsg', { name: v.name }) })) { OC.remove('vehicles', d.id); OC.save(); OC.toast(t('deleted')); OC.refresh(); } },

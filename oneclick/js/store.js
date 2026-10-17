@@ -46,7 +46,7 @@ window.OC = window.OC || {};
     const dom = n => `${monthStr}-${pad(n)}`;
     const team = SAMPLE_TEAM.map(m => Object.assign({ id: uid() }, m));
     return {
-      courses: sampleCourses(), training: {}, leaves: [],
+      courses: sampleCourses(), training: {}, leaves: [], users: [], requests: [],
       settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'Maintenance Team', owner: '', seed: SEED },
       team,
       inventory: [
@@ -160,11 +160,11 @@ window.OC = window.OC || {};
   }
   function empty() {
     return { settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'My Team', owner: '', seed: SEED },
-      courses: [], training: {}, leaves: [], team: [], inventory: [], events: [], prints: [], vehicles: [], tasks: [], turnovers: [], ideas: [], votes: [] };
+      courses: [], training: {}, leaves: [], users: [], requests: [], team: [], inventory: [], events: [], prints: [], vehicles: [], tasks: [], turnovers: [], ideas: [], votes: [] };
   }
 
   /* ---------- persistence ---------- */
-  const LISTS = ['team', 'inventory', 'events', 'prints', 'vehicles', 'tasks', 'turnovers', 'ideas', 'votes', 'courses', 'leaves'];
+  const LISTS = ['team', 'inventory', 'events', 'prints', 'vehicles', 'tasks', 'turnovers', 'ideas', 'votes', 'courses', 'leaves', 'users', 'requests'];
   const LEAVE_TYPES = ['annual', 'sick', 'emergency', 'training', 'mission', 'off', 'other'];
   const ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
   /* Everything that reaches the DOM goes through esc(), but ids land in attributes and numbers in
@@ -185,6 +185,21 @@ window.OC = window.OC || {};
     out.settings.annualDays = int(out.settings.annualDays, 30, 0, 365);
     out.settings.weekend = ['fs', 'ss', 'f'].includes(out.settings.weekend) ? out.settings.weekend : 'fs';
     out.settings.leaveCount = out.settings.leaveCount === 'working' ? 'working' : 'calendar';
+    const str = (v, n) => String(v == null ? '' : v).slice(0, n);
+    const au = out.settings.auth && typeof out.settings.auth === 'object' ? out.settings.auth : {};
+    out.settings.auth = { enabled: !!au.enabled, autoLock: int(au.autoLock, 5, 0, 240), approval: au.approval !== false,
+      recovery: au.recovery && typeof au.recovery === 'object' ? { salt: str(au.recovery.salt, 64), hash: str(au.recovery.hash, 64) } : null };
+    out.settings.brand = str(out.settings.brand || 'OneClick', 40) || 'OneClick';
+    out.settings.accent = /^#[0-9a-f]{6}$/i.test(out.settings.accent || '') ? out.settings.accent : '';
+    const lb = out.settings.labels && typeof out.settings.labels === 'object' ? out.settings.labels : {}; out.settings.labels = { en: {}, ar: {} };
+    ['en', 'ar'].forEach(l => { const src = lb[l] && typeof lb[l] === 'object' ? lb[l] : {}; Object.keys(src).slice(0, 2000).forEach(k => { if (/^[\w.]{1,80}$/.test(k) && typeof src[k] === 'string' && src[k].trim()) out.settings.labels[l][k] = src[k].slice(0, 300); }); });
+    out.settings.hiddenSections = Array.isArray(out.settings.hiddenSections) ? out.settings.hiddenSections.filter(x => /^[a-z]{2,20}$/.test(x)) : [];
+    const hl = out.settings.homeLayout && typeof out.settings.homeLayout === 'object' ? out.settings.homeLayout : {};
+    const ids = v => (Array.isArray(v) ? v : []).filter(x => typeof x === 'string' && /^[\w-]{1,40}$/.test(x));
+    out.settings.homeLayout = { order: ids(hl.order), hidden: ids(hl.hidden), kpiHidden: ids(hl.kpiHidden),
+      custom: (Array.isArray(hl.custom) ? hl.custom : []).filter(c => c && SAFE_ID.test(String(c.id || ''))).slice(0, 40).map(c => ({ id: c.id, title: str(c.title, 60), sub: str(c.sub, 120),
+        kind: ['section', 'link', 'note'].includes(c.kind) ? c.kind : 'note', target: /^[a-z]{2,20}$/.test(c.target || '') ? c.target : '',
+        url: /^https?:\/\/[^\s"'<>]{1,500}$/i.test(c.url || '') ? c.url : '', icon: /^[a-z]{2,20}$/.test(c.icon || '') ? c.icon : 'sparkles' })) };
     LISTS.forEach(k => {
       if (!Array.isArray(out[k])) out[k] = [];
       if (k === 'votes') { out.votes = out.votes.filter(v => typeof v === 'string'); return; }
@@ -197,14 +212,17 @@ window.OC = window.OC || {};
     });
     out.tasks.forEach(x => { x.done = !!x.done; });
     out.team.forEach(m => { m.group = String(m.group || ''); });
+    out.users = out.users.filter(u => typeof u.username === 'string' && /^[0-9a-f]{64}$/.test(String(u.hash || '')) && /^[0-9a-f]{8,64}$/.test(String(u.salt || '')))
+      .map(u => ({ id: u.id, username: u.username.slice(0, 40), personId: SAFE_ID.test(String(u.personId || '')) ? u.personId : '', role: u.role === 'admin' ? 'admin' : 'member', salt: u.salt, hash: u.hash, createdAt: String(u.createdAt || '') }));
+    out.requests = out.requests.filter(r => Array.isArray(r.ops) && ['pending', 'approved', 'rejected'].includes(r.status))
+      .map(r => Object.assign(r, { summary: (Array.isArray(r.summary) ? r.summary : []).map(x => String(x).slice(0, 400)).slice(0, 40), userId: String(r.userId || '') })).slice(-500);
     out.leaves = out.leaves.filter(l => SAFE_ID.test(String(l.personId || '')) && ISO_RE.test(l.from) && ISO_RE.test(l.to || l.from))
       .map(l => Object.assign(l, { to: l.to && l.to >= l.from ? l.to : l.from, type: LEAVE_TYPES.includes(l.type) ? l.type : 'other', notes: String(l.notes || '') }));
     const tr = (data && data.training && typeof data.training === 'object') ? data.training : {}; out.training = {};
     Object.keys(tr).forEach(cid => { if (!SAFE_ID.test(cid) || !tr[cid] || typeof tr[cid] !== 'object') return; out.training[cid] = {};
       Object.keys(tr[cid]).forEach(pid => { const v = String(tr[cid][pid] || ''); if (SAFE_ID.test(pid) && (v === '1' || ISO_RE.test(v))) out.training[cid][pid] = v; }); });
     out.vehicles.forEach(v => {
-      if (v.photo != null && !/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(String(v.photo))) delete v.photo;
-      if (v.color != null && !/^#[0-9a-f]{6}$/i.test(String(v.color))) delete v.color;
+      delete v.photo; delete v.color; // vehicle pictures were removed
     });
     out.turnovers.forEach(tv => {
       tv.issues = (Array.isArray(tv.issues) ? tv.issues : []).filter(i => i && typeof i === 'object')
@@ -237,13 +255,20 @@ window.OC = window.OC || {};
       return migrate(normalize(JSON.parse(raw)));
     } catch (e) { console.warn('OneClick: could not read saved data, starting with sample data.', e); return normalize(sampleFull()); }
   }
-  function save() {
-    try { delete OC.db._fresh; localStorage.setItem(KEY, JSON.stringify(OC.db)); return true; }
+  /* raw write; OC._base is the last saved (approved) state that members' edits are compared with */
+  function persist() {
+    try { delete OC.db._fresh; localStorage.setItem(KEY, JSON.stringify(OC.db)); OC._base = JSON.parse(JSON.stringify(OC.db)); return true; }
     catch (e) { console.error('OneClick: save failed', e); if (OC.toast) OC.toast(OC.t('err.save'), 'err'); return false; }
+  }
+  function save() {
+    if (OC.auth && OC.auth.mustRequest()) return OC.auth.capture();
+    return persist();
   }
 
   OC.db = load();
+  OC._base = JSON.parse(JSON.stringify(OC.db));
   OC.save = save;
+  OC._persist = persist;
   OC.storageKey = KEY;
   OC.resetData = mode => { OC.db = normalize(mode === 'sample' ? sampleFull() : empty()); save(); };
   OC.exportJSON = () => JSON.stringify(Object.assign({ _app: 'OneClick', _version: 1, _exported: nowISO() }, OC.db), null, 2);

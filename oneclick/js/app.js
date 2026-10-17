@@ -6,13 +6,21 @@ window.OC = window.OC || {};
   const app = document.getElementById('app');
   let current = 'home', viewEl = null;
 
-  const navModules = () => Object.values(OC.modules).filter(m => !m.hideInNav).sort((a, b) => a.order - b.order);
+  const hidden = () => OC.db.settings.hiddenSections || [];
+  OC.isHidden = id => id !== 'home' && id !== 'settings' && id !== 'me' && hidden().includes(id);
+  const navModules = () => Object.values(OC.modules).filter(m => !m.hideInNav && !OC.isHidden(m.id)).sort((a, b) => a.order - b.order);
+  /* who may open a page: members never reach Settings; hidden sections fall back to Home */
+  function allowed(id) {
+    if (!OC.modules[id] || OC.isHidden(id)) return false;
+    if (id === 'settings' && OC.auth.enabled() && !OC.auth.isAdmin()) return false;
+    return true;
+  }
 
   /* ---------- shell ---------- */
   function shell() {
     app.innerHTML = `
       <aside class="sidebar" aria-label="${esc(t('nav'))}">
-        <a class="brand" href="#/home"><span class="mark">${I('sparkles')}</span><span><b>OneClick</b><small data-team></small></span></a>
+        <a class="brand" href="#/home"><span class="mark">${I('sparkles')}</span><span><b data-brand></b><small data-team></small></span></a>
         <nav class="nav" data-nav-list></nav>
         <div class="side-foot"><b data-date></b><br/><span>${esc(t('footer'))}</span></div>
       </aside>
@@ -25,7 +33,7 @@ window.OC = window.OC || {};
           <div class="clock" aria-hidden="true"><b data-clock>--:--</b><small data-clock-date></small></div>
           <button class="ibtn txt" data-lang title="${esc(t('settings.lang'))}" aria-label="${esc(t('settings.lang'))}"></button>
           <button class="ibtn" data-theme-btn title="${esc(t('settings.theme'))}" aria-label="${esc(t('settings.theme'))}"></button>
-          <a class="ibtn" href="#/settings" title="${esc(t('settings.title'))}" aria-label="${esc(t('settings.title'))}">${I('settings')}</a>
+          <span data-userchip class="row" style="gap:8px"></span>
         </header>
         <main class="view" id="view"></main>
       </div>`;
@@ -40,16 +48,28 @@ window.OC = window.OC || {};
   OC.renderNavCounts = () => { if (app.querySelector('[data-nav-list]')) renderNav(); };
   function renderNav() {
     const nav = app.querySelector('[data-nav-list]');
-    nav.innerHTML = navModules().map(m => { const c = m.count ? m.count() : ''; return `<a href="#/${m.id}" class="${m.id === current ? 'active' : ''}" data-nav-link="${m.id}">${I(m.icon)}<span>${esc(m.title())}</span>${c ? `<span class="cnt">${esc(c)}</span>` : ''}</a>`; }).join('')
-      + `<div class="sep"></div><a href="#/settings" class="${current === 'settings' ? 'active' : ''}" data-nav-link="settings">${I('settings')}<span>${esc(t('settings.title'))}</span></a>`;
+    const link = m => { const c = m.count ? m.count() : ''; return `<a href="#/${m.id}" class="${m.id === current ? 'active' : ''}" data-nav-link="${m.id}">${I(m.icon)}<span>${esc(m.title())}</span>${c ? `<span class="cnt">${esc(c)}</span>` : ''}</a>`; };
+    const extra = [];
+    if (OC.auth.enabled()) extra.push(link(OC.modules.me));
+    if (allowed('settings')) extra.push(link(OC.modules.settings));
+    nav.innerHTML = navModules().map(link).join('') + (extra.length ? `<div class="sep"></div>${extra.join('')}` : '');
+  }
+  function renderUserChip() {
+    const box = app.querySelector('[data-userchip]'); if (!box) return;
+    const u = OC.auth.current();
+    if (OC.auth.enabled() && u) box.innerHTML = `<a class="user-chip" href="#/me" title="${esc(t('me.title'))}">${OC.avatar(OC.auth.displayName(u))}<span>${esc(OC.auth.displayName(u))}</span>${OC.auth.isAdmin() && OC.auth.pending().length ? `<i class="cnt">${OC.auth.pending().length}</i>` : ''}</a><button class="ibtn" data-logout title="${esc(t('auth.signOut'))}" aria-label="${esc(t('auth.signOut'))}">${I('logout')}</button>`;
+    else box.innerHTML = allowed('settings') ? `<a class="ibtn" href="#/settings" title="${esc(t('settings.title'))}" aria-label="${esc(t('settings.title'))}">${I('settings')}</a>` : '';
+    const lo = box.querySelector('[data-logout]'); if (lo) lo.onclick = () => OC.auth.logout();
   }
   function updateChrome() {
     const m = OC.modules[current];
     app.querySelector('[data-title]').textContent = m.title();
     app.querySelector('[data-team]').textContent = OC.db.settings.teamName || '';
+    app.querySelector('[data-brand]').textContent = OC.db.settings.brand || 'OneClick';
+    renderUserChip();
     app.querySelector('[data-lang]').textContent = OC.db.settings.lang === 'ar' ? 'EN' : 'ع';
     app.querySelector('[data-theme-btn]').innerHTML = I(OC.db.settings.theme === 'light' ? 'moon' : 'sun');
-    document.title = `${m.title()} · OneClick`;
+    document.title = `${m.title()} · ${OC.db.settings.brand || 'OneClick'}`;
     renderNav();
   }
 
@@ -70,16 +90,30 @@ window.OC = window.OC || {};
     document.documentElement.dataset.theme = s.theme === 'light' ? 'light' : 'dark';
     document.querySelector('meta[name=theme-color]').setAttribute('content', s.theme === 'light' ? '#edf4ef' : '#07110c');
     const team = app.querySelector('[data-team]'); if (team) team.textContent = s.teamName || '';
+    applyAccent(s.accent, s.theme);
   };
+  /* custom accent colour: derive the accent tokens from one hex value */
+  function applyAccent(hex, theme) {
+    const st = document.documentElement.style, props = ['--accent', '--accent-2', '--accent-deep', '--accent-ink', '--accent-soft', '--accent-glow', '--track'];
+    if (!hex) { props.forEach(p => st.removeProperty(p)); return; }
+    const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    const mix = (to, k) => '#' + c.map(v => Math.round(v + (to - v) * k).toString(16).padStart(2, '0')).join('');
+    const light = theme === 'light', base = light ? mix(0, .28) : hex;
+    const b = [1, 3, 5].map(i => parseInt(base.slice(i, i + 2), 16)).join(',');
+    st.setProperty('--accent', base); st.setProperty('--accent-2', light ? mix(0, .15) : mix(255, .2)); st.setProperty('--accent-deep', mix(0, light ? .45 : .35));
+    st.setProperty('--accent-ink', light ? '#ffffff' : '#0b0b0b');
+    st.setProperty('--accent-soft', `rgba(${b},${light ? .12 : .14})`); st.setProperty('--accent-glow', `rgba(${b},${light ? .28 : .35})`); st.setProperty('--track', `rgba(${b},${light ? .16 : .18})`);
+  }
 
   /* ---------- router ---------- */
+  let animT = 0;
   function route() {
     const id = (location.hash.replace(/^#\/?/, '') || 'home').split('?')[0];
-    current = OC.modules[id] ? id : 'home';
+    current = allowed(id) ? id : (id === 'settings' && OC.auth.enabled() ? 'me' : 'home');
     document.body.classList.remove('nav-open');
     OC.closeModals();
     OC.render();
-    if (viewEl) { viewEl.classList.remove('anim'); void viewEl.offsetWidth; viewEl.classList.add('anim'); }
+    if (viewEl) { viewEl.classList.remove('anim'); void viewEl.offsetWidth; viewEl.classList.add('anim'); clearTimeout(animT); animT = setTimeout(() => viewEl.classList.remove('anim'), 1200); } // entrance plays on navigation only, not on every refresh
     window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
   }
   OC.route = { get id() { return current; } };
@@ -87,6 +121,8 @@ window.OC = window.OC || {};
 
   OC.render = () => {
     if (!viewEl) return;
+    if (OC.auth.locked()) { viewEl.innerHTML = ''; OC.auth.showLock(); return; }
+    if (!allowed(current)) current = 'home';
     const m = OC.modules[current];
     viewEl.innerHTML = m.render();
     if (m.mount) m.mount(viewEl);
@@ -126,7 +162,7 @@ window.OC = window.OC || {};
   /* ---------- keyboard shortcuts ---------- */
   document.addEventListener('keydown', e => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement && document.activeElement.tagName) || document.querySelector('.overlay');
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement && document.activeElement.tagName) || document.querySelector('.overlay') || document.body.classList.contains('locked');
     if (typing) return;
     if (e.key === '/') { const s = viewEl.querySelector('[data-input="q"]'); if (s) { e.preventDefault(); s.focus(); s.select(); } return; }
     if (e.key.toLowerCase() === 'h') { OC.go('home'); return; }
@@ -134,8 +170,13 @@ window.OC = window.OC || {};
   });
 
   /* ---------- boot ---------- */
+  /* after sign-in / sign-out: rebuild the shell for the new user */
+  OC.renderShell = () => { if (!viewEl) return; shell(); route(); };
   function boot() {
     OC.applySettings();
+    OC.auth.wrapInventory();
+    const openImport = OC.importer.open;
+    OC.importer.open = (spec, file) => { if (OC.auth.enabled() && !OC.auth.isAdmin()) { OC.toast(t('auth.adminOnly'), 'info'); return null; } return openImport(spec, file); };
     OC.inv.init().then(() => { if (['home', 'settings'].includes(current)) OC.refresh(); else OC.renderNavCounts(); });
     shell();
     window.addEventListener('hashchange', route);

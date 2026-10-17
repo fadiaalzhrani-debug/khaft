@@ -187,7 +187,8 @@ window.OC = window.OC || {};
   OC.i18n = { dict, missing };
   OC.t = (key, vars) => {
     const lang = (OC.db && OC.db.settings && OC.db.settings.lang) || 'en';
-    let s = dict[lang][key];
+    const ov = OC.db && OC.db.settings && OC.db.settings.labels && OC.db.settings.labels[lang];
+    let s = ov && ov[key] ? ov[key] : dict[lang][key];
     if (s == null) s = en[key];
     if (s == null) { missing.add(key); return key; }
     if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => vars[k] != null ? vars[k] : m);

@@ -8,7 +8,8 @@ OC.modules = OC.modules || {};
   const t = (k, v) => OC.t(k, v), esc = OC.esc, I = OC.icon;
   const S = () => OC.inv.st, role = r => OC.inv.role(r);
   const ROW_H = 50;
-  const st = { q: '', cat: 'all', alerts: false, sort: null, scroll: 0, restoreKey: '', loading: false, progress: 0 };
+  const st = { q: '', cat: 'all', alerts: false, sort: null, scroll: 0, restoreKey: '', loading: false, progress: 0, tab: 'dash' };
+  const dash = { ver: -1, data: null };
   const view = { sig: '', idx: [], hay: null, hayVer: -1, cats: null, catsVer: -1 };
   let vl = null;
   const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -108,7 +109,9 @@ OC.modules = OC.modules || {};
     const s = S(), qi = role('qty'), r = s.rows[i]; if (qi < 0 || !r) return;
     const q = OC.inv.num(r[qi]); const next = Math.max(0, (Number.isNaN(q) ? 0 : q) + delta);
     if (next === q) return;
-    const row = r.slice(); row[qi] = next; OC.inv.setRow(i, row); patched(i);
+    const row = r.slice(); row[qi] = next; OC.inv.setRow(i, row);
+    if (OC.auth.mustRequest()) return row;
+    patched(i);
     const l = OC.inv.level(row);
     if (delta < 0 && l === 'out') OC.toast(t('inventory.nowOut', { name: titleOf(row, i) }), 'err');
     else if (delta < 0 && l === 'low' && OC.inv.level(r) === 'ok') OC.toast(t('inventory.nowLow', { name: titleOf(row, i) }), 'info');
@@ -155,6 +158,7 @@ OC.modules = OC.modules || {};
       } else if (a === 'copy') OC.copyText(s.columns.map((c, k) => `${c}: ${shown(r[k])}`).join('\n'));
       else if (a === 'del') {
         if (!(await OC.confirm({ title: t('inventory.delete'), message: t('inventory.deleteMsg', { name: titleOf(r, i) }) }))) return;
+        if (OC.auth.mustRequest()) { OC.inv.removeRow(i); return; }
         const p = pos(); OC.inv.removeRow(i); if (p >= 0) view.idx.splice(p, 1); patched(i);
         OC.toast(t('deleted')); const n = view.idx[Math.min(p, view.idx.length - 1)];
         if (n == null) { m.close(); OC.refresh(); return; } i = n; draw(); OC.refresh();
@@ -164,6 +168,54 @@ OC.modules = OC.modules || {};
     draw();
   }
 
+  /* ---------- dashboard ---------- */
+  function dashData() {
+    const s = S(); if (dash.ver === s.version && dash.data) return dash.data;
+    const qi = role('qty'), mi = role('min'), ci = role('category'), li = role('location');
+    const cats = new Map(), locs = new Map(), top = []; let ok = 0, low = 0, out = 0, none = 0, units = 0;
+    for (let i = 0; i < s.rows.length; i++) {
+      const r = s.rows[i]; if (!r) continue;
+      const l = OC.inv.level(r); if (l === 'ok') ok++; else if (l === 'low') low++; else if (l === 'out') out++; else none++;
+      if (ci >= 0) { const k = String(r[ci] === '' || r[ci] == null ? '—' : r[ci]); const c = cats.get(k) || { n: 0, low: 0, out: 0 }; c.n++; if (l === 'low') c.low++; if (l === 'out') c.out++; cats.set(k, c); }
+      if (li >= 0) { const k = String(r[li] === '' || r[li] == null ? '—' : r[li]); const c = locs.get(k) || { n: 0, alerts: 0 }; c.n++; if (l === 'low' || l === 'out') c.alerts++; locs.set(k, c); }
+      if (qi >= 0) { const q = OC.inv.num(r[qi]); if (Number.isFinite(q)) units += q;
+        if ((l === 'low' || l === 'out') && mi >= 0) { const gap = OC.inv.num(r[mi]) - (Number.isFinite(q) ? q : 0); if (Number.isFinite(gap) && (top.length < 12 || gap > top[top.length - 1].gap)) { top.push({ i, gap }); top.sort((a, b) => b.gap - a.gap); if (top.length > 12) top.pop(); } } }
+    }
+    const sorted = (m, f) => [...m.entries()].map(([k, v]) => Object.assign({ k }, v)).sort((a, b) => f(b) - f(a));
+    dash.data = { ok, low, out, none, units, total: ok + low + out + none, cats: sorted(cats, c => c.n), alertCats: sorted(cats, c => c.low + c.out).filter(c => c.low + c.out > 0), locs: sorted(locs, c => c.n), top, catCount: cats.size };
+    dash.ver = s.version; return dash.data;
+  }
+  const pct = (a, b) => b ? Math.round(a / b * 1000) / 10 : 0;
+  function barList(items, value, opts) {
+    if (!items.length) return `<p class="muted small">${esc(t('inv.d.noData'))}</p>`;
+    const max = Math.max(...items.map(value), 1);
+    return `<div class="bars">${items.map(c => `<button type="button" class="bar-row" data-act="${opts.act}" data-v="${esc(c.k)}" title="${esc(c.k)} · ${esc(OC.fmtNum(value(c)))}">
+      <span class="bar-label">${esc(c.k)}</span>
+      <span class="bar-track">${opts.stack ? opts.stack(c).map(seg => `<i class="bar-fill ${seg.cls}" style="width:${(seg.v / max * 100).toFixed(2)}%"></i>`).join('') : `<i class="bar-fill" style="width:${(value(c) / max * 100).toFixed(2)}%"></i>`}</span>
+      <span class="bar-val">${esc(OC.fmtNum(value(c)))}</span></button>`).join('')}</div>`;
+  }
+  function dashboardHtml() {
+    const d = dashData(), s = S(), qi = role('qty'), ni = role('name'), ci = role('code'), mi = role('min'), li = role('location'), ui = role('unit');
+    const seg = (cls, v, label, icon) => v ? `<i class="health-seg ${cls}" style="width:${pct(v, d.total)}%" title="${esc(label)} · ${esc(OC.fmtNum(v))}"></i>` : '';
+    const chip = (cls, v, label, icon, act) => `<button type="button" class="health-chip" ${act ? `data-act="${act}"` : 'disabled'}><span class="dot ${cls}"></span>${I(icon)}<b>${esc(OC.fmtNum(v))}</b><span>${esc(label)}</span><small>${pct(v, d.total)}%</small></button>`;
+    return `
+      <div class="card pad"><div class="row between"><h3>${I('chart')}${esc(t('inv.d.health'))}</h3><span class="muted small">${esc(t('inv.d.healthHint', { n: OC.fmtNum(d.total) }))}</span></div>
+        ${qi >= 0 ? `<div class="health-bar" role="img" aria-label="${esc(t('inv.d.health'))}">${seg('ok', d.ok, t('inventory.l.ok'))}${seg('low', d.low, t('inventory.l.low'))}${seg('out', d.out, t('inventory.l.out'))}${seg('none', d.none, t('inv.d.noQty'))}</div>
+        <div class="health-chips">${chip('ok', d.ok, t('inventory.l.ok'), 'check', '')}${chip('low', d.low, t('inventory.l.low'), 'alert', 'dashAlerts')}${chip('out', d.out, t('inventory.l.out'), 'alert', 'dashAlerts')}${d.none ? chip('none', d.none, t('inv.d.noQty'), 'info', '') : ''}</div>` : `<p class="muted small mt">${esc(t('inv.noQty'))}</p>`}
+      </div>
+      <div class="grid-2 mt">
+        <div class="card pad"><h3>${I('layers')}${esc(t('inv.d.byCat'))}</h3><p class="muted small">${esc(role('category') >= 0 ? t('inv.d.byCatHint', { n: d.catCount }) : t('inv.d.mapCat'))}</p>${role('category') >= 0 ? barList(d.cats.slice(0, 10), c => c.n, { act: 'dashCat' }) : ''}</div>
+        <div class="card pad"><h3>${I('alert')}${esc(t('inv.d.alertsByCat'))}</h3>
+          ${role('category') >= 0 && qi >= 0 ? `<div class="legend small"><span><i class="lv-sw st-low"></i>${esc(t('inventory.l.low'))}</span><span><i class="lv-sw st-out"></i>${esc(t('inventory.l.out'))}</span></div>${barList(d.alertCats.slice(0, 10), c => c.low + c.out, { act: 'dashCatAlerts', stack: c => [{ cls: 'st-out', v: c.out }, { cls: 'st-low', v: c.low }] })}` : `<p class="muted small">${esc(t('inv.d.mapCat'))}</p>`}</div>
+      </div>
+      <div class="grid-2 mt">
+        <div class="card pad"><h3>${I('box')}${esc(t('inv.d.byLoc'))}</h3><p class="muted small">${esc(li >= 0 ? t('inv.d.byLocHint', { n: d.locs.length }) : t('inv.d.mapLoc'))}</p>${li >= 0 ? barList(d.locs.slice(0, 10), c => c.n, { act: 'dashLoc' }) : ''}</div>
+        <div class="card pad"><div class="row between"><h3>${I('wrench')}${esc(t('inv.d.reorder'))}</h3>${d.low + d.out ? `<button class="btn sm ghost" data-act="dashAlerts">${esc(t('inv.d.seeAll', { n: OC.fmtNum(d.low + d.out) }))}</button>` : ''}</div>
+          <p class="muted small">${esc(mi >= 0 ? t('inv.d.reorderHint') : t('inv.d.mapMin'))}</p>
+          ${d.top.length ? `<div class="reorder">${d.top.map(x => { const r = s.rows[x.i]; return `<button type="button" class="reorder-row" data-act="detail" data-i="${x.i}"><span class="ro-name"><b>${esc(shown(ni >= 0 ? r[ni] : r[ci]))}</b><small class="mono">${esc(ci >= 0 ? shown(r[ci]) : '')}${li >= 0 && r[li] !== '' ? ' · ' + esc(r[li]) : ''}</small></span><span class="ro-num">${esc(shown(r[qi]))}<small>/ ${esc(shown(r[mi]))}${ui >= 0 && r[ui] !== '' ? ' ' + esc(r[ui]) : ''}</small></span>${levelPill(OC.inv.level(r))}<span class="ro-gap">−${esc(OC.fmtNum(x.gap))}</span></button>`; }).join('')}</div>` : `<p class="small">${OC.pill('good', t('inv.d.nothingToReorder'), 'check')}</p>`}</div>
+      </div>`;
+  }
+
   /* ---------- forms ---------- */
   function addItem() {
     const s = S();
@@ -171,7 +223,7 @@ OC.modules = OC.modules || {};
     const fields = s.columns.map((c, k) => ({ key: 'c' + k, label: c, type: (k === role('qty') || k === role('min')) ? 'number' : 'text', required: k === role('name'), list: k === role('category') ? categories().slice(0, 300) : null }));
     OC.form({
       title: t('inventory.add'), fields, values: {},
-      onSubmit(v) { const row = s.columns.map((c, k) => v['c' + k] == null ? '' : v['c' + k]); const i = OC.inv.addRow(row); patched(i); OC.toast(t('saved')); OC.refresh(); setTimeout(() => openDetail(i), 50); }
+      onSubmit(v) { const row = s.columns.map((c, k) => v['c' + k] == null ? '' : v['c' + k]); const i = OC.inv.addRow(row); if (i < 0) return; patched(i); OC.toast(t('saved')); OC.refresh(); setTimeout(() => openDetail(i), 50); }
     });
   }
   function columnsDialog() {
@@ -272,6 +324,8 @@ OC.modules = OC.modules || {};
         <div class="card kpi"><span class="lbl">${I('layers')}${esc(t('inventory.cats'))}</span><span class="val">${OC.fmtNum(cats.length)}</span></div>
       </div>
       ${s.stats.count ? `
+      <div class="toolbar">${OC.seg('tab', [{ value: 'dash', label: t('inv.d.tab') }, { value: 'list', label: t('inv.d.listTab') }], st.tab)}</div>
+      ${st.tab === 'dash' ? dashboardHtml() : `
       <div class="toolbar">${OC.search(st.q, t('inv.search'))}
         ${role('category') >= 0 ? `<select class="select" style="width:auto;max-width:260px" data-change="cat" aria-label="${esc(t('inventory.f.category'))}">${OC.options([{ value: 'all', label: t('inventory.allCats') }].concat(cats.slice(0, 2000).map(c => ({ value: c, label: c }))), st.cat)}</select>` : ''}
         ${qi >= 0 ? `<label class="check"><input type="checkbox" data-change="alerts" ${st.alerts ? 'checked' : ''}/> ${esc(t('inventory.onlyLow'))}</label>` : ''}
@@ -281,7 +335,7 @@ OC.modules = OC.modules || {};
         <div class="vl-body"></div>
         ${idx.length ? '' : OC.empty('search', t('inventory.empty'), t('tryFilters'))}
       </div>
-      <p class="muted small mt">${I('info')} ${esc(t('inv.clickHint'))}</p>`
+      <p class="muted small mt">${I('info')} ${esc(t('inv.clickHint'))}</p>`}`
         : `<label class="card drop big" data-inv-drop tabindex="0"><input type="file" accept=".xlsx,.xls,.xlsm,.xlsb,.ods,.csv" class="sr-only" data-inv-file />${I('upload')}<b>${esc(t('inv.emptyTitle'))}</b><span class="muted">${esc(t('inv.emptyHint'))}</span></label>`}`;
     },
     mount(root) {
@@ -294,7 +348,7 @@ OC.modules = OC.modules || {};
         }
         return;
       }
-      mountList(root);
+      if (st.tab === 'list') mountList(root); else vl = null;
       const drop = root.querySelector('[data-inv-drop]');
       if (drop) {
         const f = drop.querySelector('[data-inv-file]');
@@ -305,6 +359,11 @@ OC.modules = OC.modules || {};
       }
     },
     actions: {
+      tab: d => { st.tab = d.v; OC.refresh(); },
+      dashCat: d => { st.cat = d.v === '—' ? '' : d.v; st.alerts = false; st.q = ''; st.tab = 'list'; OC.refresh(); },
+      dashCatAlerts: d => { st.cat = d.v === '—' ? '' : d.v; st.alerts = true; st.q = ''; st.tab = 'list'; OC.refresh(); },
+      dashLoc: d => { st.q = d.v === '—' ? '' : d.v; st.cat = 'all'; st.alerts = false; st.tab = 'list'; OC.refresh(); },
+      dashAlerts: () => { st.alerts = true; st.cat = 'all'; st.q = ''; st.tab = 'list'; OC.refresh(); },
       import: () => openImport(),
       export: () => exportExcel(),
       add: () => addItem(),
