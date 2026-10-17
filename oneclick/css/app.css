@@ -898,3 +898,17 @@ button.kpi:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(-
 
 @media (max-width:900px){.hh{grid-template-columns:1fr;padding:22px}}
 @media (max-width:600px){.hh{padding:18px;border-radius:20px}.hh h2{font-size:1.5rem}.wk-stats span{min-width:64px}}
+
+/* ===== v6 · wide Training tile, add-course column ===== */
+.tile.wide{grid-column:span 2}
+.t-courses{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 22px;margin-inline-end:28px}
+.t-courses .tc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 8px;align-items:center;font-size:.78rem;font-weight:700}
+.t-courses .tc span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
+.t-courses .tc b{color:var(--muted);font-variant-numeric:tabular-nums}
+.t-courses .tc .t-bar{grid-column:1/-1;margin:0;height:6px}
+.t-courses .tc.more{display:flex;align-items:flex-end;color:var(--muted)}
+.mx-add{min-width:92px;padding:0;text-align:center}
+.mx-add button{display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;padding:12px 8px;color:var(--accent);font-weight:800;font-size:.74rem}
+.mx-add button svg{width:30px;height:30px;padding:6px;border-radius:10px;border:1.5px dashed color-mix(in srgb,var(--accent) 55%,transparent);background:var(--accent-soft)}
+.mx-add button:hover svg{background:var(--accent);color:var(--accent-ink)}
+@media (max-width:600px){.tile.wide{grid-column:auto}.t-courses{grid-template-columns:1fr}}

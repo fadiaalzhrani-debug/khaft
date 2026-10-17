@@ -54,7 +54,7 @@ OC.modules = OC.modules || {};
   };
 
   OC.modules.prints = {
-    id: 'prints', icon: 'cube', order: 4,
+    id: 'prints', icon: 'cube', order: 4.5,
     title: () => t('prints.title'), tagline: () => t('prints.tag'),
     count: () => { const n = OC.db.prints.filter(p => p.status === 'queued' || p.status === 'printing').length; return n || ''; },
     render() {

@@ -49,14 +49,21 @@ OC.modules = OC.modules || {};
     const extra = c ? `<button class="btn danger" type="button" data-cdel>${I('trash')}${esc(t('delete'))}</button><button class="btn" type="button" data-call>${I('check')}${esc(t('training.markAll'))}</button>` : '';
     const m = OC.form({
       title: c ? t('training.editCourse') : t('training.addCourse'), extraButtons: extra,
-      fields: [{ key: 'name', label: t('training.f.course'), required: true, full: true }, { key: 'validity', label: t('training.f.validity'), type: 'number', min: 0, max: 240, step: 1, full: true, placeholder: t('training.validityPh') }],
+      fields: [c ? { key: 'name', label: t('training.f.course'), required: true, full: true } : { key: 'name', label: t('training.f.courses'), type: 'textarea', required: true, full: true, placeholder: t('training.coursesPh') }, { key: 'validity', label: t('training.f.validity'), type: 'number', min: 0, max: 240, step: 1, full: true, placeholder: t('training.validityPh') }],
       values: c || {},
       onSubmit(v) {
-        const dup = OC.db.courses.find(x => x.id !== (c && c.id) && OC.cells.norm(x.name) === OC.cells.norm(v.name));
-        if (dup) return t('training.dup');
-        const validity = v.validity === '' ? null : v.validity;
-        if (c) Object.assign(c, { name: v.name, validity }); else OC.db.courses.push({ id: U.uid(), name: v.name, validity });
-        OC.save(); OC.toast(t('saved')); OC.refresh();
+        const N = OC.cells.norm, validity = v.validity === '' ? null : v.validity;
+        if (c) {
+          if (OC.db.courses.find(x => x.id !== c.id && N(x.name) === N(v.name))) return t('training.dup');
+          Object.assign(c, { name: v.name, validity }); OC.save(); OC.toast(t('saved')); OC.refresh(); return;
+        }
+        /* one course per line (commas work too) */
+        const names = [], seen = new Set(OC.db.courses.map(x => N(x.name)));
+        let skipped = 0;
+        v.name.split(/[\n,،]+/).map(x => x.trim().slice(0, 80)).filter(Boolean).forEach(n => { if (seen.has(N(n))) { skipped++; return; } seen.add(N(n)); names.push(n); });
+        if (!names.length) return t('training.dup');
+        names.forEach(n => OC.db.courses.push({ id: U.uid(), name: n, validity }));
+        OC.save(); OC.toast(t('training.addedN', { n: names.length }) + (skipped ? ' ' + t('training.skippedN', { n: skipped }) : '')); OC.refresh();
       }
     });
     if (!c) return;
@@ -126,7 +133,7 @@ OC.modules = OC.modules || {};
   };
 
   OC.modules.training = {
-    id: 'training', icon: 'grad', order: 1.5,
+    id: 'training', icon: 'grad', order: 4,
     title: () => t('training.title'), tagline: () => t('training.tag'),
     count: () => { const x = totals().expired; return x || ''; },
     importSpecs: [importSpec], state, rec, totals,
@@ -152,9 +159,9 @@ OC.modules = OC.modules || {};
       <div class="mx-wrap card"><table class="mx">
         <thead><tr><th class="mx-name">${esc(t('training.person'))} <span class="muted small">(${list.length})</span></th>
           ${cs.map((c, k) => `<th class="mx-h"><button type="button" data-act="course" data-id="${c.id}" title="${esc(c.name)}${c.validity ? ' · ' + esc(t('training.validityN', { n: c.validity })) : ''}"><span class="mx-cname">${esc(c.name)}</span><span class="mx-cstat">${colStats[k]}/${list.length}${c.validity ? ` · ${esc(t('training.validityShort', { n: c.validity }))}` : ''}</span><span class="progress"><i style="width:${list.length ? Math.round(colStats[k] / list.length * 100) : 0}%"></i></span></button></th>`).join('')}
-          <th class="mx-pct">%</th></tr></thead>
-        <tbody>${list.map(m => { let d = 0; const cells = cs.map(c => { const v = rec(c.id, m.id), s0 = state(c, v); if (s0 === 'done' || s0 === 'soon') d++; const pv = (pend[c.id] || {})[m.id]; const s = pv !== undefined ? 'pending' : s0; const tip = pv !== undefined ? `${m.name} · ${c.name} · ${t('auth.waiting')}` : cellTitle(m, c, v); return `<td class="mx-cell"><button type="button" class="mx-b ${s}" data-act="cell" data-c="${c.id}" data-p="${m.id}" title="${esc(tip)}" aria-label="${esc(tip)}">${cellIcon(s)}</button></td>`; }).join(''); const pct = Math.round(d / cs.length * 100);
-          return `<tr class="${member() && m.id === me ? 'mine' : ''}"><th class="mx-name"><div class="who">${OC.avatar(m.name)}<div><b>${esc(m.name)}</b><small>${esc([m.group, m.role].filter(Boolean).join(' · '))}</small></div></div></th>${cells}<td class="mx-pct">${OC.pill(pct === 100 ? 'good' : pct >= 60 ? 'accent' : 'warn', pct + '%', pct === 100 ? 'check' : 'circle')}</td></tr>`; }).join('') || `<tr><td colspan="${cs.length + 2}">${OC.empty('search', t('team.empty'), t('tryFilters'))}</td></tr>`}</tbody>
+          ${member() ? '' : `<th class="mx-add"><button type="button" data-act="addCourse" title="${esc(t('training.addCourse'))}" aria-label="${esc(t('training.addCourse'))}">${I('plus')}<span>${esc(t('training.addCourse'))}</span></button></th>`}<th class="mx-pct">%</th></tr></thead>
+        <tbody>${list.map(m => { let d = 0; const cells = cs.map(c => { const v = rec(c.id, m.id), s0 = state(c, v); if (s0 === 'done' || s0 === 'soon') d++; const pv = (pend[c.id] || {})[m.id]; const s = pv !== undefined ? 'pending' : s0; const tip = pv !== undefined ? `${m.name} · ${c.name} · ${t('auth.waiting')}` : cellTitle(m, c, v); return `<td class="mx-cell"><button type="button" class="mx-b ${s}" data-act="cell" data-c="${c.id}" data-p="${m.id}" title="${esc(tip)}" aria-label="${esc(tip)}">${cellIcon(s)}</button></td>`; }).join('') + (member() ? '' : '<td class="mx-add"></td>'); const pct = Math.round(d / cs.length * 100);
+          return `<tr class="${member() && m.id === me ? 'mine' : ''}"><th class="mx-name"><div class="who">${OC.avatar(m.name)}<div><b>${esc(m.name)}</b><small>${esc([m.group, m.role].filter(Boolean).join(' · '))}</small></div></div></th>${cells}<td class="mx-pct">${OC.pill(pct === 100 ? 'good' : pct >= 60 ? 'accent' : 'warn', pct + '%', pct === 100 ? 'check' : 'circle')}</td></tr>`; }).join('') || `<tr><td colspan="${cs.length + (member() ? 2 : 3)}">${OC.empty('search', t('team.empty'), t('tryFilters'))}</td></tr>`}</tbody>
       </table></div>
       <div class="legend mt"><span><i class="mx-b done">${I('check')}</i>${esc(t('training.lgDone'))}</span><span><i class="mx-b soon">${I('clock')}</i>${esc(t('training.lgSoon'))}</span><span><i class="mx-b expired">${I('alert')}</i>${esc(t('training.lgExpired'))}</span><span><i class="mx-b none"></i>${esc(t('training.lgNone'))}</span>${A().enabled() ? `<span><i class="mx-b pending">${I('clock')}</i>${esc(t('auth.waiting'))}</span>` : ''}<span class="muted">${esc(t('training.clickHint'))}</span></div>`;
     },

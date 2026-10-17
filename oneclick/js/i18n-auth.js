@@ -3,6 +3,7 @@ window.OC = window.OC || {};
 (function (OC) {
   'use strict';
   const en = {
+    'training.f.courses': 'Course names', 'training.coursesPh': 'One course per line — add as many as you like', 'training.addedN': '{n} course(s) added.', 'training.skippedN': '{n} already existed.', 'home.moreCourses': '+{n} more courses',
     'home.today': 'Today', 'home.noEvents': 'Nothing scheduled today.', 'home.awayLbl': 'Away today', 'home.next7': 'Away · next 7 days', 'home.total': 'Total',
     'home.tagline': 'Everything your shift needs, one click away.', 'home.v.ok': 'OK', 'home.v.low': 'Low', 'home.v.out': 'Out',
     'me.title': 'My page', 'me.tag': 'Approvals & my requests', 'me.desc': 'Your account, your PIN, and the changes waiting for approval.',
@@ -52,6 +53,7 @@ window.OC = window.OC || {};
     'inv.d.nothingToReorder': 'Nothing below minimum', 'inv.d.noData': 'No data.', 'inv.d.mapCat': 'Choose the category column (Columns button) to see this chart.', 'inv.d.mapLoc': 'Choose the location column to see this chart.', 'inv.d.mapMin': 'Choose the minimum column to see what to reorder.'
   };
   const ar = {
+    'training.f.courses': 'أسماء الدورات', 'training.coursesPh': 'كل دورة في سطر — أضف كم تبي', 'training.addedN': 'تمت إضافة {n} دورة.', 'training.skippedN': '{n} موجودة من قبل.', 'home.moreCourses': '+{n} دورات أخرى',
     'home.today': 'اليوم', 'home.noEvents': 'لا مواعيد اليوم.', 'home.awayLbl': 'غائبون اليوم', 'home.next7': 'الغياب · الأيام السبعة القادمة', 'home.total': 'الإجمالي',
     'home.tagline': 'كل ما تحتاجه الوردية بضغطة واحدة.', 'home.v.ok': 'متوفر', 'home.v.low': 'منخفض', 'home.v.out': 'نافد',
     'me.title': 'صفحتي', 'me.tag': 'الموافقات وطلباتي', 'me.desc': 'حسابك ورمزك السري، والتغييرات اللي تنتظر الموافقة.',

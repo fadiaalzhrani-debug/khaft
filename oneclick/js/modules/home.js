@@ -33,6 +33,7 @@ OC.modules = OC.modules || {};
   const st = { edit: false };
   const L = () => OC.db.settings.homeLayout;
   const canCustomize = () => !OC.auth.enabled() || OC.auth.isAdmin();
+  const DEFAULT_ORDER = ['team', 'inventory', 'calendar', 'vehicles', 'week', 'training', 'turnover', 'ideas', 'prints']; // Training sits where 3D Prints used to be
   const ICONS = ['sparkles', 'link', 'note', 'box', 'users', 'calendar', 'truck', 'gauge', 'swap', 'bulb', 'grad', 'cube', 'chart', 'file', 'shield', 'clock', 'wrench', 'key', 'database', 'info'];
   function ordered(ids) {
     const ord = L().order.filter(id => ids.includes(id));
@@ -82,6 +83,12 @@ OC.modules = OC.modules || {};
         return `<div class="t-viz"><div class="t-days" role="img" aria-label="${esc(t('home.next7'))}">${days.map((d, i) => `<span title="${esc(OC.fmtDate(d, { weekday: 'long', day: 'numeric', month: 'short' }) + ' · ' + n[i])}"><em><i style="height:${Math.round(n[i] / mx * 100)}%"></i></em><b>${esc(OC.fmtDate(d, { weekday: 'narrow' }))}</b></span>`).join('')}</div></div>`; };
       const inner = (icon, title, sub, stat, unit, badge, viz) => `<div class="t-top"><span class="t-ico">${I(icon)}</span>${badgeHtml(badge)}</div>
           <div><div class="t-title">${esc(title)}</div><div class="t-sub">${esc(sub)}</div>${stat !== null ? `<div class="t-stat"><b>${esc(stat)}</b><span>${esc(unit)}</span></div>` : ''}${viz || ''}</div>`;
+      /* per-course completion for the wide Training tile */
+      const courseBars = () => {
+        const T = OC.modules.training, n = db.team.length; if (!T || !db.courses.length) return '';
+        const rows = db.courses.map(c => ({ c, d: db.team.filter(m => ['done', 'soon'].includes(T.state(c, T.rec(c.id, m.id)))).length }));
+        return `<div class="t-viz t-courses">${rows.slice(0, 4).map(r => `<div class="tc"><span title="${esc(r.c.name)}">${esc(r.c.name)}</span><b>${r.d}/${n}</b><div class="t-bar"><i style="width:${n ? Math.round(r.d / n * 100) : 0}%"></i></div></div>`).join('')}${rows.length > 4 ? `<div class="tc more">${esc(t('home.moreCourses', { n: rows.length - 4 }))}</div>` : ''}</div>`;
+      };
       const openTasks = s.wk.filter(x => !x.done).slice(0, 3);
       const onNames = db.team.filter(m => m.status === 'on').map(m => m.name);
       const by = (list, key, vals, pre) => vals.map(v => ({ n: list.filter(x => x[key] === v).length, cls: 's-' + v, label: t(pre + v) }));
@@ -90,7 +97,7 @@ OC.modules = OC.modules || {};
         inventory: { sec: 'inventory', tone: 'amber', html: inner('box', t('inventory.title'), t('inventory.tag'), invReady ? OC.fmtNum(inv.count) : '…', t('home.items'), inv.out ? { text: t('home.out', { n: OC.fmtNum(inv.out) }), kind: 'crit' } : inv.low ? { text: t('home.low', { n: OC.fmtNum(inv.low) }), kind: 'warn' } : inv.count ? { text: t('home.allStocked') } : null,
           invReady ? seg([{ n: Math.max(0, inv.count - inv.low - inv.out), cls: 's-ok', label: t('home.v.ok') }, { n: inv.low, cls: 's-low', label: t('home.v.low') }, { n: inv.out, cls: 's-out', label: t('home.v.out') }]) : '') },
         calendar: { sec: 'calendar', tone: 'indigo', html: inner('calendar', t('calendar.title'), t('calendar.tag'), s.away.length, t('home.awayToday'), s.todayEv.length ? { text: t('home.eventsN', { n: s.todayEv.length }) } : s.leavesSoon ? { text: t('home.leavesSoon', { n: s.leavesSoon }) } : null, week7()) },
-        training: { sec: 'training', tone: 'violet', html: inner('grad', t('training.title'), t('training.tag'), s.tr.pct + '%', t('home.trained'), s.tr.expired ? { text: t('home.expiredN', { n: s.tr.expired }), kind: 'warn' } : db.courses.length ? { text: t('home.coursesN', { n: db.courses.length }) } : null, db.courses.length ? bar(s.tr.pct, s.tr.pct + '%') : '') },
+        training: { sec: 'training', tone: 'violet', wide: true, html: inner('grad', t('training.title'), t('training.tag'), s.tr.pct + '%', t('home.trained'), s.tr.expired ? { text: t('home.expiredN', { n: s.tr.expired }), kind: 'warn' } : db.courses.length ? { text: t('home.coursesN', { n: db.courses.length }) } : null, courseBars()) },
         week: { sec: 'week', hero: true, tone: 'accent', html: `<div class="wk-head"><span class="t-ico">${I('gauge')}</span><div><div class="t-title">${esc(t('week.n', { n: s.cw.week }))}</div><div class="t-sub">${esc(t('week.completion'))}</div></div></div>
           ${OC.gauge(s.pct, { big: true })}
           <div class="wk-stats"><span><b>${s.wkDone}</b>${esc(t('week.done'))}</span><span><b>${s.wk.length - s.wkDone}</b>${esc(t('week.open'))}</span><span><b>${s.wk.length}</b>${esc(t('home.total'))}</span></div>
@@ -101,9 +108,10 @@ OC.modules = OC.modules || {};
         ideas: { sec: 'ideas', tone: 'yellow', html: inner('bulb', t('ideas.title'), t('ideas.tag'), db.ideas.length, t('home.ideas'), s.ideasApproved ? { text: t('home.approved', { n: s.ideasApproved }) } : s.ideasNew ? { text: t('home.toReview', { n: s.ideasNew }) } : null, seg(by(db.ideas, 'status', ['done', 'approved', 'review', 'new'], 'ideas.s.'))) }
       };
       L().custom.forEach(c => { tiles[c.id] = { custom: c, tone: 'accent', sec: c.kind === 'section' ? c.target : '', html: inner(c.icon, c.title, c.kind === 'note' ? '' : c.sub, null, '', { text: t('home.k.' + c.kind) }) + (c.kind === 'note' && c.sub ? `<p class="t-note">${esc(c.sub)}</p>` : '') }; });
-      const ids = ordered(Object.keys(tiles).filter(id => !(tiles[id].sec && hidden(tiles[id].sec))));
+      const rank = id => { const k = DEFAULT_ORDER.indexOf(id); return k < 0 ? 99 : k; };
+      const ids = ordered(Object.keys(tiles).sort((a, b) => rank(a) - rank(b)).filter(id => !(tiles[id].sec && hidden(tiles[id].sec))));
       const tileHtml = (id, i) => {
-        const d = tiles[id], off = L().hidden.includes(id), cls = `tile tone-${d.tone}${d.hero ? ' gauge-tile hero' : ''}${d.custom ? ' custom' : ''}`, sty = ` style="--i:${i}"`;
+        const d = tiles[id], off = L().hidden.includes(id), cls = `tile tone-${d.tone}${d.hero ? ' gauge-tile hero' : ''}${d.wide ? ' wide' : ''}${d.custom ? ' custom' : ''}`, sty = ` style="--i:${i}"`;
         if (edit) return `<div class="${cls} editing${off ? ' off' : ''}"${sty}>${d.html}<div class="tile-ctl"><button type="button" class="btn icon sm" data-act="mv" data-id="${id}" data-d="-1" aria-label="${esc(t('home.moveBack'))}">${I('left')}</button><button type="button" class="btn icon sm" data-act="vis" data-id="${id}" aria-label="${esc(off ? t('home.show') : t('home.hide'))}" title="${esc(off ? t('home.show') : t('home.hide'))}">${I(off ? 'eyeoff' : 'eye')}</button><button type="button" class="btn icon sm" data-act="mv" data-id="${id}" data-d="1" aria-label="${esc(t('home.moveFwd'))}">${I('right')}</button>${d.custom ? `<button type="button" class="btn icon sm" data-act="editTile" data-id="${id}" aria-label="${esc(t('edit'))}">${I('edit')}</button><button type="button" class="btn icon sm" data-act="delTile" data-id="${id}" aria-label="${esc(t('delete'))}">${I('trash')}</button>` : ''}</div></div>`;
         if (off) return '';
         if (d.custom && d.custom.kind === 'link') return `<a class="${cls}"${sty} href="${esc(d.custom.url)}" target="_blank" rel="noopener noreferrer">${d.html}<span class="t-arrow">${I('link')}</span></a>`;

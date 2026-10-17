@@ -3,7 +3,7 @@ window.OC = window.OC || {};
 (function (OC) {
   'use strict';
   const KEY = 'oneclick.v1';
-  const SEED = 3; // bump when sample data changes shape; migrate() refreshes untouched sample lists
+  const SEED = 4; // bump when sample data changes shape; migrate() refreshes untouched sample lists
 
   /* ---------- helpers ---------- */
   const pad = n => String(n).padStart(2, '0');
@@ -47,7 +47,7 @@ window.OC = window.OC || {};
     const team = SAMPLE_TEAM.map(m => Object.assign({ id: uid() }, m));
     return {
       courses: sampleCourses(), training: {}, leaves: [], users: [], requests: [],
-      settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'Maintenance Team', owner: '', seed: SEED },
+      settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'Maintenance Team', owner: '', seed: SEED, hiddenSections: ['prints'] },
       team,
       inventory: [
         { id: uid(), name: 'Nitrile gloves (box)', sku: 'PPE-0101', category: 'PPE', qty: 14, min: 10, unit: 'box', location: 'Cabinet A1' },
@@ -159,7 +159,7 @@ window.OC = window.OC || {};
     const d = sample(); d.training = sampleTraining(d.team, d.courses); d.leaves = sampleLeaves(d.team); return d;
   }
   function empty() {
-    return { settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'My Team', owner: '', seed: SEED },
+    return { settings: { lang: 'en', theme: 'dark', bg: '3d', teamName: 'My Team', owner: '', seed: SEED, hiddenSections: ['prints'] },
       courses: [], training: {}, leaves: [], users: [], requests: [], team: [], inventory: [], events: [], prints: [], vehicles: [], tasks: [], turnovers: [], ideas: [], votes: [] };
   }
 
@@ -244,6 +244,13 @@ window.OC = window.OC || {};
       if (sampleNames >= 5 && !data.courses.length && !data.leaves.length) {
         data.courses = sampleCourses(); data.training = sampleTraining(data.team, data.courses); data.leaves = sampleLeaves(data.team);
       }
+    }
+    if (seed < 4) { // Training takes the place of 3D Prints; Prints is only hidden and can be shown again in Settings
+      const s = data.settings, o = s.homeLayout.order;
+      if (!s.hiddenSections.includes('prints')) s.hiddenSections.push('prints');
+      s.hiddenSections = s.hiddenSections.filter(x => x !== 'training');
+      const ip = o.indexOf('prints');
+      if (ip >= 0) { o.splice(ip, 1, 'training'); const it = o.indexOf('training'); if (it !== ip) o.splice(it, 1); s.homeLayout.order = o.concat('prints'); }
     }
     data.settings.seed = SEED;
     return data;
