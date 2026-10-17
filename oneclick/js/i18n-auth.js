@@ -3,6 +3,9 @@ window.OC = window.OC || {};
 (function (OC) {
   'use strict';
   const en = {
+    'home.attention': 'Needs attention', 'home.allGood': 'All clear. Nothing needs attention.', 'home.sections': 'Sections', 'home.viewAll': 'Open', 'home.allDone': 'All tasks done this week.',
+    'home.att.out': 'Out of stock', 'home.att.low': 'Below minimum', 'home.att.maint': 'Vehicles in maintenance', 'home.att.due': 'Vehicles due for service or renewal',
+    'home.att.expired': 'Expired course certificates', 'home.att.issues': 'Open shift issues', 'home.att.pending': 'Waiting for your approval',
     'training.f.courses': 'Course names', 'training.coursesPh': 'One course per line — add as many as you like', 'training.addedN': '{n} course(s) added.', 'training.skippedN': '{n} already existed.', 'home.moreCourses': '+{n} more courses',
     'home.today': 'Today', 'home.noEvents': 'Nothing scheduled today.', 'home.awayLbl': 'Away today', 'home.next7': 'Away · next 7 days', 'home.total': 'Total',
     'home.tagline': 'Everything your shift needs, one click away.', 'home.v.ok': 'OK', 'home.v.low': 'Low', 'home.v.out': 'Out',
@@ -53,6 +56,9 @@ window.OC = window.OC || {};
     'inv.d.nothingToReorder': 'Nothing below minimum', 'inv.d.noData': 'No data.', 'inv.d.mapCat': 'Choose the category column (Columns button) to see this chart.', 'inv.d.mapLoc': 'Choose the location column to see this chart.', 'inv.d.mapMin': 'Choose the minimum column to see what to reorder.'
   };
   const ar = {
+    'home.attention': 'يحتاج انتباه', 'home.allGood': 'كل شي تمام، لا شيء يحتاج انتباه.', 'home.sections': 'الأقسام', 'home.viewAll': 'فتح', 'home.allDone': 'كل مهام الأسبوع منجزة.',
+    'home.att.out': 'أصناف نافدة', 'home.att.low': 'تحت الحد الأدنى', 'home.att.maint': 'مركبات في الصيانة', 'home.att.due': 'مركبات تحتاج صيانة أو تجديد',
+    'home.att.expired': 'شهادات دورات منتهية', 'home.att.issues': 'مسائل مفتوحة من الورديات', 'home.att.pending': 'بانتظار موافقتك',
     'training.f.courses': 'أسماء الدورات', 'training.coursesPh': 'كل دورة في سطر — أضف كم تبي', 'training.addedN': 'تمت إضافة {n} دورة.', 'training.skippedN': '{n} موجودة من قبل.', 'home.moreCourses': '+{n} دورات أخرى',
     'home.today': 'اليوم', 'home.noEvents': 'لا مواعيد اليوم.', 'home.awayLbl': 'غائبون اليوم', 'home.next7': 'الغياب · الأيام السبعة القادمة', 'home.total': 'الإجمالي',
     'home.tagline': 'كل ما تحتاجه الوردية بضغطة واحدة.', 'home.v.ok': 'متوفر', 'home.v.low': 'منخفض', 'home.v.out': 'نافد',
