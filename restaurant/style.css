@@ -720,3 +720,10 @@ ul.note { padding-inline-start: 1.2em; display: flex; flex-direction: column; ga
   .tbl th { background: #fff; }
   .tbl-wrap { background: none; }
 }
+
+/* الشرح داخل البرنامج */
+.help-list { margin: 0; padding-inline-start: 1.3em; display: flex; flex-direction: column; gap: 6px; line-height: 1.7; }
+.help-dl { margin: 0; display: grid; grid-template-columns: minmax(8rem, max-content) 1fr; gap: 8px 16px; }
+.help-dl dt { font-weight: 700; }
+.help-dl dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 560px) { .help-dl { grid-template-columns: 1fr; } .help-dl dd { margin-bottom: 6px; } }
