@@ -822,6 +822,7 @@
   .pb-save{display:inline-block;margin-top:6px;background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:3px 12px;font-weight:900;font-size:.88rem}
   .pb-hint{margin:8px 0 0;font-size:.84rem;color:var(--muted);text-align:center;font-weight:700}
   .pb-reset{display:block;margin:4px auto 0;color:var(--muted);text-decoration:underline;font-size:.84rem;font-weight:700;font-family:inherit}
+  .pb-sendsum{background:var(--gold-tint);border:1.5px solid var(--gold-soft);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;font-weight:800} .pb-sendsum small{flex-basis:100%;color:var(--muted);font-weight:700;font-size:.82rem}
   .pb-pad{height:84px} @media(min-width:900px){ .pb-pad{height:10px} }
   .pb-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--ink);color:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}
   .pb-bar .v{font-size:1.3rem;font-weight:900;line-height:1.1} .pb-bar .v small{display:block;font-size:.78rem;opacity:.8;font-weight:700}
@@ -2065,26 +2066,20 @@ function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!A
 const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
-  {id:'visit',  kind:'count', max:12, price:75,  list:120, n:'زيارة إصلاح سباكة أو كهرباء', en:'Plumbing or electrical repair visit', d:'زيارة ساعتين، اليد علينا، تطلبها متى احتجت', de:'A two-hour visit, labour on us, whenever you need it', u:'للزيارة', ue:'per visit'},
-  {id:'fan',    kind:'count', max:10, price:50,  list:80,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها بخصم 10%', de:'Labour on us, the fan itself at 10% off', u:'للمروحة', ue:'per fan'},
-  {id:'panel',  kind:'toggle', max:1, price:90,  list:140, n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
-  {id:'heater', kind:'count', max:4,  price:40,  list:60,  n:'تنظيف سخان عادي من الترسبات', en:'Standard heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
-  {id:'cheater',kind:'count', max:4,  price:120, list:190, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
-  {id:'exh',    kind:'count', max:8,  price:30,  list:50,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
-  {id:'tank',   kind:'toggle', max:1, price:60,  list:100, n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
-  {id:'sock',   kind:'toggle', max:1, price:50,  list:80,  n:'فحص الفيش والمفاتيح والإضاءة', en:'Sockets, switches and lighting check', d:'جولة على كل الغرف، مرة بالسنة', de:'A round of every room, once a year'},
-  {id:'prio',   kind:'toggle', max:1, price:99,  list:0,   n:'أولوية نفس اليوم', en:'Same-day priority', d:'طلبك يتقدم على الطلبات العادية طول السنة', de:'Your requests go ahead of regular orders all year'},
-  {id:'parts',  kind:'toggle', max:1, price:0, list:0, free:true, n:'خصم 10% على القطع', en:'10% off parts', d:'على كل قطعة تحتاجها طول السنة', de:'On every part you need all year'},
-  {id:'check',  kind:'toggle', max:1, price:0, list:0, free:true, n:'كشف مجاني قبل أي إصلاح', en:'Free inspection before any repair', d:'نشوف العطل ونقول لك السعر قبل الشغل', de:'We check the fault and quote before working'},
-  {id:'remind', kind:'toggle', max:1, price:0, list:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
-  {id:'report', kind:'toggle', max:1, price:0, list:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
-  {id:'chat',   kind:'toggle', max:1, price:0, list:0, free:true, n:'استشارة واتساب', en:'WhatsApp advice', d:'اسأل الفني عن أي عطل بسيط قبل ما تطلب زيارة', de:'Ask the technician about small faults before booking'},
-  {id:'move',   kind:'toggle', max:1, price:0, list:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
-];
-const PB_PRESETS=[
-  {id:'apt',   n:'شقة', en:'Apartment', d:'4 زيارات، مروحتين، فحص سنوي', de:'4 visits, 2 fans, a yearly check', q:{visit:4, fan:2, panel:1, heater:1, exh:1, parts:1, check:1, remind:1}},
-  {id:'home',  n:'بيت', en:'House', d:'6 زيارات، 4 مراوح، فحص شتاء وصيف', de:'6 visits, 4 fans, winter and summer checks', q:{visit:6, fan:4, panel:1, cheater:1, exh:2, tank:1, sock:1, parts:1, check:1, remind:1, report:1}},
-  {id:'villa', n:'فيلا كبيرة', en:'Large villa', d:'8 زيارات، 6 مراوح، سخانين، أولوية', de:'8 visits, 6 fans, two heaters, priority', q:{visit:8, fan:6, panel:1, cheater:2, exh:3, tank:1, sock:1, prio:1, parts:1, check:1, remind:1, report:1, chat:1, move:1}},
+  {id:'visit',  kind:'count', max:12, price:75,  n:'زيارة إصلاح سباكة أو كهرباء', en:'Plumbing or electrical repair visit', d:'زيارة ساعتين، اليد علينا، تطلبها متى احتجت. متوسط قيمة شغل اليد لزيارة الساعتين كان 180 ريال في أكثر من 1000 زيارة سابقة', de:'A two-hour visit, labour on us, whenever you need it. Across more than 1,000 past visits the average labour value of a two-hour visit was 180 SAR', u:'للزيارة', ue:'per visit'},
+  {id:'fan',    kind:'count', max:10, price:50,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها', de:'Labour on us, the fan itself at its price', u:'للمروحة', ue:'per fan'},
+  {id:'panel',  kind:'toggle', max:1, price:90,  n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
+  {id:'heater', kind:'count', max:4,  price:40,  n:'تنظيف سخان عادي من الترسبات', en:'Standard heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
+  {id:'cheater',kind:'count', max:4,  price:120, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
+  {id:'exh',    kind:'count', max:8,  price:30,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
+  {id:'tank',   kind:'toggle', max:1, price:60,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
+  {id:'sock',   kind:'toggle', max:1, price:50,  n:'فحص الفيش والمفاتيح والإضاءة', en:'Sockets, switches and lighting check', d:'جولة على كل الغرف، مرة بالسنة', de:'A round of every room, once a year'},
+  {id:'emerg',  kind:'toggle', max:1, price:99,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
+  {id:'check',  kind:'toggle', max:1, price:0, free:true, n:'كشف مجاني قبل أي إصلاح', en:'Free inspection before any repair', d:'نشوف العطل ونقول لك السعر قبل الشغل', de:'We check the fault and quote before working'},
+  {id:'remind', kind:'toggle', max:1, price:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
+  {id:'report', kind:'toggle', max:1, price:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
+  {id:'move',   kind:'toggle', max:1, price:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
+  {id:'parts',  kind:'toggle', max:1, price:0, free:true, n:'خصم 10% على القطع', en:'10% off parts', d:'على كل قطعة تحتاجها طول السنة', de:'On every part you need all year'},
 ];
 let pbQ={};   // تُستبدل من plan_season_winter / plan_season_summer
 const PLANS = [
@@ -3893,7 +3888,7 @@ function renderAccount(){
 
       <div class="acc-grid">
         <button class="acc-tile" onclick="go('mybookings')"><span class="ti">📋</span><b>طلباتي</b><small>${LX(ar(n)+' '+(n===1?'طلب':'طلبات'), n+' '+(n===1?'order':'orders'))}</small></button>
-        ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>باقات الصيانة</b><small>ركّب باقتك بنفسك</small></button>`:''}
+        ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>باقات الصيانة</b><small>قول لنا وش تفضل</small></button>`:''}
         <button class="acc-tile" onclick="go('suggest')"><span class="ti">💡</span><b>رأيك يهمنا</b><small>اقتراح أو شكر</small></button>
         <button class="acc-tile" onclick="openComplaint('')"><span class="ti">📣</span><b>الشكاوى</b><small>برقم متابعة</small></button>
         <button class="acc-tile" onclick="go('faq')"><span class="ti">❓</span><b>الأسئلة الشائعة</b><small>إجابات سريعة</small></button>
@@ -3949,30 +3944,27 @@ function monthlyUpfront(){ return Math.max(1, Math.round(stNum('plan_monthly_upf
 function monthlyOn(p){ if(!(planMonthly(p)>0)) return false; if(plansPreview()&&!plansLive()) return true; return stOn('plan_monthly_enabled',false) && cardInappOn(); }
 /* الشاشة الأولى: بيت ولا شقة؟ · لو خطط المكيفات ظاهرة يأتي سؤال ثانٍ: بدون مكيفات / مع المكيفات */
 function renderPlans(kind){
-  if(!plansEnabled()){ toast(LX('الخطط السنوية غير متاحة حاليًا','Annual plans are not available right now')); go('home'); return; }
+  if(!plansEnabled()){ toast(LX('باقات الصيانة غير متاحة حاليًا','Maintenance plans are not available right now')); go('home'); return; }
   if(_deepPlan){ const id=_deepPlan; _deepPlan=''; if(PLANS.some(p=>p.id===id&&(!p.ac||acPlansEnabled()))){ renderPlanSheet(id); return; } }
   pbLoad();
   document.getElementById('app').innerHTML=`
     <div class="wrap screen plans-screen pb">
       ${pageHead(LX('باقات الصيانة','Maintenance plans'),'home')}
-      <div class="rb-hero"><b>${LX('ركّب باقتك السنوية','Build your annual plan')}</b><small>${LX('سباكة وكهرباء لسكنك. اضغط «أضف» على أي خدمة وتجي في باقتك، والسعر يتحدّث تحت. كل زيارة ساعتين واليد علينا','Plumbing and electrical for your home. Tap Add on any service and it joins your plan; the price updates below. Every visit is two hours with labour on us')}</small></div>
+      <div class="rb-hero"><b>${LX('وش تفضل يكون في باقتك السنوية؟','What would you like in your annual plan?')}</b><small>${LX('سباكة وكهرباء فقط. اختر اللي يناسب سكنك والسعر التقريبي يتحدّث تحت. هذي مو طلب شراء: ترسلها لنا، ندرسها، ونتواصل معك. كل زيارة ساعتين واليد علينا','Plumbing and electrical only. Pick what suits your home and the estimated price updates below. This is not a purchase: you send it to us, we study it and get back to you. Every visit is two hours with labour on us')}</small></div>
       <div class="pb-grid">
         <div class="pb-side">
-          <div class="pb-h">${LX('باقات جاهزة','Ready plans')}</div><div id="pbPresets"></div>
-          <div class="pb-h">${LX('الإضافات','Add-ons')}</div><div id="pbList"></div>
-          <div class="pb-h">${LX('إضافات مجانية','Free add-ons')}</div><div id="pbFree"></div>
+          <div class="pb-h">${LX('الخدمات','Services')}</div><div id="pbList"></div>
         </div>
         <div class="pb-center">
           <div class="pb-plan" id="pbPlan">
             <div class="hd"><b>${LX('باقتك السنوية','Your annual plan')}</b><small id="pbCount"></small></div>
-            <div class="pb-empty" id="pbEmpty"><b>${LX('باقتك فاضية','Your plan is empty')}</b>${LX('اضغط «أضف» على أي خدمة وتجي هنا، أو ابدأ من باقة جاهزة','Tap Add on any service and it appears here, or start from a ready plan')}</div>
+            <div class="pb-empty" id="pbEmpty"><b>${LX('باقتك فاضية','Your plan is empty')}</b>${LX('اضغط «أضف» على أي خدمة وتجي هنا','Tap Add on any service and it appears here')}</div>
             <div class="pb-lines" id="pbLines"></div>
             <div class="pb-sum">
-              <div class="row"><span>${LX('بدون باقة','Without a plan')}</span><span><s class="num" id="pbCatalog">0</s> ${LX('ريال','SAR')}</span></div>
-              <div class="big"><div class="v"><span class="num" id="pbTotal">0</span><small>${LX('ريال بالسنة','SAR a year')}</small></div><div class="mo num" id="pbMonthly"></div></div>
-              <span class="pb-save" id="pbSave" hidden></span>
-              <button class="cta gold" id="pbCta" style="margin-top:12px" onclick="pbSubscribe()">${LX('اشترك','Subscribe')}</button>
+              <div class="big"><div class="v"><span class="num" id="pbTotal">0</span><small>${LX('ريال بالسنة تقريبًا','SAR a year, approximately')}</small></div><div class="mo num" id="pbMonthly"></div></div>
+              <button class="cta gold" id="pbCta" style="margin-top:12px" onclick="pbSend()">${LX('أرسل باقتك','Send your plan')}</button>
               <p class="pb-hint" id="pbHint"></p>
+              <p class="pb-hint">${LX('متوسط قيمة شغل اليد لزيارة الساعتين كان 180 ريال في أكثر من 1000 زيارة سابقة','Across more than 1,000 past visits, the average labour value of a two-hour visit was 180 SAR')}</p>
               <button type="button" class="pb-reset" onclick="pbReset()">${LX('ابدأ من جديد','Start over')}</button>
             </div>
           </div>
@@ -3980,7 +3972,7 @@ function renderPlans(kind){
       </div>
       <div class="pb-pad"></div>
     </div>
-    <div class="pb-bar" id="pbBar"><div class="v"><span class="num" id="pbBarTotal">0</span> ${LX('ريال','SAR')}<small id="pbBarMo"></small></div><button type="button" id="pbBarCta" onclick="pbSubscribe()">${LX('اشترك','Subscribe')}</button></div>`;
+    <div class="pb-bar" id="pbBar"><div class="v"><span class="num" id="pbBarTotal">0</span> ${LX('ريال','SAR')}<small id="pbBarMo"></small></div><button type="button" id="pbBarCta" onclick="pbSend()">${LX('أرسل','Send')}</button></div>`;
   pbRender();
   window.scrollTo(0,0);
 }
@@ -3993,28 +3985,25 @@ function pbSaveQ(){ try{ localStorage.setItem('khafet_pb_v1', JSON.stringify(pbQ
 function pbCard(it){
   const n=pbQ[it.id]||0, on=n>0;
   const label= it.kind==='toggle'? (on? LX('✓ مضافة','✓ Added') : LX('أضف','Add')) : (on? `<span class="bd num">${en(n)}</span> ${LX('زيادة','More')}` : LX('أضف','Add'));
-  const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list?`<s class="num">${en(it.list)}</s> `:''}<b class="num">${en(it.price)}</b> ${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}`;
+  const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `<b class="num">${en(it.price)}</b> ${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}`;
   return `<div class="pb-item${on?' on':''}"><div class="t">${esc(LX(it.n,it.en))}<div class="d">${esc(LX(it.d,it.de))}</div></div><div class="p">${price}</div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div>`;
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
-  document.getElementById('pbPresets').innerHTML=PB_PRESETS.map(p=>`<button type="button" class="pb-pre" onclick="pbPreset('${p.id}')"><span><b>${esc(LX(p.n,p.en))}</b><small>${esc(LX(p.d,p.de))}</small></span><span class="pp num">${en(pbPrice(p.q))} ${LX('ريال','SAR')}</span></button>`).join('');
-  list.innerHTML=PB_ITEMS.filter(x=>!x.free).map(pbCard).join('');
-  document.getElementById('pbFree').innerHTML=PB_ITEMS.filter(x=>x.free).map(pbCard).join('');
-  const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cat=0, cnt=0;
-  document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cat+=it.free?0:n*(it.list||it.price); cnt+=n;
+  list.innerHTML=PB_ITEMS.map(pbCard).join('');
+  const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0;
+  document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cnt+=n;
     const ctl= it.kind==='count'? `<div class="pb-ctl"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" aria-label="${LX('أكثر','More')}" ${n>=it.max?'disabled':''}>+</button></div>` : `<div class="pb-ctl"><button type="button" class="x" onclick="pbDelta('${it.id}',-99)" aria-label="${LX('حذف','Remove')}">✕</button></div>`;
     return `<div class="pb-ln"><div class="l">${esc(LX(it.n,it.en))}${it.kind==='count'?`<small>${en(n)} × ${en(it.price)} ${LX('ريال','SAR')}</small>`:''}</div>${ctl}<b class="amt num">${it.free?`<span class="pb-gift">${LX('مجاني','Free')}</span>`:en(t)}</b></div>`; }).join('');
   const visits=pbQ.visit||0, min=pbMin(), ok=visits>=min&&total>0, mo=Math.round(total/12);
   document.getElementById('pbEmpty').hidden=lines.length>0;
   document.getElementById('pbCount').textContent=lines.length? LX(en(cnt)+' بند', cnt+' items') : LX('فاضية','Empty');
-  document.getElementById('pbCatalog').textContent=en(cat); document.getElementById('pbTotal').textContent=en(total);
+  document.getElementById('pbTotal').textContent=en(total);
   document.getElementById('pbMonthly').textContent=LX(en(mo)+' بالشهر', mo+' a month');
-  document.getElementById('pbBarTotal').textContent=en(total); document.getElementById('pbBarMo').textContent=LX('بالسنة · '+en(mo)+' بالشهر','a year · '+mo+' a month');
-  const save=cat-total, sv=document.getElementById('pbSave'); sv.hidden=!(save>0); sv.textContent=LX('وفّرت '+en(save)+' ريال ('+en(Math.round(save/(cat||1)*100))+'%)','You save '+save+' SAR ('+Math.round(save/(cat||1)*100)+'%)');
-  document.getElementById('pbHint').textContent= ok? LX('يعني '+en(mo)+' ريال بالشهر، تدفعها مرة وحدة بالسنة', mo+' SAR a month, paid once a year') : (total>0? LX('أضف '+en(min-visits)+' زيارة بعد عشان تكتمل الباقة','Add '+(min-visits)+' more visit(s) to complete the plan') : LX('الباقة تبدأ بزيارتين على الأقل','A plan starts with at least two visits'));
+  document.getElementById('pbBarTotal').textContent=en(total); document.getElementById('pbBarMo').textContent=LX('بالسنة تقريبًا · '+en(mo)+' بالشهر','a year, approx. · '+mo+' a month');
+  document.getElementById('pbHint').textContent= ok? LX('نستلم باقتك وندرسها ونتواصل معك على جوالك','We receive your plan, study it and contact you on your mobile') : (total>0? LX('أضف '+en(min-visits)+' زيارة بعد عشان تكتمل الباقة','Add '+(min-visits)+' more visit(s) to complete the plan') : LX('الباقة تبدأ بزيارتين على الأقل','A plan starts with at least two visits'));
   ['pbCta','pbBarCta'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!ok; });
-  const c=document.getElementById('pbCta'); if(c) c.textContent= ok? LX('اشترك · '+en(total)+' ريال للسنة','Subscribe · '+total+' SAR a year') : LX('اشترك','Subscribe');
+  const c=document.getElementById('pbCta'); if(c) c.textContent= ok? LX('أرسل باقتك · '+en(total)+' ريال تقريبًا','Send your plan · about '+total+' SAR') : LX('أرسل باقتك','Send your plan');
   pbSaveQ();
 }
 function pbAdd(id){ const it=pbIt(id); if(!it) return; if(it.kind==='toggle') pbQ[id]=pbQ[id]?0:1; else pbQ[id]=Math.min(it.max,(pbQ[id]||0)+1); pbRender(); }
@@ -4022,10 +4011,46 @@ function pbDelta(id,d){ const it=pbIt(id); if(!it) return; pbQ[id]=Math.min(it.m
 function pbPreset(id){ const p=PB_PRESETS.find(x=>x.id===id); if(!p) return; pbQ=Object.assign({},p.q); pbRender(); const el=document.getElementById('pbPlan'); if(el&&window.innerWidth<900) try{ el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
 function pbReset(){ pbQ={}; pbRender(); }
 function pbPlanObj(){ return { id:'custom', kind:'باقتي', kindEn:'My plan', ico:'🧰', ac:false, visits:pbQ.visit||0, cap:Math.max(0,stNum('plan_visit_cap_sar',100)), name:'باقتي', nameEn:'My plan', price:pbTotal(), items:Object.assign({},pbQ), bullets:[], bulletsEn:[] }; }
-function pbSubscribe(){
+function pbSend(){
   if((pbQ.visit||0)<pbMin()||!(pbTotal()>0)){ toast(LX('الباقة تبدأ بزيارتين على الأقل','A plan starts with at least two visits')); return; }
-  if(plansPreview()&&!plansLive()){ toast(LX('المعاينة فقط · الاشتراك يفتح بعد التفعيل','Preview only · subscribing opens after activation')); return; }
-  openSubscribe('custom');
+  const c=state.customer||{}, a=state.address||{};
+  document.getElementById('app').innerHTML=`
+    <div class="wrap screen plans-screen">
+      ${pageHead(LX('أرسل باقتك','Send your plan'),'plans')}
+      <div class="panel" style="margin-top:14px">
+        <div class="pb-sendsum"><b>${LX('باقتك','Your plan')}</b><span class="num">${en(pbTotal())} ${LX('ريال بالسنة تقريبًا','SAR a year, approx.')}</span>
+          <small>${esc(PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0).map(it=>LX(it.n,it.en)+(it.kind==='count'?' × '+en(pbQ[it.id]):'')).join(LX('، ',', ')))}</small></div>
+        <div class="field"><label>${LX('الاسم','Name')} <span class="req">*</span></label><input id="pr_name" value="${esc(c.name||'')}" placeholder="${LX('الاسم','Your name')}" /></div>
+        <div class="field"><label>${LX('رقم الجوال','Mobile number')} <span class="req">*</span></label><input id="pr_phone" value="${esc(c.phone||'')}" inputmode="tel" placeholder="05xxxxxxxx" /></div>
+        <div class="field"><label>${LX('رقم المنزل','Home number')}</label><input id="pr_home" value="${esc(a.house||'')}" placeholder="${LX('مثال: فيلا 12 · حي الروضة','e.g. Villa 12 · Al Rawdah')}" /></div>
+        <div class="field"><label>${LX('ملاحظات (اختياري)','Notes (optional)')}</label><textarea id="pr_note" placeholder="${LX('أي شي تحب نعرفه عن سكنك أو وقتك المناسب','Anything about your home or a suitable time')}"></textarea></div>
+        <button class="cta gold" id="prCta" onclick="pbSubmit()">${LX('أرسل','Send')}</button>
+        <p class="pb-hint">${LX('ندرس باقتك ونتواصل معك على جوالك، وما فيه أي دفع الحين','We study your plan and contact you on your mobile. Nothing is paid now')}</p>
+      </div>
+      <div style="height:24px"></div>
+    </div>`;
+  window.scrollTo(0,0);
+}
+async function pbSubmit(){
+  const g=id=>{ const e=document.getElementById(id); return e? e.value.trim() : ''; };
+  const name=g('pr_name'), phone=g('pr_phone'), home=g('pr_home'), note=g('pr_note');
+  if(!name){ toast(LX('اكتب الاسم','Enter your name')); return; }
+  if(!/^(05|9665|\+9665)[0-9]{8}$/.test(phone.replace(/[\s-]/g,''))){ toast(LX('اكتب رقم جوال سعودي صحيح','Enter a valid Saudi mobile number')); return; }
+  if(!cloudReady){ toast(LX('الإرسال يحتاج اتصال بالإنترنت','Sending needs an internet connection')); return; }
+  const btn=document.getElementById('prCta'); if(btn){ btn.disabled=true; btn.textContent=LX('⏳ جارٍ الإرسال...','⏳ Sending...'); }
+  const a=state.address||{};
+  const p={ name, phone, home_no:home, note, items:Object.assign({},pbQ), home_loc:(a.lat&&a.lng)?{lat:a.lat,lng:a.lng,mapUrl:a.mapUrl||''}:null };
+  try{
+    const { data, error }=await sb.rpc('khafet_plan_request', { p });
+    if(error||!data||!data.ok){
+      const m=String((error&&error.message)||'');
+      toast(/BAD_PHONE/.test(m)? LX('اكتب رقم جوال سعودي صحيح','Enter a valid Saudi mobile number') : /TOO_MANY/.test(m)? LX('وصلتنا باقاتك اليوم، بنتواصل معك','We already have your plans for today, we will contact you') : /BAD_PLAN/.test(m)? LX('راجع بنود باقتك','Check your plan items') : LX('ما انرسلت، حاول مرة ثانية','Not sent, try again'));
+      if(btn){ btn.disabled=false; btn.textContent=LX('أرسل','Send'); } return; }
+    try{ state.customer.name=state.customer.name||name; state.customer.phone=state.customer.phone||phone; if(home) state.address.house=home; save(); }catch(e){}
+    const items=Object.assign({},pbQ); pbQ={}; pbSaveQ();
+    document.getElementById('app').innerHTML=`<div class="wrap screen"><div class="panel" style="margin-top:30px"><div class="payresult"><div class="ic">✅</div><h2>${LX('وصلتنا باقتك','We received your plan')}</h2><p>${LX('رقمها '+en(data.no)+'. بندرسها ونتواصل معك على '+phone,'Number '+data.no+'. We will study it and contact you on '+phone)}</p></div><button class="cta gold" style="margin-top:14px" onclick="go('home')">${LX('الرئيسية','Home')}</button></div></div>`;
+    window.scrollTo(0,0);
+  }catch(e){ console.warn(e); toast(LX('تأكد من الإنترنت وحاول مرة ثانية','Check your connection and try again')); if(btn){ btn.disabled=false; btn.textContent=LX('أرسل','Send'); } }
 }
 /* «صيانتي» للباقة المركّبة: الزيارات والمراوح تُطلب، والفحوص بحسب بنودها، والمجاني مشمول */
 function pbMySubRows(srv, usage, vTotal, vUsed, waitTill, fmtD){
@@ -4040,7 +4065,7 @@ function pbMySubRows(srv, usage, vTotal, vUsed, waitTill, fmtD){
   const w=['panel','heater','cheater','exh'].filter(k=>+items[k]>0), sm=['tank','sock'].filter(k=>+items[k]>0);
   if(w.length){ const done=+(usage.season_w||0)>=1; rows.push(infoRow('🔥',LX('فحص الشتاء','Winter check'),w.map(k=>nm(k)+(+items[k]>1?' ×'+en(items[k]):'')).join('، ')+' · '+seasonText(PLAN_SEASONS.winter),done?LX('تم','Done'):LX('قادم','Upcoming'),done)); }
   if(sm.length){ const done=+(usage.season_s||0)>=1; rows.push(infoRow('☀️',LX('فحص الصيف','Summer check'),sm.map(nm).join('، ')+' · '+seasonText(PLAN_SEASONS.summer),done?LX('تم','Done'):LX('قادم','Upcoming'),done)); }
-  PB_ITEMS.filter(it=>(it.id==='prio'||it.free)&&+items[it.id]>0).forEach(it=>rows.push(infoRow(it.free?'🎁':'⚡',LX(it.n,it.en),LX(it.d,it.de),LX('مشمول','Included'),true)));
+  PB_ITEMS.filter(it=>(it.id==='emerg'||it.free)&&+items[it.id]>0).forEach(it=>rows.push(infoRow(it.free?'🎁':'🚨',LX(it.n,it.en),LX(it.d,it.de),LX('مشمول','Included'),true)));
   return rows;
 }
 /* غلاف كل خطة: صيانة = السخان، تكييف = غسيل المكيف */
@@ -5362,7 +5387,7 @@ function renderHome(){
       </button>`:(plansEnabled()?`
       <button class="services-btn" onclick="go('plans')">
         <span class="sb-ic">${icon('shield',24)}</span>
-        <span class="sb-t"><b>${LX('باقات الصيانة','Maintenance plans')}</b><small>${LX('ركّب باقتك السنوية بنفسك، كل زيارة ساعتين','Build your own annual plan, every visit two hours')}</small></span>
+        <span class="sb-t"><b>${LX('باقات الصيانة','Maintenance plans')}</b><small>${LX('قول لنا وش تفضل في باقتك السنوية، سباكة وكهرباء','Tell us what you want in your annual plan, plumbing and electrical')}</small></span>
 
       </button>`:'')}
 
