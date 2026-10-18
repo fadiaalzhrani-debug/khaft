@@ -793,6 +793,41 @@
   .ms-mo-stop{display:block;margin-top:10px;font-size:.8rem;color:var(--muted);text-decoration:underline;cursor:pointer}
   .ms-mo .ms-btn{background:var(--gold);color:#1a1408;border:0;border-radius:11px;padding:8px 16px;font-weight:800;font-family:inherit;font-size:.85rem;cursor:pointer;white-space:nowrap}
   /* ═ ريّح بالك · تصميم 2026-10-02: باقتان واضحتان (صيانة / صيانة + تكييف) بغلاف صورة وشريط لون ═ */
+  /* ركّب باقتك: الباقة في النص وتبدأ فاضية، الإضافات يمينها على الشاشة الواسعة وفوقها على الجوال */
+  .pb-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;margin-top:14px}
+  @media(min-width:900px){ .wrap.plans-screen.pb{max-width:1100px} .pb-grid{grid-template-columns:minmax(300px,360px) minmax(0,1fr)} .pb-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-inline-start:2px} }
+  @media(max-width:899px){ .pb-center{order:-1} }
+  .pb-h{font-weight:900;font-size:1.02rem;margin:14px 0 8px}
+  .pb-pre{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;text-align:start;box-shadow:var(--shadow-sm);font-family:inherit;color:inherit;margin-bottom:8px}
+  .pb-pre b{font-weight:900} .pb-pre small{display:block;color:var(--muted);font-size:.8rem;font-weight:700} .pb-pre .pp{font-weight:900;white-space:nowrap;color:var(--gold-deep)}
+  .pb-item{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-bottom:8px;box-shadow:var(--shadow-sm)}
+  .pb-item.on{border-color:var(--gold-strong);background:var(--gold-tint)}
+  .pb-item .t{font-weight:900;font-size:.96rem;line-height:1.35;min-width:0} .pb-item .d{color:var(--muted);font-size:.8rem;font-weight:700;margin-top:2px}
+  .pb-item .p{grid-column:1;font-size:.88rem;color:var(--muted);font-weight:700} .pb-item .p b{color:var(--ink);font-weight:900;font-size:1rem} .pb-item .p s{color:var(--danger);margin-inline-end:8px}
+  .pb-add{grid-column:2;grid-row:1/3;height:40px;padding:0 14px;border-radius:12px;border:1.5px solid var(--ink);background:var(--card);font-weight:900;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;color:inherit}
+  .pb-add:disabled{opacity:.45} .pb-add .bd{background:var(--ink);color:#fff;border-radius:999px;min-width:22px;height:22px;display:grid;place-items:center;font-size:.78rem;padding:0 6px}
+  .pb-item.on .pb-add{background:var(--gold);border-color:var(--gold);color:var(--ink)} .pb-item.on .pb-add .bd{background:var(--ink);color:var(--gold)}
+  .pb-gift{color:var(--ok);font-weight:900}
+  .pb-plan{background:var(--card);border:2px solid var(--ink);border-radius:22px;overflow:hidden;box-shadow:var(--shadow)}
+  .pb-plan .hd{background:var(--ink);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center} .pb-plan .hd b{font-size:1.15rem;font-weight:900} .pb-plan .hd small{opacity:.8;font-weight:700}
+  .pb-empty{margin:16px;padding:34px 16px;text-align:center;color:var(--muted);border:2px dashed var(--line-strong);border-radius:16px;font-weight:700} .pb-empty b{display:block;color:var(--ink);font-size:1.1rem;font-weight:900;margin-bottom:4px}
+  .pb-lines{padding:6px 18px}
+  .pb-ln{display:grid;grid-template-columns:1fr auto auto;gap:6px 12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)} .pb-ln:last-child{border-bottom:0}
+  .pb-ln .l{min-width:0;font-weight:800} .pb-ln .l small{display:block;color:var(--muted);font-size:.78rem;font-weight:700}
+  .pb-ln .amt{font-weight:900;font-size:1.02rem;min-width:52px;text-align:left}
+  .pb-ctl{display:flex;align-items:center;gap:4px} .pb-ctl button{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--bg);font-size:1.1rem;font-weight:900;display:grid;place-items:center;font-family:inherit;color:inherit} .pb-ctl button:disabled{opacity:.4} .pb-ctl .q{min-width:24px;text-align:center;font-weight:900} .pb-ctl .x{color:var(--muted);font-size:.95rem}
+  .pb-sum{padding:14px 18px 16px;border-top:2px solid var(--ink);background:var(--gold-tint)}
+  .pb-sum .row{display:flex;justify-content:space-between;font-size:.92rem;color:var(--muted);font-weight:700} .pb-sum .row s{color:var(--danger)}
+  .pb-sum .big{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px} .pb-sum .big .v{font-size:2.2rem;font-weight:900;line-height:1.1} .pb-sum .big .v small{font-size:.95rem;font-weight:800;margin-inline-start:4px} .pb-sum .mo{color:var(--muted);font-weight:800}
+  .pb-save{display:inline-block;margin-top:6px;background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:3px 12px;font-weight:900;font-size:.88rem}
+  .pb-hint{margin:8px 0 0;font-size:.84rem;color:var(--muted);text-align:center;font-weight:700}
+  .pb-reset{display:block;margin:4px auto 0;color:var(--muted);text-decoration:underline;font-size:.84rem;font-weight:700;font-family:inherit}
+  .pb-pad{height:84px} @media(min-width:900px){ .pb-pad{height:10px} }
+  .pb-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--ink);color:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .pb-bar .v{font-size:1.3rem;font-weight:900;line-height:1.1} .pb-bar .v small{display:block;font-size:.78rem;opacity:.8;font-weight:700}
+  .pb-bar button{background:var(--gold);color:var(--ink);border-radius:12px;padding:10px 18px;font-weight:900;font-family:inherit} .pb-bar button:disabled{opacity:.45}
+  @media(min-width:900px){ .pb-bar{display:none} }
+  .cta.gold:disabled{opacity:.45;box-shadow:none;cursor:default}
   .rb-hero{margin-top:14px;position:relative;overflow:hidden;background:linear-gradient(150deg,#3A2F1B 0%,#1F1810 70%);color:#F3EDE0;border-radius:var(--r-lg);padding:22px 18px 18px;text-align:center;box-shadow:0 12px 30px rgba(58,47,27,.25)}
   .rb-hero::before{content:"";position:absolute;inset:auto -40px -70px auto;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.28),transparent 65%)}
   .rb-hero::after{content:"";position:absolute;inset:-60px auto auto -50px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.16),transparent 65%)}
@@ -1869,6 +1904,7 @@ function applySettings(rows){
   const vis=stNum('plan_visits_per_year',null); if(vis>0){ PLANS.forEach(p=>p.visits=vis); SUB_SVCS[0].qty={villa:vis,villa_ac:vis,apt:vis,apt_ac:vis}; }
   if(SETTINGS.plan_season_winter) PLAN_SEASONS.winter=String(SETTINGS.plan_season_winter);
   if(SETTINGS.plan_season_summer) PLAN_SEASONS.summer=String(SETTINGS.plan_season_summer);
+  const pbi=stJson('plan_items',null); if(Array.isArray(pbi)) pbi.forEach(x=>{ const it=PB_ITEMS.find(y=>y&&x&&y.id===x.id); if(!it) return; if(+x.price>=0) it.price=+x.price; if(+x.list>=0) it.list=+x.list; if(+x.max>0) it.max=+x.max; if(x.free!=null) it.free=!!x.free; });
   if(SETTINGS.support_phone){ const sp=String(SETTINGS.support_phone).replace(/[^0-9+]/g,''); if(sp) PHONE=sp; }   // أرقام و+ فقط: يدخل في روابط tel: وفي النصوص
   if(SETTINGS.support_whatsapp) WHATSAPP=String(SETTINGS.support_whatsapp).replace(/\D/g,'');
   const lm=stNum('lead_min',null); if(lm>=0) LEAD_MIN=Math.round(lm);
@@ -2026,7 +2062,31 @@ function normCity(s){ return String(s||'').replace(/^ال/,'').replace(/[\sً-ْ
 function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!Array.isArray(list)||!list.length) return true; const c=normCity(city); return list.some(x=>{ const y=normCity(x); return y&&(c.includes(y)||y.includes(c)); }); }
 /* الخطط السنوية «ريّح بالك» · النهائية 2026-10-02 (4 خطط) · الأسعار تُستبدل من khafet_settings في applySettings
    الحقول التي تستخدمها الشاشات: id, kind, kindEn, ico, name, nameEn, price, visits, cap, ac, bullets, bulletsEn، وسطر الدفع يُبنى من planPayLine */
-const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };   // تُستبدل من plan_season_winter / plan_season_summer
+const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
+/* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
+const PB_ITEMS=[
+  {id:'visit',  kind:'count', max:12, price:75,  list:120, n:'زيارة إصلاح سباكة أو كهرباء', en:'Plumbing or electrical repair visit', d:'زيارة ساعتين، اليد علينا، تطلبها متى احتجت', de:'A two-hour visit, labour on us, whenever you need it', u:'للزيارة', ue:'per visit'},
+  {id:'fan',    kind:'count', max:10, price:50,  list:80,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها بخصم 10%', de:'Labour on us, the fan itself at 10% off', u:'للمروحة', ue:'per fan'},
+  {id:'panel',  kind:'toggle', max:1, price:90,  list:140, n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
+  {id:'heater', kind:'count', max:4,  price:40,  list:60,  n:'تنظيف سخان عادي من الترسبات', en:'Standard heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
+  {id:'cheater',kind:'count', max:4,  price:120, list:190, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
+  {id:'exh',    kind:'count', max:8,  price:30,  list:50,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
+  {id:'tank',   kind:'toggle', max:1, price:60,  list:100, n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
+  {id:'sock',   kind:'toggle', max:1, price:50,  list:80,  n:'فحص الفيش والمفاتيح والإضاءة', en:'Sockets, switches and lighting check', d:'جولة على كل الغرف، مرة بالسنة', de:'A round of every room, once a year'},
+  {id:'prio',   kind:'toggle', max:1, price:99,  list:0,   n:'أولوية نفس اليوم', en:'Same-day priority', d:'طلبك يتقدم على الطلبات العادية طول السنة', de:'Your requests go ahead of regular orders all year'},
+  {id:'parts',  kind:'toggle', max:1, price:0, list:0, free:true, n:'خصم 10% على القطع', en:'10% off parts', d:'على كل قطعة تحتاجها طول السنة', de:'On every part you need all year'},
+  {id:'check',  kind:'toggle', max:1, price:0, list:0, free:true, n:'كشف مجاني قبل أي إصلاح', en:'Free inspection before any repair', d:'نشوف العطل ونقول لك السعر قبل الشغل', de:'We check the fault and quote before working'},
+  {id:'remind', kind:'toggle', max:1, price:0, list:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
+  {id:'report', kind:'toggle', max:1, price:0, list:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
+  {id:'chat',   kind:'toggle', max:1, price:0, list:0, free:true, n:'استشارة واتساب', en:'WhatsApp advice', d:'اسأل الفني عن أي عطل بسيط قبل ما تطلب زيارة', de:'Ask the technician about small faults before booking'},
+  {id:'move',   kind:'toggle', max:1, price:0, list:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
+];
+const PB_PRESETS=[
+  {id:'apt',   n:'شقة', en:'Apartment', d:'4 زيارات، مروحتين، فحص سنوي', de:'4 visits, 2 fans, a yearly check', q:{visit:4, fan:2, panel:1, heater:1, exh:1, parts:1, check:1, remind:1}},
+  {id:'home',  n:'بيت', en:'House', d:'6 زيارات، 4 مراوح، فحص شتاء وصيف', de:'6 visits, 4 fans, winter and summer checks', q:{visit:6, fan:4, panel:1, cheater:1, exh:2, tank:1, sock:1, parts:1, check:1, remind:1, report:1}},
+  {id:'villa', n:'فيلا كبيرة', en:'Large villa', d:'8 زيارات، 6 مراوح، سخانين، أولوية', de:'8 visits, 6 fans, two heaters, priority', q:{visit:8, fan:6, panel:1, cheater:2, exh:3, tank:1, sock:1, prio:1, parts:1, check:1, remind:1, report:1, chat:1, move:1}},
+];
+let pbQ={};   // تُستبدل من plan_season_winter / plan_season_summer
 const PLANS = [
   { id:'villa', kind:'بيت', kindEn:'House', ico:'🏠', ac:false, visits:6, cap:100,
     name:'بيتك علينا', nameEn:'Your house on us', price:1099,
@@ -3833,7 +3893,7 @@ function renderAccount(){
 
       <div class="acc-grid">
         <button class="acc-tile" onclick="go('mybookings')"><span class="ti">📋</span><b>طلباتي</b><small>${LX(ar(n)+' '+(n===1?'طلب':'طلبات'), n+' '+(n===1?'order':'orders'))}</small></button>
-        ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>الباقة السنوية</b><small>لبيتك أو شقتك</small></button>`:''}
+        ${plansEnabled()?`<button class="acc-tile" onclick="go('plans')"><span class="ti">🛡️</span><b>باقات الصيانة</b><small>ركّب باقتك بنفسك</small></button>`:''}
         <button class="acc-tile" onclick="go('suggest')"><span class="ti">💡</span><b>رأيك يهمنا</b><small>اقتراح أو شكر</small></button>
         <button class="acc-tile" onclick="openComplaint('')"><span class="ti">📣</span><b>الشكاوى</b><small>برقم متابعة</small></button>
         <button class="acc-tile" onclick="go('faq')"><span class="ti">❓</span><b>الأسئلة الشائعة</b><small>إجابات سريعة</small></button>
@@ -3880,47 +3940,108 @@ let subPlan=null, subAcUnits=10, subPayPlan='full';
 /* ══════════ ريّح بالك · اختيار نوع السكن ثم ورقة الخطة ══════════ */
 /* الخطط تظهر للعميل فقط لما تفعّلها الإدارة (plans4_enabled)، وللمالك في المعاينة برابط pv=1 (يُحفظ في sessionStorage لهذه الجلسة) */
 function plansPreview(){ try{ const q=new URLSearchParams(location.search); if(q.get('pv')==='1'){ sessionStorage.setItem('khafet_pv','1'); if(q.get('ac')==='1') sessionStorage.setItem('khafet_pv_ac','1'); } return sessionStorage.getItem('khafet_pv')==='1'; }catch(e){ return false; } }
-function plansLive(){ const v=SETTINGS.plans4_enabled; return v==='1'||v==='true'; }   /* plans4_enabled وليس plans_enabled: المفتاح القديم تقرأه نسخ الجوال القديمة وتعرض به باقات قديمة */
+function plansLive(){ const v=SETTINGS.plans5_enabled; return v==='1'||v==='true'; }   /* plans5_enabled: مفتاح «ركّب باقتك» (2026-10-18)؛ النسخ المثبتة القديمة تقرأ plans4_enabled وتبقى مخفية */   /* plans4_enabled وليس plans_enabled: المفتاح القديم تقرأه نسخ الجوال القديمة وتعرض به باقات قديمة */
 function plansEnabled(){ return plansLive()||plansPreview(); }
 function acPlansEnabled(){ const v=SETTINGS.plan_ac_enabled; if(v==='1'||v==='true') return true; return plansPreview()&&!plansLive(); }
 /* الاشتراك الشهري: للخطتين الأساسيتين فقط (لا خطط المكيفات)، بالبطاقة داخل التطبيق (تُحفظ للسحب الشهري)، ولما تفعّله الإدارة (plan_monthly_enabled) · وفي معاينة المالك يظهر دائمًا */
-function planMonthly(p){ if(!p||p.ac) return 0; return Math.max(0, Math.round(stNum(p.id==='apt'?'plan_apt_monthly':'plan_villa_monthly', p.id==='apt'?80:100))); }
+function planMonthly(p){ if(!p||p.ac||p.id==='custom') return 0; return Math.max(0, Math.round(stNum(p.id==='apt'?'plan_apt_monthly':'plan_villa_monthly', p.id==='apt'?80:100))); }
 function monthlyUpfront(){ return Math.max(1, Math.round(stNum('plan_monthly_upfront',3))); }
 function monthlyOn(p){ if(!(planMonthly(p)>0)) return false; if(plansPreview()&&!plansLive()) return true; return stOn('plan_monthly_enabled',false) && cardInappOn(); }
 /* الشاشة الأولى: بيت ولا شقة؟ · لو خطط المكيفات ظاهرة يأتي سؤال ثانٍ: بدون مكيفات / مع المكيفات */
 function renderPlans(kind){
   if(!plansEnabled()){ toast(LX('الخطط السنوية غير متاحة حاليًا','Annual plans are not available right now')); go('home'); return; }
   if(_deepPlan){ const id=_deepPlan; _deepPlan=''; if(PLANS.some(p=>p.id===id&&(!p.ac||acPlansEnabled()))){ renderPlanSheet(id); return; } }
-  const E=_uiEN();
-  const T=(ar,en)=>E?en:ar;
-  let k=(kind==='apt'||kind==='villa')?kind:'';
-  if(!k){ try{ k=sessionStorage.getItem('kh_plan_kind')||''; }catch(e){} }
-  if(k!=='apt') k='villa';
-  try{ sessionStorage.setItem('kh_plan_kind',k); }catch(e){}
-  /* باقتان لكل سكن: صيانة فقط، أو صيانة + تكييف (لما تكون خطط المكيفات ظاهرة) */
-  const acLive=acPlansEnabled(), acSoon=!acLive&&stOn('plan_ac_soon',true);
-  const base=PLANS.find(p=>p.id===k), acp=(acLive||acSoon)? PLANS.find(p=>p.id===k+'_ac') : null;
-  const cards=[base, acp].filter(Boolean).map(p=>planCardHtml(p,k,E,p.ac&&acSoon)).join('');
+  pbLoad();
   document.getElementById('app').innerHTML=`
-    <div class="wrap screen plans-screen">
-      ${pageHead(T('الباقة السنوية','Annual plan'),'home')}
-      <div class="rb-hero">
-        <b>${T('الباقة السنوية','Annual plan')}</b>
-        <small>${T('خطة سنوية لسكنك: زيارات وأجرة الفني علينا، وصيانة الموسم من عندنا','An annual plan for your home: visits with labour on us, and seasonal care')}</small>
+    <div class="wrap screen plans-screen pb">
+      ${pageHead(LX('باقات الصيانة','Maintenance plans'),'home')}
+      <div class="rb-hero"><b>${LX('ركّب باقتك السنوية','Build your annual plan')}</b><small>${LX('سباكة وكهرباء لسكنك. اضغط «أضف» على أي خدمة وتجي في باقتك، والسعر يتحدّث تحت. كل زيارة ساعتين واليد علينا','Plumbing and electrical for your home. Tap Add on any service and it joins your plan; the price updates below. Every visit is two hours with labour on us')}</small></div>
+      <div class="pb-grid">
+        <div class="pb-side">
+          <div class="pb-h">${LX('باقات جاهزة','Ready plans')}</div><div id="pbPresets"></div>
+          <div class="pb-h">${LX('الإضافات','Add-ons')}</div><div id="pbList"></div>
+          <div class="pb-h">${LX('إضافات مجانية','Free add-ons')}</div><div id="pbFree"></div>
+        </div>
+        <div class="pb-center">
+          <div class="pb-plan" id="pbPlan">
+            <div class="hd"><b>${LX('باقتك السنوية','Your annual plan')}</b><small id="pbCount"></small></div>
+            <div class="pb-empty" id="pbEmpty"><b>${LX('باقتك فاضية','Your plan is empty')}</b>${LX('اضغط «أضف» على أي خدمة وتجي هنا، أو ابدأ من باقة جاهزة','Tap Add on any service and it appears here, or start from a ready plan')}</div>
+            <div class="pb-lines" id="pbLines"></div>
+            <div class="pb-sum">
+              <div class="row"><span>${LX('بدون باقة','Without a plan')}</span><span><s class="num" id="pbCatalog">0</s> ${LX('ريال','SAR')}</span></div>
+              <div class="big"><div class="v"><span class="num" id="pbTotal">0</span><small>${LX('ريال بالسنة','SAR a year')}</small></div><div class="mo num" id="pbMonthly"></div></div>
+              <span class="pb-save" id="pbSave" hidden></span>
+              <button class="cta gold" id="pbCta" style="margin-top:12px" onclick="pbSubscribe()">${LX('اشترك','Subscribe')}</button>
+              <p class="pb-hint" id="pbHint"></p>
+              <button type="button" class="pb-reset" onclick="pbReset()">${LX('ابدأ من جديد','Start over')}</button>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="rb-tabs" role="group">
-        <button type="button" class="${k==='villa'?'on':''}" onclick="renderPlans('villa')">🏠 ${T('بيت','House')}</button>
-        <button type="button" class="${k==='apt'?'on':''}" onclick="renderPlans('apt')">🏢 ${T('شقة','Apartment')}</button>
-      </div>
-      <div class="rb-for">${k==='apt'?T('شقة بسخان مركزي ومكيف بوحدة خارجية','Apartment with a central heater and one outdoor AC unit'):T('بيت بسخان مركزي وحوش ومكيفات سبليت','House with a central heater, yard and split ACs')}</div>
-      ${acp? `<div class="rb-two">
-        <button type="button" class="on" onclick="rbScroll('rb_${aid(base.id)}')"><i>🔧</i><b>${T('صيانة','Maintenance')}</b><small>${en(base.price)} ${T('ريال / سنة','SAR / year')}</small></button>
-        <button type="button" class="ac" onclick="rbScroll('rb_${aid(acp.id)}')"><i>❄️</i><b>${T('صيانة + تكييف','Maintenance + AC')}</b><small>${acSoon? T('قريبًا','Coming soon') : en(acp.price)+' '+T('ريال / سنة','SAR / year')}</small></button>
-      </div>` : ''}
-      ${cards}
-      <div style="height:24px"></div>
-    </div>`;
+      <div class="pb-pad"></div>
+    </div>
+    <div class="pb-bar" id="pbBar"><div class="v"><span class="num" id="pbBarTotal">0</span> ${LX('ريال','SAR')}<small id="pbBarMo"></small></div><button type="button" id="pbBarCta" onclick="pbSubscribe()">${LX('اشترك','Subscribe')}</button></div>`;
+  pbRender();
   window.scrollTo(0,0);
+}
+function pbIt(id){ return PB_ITEMS.find(x=>x.id===id); }
+function pbPrice(q){ return PB_ITEMS.reduce((a,it)=>a+(it.free?0:(+(q&&q[it.id])||0)*it.price),0); }
+function pbTotal(){ return pbPrice(pbQ); }
+function pbMin(){ return Math.max(1, Math.round(stNum('plan_min_visits',2))); }
+function pbLoad(){ try{ pbQ=JSON.parse(localStorage.getItem('khafet_pb_v1')||'{}')||{}; }catch(e){ pbQ={}; } if(!pbQ||typeof pbQ!=='object') pbQ={}; }
+function pbSaveQ(){ try{ localStorage.setItem('khafet_pb_v1', JSON.stringify(pbQ)); }catch(e){} }
+function pbCard(it){
+  const n=pbQ[it.id]||0, on=n>0;
+  const label= it.kind==='toggle'? (on? LX('✓ مضافة','✓ Added') : LX('أضف','Add')) : (on? `<span class="bd num">${en(n)}</span> ${LX('زيادة','More')}` : LX('أضف','Add'));
+  const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list?`<s class="num">${en(it.list)}</s> `:''}<b class="num">${en(it.price)}</b> ${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}`;
+  return `<div class="pb-item${on?' on':''}"><div class="t">${esc(LX(it.n,it.en))}<div class="d">${esc(LX(it.d,it.de))}</div></div><div class="p">${price}</div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div>`;
+}
+function pbRender(){
+  const list=document.getElementById('pbList'); if(!list) return;
+  document.getElementById('pbPresets').innerHTML=PB_PRESETS.map(p=>`<button type="button" class="pb-pre" onclick="pbPreset('${p.id}')"><span><b>${esc(LX(p.n,p.en))}</b><small>${esc(LX(p.d,p.de))}</small></span><span class="pp num">${en(pbPrice(p.q))} ${LX('ريال','SAR')}</span></button>`).join('');
+  list.innerHTML=PB_ITEMS.filter(x=>!x.free).map(pbCard).join('');
+  document.getElementById('pbFree').innerHTML=PB_ITEMS.filter(x=>x.free).map(pbCard).join('');
+  const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cat=0, cnt=0;
+  document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cat+=it.free?0:n*(it.list||it.price); cnt+=n;
+    const ctl= it.kind==='count'? `<div class="pb-ctl"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" aria-label="${LX('أكثر','More')}" ${n>=it.max?'disabled':''}>+</button></div>` : `<div class="pb-ctl"><button type="button" class="x" onclick="pbDelta('${it.id}',-99)" aria-label="${LX('حذف','Remove')}">✕</button></div>`;
+    return `<div class="pb-ln"><div class="l">${esc(LX(it.n,it.en))}${it.kind==='count'?`<small>${en(n)} × ${en(it.price)} ${LX('ريال','SAR')}</small>`:''}</div>${ctl}<b class="amt num">${it.free?`<span class="pb-gift">${LX('مجاني','Free')}</span>`:en(t)}</b></div>`; }).join('');
+  const visits=pbQ.visit||0, min=pbMin(), ok=visits>=min&&total>0, mo=Math.round(total/12);
+  document.getElementById('pbEmpty').hidden=lines.length>0;
+  document.getElementById('pbCount').textContent=lines.length? LX(en(cnt)+' بند', cnt+' items') : LX('فاضية','Empty');
+  document.getElementById('pbCatalog').textContent=en(cat); document.getElementById('pbTotal').textContent=en(total);
+  document.getElementById('pbMonthly').textContent=LX(en(mo)+' بالشهر', mo+' a month');
+  document.getElementById('pbBarTotal').textContent=en(total); document.getElementById('pbBarMo').textContent=LX('بالسنة · '+en(mo)+' بالشهر','a year · '+mo+' a month');
+  const save=cat-total, sv=document.getElementById('pbSave'); sv.hidden=!(save>0); sv.textContent=LX('وفّرت '+en(save)+' ريال ('+en(Math.round(save/(cat||1)*100))+'%)','You save '+save+' SAR ('+Math.round(save/(cat||1)*100)+'%)');
+  document.getElementById('pbHint').textContent= ok? LX('يعني '+en(mo)+' ريال بالشهر، تدفعها مرة وحدة بالسنة', mo+' SAR a month, paid once a year') : (total>0? LX('أضف '+en(min-visits)+' زيارة بعد عشان تكتمل الباقة','Add '+(min-visits)+' more visit(s) to complete the plan') : LX('الباقة تبدأ بزيارتين على الأقل','A plan starts with at least two visits'));
+  ['pbCta','pbBarCta'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!ok; });
+  const c=document.getElementById('pbCta'); if(c) c.textContent= ok? LX('اشترك · '+en(total)+' ريال للسنة','Subscribe · '+total+' SAR a year') : LX('اشترك','Subscribe');
+  pbSaveQ();
+}
+function pbAdd(id){ const it=pbIt(id); if(!it) return; if(it.kind==='toggle') pbQ[id]=pbQ[id]?0:1; else pbQ[id]=Math.min(it.max,(pbQ[id]||0)+1); pbRender(); }
+function pbDelta(id,d){ const it=pbIt(id); if(!it) return; pbQ[id]=Math.min(it.max,Math.max(0,(pbQ[id]||0)+d)); pbRender(); }
+function pbPreset(id){ const p=PB_PRESETS.find(x=>x.id===id); if(!p) return; pbQ=Object.assign({},p.q); pbRender(); const el=document.getElementById('pbPlan'); if(el&&window.innerWidth<900) try{ el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
+function pbReset(){ pbQ={}; pbRender(); }
+function pbPlanObj(){ return { id:'custom', kind:'باقتي', kindEn:'My plan', ico:'🧰', ac:false, visits:pbQ.visit||0, cap:Math.max(0,stNum('plan_visit_cap_sar',100)), name:'باقتي', nameEn:'My plan', price:pbTotal(), items:Object.assign({},pbQ), bullets:[], bulletsEn:[] }; }
+function pbSubscribe(){
+  if((pbQ.visit||0)<pbMin()||!(pbTotal()>0)){ toast(LX('الباقة تبدأ بزيارتين على الأقل','A plan starts with at least two visits')); return; }
+  if(plansPreview()&&!plansLive()){ toast(LX('المعاينة فقط · الاشتراك يفتح بعد التفعيل','Preview only · subscribing opens after activation')); return; }
+  openSubscribe('custom');
+}
+/* «صيانتي» للباقة المركّبة: الزيارات والمراوح تُطلب، والفحوص بحسب بنودها، والمجاني مشمول */
+function pbMySubRows(srv, usage, vTotal, vUsed, waitTill, fmtD){
+  const items=(srv&&srv.items)||{}; const rows=[]; const nm=k=>{ const it=pbIt(k); return it? LX(it.n,it.en) : k; };
+  const askRow=(k, ic, title, total, used)=>{ const left=Math.max(0,total-used);
+    const btn=!left? `<button class="ms-btn" disabled>${LX('اكتمل','Used up')}</button>` : (k==='visit'&&waitTill)? `<button class="ms-btn" disabled>${LX('متاح من ','From ')+fmtD(waitTill)}</button>` : `<button class="ms-btn" onclick="subRequest('${k}')">${LX('اطلب','Request')}</button>`;
+    const cnt=left? LX(ar(used+1)+' من '+ar(total), (used+1)+' of '+total) : LX(ar(total)+' من '+ar(total), total+' of '+total);
+    return `<div class="mysub-row"><span class="ms-ic">${ic}</span><span class="ms-t"><b>${esc(title)}</b><small class="num">${cnt}</small></span>${btn}</div>`; };
+  const infoRow=(ic,title,sub,st,done)=>`<div class="mysub-row"><span class="ms-ic">${ic}</span><span class="ms-t"><b>${esc(title)}</b>${sub?`<small>${esc(sub)}</small>`:''}</span><span class="ms-st${done?' ok':''}">${st}</span></div>`;
+  rows.push(askRow('visit','🔧',LX('زيارة إصلاح','Repair visit'),vTotal,vUsed));
+  if(+items.fan>0) rows.push(askRow('fan','🌀',LX('تبديل مروحة شفط','Exhaust fan replacement'),+items.fan,+(usage.fan||0)));
+  const w=['panel','heater','cheater','exh'].filter(k=>+items[k]>0), sm=['tank','sock'].filter(k=>+items[k]>0);
+  if(w.length){ const done=+(usage.season_w||0)>=1; rows.push(infoRow('🔥',LX('فحص الشتاء','Winter check'),w.map(k=>nm(k)+(+items[k]>1?' ×'+en(items[k]):'')).join('، ')+' · '+seasonText(PLAN_SEASONS.winter),done?LX('تم','Done'):LX('قادم','Upcoming'),done)); }
+  if(sm.length){ const done=+(usage.season_s||0)>=1; rows.push(infoRow('☀️',LX('فحص الصيف','Summer check'),sm.map(nm).join('، ')+' · '+seasonText(PLAN_SEASONS.summer),done?LX('تم','Done'):LX('قادم','Upcoming'),done)); }
+  PB_ITEMS.filter(it=>(it.id==='prio'||it.free)&&+items[it.id]>0).forEach(it=>rows.push(infoRow(it.free?'🎁':'⚡',LX(it.n,it.en),LX(it.d,it.de),LX('مشمول','Included'),true)));
+  return rows;
 }
 /* غلاف كل خطة: صيانة = السخان، تكييف = غسيل المكيف */
 const PLAN_COVER={ villa:'svc6/p14.jpg', apt:'svc6/p14.jpg', villa_ac:'svc6/ac1.jpg', apt_ac:'svc6/ac1.jpg' };
@@ -3989,7 +4110,7 @@ function renderPlanSheet(planId){
   window.scrollTo(0,0);
 }
 /* ══════════ طلب الاشتراك ══════════ */
-function subPrice(){ return subPlan? planPriceFor(subPlan, subAcUnits) : 0; }
+function subPrice(){ return subPlan? (subPlan.id==='custom'? (+subPlan.price||0) : planPriceFor(subPlan, subAcUnits)) : 0; }
 /* المبلغ المدفوع الآن: السنة كاملة، أو النصف الأول، أو الدفعة الأولى للشهري (السعر الشهري × أشهر الدفعة الأولى) */
 function subPayAmount(){ const p=subPrice(); if(subPayPlan==='monthly') return planMonthly(subPlan)*monthlyUpfront(); return subPayPlan==='halves'? planHalves({price:p})[0] : p; }
 function subPriceTxt(){
@@ -4013,7 +4134,7 @@ async function subLoadCards(){ if(!cardInappOn()) return;
   try{ const j=await (await fetch(PAY_FN+'/card',{method:'POST',headers:payHeaders(await userToken()),body:JSON.stringify({list:true})})).json();
     if(j&&j.ok&&Array.isArray(j.cards)){ MY_CARDS=j.cards; _cardsLoaded=true; if(MY_CARDS.length&&cardPick==='new') cardPick=MY_CARDS[0].id; if(subPayPlan==='monthly') subRefreshPay(); } }catch(e){} }
 function openSubscribe(planId){
-  subPlan=PLANS.find(p=>p.id===planId)||PLANS[0];
+  subPlan=(planId==='custom')? pbPlanObj() : (PLANS.find(p=>p.id===planId)||PLANS[0]);
   if(subPlan.ac&&!acPlansEnabled()){ toast(serverMsg('KHAFET_PLAN_AC_OFF')); renderPlans(); return; }
   termsOK=false; subAcUnits=subPlan.acUnits||10; subPayPlan='full';
   payMethod='online';   /* الاشتراك: دفع إلكتروني (ميسر)، والشهري بالبطاقة داخل التطبيق */
@@ -4071,6 +4192,7 @@ async function submitSubscription(){
                 home_no: homeNo, home_loc: _subLoc,
                 terms_accepted: true, terms_version: TERMS_VERSION, terms_at: new Date().toISOString() };
   if(subPlan&&subPlan.ac) data.ac_units = (subPlan.id==='villa_ac')? subAcUnits : (subPlan.acUnits||8);
+  if(subPlan&&subPlan.id==='custom') data.items = subPlan.items;   /* الباقة المركّبة: البنود للخادم، وهو يحسب سعرها */
   if(subPayPlan==='halves'||subPayPlan==='monthly') data.pay_plan=subPayPlan;   /* الافتراضي في الخادم full · الشهري يُضبط سعره في الخادم */
   const btn=document.getElementById('payCta')||document.querySelector('.cta'); if(btn){ btn.disabled=true; btn.textContent=LX('⏳ جارٍ الإرسال...','⏳ Sending...'); }
   let ok=false;
@@ -4191,6 +4313,7 @@ const SUB_SVCS=[
   {k:'season_w', n:'زيارة الشتاء', en:'Winter visit',    ic:'🔥', ask:false, qty:{villa:1, villa_ac:1, apt:1, apt_ac:1}},
   {k:'season_s', n:'زيارة الصيف', en:'Summer visit',     ic:'☀️', ask:false, qty:{villa:1, villa_ac:1, apt:1, apt_ac:1}},
   {k:'ac',       n:'غسيل المكيفات', en:'AC washing',     ic:'❄️', ask:false, qty:{villa:0, villa_ac:1, apt:0, apt_ac:1}},
+  {k:'fan',      n:'تبديل مروحة شفط', en:'Exhaust fan replacement', ic:'🌀', ask:true, qty:{villa:0, villa_ac:0, apt:0, apt_ac:0}},   // الباقة المركّبة فقط
 ];
 /* المواسم: 'MM-DD..MM-DD' → نص «من 1 أكتوبر إلى 20 ديسمبر» وتواريخ فعلية لسنة معيّنة */
 function seasonParse(str){ const m=/^(\d{2})-(\d{2})\.\.(\d{2})-(\d{2})$/.exec(String(str||'').trim()); return m? {m1:+m[1],d1:+m[2],m2:+m[3],d2:+m[4]} : null; }
@@ -4229,8 +4352,9 @@ async function renderMySub(){
     <div class="empty"><div class="ico">🛡️</div><h3>${LX('ما عندك عقد صيانة بعد','You have no maintenance contract yet')}</h3></div>
     ${plansEnabled()?`<button class="cta gold" onclick="go('plans')">${LX('شوف الخطط واشترك','See the plans and subscribe')}</button>`:`<button class="cta gold" onclick="go('home')">${LX('احجز خدمة','Book a service')}</button>`}</div>`; return; }
   /* عقود قديمة (home/premium/plat…) تُعامل كخطة «بيتك علينا» */
-  const planId=PLANS.some(p=>p.id===sub.plan_id)? sub.plan_id : 'villa';
-  const plan=PLANS.find(p=>p.id===planId)||PLANS[0];
+  const custom=sub.plan_id==='custom';
+  const planId=custom? 'custom' : (PLANS.some(p=>p.id===sub.plan_id)? sub.plan_id : 'villa');
+  const plan=custom? {id:'custom', name:'باقتي', nameEn:'My plan', visits:+(srv&&srv.visits_total)||0, cap:planCapSar()} : (PLANS.find(p=>p.id===planId)||PLANS[0]);
   const usage=(srv&&srv.usage)||{};
   const active=srv? (srv.status==='active'||srv.pay_status==='paid') : false;
   const ends=srv&&srv.ends_at? new Date(srv.ends_at) : null;
@@ -4244,7 +4368,7 @@ async function renderMySub(){
   const nsTxt=ns? (LX(ns.key==='winter'?'زيارة الشتاء':'زيارة الصيف', ns.key==='winter'?'Winter visit':'Summer visit')+' · '+seasonText(PLAN_SEASONS[ns.key])) : '';
   const monthly=!!(srv&&srv.pay_plan==='monthly');
   const paused=monthly&&(+srv.charge_fails>0||srv.status!=='active');
-  const rows=SUB_SVCS.filter(s=>s.qty[planId]!==0).map(s=>{
+  const rows=(custom? pbMySubRows(srv||{}, usage, vTotal, vUsed, waitTill, fmtD) : SUB_SVCS.filter(s=>s.qty[planId]!==0).map(s=>{
     const total=s.k==='visit'? vTotal : s.qty[planId], used=+(usage[s.k]||0);
     if(s.ask){
       const left=Math.max(0,total-used);
@@ -4264,7 +4388,7 @@ async function renderMySub(){
     const when = s.k==='season_w'? seasonText(PLAN_SEASONS.winter) : s.k==='season_s'? seasonText(PLAN_SEASONS.summer) : s.k==='ac'? LX('من 1 أكتوبر إلى 31 مارس','from 1 October to 31 March') : '';
     const st = done? LX('تم','Done') : (monthly&&srv.season_ok===false&&(s.k==='season_w'||s.k==='season_s'))? LX('بعد 3 أشهر','After 3 months') : LX('قادم','Upcoming');
     return `<div class="mysub-row"><span class="ms-ic">${s.ic}</span><span class="ms-t"><b>${esc(LX(s.n,s.en))}</b>${when?`<small>${esc(when)}</small>`:''}</span><span class="ms-st${done?' ok':''}">${st}</span></div>`;
-  }).join('');
+  })).join('');
   document.getElementById('app').innerHTML=`<div class="wrap screen">
     ${H}
     <div class="mysub-head">
@@ -4286,9 +4410,9 @@ function subRequest(k){
   if(!s||!s.ask) return;
   const srv=_subSrv||{}; const usage=srv.usage||{};
   const planId=PLANS.some(p=>p.id===srv.plan_id)? srv.plan_id : 'villa';
-  const total=Math.round(+srv.visits_total)||s.qty[planId]||6;
+  const total=k==='fan'? Math.round(+srv.fans_total||0) : (Math.round(+srv.visits_total)||s.qty[planId]||6);
   if(+(usage[k]||0)>=total){ toast(serverMsg('KHAFET_SUB_LIMIT')); return; }
-  if(srv.next_visit_from){ const nf=new Date(srv.next_visit_from), t=new Date(); t.setHours(0,0,0,0);
+  if(k==='visit'&&srv.next_visit_from){ const nf=new Date(srv.next_visit_from), t=new Date(); t.setHours(0,0,0,0);
     if(!isNaN(nf)&&nf>t){ toast(LX('الزيارة التالية متاحة من ','Next visit available from ')+(_uiEN()?nf.toLocaleDateString('en-GB'):nf.toLocaleDateString('ar-SA-u-nu-latn'))); return; } }
   const subId=srv.id||(local&&local.id)||null;
   state.subReq={ id:subId, svc:k };
@@ -5238,7 +5362,7 @@ function renderHome(){
       </button>`:(plansEnabled()?`
       <button class="services-btn" onclick="go('plans')">
         <span class="sb-ic">${icon('shield',24)}</span>
-        <span class="sb-t"><b>${LX('الباقة السنوية','Annual plan')}</b><small>${LX('صيانة بيتك أو شقتك طول السنة','Your house or apartment cared for all year')}</small></span>
+        <span class="sb-t"><b>${LX('باقات الصيانة','Maintenance plans')}</b><small>${LX('ركّب باقتك السنوية بنفسك، كل زيارة ساعتين','Build your own annual plan, every visit two hours')}</small></span>
 
       </button>`:'')}
 
