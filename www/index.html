@@ -3982,6 +3982,7 @@ function renderPlans(kind){
             <div class="pb-lines" id="pbLines"></div>
             <div class="pb-sum">
               <div class="big"><div class="v"><span class="num" id="pbTotal">0</span><small>${LX('ريال بالسنة تقريبًا','SAR a year, approximately')}</small></div><div class="mo num" id="pbMonthly"></div></div>
+              <span class="pb-save" id="pbSave" hidden></span>
               <button class="cta gold" id="pbCta" style="margin-top:12px" onclick="pbSend()">${LX('أرسل لنا باقتك','Send us your plan')}</button>
               <p class="pb-hint" id="pbHint"></p>
               <div class="pb-notify in pb-note" id="pbNote"><b>${LX('عندك ملاحظة أو اقتراح على الباقات؟','Any notes or suggestions on the plans?')}</b><textarea id="pbNoteBody" rows="2" placeholder="${LX('اكتب ملاحظتك هنا','Write your note here')}"></textarea><div class="row"><button type="button" class="cta gold" onclick="pbNoteSend()">${LX('أرسل الملاحظة','Send note')}</button></div></div>
@@ -4012,8 +4013,8 @@ function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
   list.innerHTML=PB_ITEMS.map(it=>pbCard(it)+(it.id==='visit'?'<details class="pb-cover-m"><summary>'+LX('وش تشمل زيارة الصيانة؟','What does a visit cover?')+'</summary>'+pbCoverHtml()+'</details>':'')).join('');
   const aside=document.getElementById('pbAside'); if(aside) aside.innerHTML=pbCoverHtml();
-  const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0;
-  document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cnt+=n;
+  const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0, saved=0;
+  document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cnt+=n; if(!it.free&&it.list>it.price) saved+=n*(it.list-it.price);
     const ctl= it.kind==='count'? `<div class="pb-ctl"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" aria-label="${LX('أكثر','More')}" ${n>=it.max?'disabled':''}>+</button></div>` : `<div class="pb-ctl"><button type="button" class="x" onclick="pbDelta('${it.id}',-99)" aria-label="${LX('حذف','Remove')}">✕</button></div>`;
     return `<div class="pb-ln"><div class="l">${esc(LX(it.n,it.en))}${it.kind==='count'?`<small>${en(n)} × ${en(it.price)} ${LX('ريال','SAR')}${it.list>it.price?LX(' بدل '+en(it.list),' instead of '+it.list):''}</small>`:''}</div>${ctl}<b class="amt num">${it.free?`<span class="pb-gift">${LX('مجاني','Free')}</span>`:en(t)}</b></div>`; }).join('');
   const ok=total>0, mo=Math.round(total/12);
@@ -4021,6 +4022,7 @@ function pbRender(){
   document.getElementById('pbCount').textContent=lines.length? LX(en(cnt)+' بند', cnt+' items') : LX('فاضية','Empty');
   document.getElementById('pbTotal').textContent=en(total);
   document.getElementById('pbMonthly').textContent=LX(en(mo)+' ريال شهريًا', mo+' SAR a month');
+  const sv=document.getElementById('pbSave'); if(sv){ sv.hidden=!(saved>0); sv.textContent=LX('وفّرت '+en(saved)+' ريال','You save '+saved+' SAR'); }
   document.getElementById('pbBarTotal').textContent=en(total); document.getElementById('pbBarMo').textContent=LX('بالسنة تقريبًا · '+en(mo)+' ريال شهريًا','a year, approx. · '+mo+' SAR a month');
   document.getElementById('pbHint').textContent= ok? LX('هذا استبيان مو طلب شراء: نجمع اللي يفضّله الناس وندرسه، وبعدها نتواصل معك بدون أي التزام','This is a survey, not a purchase: we collect what people prefer, study it, then contact you with no obligation') : LX('اختر اللي تحتاجه من القائمة، وأرسلها لنا للدراسة','Pick what you need from the list and send it to us for review');
   ['pbCta','pbBarCta'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!ok; });
