@@ -3978,7 +3978,7 @@ function renderPlans(kind){
       <div class="pb-notify" id="pbNotify"><b>${LX('بلّغني لما تنطلق باقات الصيانة','Tell me when maintenance plans launch')}</b><small>${LX('نرسل لك رسالة على جوالك أول ما تفتح','We message your mobile as soon as they open')}</small><div class="row"><input id="pbNotifyPhone" inputmode="tel" placeholder="05xxxxxxxx" value="${esc((state.customer&&state.customer.phone)||'')}"><button type="button" class="cta gold" onclick="pbNotifyMe()">${LX('بلّغني','Notify me')}</button></div></div>
       <div class="pb-pad"></div>
     </div>
-    <div class="pb-bar" id="pbBar"><div class="v"><span class="num" id="pbBarTotal">0</span> ${LX('ريال','SAR')}<small id="pbBarMo"></small></div><button type="button" id="pbBarCta" onclick="pbSend()">${LX('أرسل','Send')}</button></div>`;
+    <div class="pb-bar" id="pbBar"><div class="v"><span class="num" id="pbBarTotal">0</span> ${LX('ريال','SAR')}<small id="pbBarMo"></small></div><button type="button" id="pbBarCta" onclick="pbSend()">${LX('أرسل للدراسة','Send for review')}</button></div>`;
   pbRender();
   window.scrollTo(0,0);
 }
@@ -4008,9 +4008,9 @@ function pbRender(){
   document.getElementById('pbTotal').textContent=en(total);
   document.getElementById('pbMonthly').textContent=LX(en(mo)+' بالشهر', mo+' a month');
   document.getElementById('pbBarTotal').textContent=en(total); document.getElementById('pbBarMo').textContent=LX('بالسنة تقريبًا · '+en(mo)+' بالشهر','a year, approx. · '+mo+' a month');
-  document.getElementById('pbHint').textContent= ok? LX('نستلم باقتك وندرسها ونتواصل معك على جوالك','We receive your plan, study it and contact you on your mobile') : LX('اختر اللي تحتاجه من القائمة','Pick what you need from the list');
+  document.getElementById('pbHint').textContent= ok? LX('هذا استبيان مو طلب شراء: نجمع اللي يفضّله الناس وندرسه، وبعدها نتواصل معك بدون أي التزام','This is a survey, not a purchase: we collect what people prefer, study it, then contact you with no obligation') : LX('اختر اللي تحتاجه من القائمة، وأرسلها لنا للدراسة','Pick what you need from the list and send it to us for review');
   ['pbCta','pbBarCta'].forEach(id=>{ const el=document.getElementById(id); if(el) el.disabled=!ok; });
-  const c=document.getElementById('pbCta'); if(c) c.textContent= ok? LX('أرسل باقتك · '+en(total)+' ريال تقريبًا','Send your plan · about '+total+' SAR') : LX('أرسل باقتك','Send your plan');
+  const c=document.getElementById('pbCta'); if(c) c.textContent= ok? LX('أرسل باقتك للدراسة · '+en(total)+' ريال تقريبًا','Send your plan for review · about '+total+' SAR') : LX('أرسل باقتك للدراسة','Send your plan for review');
   pbSaveQ();
 }
 function pbAdd(id){ const it=pbIt(id); if(!it) return; if(it.kind==='toggle') pbQ[id]=pbQ[id]?0:1; else pbQ[id]=Math.min(it.max,(pbQ[id]||0)+1); pbRender(); }
@@ -4025,7 +4025,7 @@ function pbSend(){
   const c=state.customer||{}, a=state.address||{};
   document.getElementById('app').innerHTML=`
     <div class="wrap screen plans-screen">
-      ${pageHead(LX('أرسل باقتك','Send your plan'),'plans')}
+      ${pageHead(LX('أرسل باقتك للدراسة','Send your plan for review'),'plans')}
       <div class="panel" style="margin-top:14px">
         <div class="pb-sendsum"><b>${LX('باقتك','Your plan')}</b><span class="num">${en(pbTotal())} ${LX('ريال بالسنة تقريبًا','SAR a year, approx.')}</span>
           <small>${esc(PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0).map(it=>LX(it.n,it.en)+(it.kind==='count'?' × '+en(pbQ[it.id]):'')).join(LX('، ',', ')))}</small></div>
@@ -4034,7 +4034,7 @@ function pbSend(){
         <div class="field"><label>${LX('رقم المنزل','Home number')}</label><input id="pr_home" value="${esc(a.house||'')}" placeholder="${LX('مثال: فيلا 12 · حي الروضة','e.g. Villa 12 · Al Rawdah')}" /></div>
         <div class="field"><label>${LX('ملاحظات (اختياري)','Notes (optional)')}</label><textarea id="pr_note" placeholder="${LX('أي شي تحب نعرفه عن سكنك أو وقتك المناسب','Anything about your home or a suitable time')}"></textarea></div>
         <button class="cta gold" id="prCta" onclick="pbSubmit()">${LX('أرسل','Send')}</button>
-        <p class="pb-hint">${LX('ندرس باقتك ونتواصل معك على جوالك، وما فيه أي دفع الحين','We study your plan and contact you on your mobile. Nothing is paid now')}</p>
+        <p class="pb-hint">${LX('استبيان للدراسة فقط: ما فيه دفع ولا التزام، وبعد ما ندرس الباقات نتواصل معك','A survey for review only: no payment and no obligation. After we study the plans we will contact you')}</p>
       </div>
       <div style="height:24px"></div>
     </div>`;
