@@ -2067,14 +2067,14 @@ function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!A
 const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
-  {id:'visit',  kind:'count', max:12, price:75,  n:'زيارة صيانة سباكة أو كهرباء', en:'Plumbing or electrical maintenance visit', d:'زيارة ساعتين، اليد علينا والقطع بسعرها. متوسط قيمة شغل اليد لزيارة الساعتين كان 180 ريال في أكثر من 1000 زيارة سابقة', de:'A two-hour visit, labour on us and parts at their price. Across more than 1,000 past visits the average labour value of a two-hour visit was 180 SAR', u:'للزيارة', ue:'per visit'},
-  {id:'fan',    kind:'count', max:10, price:50,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها', de:'Labour on us, the fan itself at its price', u:'للمروحة', ue:'per fan'},
-  {id:'exh',    kind:'count', max:8,  price:30,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
-  {id:'panel',  kind:'toggle', max:1, price:90,  n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
-  {id:'heater', kind:'count', max:4,  price:40,  n:'تنظيف سخان عادي من الترسبات', en:'Standard heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
-  {id:'cheater',kind:'count', max:4,  price:120, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
-  {id:'tank',   kind:'toggle', max:1, price:60,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
-  {id:'emerg',  kind:'toggle', max:1, price:99,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
+  {id:'visit',  kind:'count', max:12, price:99,  n:'زيارة صيانة سباكة أو كهرباء', en:'Plumbing or electrical maintenance visit', d:'زيارة ساعتين، اليد علينا والقطع بسعرها. متوسط قيمة شغل اليد لزيارة الساعتين كان 180 ريال في أكثر من 1000 زيارة سابقة', de:'A two-hour visit, labour on us and parts at their price. Across more than 1,000 past visits the average labour value of a two-hour visit was 180 SAR', u:'للزيارة', ue:'per visit'},
+  {id:'fan',    kind:'count', max:10, price:60,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها', de:'Labour on us, the fan itself at its price', u:'للمروحة', ue:'per fan'},
+  {id:'exh',    kind:'count', max:8,  price:35,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
+  {id:'panel',  kind:'toggle', max:1, price:99,  n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
+  {id:'heater', kind:'count', max:4,  price:49,  n:'تنظيف سخان عادي من الترسبات', en:'Standard heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
+  {id:'cheater',kind:'count', max:4,  price:139, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
+  {id:'tank',   kind:'toggle', max:1, price:69,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
+  {id:'emerg',  kind:'toggle', max:1, price:149,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
   {id:'remind', kind:'toggle', max:1, price:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
   {id:'report', kind:'toggle', max:1, price:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
   {id:'move',   kind:'toggle', max:1, price:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
