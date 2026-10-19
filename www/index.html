@@ -801,7 +801,7 @@
   .pb-pre{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;text-align:start;box-shadow:var(--shadow-sm);font-family:inherit;color:inherit;margin-bottom:8px}
   .pb-pre b{font-weight:900} .pb-pre small{display:block;color:var(--muted);font-size:.8rem;font-weight:700} .pb-pre .pp{font-weight:900;white-space:nowrap;color:var(--gold-deep)}
   .pb-grp{margin-bottom:14px} .pb-grp h3{font-size:.86rem;font-weight:900;color:var(--muted);letter-spacing:.01em;margin:0 0 8px;padding-inline-start:4px}
-  .pb-item{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px;display:grid;grid-template-columns:42px 1fr auto;gap:0 10px;align-items:center;margin-bottom:8px;box-shadow:var(--shadow-sm)}
+  .pb-item{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:0 10px;align-items:center;margin-bottom:8px;box-shadow:var(--shadow-sm)}
   .pb-item .ic{width:42px;height:42px;border-radius:12px;background:var(--gold-tint);border:1px solid var(--gold-soft);display:grid;place-items:center;font-size:1.25rem;align-self:start}
   .pb-item.free .ic{background:var(--ok-soft);border-color:var(--ok-soft)}
   .pb-item .p{display:inline-flex;align-items:baseline;gap:5px;margin-top:6px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.84rem;color:var(--muted);font-weight:700}
@@ -809,7 +809,7 @@
   .pb-item.on{border-color:var(--gold-strong);background:var(--gold-tint)}
   .pb-item .t{font-weight:900;font-size:.96rem;line-height:1.35;min-width:0} .pb-item .d{color:var(--muted);font-size:.8rem;font-weight:700;margin-top:2px}
   .pb-item .p b{color:var(--ink);font-weight:900;font-size:1rem} .pb-item .p s{color:var(--danger);margin-inline-end:4px}
-  .pb-add{grid-column:3;height:40px;padding:0 14px;border-radius:12px;border:1.5px solid var(--ink);background:var(--card);font-weight:900;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;color:inherit}
+  .pb-add{grid-column:2;height:40px;padding:0 14px;border-radius:12px;border:1.5px solid var(--ink);background:var(--card);font-weight:900;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;color:inherit}
   .pb-add:disabled{opacity:.45} .pb-add .bd{background:var(--ink);color:#fff;border-radius:999px;min-width:22px;height:22px;display:grid;place-items:center;font-size:.78rem;padding:0 6px}
   .pb-item.on .pb-add{background:var(--gold);border-color:var(--gold);color:var(--ink)} .pb-item.on .pb-add .bd{background:var(--ink);color:var(--gold)}
   .pb-gift{color:var(--ok);font-weight:900}
@@ -830,6 +830,7 @@
   .pb-reset{display:block;margin:4px auto 0;color:var(--muted);text-decoration:underline;font-size:.84rem;font-weight:700;font-family:inherit}
   .pb-sendsum{background:var(--gold-tint);border:1.5px solid var(--gold-soft);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;font-weight:800} .pb-sendsum small{flex-basis:100%;color:var(--muted);font-weight:700;font-size:.82rem}
   .pb-notify{margin-top:16px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow-sm)} .pb-notify b{display:block;font-weight:900} .pb-notify small{display:block;color:var(--muted);font-weight:700;font-size:.84rem;margin:2px 0 10px} .pb-notify .row{display:flex;gap:8px} .pb-notify input{flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line-strong);font:inherit;font-size:1rem;background:#fcfbf7;direction:ltr;text-align:right} .pb-notify .cta{width:auto;padding:12px 18px;font-size:1rem;box-shadow:none}
+  .pb-sum .pb-notify{margin-top:12px;padding:12px;box-shadow:none;background:var(--card)} .pb-sum .pb-notify b{font-size:.92rem;margin-bottom:8px}
   .pb-note textarea{width:100%;min-height:84px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line-strong);font:inherit;font-size:1rem;background:#fcfbf7;resize:vertical;margin-bottom:8px}
   .pb-pad{height:84px} @media(min-width:900px){ .pb-pad{height:10px} }
   .pb-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--ink);color:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -3966,7 +3967,7 @@ function renderPlans(kind){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen plans-screen pb">
       ${pageHead(LX('باقات الصيانة','Maintenance plans'),'home')}
-      <div class="rb-hero"><b>${LX('وش تفضل يكون في باقتك السنوية؟','What would you like in your annual plan?')}</b><small>${LX('سباكة وكهرباء فقط. اختر اللي يناسب سكنك والسعر التقريبي يتحدّث تحت. هذي مو طلب شراء: ترسلها لنا، ندرسها، ونتواصل معك. كل زيارة ساعتين واليد علينا','Plumbing and electrical only. Pick what suits your home and the estimated price updates below. This is not a purchase: you send it to us, we study it and get back to you. Every visit is two hours with labour on us')}</small></div>
+      <div class="rb-hero"><b>${LX('وش تفضل يكون في باقتك السنوية؟','What would you like in your annual plan?')}</b><small>${LX('سباكة وكهرباء فقط. اختر اللي يناسب سكنك والسعر التقريبي يتحدّث تحت. هذي مو طلب شراء: ترسلها لنا وندرسها','Plumbing and electrical only. Pick what suits your home and the estimated price updates below. This is not a purchase: you send it to us and we study it')}</small></div>
       <div class="pb-grid">
         <div class="pb-side">
           <div class="pb-h">${LX('الخدمات','Services')}</div><div id="pbList"></div>
@@ -3981,12 +3982,11 @@ function renderPlans(kind){
               <div class="big"><div class="v"><span class="num" id="pbTotal">0</span><small>${LX('ريال بالسنة تقريبًا','SAR a year, approximately')}</small></div><div class="mo num" id="pbMonthly"></div></div>
               <button class="cta gold" id="pbCta" style="margin-top:12px" onclick="pbSend()">${LX('أرسل باقتك','Send your plan')}</button>
               <p class="pb-hint" id="pbHint"></p>
-              <button type="button" class="pb-reset" onclick="pbReset()">${LX('ابدأ من جديد','Start over')}</button>
+              <div class="pb-notify in" id="pbNotify"><b>${LX('لو مهتم، سجّل رقمك عشان نعلمك إذا أطلقنا الباقة السنوية','If you are interested, leave your number and we will tell you when the annual plan launches')}</b><div class="row"><input id="pbNotifyPhone" inputmode="tel" placeholder="05xxxxxxxx" value="${esc((state.customer&&state.customer.phone)||'')}"><button type="button" class="cta gold" onclick="pbNotifyMe()">${LX('سجّل','Save')}</button></div></div>
             </div>
           </div>
         </div>
       </div>
-      <div class="pb-notify" id="pbNotify"><b>${LX('بلّغني لما تنطلق باقات الصيانة','Tell me when maintenance plans launch')}</b><small>${LX('نرسل لك رسالة على جوالك أول ما تفتح','We message your mobile as soon as they open')}</small><div class="row"><input id="pbNotifyPhone" inputmode="tel" placeholder="05xxxxxxxx" value="${esc((state.customer&&state.customer.phone)||'')}"><button type="button" class="cta gold" onclick="pbNotifyMe()">${LX('بلّغني','Notify me')}</button></div></div>
       <div class="pb-notify pb-note" id="pbNote"><b>${LX('عندك ملاحظة أو اقتراح على الباقات؟','Any notes or suggestions on the plans?')}</b><small>${LX('اكتب اللي تبيه، نقراه ونستفيد منه','Write what you want, we read every note')}</small><textarea id="pbNoteBody" rows="3" placeholder="${LX('ملاحظتك هنا','Your note here')}"></textarea><div class="row"><input id="pbNotePhone" inputmode="tel" placeholder="${LX('جوالك (اختياري)','Mobile (optional)')}" value="${esc((state.customer&&state.customer.phone)||'')}"><button type="button" class="cta gold" onclick="pbNoteSend()">${LX('أرسل الملاحظة','Send note')}</button></div></div>
       <div class="pb-pad"></div>
     </div>
@@ -4004,16 +4004,16 @@ function pbCard(it){
   const n=pbQ[it.id]||0, on=n>0;
   const label= it.kind==='toggle'? (on? LX('✓ مضافة','✓ Added') : LX('أضف','Add')) : (on? `<span class="bd num">${en(n)}</span> ${LX('زيادة','More')}` : LX('أضف','Add'));
   const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list>it.price?`<s class="num">${en(it.list)}</s> `:''}<b class="num">${en(it.price)}</b> ${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}`;
-  return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><span class="ic">${it.ic||'•'}</span><div class="t">${esc(LX(it.n,it.en))}<div class="d">${esc(LX(it.d,it.de))}</div><div class="p">${price}</div></div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div>`;
+  return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><div class="t">${esc(LX(it.n,it.en))}<div class="d">${esc(LX(it.d,it.de))}</div><div class="p">${price}</div></div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div>`;
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
-  list.innerHTML=PB_GROUPS.map(g=>{ const its=PB_ITEMS.filter(it=>(it.grp||'checks')===g[0]); if(!its.length) return ''; return '<div class="pb-grp"><h3>'+esc(LX(g[1],g[2]))+'</h3>'+its.map(it=>pbCard(it)+(it.id==='visit'?'<details class="pb-cover-m"><summary>'+LX('وش تشمل زيارة الصيانة؟','What does a visit cover?')+'</summary>'+pbCoverHtml()+'</details>':'')).join('')+'</div>'; }).join('');
+  list.innerHTML=PB_ITEMS.map(it=>pbCard(it)+(it.id==='visit'?'<details class="pb-cover-m"><summary>'+LX('وش تشمل زيارة الصيانة؟','What does a visit cover?')+'</summary>'+pbCoverHtml()+'</details>':'')).join('');
   const aside=document.getElementById('pbAside'); if(aside) aside.innerHTML=pbCoverHtml();
   const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0;
   document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cnt+=n;
     const ctl= it.kind==='count'? `<div class="pb-ctl"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" aria-label="${LX('أكثر','More')}" ${n>=it.max?'disabled':''}>+</button></div>` : `<div class="pb-ctl"><button type="button" class="x" onclick="pbDelta('${it.id}',-99)" aria-label="${LX('حذف','Remove')}">✕</button></div>`;
-    return `<div class="pb-ln"><div class="l"><span class="li">${it.ic||'•'}</span>${esc(LX(it.n,it.en))}${it.kind==='count'?`<small>${en(n)} × ${en(it.price)} ${LX('ريال','SAR')}${it.list>it.price?LX(' بدل '+en(it.list),' instead of '+it.list):''}</small>`:''}</div>${ctl}<b class="amt num">${it.free?`<span class="pb-gift">${LX('مجاني','Free')}</span>`:en(t)}</b></div>`; }).join('');
+    return `<div class="pb-ln"><div class="l">${esc(LX(it.n,it.en))}${it.kind==='count'?`<small>${en(n)} × ${en(it.price)} ${LX('ريال','SAR')}${it.list>it.price?LX(' بدل '+en(it.list),' instead of '+it.list):''}</small>`:''}</div>${ctl}<b class="amt num">${it.free?`<span class="pb-gift">${LX('مجاني','Free')}</span>`:en(t)}</b></div>`; }).join('');
   const ok=total>0, mo=Math.round(total/12);
   document.getElementById('pbEmpty').hidden=lines.length>0;
   document.getElementById('pbCount').textContent=lines.length? LX(en(cnt)+' بند', cnt+' items') : LX('فاضية','Empty');
