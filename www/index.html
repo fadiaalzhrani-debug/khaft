@@ -2075,6 +2075,14 @@ const PB_ITEMS=[
   {id:'cheater',kind:'count', max:4,  price:139, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
   {id:'tank',   kind:'toggle', max:1, price:69,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
   {id:'emerg',  kind:'toggle', max:1, price:149,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
+  {id:'label',    kind:'toggle', max:1, price:15, n:'تسمية قواطع اللوحة', en:'Label the breakers', d:'ملصق على كل قاطع باسم الغرفة أو الجهاز', de:'A label on every breaker with its room or appliance'},
+  {id:'rcd',      kind:'toggle', max:1, price:12, n:'اختبار قاطع الحماية من التسريب', en:'Test the leakage breaker', d:'نتأكد إنه يفصل في وقته، مرة بالسنة', de:'We check it trips when it should, once a year'},
+  {id:'aerator',  kind:'toggle', max:1, price:12, n:'تنظيف مصافي الحنفيات والدش', en:'Clean tap and shower strainers', d:'من الترسبات عشان يرجع الماء قوي', de:'Descaled so the water flows strong again'},
+  {id:'grease',   kind:'toggle', max:1, price:15, n:'تشحيم المحابس وفحص إغلاقها', en:'Grease and test the valves', d:'المحبس الرئيسي ومحابس الزوايا عشان ما تعلق وقت الطوارئ', de:'Main and angle valves, so they never seize in an emergency'},
+  {id:'pressure', kind:'toggle', max:1, price:12, n:'قياس ضغط الماء', en:'Water pressure reading', d:'بالعداد، ونقول لك لو كان عالي ويضر السخان والخلاطات', de:'With a gauge, and we tell you if it is high enough to harm heaters and mixers'},
+  {id:'flush',    kind:'toggle', max:1, price:12, n:'فحص السيفونات من التسريب الصامت', en:'Silent flush leak check', d:'التسريب اللي ما تسمعه ويرفع فاتورة الماء', de:'The leak you cannot hear that raises your water bill'},
+  {id:'smoke',    kind:'toggle', max:1, price:12, n:'تغيير بطارية كاشف الدخان', en:'Smoke detector battery change', d:'مرة بالسنة، والبطارية بسعرها', de:'Once a year, the battery at its price'},
+  {id:'travel',   kind:'toggle', max:1, price:19, n:'إقفال الماء والكهرباء قبل السفر', en:'Shut-off before travel', d:'نقفل المحبس الرئيسي والسخانات قبل سفرك ونفتحها قبل رجوعك', de:'We shut the main valve and heaters before you travel and reopen them before you return'},
   {id:'remind', kind:'toggle', max:1, price:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
   {id:'report', kind:'toggle', max:1, price:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
   {id:'move',   kind:'toggle', max:1, price:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
@@ -4068,7 +4076,7 @@ function pbMySubRows(srv, usage, vTotal, vUsed, waitTill, fmtD){
   const w=['panel','heater','cheater','exh'].filter(k=>+items[k]>0), sm=['tank','sock'].filter(k=>+items[k]>0);
   if(w.length){ const done=+(usage.season_w||0)>=1; rows.push(infoRow('🔥',LX('فحص الشتاء','Winter check'),w.map(k=>nm(k)+(+items[k]>1?' ×'+en(items[k]):'')).join('، ')+' · '+seasonText(PLAN_SEASONS.winter),done?LX('تم','Done'):LX('قادم','Upcoming'),done)); }
   if(sm.length){ const done=+(usage.season_s||0)>=1; rows.push(infoRow('☀️',LX('فحص الصيف','Summer check'),sm.map(nm).join('، ')+' · '+seasonText(PLAN_SEASONS.summer),done?LX('تم','Done'):LX('قادم','Upcoming'),done)); }
-  PB_ITEMS.filter(it=>(it.id==='emerg'||it.free)&&+items[it.id]>0).forEach(it=>rows.push(infoRow(it.free?'🎁':'🚨',LX(it.n,it.en),LX(it.d,it.de),LX('مشمول','Included'),true)));
+  PB_ITEMS.filter(it=>+items[it.id]>0&&!['visit','fan','panel','heater','cheater','exh','tank'].includes(it.id)).forEach(it=>rows.push(infoRow(it.free?'🎁':'🚨',LX(it.n,it.en),LX(it.d,it.de),LX('مشمول','Included'),true)));
   return rows;
 }
 /* غلاف كل خطة: صيانة = السخان، تكييف = غسيل المكيف */
