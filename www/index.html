@@ -2069,14 +2069,14 @@ function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!A
 const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
-  {id:'visit',  kind:'count', max:12, price:150, n:'زيارة صيانة سباكة أو كهرباء (ساعتين)', en:'Plumbing or electrical maintenance visit (2 hours)', list:180, d:'زيارة ساعتين كاملتين، اليد علينا والقطع بسعرها', de:'A full two-hour visit, labour on us and parts at their price', u:'للزيارة', ue:'per visit'},
-  {id:'fan',    kind:'toggle', max:1, price:249, n:'تبديل مراوح الشفط (حتى 6)', en:'Replace exhaust fans (up to 6)', d:'حتى 6 مراوح، الشغل علينا والمراوح نفسها بسعرها', de:'Up to 6 fans, labour on us and the fans at their price'},
+  {id:'visit',  kind:'count', max:12, price:150, n:'زيارة صيانة سباكة أو كهرباء (ساعتين)', en:'Plumbing or electrical maintenance visit (2 hours)', list:180, d:'زيارة ساعتين كاملتين لإصلاح أو تبديل حتى 3 أعطال صغيرة، اليد علينا والقطع بسعرها', de:'A full two-hour visit to repair or replace up to 3 small faults, labour on us and parts at their price', u:'للزيارة', ue:'per visit'},
+  {id:'fan',    kind:'toggle', max:1, price:299, n:'تبديل مراوح الشفط (حتى 6)', en:'Replace exhaust fans (up to 6)', d:'حتى 6 مراوح، الشغل علينا والمراوح نفسها بسعرها', de:'Up to 6 fans, labour on us and the fans at their price'},
   {id:'exh',    kind:'toggle', max:1, price:149, n:'تنظيف مراوح الشفط (حتى 6)', en:'Clean exhaust fans (up to 6)', d:'حتى 6 شفاطات للحمامات والمطبخ، مرة بالسنة', de:'Up to 6 bathroom and kitchen fans, once a year'},
   {id:'panel',  kind:'toggle', max:1, price:129,  n:'فحص كهرباء المنزل', en:'Home electrical check', d:'اللوحة والقواطع والتوصيلات والإضاءة والأفياش، كل شي مرة بالسنة', de:'Panel, breakers, wiring, lighting and sockets, everything once a year'},
   {id:'emerg',  kind:'toggle', max:1, price:149,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
   {id:'cheater',kind:'count', max:4,  price:139, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
-  {id:'tank',   kind:'toggle', max:1, price:79,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
-  {id:'smoke',  kind:'toggle', max:1, price:25, n:'تغيير بطارية كاشف الدخان', en:'Smoke detector battery change', d:'مرة بالسنة، والبطارية بسعرها', de:'Once a year, the battery at its price'},
+  {id:'tank',   kind:'toggle', max:1, price:99,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
+  {id:'smoke',  kind:'toggle', max:1, price:25, n:'تغيير بطارية كاشف الدخان', en:'Smoke detector battery change', d:'مرة بالسنة ضمن زيارة مجدولة، والبطارية بسعرها', de:'Once a year within a scheduled visit, the battery at its price'},
   {id:'remind', kind:'toggle', max:1, price:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
   {id:'report', kind:'toggle', max:1, price:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
   {id:'move',   kind:'toggle', max:1, price:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
