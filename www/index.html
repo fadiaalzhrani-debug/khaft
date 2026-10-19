@@ -800,11 +800,16 @@
   .pb-h{font-weight:900;font-size:1.02rem;margin:14px 0 8px}
   .pb-pre{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;text-align:start;box-shadow:var(--shadow-sm);font-family:inherit;color:inherit;margin-bottom:8px}
   .pb-pre b{font-weight:900} .pb-pre small{display:block;color:var(--muted);font-size:.8rem;font-weight:700} .pb-pre .pp{font-weight:900;white-space:nowrap;color:var(--gold-deep)}
-  .pb-item{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-bottom:8px;box-shadow:var(--shadow-sm)}
+  .pb-grp{margin-bottom:14px} .pb-grp h3{font-size:.86rem;font-weight:900;color:var(--muted);letter-spacing:.01em;margin:0 0 8px;padding-inline-start:4px}
+  .pb-item{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px;display:grid;grid-template-columns:42px 1fr auto;gap:0 10px;align-items:center;margin-bottom:8px;box-shadow:var(--shadow-sm)}
+  .pb-item .ic{width:42px;height:42px;border-radius:12px;background:var(--gold-tint);border:1px solid var(--gold-soft);display:grid;place-items:center;font-size:1.25rem;align-self:start}
+  .pb-item.free .ic{background:var(--ok-soft);border-color:var(--ok-soft)}
+  .pb-item .p{display:inline-flex;align-items:baseline;gap:5px;margin-top:6px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:.84rem;color:var(--muted);font-weight:700}
+  .pb-ln .li{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--gold-tint);font-size:.9rem;margin-inline-end:6px;vertical-align:middle}
   .pb-item.on{border-color:var(--gold-strong);background:var(--gold-tint)}
   .pb-item .t{font-weight:900;font-size:.96rem;line-height:1.35;min-width:0} .pb-item .d{color:var(--muted);font-size:.8rem;font-weight:700;margin-top:2px}
-  .pb-item .p{grid-column:1;font-size:.88rem;color:var(--muted);font-weight:700} .pb-item .p b{color:var(--ink);font-weight:900;font-size:1rem} .pb-item .p s{color:var(--danger);margin-inline-end:8px}
-  .pb-add{grid-column:2;grid-row:1/3;height:40px;padding:0 14px;border-radius:12px;border:1.5px solid var(--ink);background:var(--card);font-weight:900;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;color:inherit}
+  .pb-item .p b{color:var(--ink);font-weight:900;font-size:1rem} .pb-item .p s{color:var(--danger);margin-inline-end:4px}
+  .pb-add{grid-column:3;height:40px;padding:0 14px;border-radius:12px;border:1.5px solid var(--ink);background:var(--card);font-weight:900;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;color:inherit}
   .pb-add:disabled{opacity:.45} .pb-add .bd{background:var(--ink);color:#fff;border-radius:999px;min-width:22px;height:22px;display:grid;place-items:center;font-size:.78rem;padding:0 6px}
   .pb-item.on .pb-add{background:var(--gold);border-color:var(--gold);color:var(--ink)} .pb-item.on .pb-add .bd{background:var(--ink);color:var(--gold)}
   .pb-gift{color:var(--ok);font-weight:900}
@@ -2069,22 +2074,23 @@ function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!A
 const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
-  {id:'visit',  kind:'count', max:12, price:150, n:'زيارة صيانة سباكة أو كهرباء (ساعتين)', en:'Plumbing or electrical maintenance visit (2 hours)', list:180, d:'زيارة ساعتين كاملتين لإصلاح أو تبديل حتى 3 أعطال صغيرة، اليد علينا والقطع بسعرها', de:'A full two-hour visit to repair or replace up to 3 small faults, labour on us and parts at their price', u:'للزيارة', ue:'per visit'},
-  {id:'fan',    kind:'toggle', max:1, price:299, n:'تبديل مراوح الشفط (حتى 6)', en:'Replace exhaust fans (up to 6)', d:'حتى 6 مراوح، الشغل علينا والمراوح نفسها بسعرها', de:'Up to 6 fans, labour on us and the fans at their price'},
-  {id:'exh',    kind:'toggle', max:1, price:149, n:'تنظيف مراوح الشفط (حتى 6)', en:'Clean exhaust fans (up to 6)', d:'حتى 6 شفاطات للحمامات والمطبخ، مرة بالسنة', de:'Up to 6 bathroom and kitchen fans, once a year'},
-  {id:'panel',  kind:'toggle', max:1, price:129,  n:'فحص كهرباء المنزل', en:'Home electrical check', d:'اللوحة والقواطع والتوصيلات والإضاءة والأفياش، كل شي مرة بالسنة', de:'Panel, breakers, wiring, lighting and sockets, everything once a year'},
-  {id:'emerg',  kind:'toggle', max:1, price:149,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
-  {id:'cheater',kind:'count', max:4,  price:139, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
-  {id:'tank',   kind:'toggle', max:1, price:99,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
-  {id:'smoke',  kind:'toggle', max:1, price:25, n:'تغيير بطارية كاشف الدخان', en:'Smoke detector battery change', d:'مرة بالسنة ضمن زيارة مجدولة، والبطارية بسعرها', de:'Once a year within a scheduled visit, the battery at its price'},
-  {id:'remind', kind:'toggle', max:1, price:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
-  {id:'report', kind:'toggle', max:1, price:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
-  {id:'move',   kind:'toggle', max:1, price:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
+  {id:'visit', ic:'🔧', grp:'visits',  kind:'count', max:12, price:150, n:'زيارة صيانة سباكة أو كهرباء (ساعتين)', en:'Plumbing or electrical maintenance visit (2 hours)', list:180, d:'زيارة ساعتين كاملتين لإصلاح أو تبديل حتى 3 أعطال صغيرة، اليد علينا والقطع بسعرها', de:'A full two-hour visit to repair or replace up to 3 small faults, labour on us and parts at their price', u:'للزيارة', ue:'per visit'},
+  {id:'fan', ic:'🌀', grp:'fans',    kind:'toggle', max:1, price:299, n:'تبديل مراوح الشفط (حتى 6)', en:'Replace exhaust fans (up to 6)', d:'حتى 6 مراوح، الشغل علينا والمراوح نفسها بسعرها', de:'Up to 6 fans, labour on us and the fans at their price'},
+  {id:'exh', ic:'💨', grp:'fans',    kind:'toggle', max:1, price:149, n:'تنظيف مراوح الشفط (حتى 6)', en:'Clean exhaust fans (up to 6)', d:'حتى 6 شفاطات للحمامات والمطبخ، مرة بالسنة', de:'Up to 6 bathroom and kitchen fans, once a year'},
+  {id:'panel', ic:'⚡', grp:'checks',  kind:'toggle', max:1, price:129,  n:'فحص كهرباء المنزل', en:'Home electrical check', d:'اللوحة والقواطع والتوصيلات والإضاءة والأفياش، كل شي مرة بالسنة', de:'Panel, breakers, wiring, lighting and sockets, everything once a year'},
+  {id:'emerg', ic:'🚨', grp:'extra',  kind:'toggle', max:1, price:149,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
+  {id:'cheater', ic:'🔥', grp:'checks',kind:'count', max:4,  price:139, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
+  {id:'tank', ic:'💧', grp:'checks',   kind:'toggle', max:1, price:99,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
+  {id:'smoke', ic:'🔋', grp:'checks',  kind:'toggle', max:1, price:25, n:'تغيير بطارية كاشف الدخان', en:'Smoke detector battery change', d:'مرة بالسنة ضمن زيارة مجدولة، والبطارية بسعرها', de:'Once a year within a scheduled visit, the battery at its price'},
+  {id:'remind', ic:'🔔', grp:'free', kind:'toggle', max:1, price:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
+  {id:'report', ic:'📷', grp:'free', kind:'toggle', max:1, price:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
+  {id:'move', ic:'🔑', grp:'free',   kind:'toggle', max:1, price:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
 ];
 /* اللي تشمله زيارات الصيانة (الأكثر طلبًا فعلًا): يظهر تحت بند الزيارة على اليمين (فادية 2026-10-19) */
 const PB_COVER=[['تغيير اللمبات والإضاءة','Bulbs and lighting'],['تغيير الخلاطات والحنفيات','Mixers and taps'],['إصلاح السيفونات والشطافات','Flushes and bidet sprays'],['تغيير المحابس وهوزات المغاسل','Valves and basin hoses'],['تسليك المجاري والبالوعات','Drain unblocking'],['إصلاح تسريبات المياه','Water leaks'],['تغيير الفيش والمفاتيح والقواطع','Sockets, switches and breakers'],['إصلاح قصر أو انقطاع الكهرباء','Short circuits and power cuts'],['تركيب الثريات والإنارة','Chandeliers and light fittings']];
 /* القائمة الكاملة (44 خدمة سباكة وكهرباء من CT_SVC) بطلبها «اذكرها كلها عشان تطلع كثير» 2026-10-19 */
 function pbCoverHtml(){ const G=(typeof CT_SVC!=='undefined'?CT_SVC:[]).slice(0,2); if(!G.length) return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل:','Maintenance visits cover:')+'</b><ul>'+PB_COVER.map(x=>'<li>'+esc(LX(x[0],x[1]))+'</li>').join('')+'</ul></div>'; const n=G.reduce((t,g)=>t+g.i.length,0); return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل '+en(n)+' خدمة:','Maintenance visits cover '+n+' services:')+'</b>'+G.map(g=>'<small>'+esc(LX(g.t,g.te||g.t))+'</small><ul>'+g.i.map(x=>'<li>'+esc(LX(x[0],x[2]||x[0]))+'</li>').join('')+'</ul>').join('')+'</div>'; }
+const PB_GROUPS=[['visits','زيارات الصيانة','Maintenance visits'],['fans','مراوح الشفط','Exhaust fans'],['extra','طوارئ','Emergency'],['checks','فحوص الموسم','Seasonal checks'],['free','مجاني مع أي باقة','Free with any plan']];
 let pbQ={};   // تُستبدل من plan_season_winter / plan_season_summer
 const PLANS = [
   { id:'villa', kind:'بيت', kindEn:'House', ico:'🏠', ac:false, visits:6, cap:100,
@@ -3996,16 +4002,16 @@ function pbCard(it){
   const n=pbQ[it.id]||0, on=n>0;
   const label= it.kind==='toggle'? (on? LX('✓ مضافة','✓ Added') : LX('أضف','Add')) : (on? `<span class="bd num">${en(n)}</span> ${LX('زيادة','More')}` : LX('أضف','Add'));
   const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list>it.price?`<s class="num">${en(it.list)}</s> `:''}<b class="num">${en(it.price)}</b> ${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}`;
-  return `<div class="pb-item${on?' on':''}"><div class="t">${esc(LX(it.n,it.en))}<div class="d">${esc(LX(it.d,it.de))}</div></div><div class="p">${price}</div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div>`;
+  return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><span class="ic">${it.ic||'•'}</span><div class="t">${esc(LX(it.n,it.en))}<div class="d">${esc(LX(it.d,it.de))}</div><div class="p">${price}</div></div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div>`;
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
-  list.innerHTML=PB_ITEMS.map((it,i)=>pbCard(it)+(i===0?'<details class="pb-cover-m"><summary>'+LX('وش تشمل زيارة الصيانة؟','What does a visit cover?')+'</summary>'+pbCoverHtml()+'</details>':'')).join('');
+  list.innerHTML=PB_GROUPS.map(g=>{ const its=PB_ITEMS.filter(it=>(it.grp||'checks')===g[0]); if(!its.length) return ''; return '<div class="pb-grp"><h3>'+esc(LX(g[1],g[2]))+'</h3>'+its.map(it=>pbCard(it)+(it.id==='visit'?'<details class="pb-cover-m"><summary>'+LX('وش تشمل زيارة الصيانة؟','What does a visit cover?')+'</summary>'+pbCoverHtml()+'</details>':'')).join('')+'</div>'; }).join('');
   const aside=document.getElementById('pbAside'); if(aside) aside.innerHTML=pbCoverHtml();
   const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0;
   document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cnt+=n;
     const ctl= it.kind==='count'? `<div class="pb-ctl"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" aria-label="${LX('أكثر','More')}" ${n>=it.max?'disabled':''}>+</button></div>` : `<div class="pb-ctl"><button type="button" class="x" onclick="pbDelta('${it.id}',-99)" aria-label="${LX('حذف','Remove')}">✕</button></div>`;
-    return `<div class="pb-ln"><div class="l">${esc(LX(it.n,it.en))}${it.kind==='count'?`<small>${en(n)} × ${en(it.price)} ${LX('ريال','SAR')}${it.list>it.price?LX(' بدل '+en(it.list),' instead of '+it.list):''}</small>`:''}</div>${ctl}<b class="amt num">${it.free?`<span class="pb-gift">${LX('مجاني','Free')}</span>`:en(t)}</b></div>`; }).join('');
+    return `<div class="pb-ln"><div class="l"><span class="li">${it.ic||'•'}</span>${esc(LX(it.n,it.en))}${it.kind==='count'?`<small>${en(n)} × ${en(it.price)} ${LX('ريال','SAR')}${it.list>it.price?LX(' بدل '+en(it.list),' instead of '+it.list):''}</small>`:''}</div>${ctl}<b class="amt num">${it.free?`<span class="pb-gift">${LX('مجاني','Free')}</span>`:en(t)}</b></div>`; }).join('');
   const ok=total>0, mo=Math.round(total/12);
   document.getElementById('pbEmpty').hidden=lines.length>0;
   document.getElementById('pbCount').textContent=lines.length? LX(en(cnt)+' بند', cnt+' items') : LX('فاضية','Empty');
