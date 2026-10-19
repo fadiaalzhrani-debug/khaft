@@ -2068,8 +2068,8 @@ const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
   {id:'visit',  kind:'count', max:12, price:99,  n:'زيارة صيانة سباكة أو كهرباء', en:'Plumbing or electrical maintenance visit', d:'اليد علينا والقطع بسعرها', de:'Labour on us, parts at their price', u:'للزيارة', ue:'per visit'},
-  {id:'fan',    kind:'count', max:10, price:60,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها', de:'Labour on us, the fan itself at its price', u:'للمروحة', ue:'per fan'},
-  {id:'exh',    kind:'count', max:8,  price:35,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
+  {id:'fan',    kind:'toggle', max:1, price:249, n:'تبديل جميع مراوح الشفط', en:'Replace all exhaust fans', d:'كل شفاطات البيت، الشغل علينا والمراوح نفسها بسعرها', de:'Every fan in the home, labour on us and the fans at their price'},
+  {id:'exh',    kind:'toggle', max:1, price:149, n:'تنظيف جميع مراوح الشفط', en:'Clean all exhaust fans', d:'شفاطات الحمامات والمطبخ كلها، مرة بالسنة', de:'All bathroom and kitchen fans, once a year'},
   {id:'panel',  kind:'toggle', max:1, price:99,  n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
   {id:'heater', kind:'count', max:4,  price:49,  n:'تنظيف سخان عادي من الترسبات', en:'Standard heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
   {id:'cheater',kind:'count', max:4,  price:139, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
