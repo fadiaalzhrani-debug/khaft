@@ -2844,7 +2844,7 @@ try{ const q=new URLSearchParams(location.search);
   _deepSvc=(q.get('s')||'').split(',').map(x=>{ const m=/^([\w-]{1,24})(?::(\d{1,2}))?$/.exec(x.trim()); return m?{id:m[1], n:Math.min(Math.max(+m[2]||1,1),20)}:null; }).filter(Boolean).slice(0,6);
   if(['mybookings','complaints'].includes(q.get('v'))) _deepView=q.get('v');
   /* معاينة المالك للخطط المخفية: ?v=plans&pv=1 (و&ac=1 لخطط المكيفات، و&plan=<id> لفتح ورقة خطة مباشرة) · العميل بدون pv ما يصله شيء */
-  if(['plans','mysub'].includes(q.get('v')) && plansPreview()) _deepView=q.get('v');
+  if(['plans','mysub'].includes(q.get('v'))) _deepView=q.get('v');   /* رابط مباشر khafet.com/baqat → ?v=plans (2026-10-19)؛ renderPlans نفسها ترجع للرئيسية لو الباقات مطفية */
   if(/^(villa|villa_ac|apt|apt_ac)$/.test(q.get('plan')||'') && plansPreview()) _deepPlan=q.get('plan');
 }catch(e){}
 /* رابط صفحة مؤسسة داخل التطبيق ?org=<slug>، ورابط تقييم الخدمة ?rate=<token> (بلا تسجيل) · يُستكملان بعد جاهزية الخادم في applyOrgLinks */
