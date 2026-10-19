@@ -824,6 +824,7 @@
   .pb-hint{margin:8px 0 0;font-size:.84rem;color:var(--muted);text-align:center;font-weight:700}
   .pb-reset{display:block;margin:4px auto 0;color:var(--muted);text-decoration:underline;font-size:.84rem;font-weight:700;font-family:inherit}
   .pb-sendsum{background:var(--gold-tint);border:1.5px solid var(--gold-soft);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;font-weight:800} .pb-sendsum small{flex-basis:100%;color:var(--muted);font-weight:700;font-size:.82rem}
+  .pb-notify{margin-top:16px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow-sm)} .pb-notify b{display:block;font-weight:900} .pb-notify small{display:block;color:var(--muted);font-weight:700;font-size:.84rem;margin:2px 0 10px} .pb-notify .row{display:flex;gap:8px} .pb-notify input{flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line-strong);font:inherit;font-size:1rem;background:#fcfbf7;direction:ltr;text-align:right} .pb-notify .cta{width:auto;padding:12px 18px;font-size:1rem;box-shadow:none}
   .pb-pad{height:84px} @media(min-width:900px){ .pb-pad{height:10px} }
   .pb-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--ink);color:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}
   .pb-bar .v{font-size:1.3rem;font-weight:900;line-height:1.1} .pb-bar .v small{display:block;font-size:.78rem;opacity:.8;font-weight:700}
@@ -3975,6 +3976,7 @@ function renderPlans(kind){
           </div>
         </div>
       </div>
+      <div class="pb-notify" id="pbNotify"><b>${LX('بلّغني لما تنطلق باقات الصيانة','Tell me when maintenance plans launch')}</b><small>${LX('نرسل لك رسالة على جوالك أول ما تفتح','We message your mobile as soon as they open')}</small><div class="row"><input id="pbNotifyPhone" inputmode="tel" placeholder="05xxxxxxxx" value="${esc((state.customer&&state.customer.phone)||'')}"><button type="button" class="cta gold" onclick="pbNotifyMe()">${LX('بلّغني','Notify me')}</button></div></div>
       <div class="pb-pad"></div>
     </div>
     <div class="pb-bar" id="pbBar"><div class="v"><span class="num" id="pbBarTotal">0</span> ${LX('ريال','SAR')}<small id="pbBarMo"></small></div><button type="button" id="pbBarCta" onclick="pbSend()">${LX('أرسل','Send')}</button></div>`;
@@ -4017,6 +4019,8 @@ function pbDelta(id,d){ const it=pbIt(id); if(!it) return; pbQ[id]=Math.min(it.m
 function pbPreset(id){ const p=PB_PRESETS.find(x=>x.id===id); if(!p) return; pbQ=Object.assign({},p.q); pbRender(); const el=document.getElementById('pbPlan'); if(el&&window.innerWidth<900) try{ el.scrollIntoView({behavior:'smooth',block:'start'}); }catch(e){} }
 function pbReset(){ pbQ={}; pbRender(); }
 function pbPlanObj(){ return { id:'custom', kind:'باقتي', kindEn:'My plan', ico:'🧰', ac:false, visits:pbQ.visit||0, cap:Math.max(0,stNum('plan_visit_cap_sar',100)), name:'باقتي', nameEn:'My plan', price:pbTotal(), items:Object.assign({},pbQ), bullets:[], bulletsEn:[] }; }
+async function pbNotifyMe(){ const el=document.getElementById('pbNotifyPhone'); const ph=(el?el.value:'').replace(/[s-]/g,''); if(!/^(05|9665|+9665)[0-9]{8}$/.test(ph)){ toast(LX('اكتب رقم جوال سعودي صحيح','Enter a valid Saudi mobile number')); return; } if(!cloudReady){ toast(LX('يحتاج اتصال بالإنترنت','Needs an internet connection')); return; }
+  try{ const { error }=await sb.rpc('khafet_plan_notify', { p_phone: ph, p_name: (state.customer&&state.customer.name)||null }); if(error) throw error; const box=document.getElementById('pbNotify'); if(box) box.innerHTML='<b>✅ '+LX('سجّلنا رقمك، نبلّغك أول ما تنطلق','Saved. We will tell you as soon as they launch')+'</b>'; }catch(e){ toast(LX('ما انحفظ، حاول مرة ثانية','Not saved, try again')); } }
 function pbSend(){
   if((pbQ.visit||0)<pbMin()||!(pbTotal()>0)){ toast(LX('الباقة تبدأ بزيارتين على الأقل','A plan starts with at least two visits')); return; }
   const c=state.customer||{}, a=state.address||{};
