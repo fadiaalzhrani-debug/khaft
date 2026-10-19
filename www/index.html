@@ -808,6 +808,7 @@
   .pb-add:disabled{opacity:.45} .pb-add .bd{background:var(--ink);color:#fff;border-radius:999px;min-width:22px;height:22px;display:grid;place-items:center;font-size:.78rem;padding:0 6px}
   .pb-item.on .pb-add{background:var(--gold);border-color:var(--gold);color:var(--ink)} .pb-item.on .pb-add .bd{background:var(--ink);color:var(--gold)}
   .pb-gift{color:var(--ok);font-weight:900}
+  .pb-cover{background:var(--card);border:1.5px dashed var(--gold-strong);border-radius:14px;padding:10px 12px;margin:-2px 0 10px} .pb-cover b{display:block;font-weight:900;font-size:.92rem;margin-bottom:6px} .pb-cover ul{display:flex;flex-wrap:wrap;gap:6px;list-style:none;margin:0;padding:0} .pb-cover li{background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:999px;padding:4px 10px;font-size:.8rem;font-weight:700}
   .pb-plan{background:var(--card);border:2px solid var(--ink);border-radius:22px;overflow:hidden;box-shadow:var(--shadow)}
   .pb-plan .hd{background:var(--ink);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center} .pb-plan .hd b{font-size:1.15rem;font-weight:900} .pb-plan .hd small{opacity:.8;font-weight:700}
   .pb-empty{margin:16px;padding:34px 16px;text-align:center;color:var(--muted);border:2px dashed var(--line-strong);border-radius:16px;font-weight:700} .pb-empty b{display:block;color:var(--ink);font-size:1.1rem;font-weight:900;margin-bottom:4px}
@@ -2066,27 +2067,22 @@ function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!A
 const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
-  {id:'visit',  kind:'count', max:12, price:75,  n:'زيارة إصلاح سباكة أو كهرباء', en:'Plumbing or electrical repair visit', d:'زيارة ساعتين، اليد علينا، تطلبها متى احتجت. متوسط قيمة شغل اليد لزيارة الساعتين كان 180 ريال في أكثر من 1000 زيارة سابقة', de:'A two-hour visit, labour on us, whenever you need it. Across more than 1,000 past visits the average labour value of a two-hour visit was 180 SAR', u:'للزيارة', ue:'per visit'},
-  {id:'lamp',   kind:'count', max:30, price:5,   n:'تغيير لمبات وإضاءة', en:'Bulb and light changes', d:'الشغل علينا طول السنة، واللمبة بسعرها', de:'Labour on us all year, the bulb at its price', u:'للمبة', ue:'per bulb'},
-  {id:'mixer',  kind:'count', max:6,  price:45,  n:'تغيير خلاط أو حنفية', en:'Mixer or tap replacement', d:'الشغل علينا، والقطعة بسعرها', de:'Labour on us, the part at its price', u:'للقطعة', ue:'per piece'},
-  {id:'siphon', kind:'count', max:6,  price:40,  n:'إصلاح سيفون أو شطاف', en:'Flush or bidet spray repair', d:'الشغل علينا، والقطعة بسعرها', de:'Labour on us, the part at its price', u:'للقطعة', ue:'per piece'},
-  {id:'valve',  kind:'count', max:8,  price:20,  n:'تغيير محبس زاوية أو هوز مغسلة', en:'Angle valve or basin hose change', d:'الشغل علينا، والقطعة بسعرها', de:'Labour on us, the part at its price', u:'للقطعة', ue:'per piece'},
-  {id:'drain',  kind:'count', max:4,  price:45,  n:'تسليك مجاري أو بالوعة', en:'Drain unblocking', d:'لما تحتاجها خلال السنة', de:'Whenever you need it during the year', u:'للمرة', ue:'per time'},
+  {id:'visit',  kind:'count', max:12, price:75,  n:'زيارة صيانة سباكة أو كهرباء', en:'Plumbing or electrical maintenance visit', d:'زيارة ساعتين، اليد علينا والقطع بسعرها. متوسط قيمة شغل اليد لزيارة الساعتين كان 180 ريال في أكثر من 1000 زيارة سابقة', de:'A two-hour visit, labour on us and parts at their price. Across more than 1,000 past visits the average labour value of a two-hour visit was 180 SAR', u:'للزيارة', ue:'per visit'},
   {id:'fan',    kind:'count', max:10, price:50,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها', de:'Labour on us, the fan itself at its price', u:'للمروحة', ue:'per fan'},
   {id:'exh',    kind:'count', max:8,  price:30,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
-  {id:'switch', kind:'count', max:10, price:25,  n:'تغيير فيش أو مفتاح أو قاطع', en:'Socket, switch or breaker change', d:'الشغل علينا، والقطعة بسعرها', de:'Labour on us, the part at its price', u:'للقطعة', ue:'per piece'},
-  {id:'light',  kind:'count', max:6,  price:50,  n:'تركيب ثريا أو إنارة', en:'Chandelier or light fitting', d:'الشغل علينا، والقطعة بسعرها', de:'Labour on us, the fitting at its price', u:'للقطعة', ue:'per piece'},
   {id:'panel',  kind:'toggle', max:1, price:90,  n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
   {id:'heater', kind:'count', max:4,  price:40,  n:'تنظيف سخان عادي من الترسبات', en:'Standard heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
   {id:'cheater',kind:'count', max:4,  price:120, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
   {id:'tank',   kind:'toggle', max:1, price:60,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
   {id:'emerg',  kind:'toggle', max:1, price:99,  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
-  {id:'check',  kind:'toggle', max:1, price:0, free:true, n:'كشف مجاني قبل أي إصلاح', en:'Free inspection before any repair', d:'نشوف العطل ونقول لك السعر قبل الشغل', de:'We check the fault and quote before working'},
   {id:'remind', kind:'toggle', max:1, price:0, free:true, n:'تذكير بموعد الفحص', en:'Check reminders', d:'رسالة واتساب قبل الشتاء وقبل الصيف', de:'A WhatsApp message before winter and summer'},
   {id:'report', kind:'toggle', max:1, price:0, free:true, n:'تقرير بعد كل فحص', en:'Report after every check', d:'صور وملاحظات الفني على واتسابك', de:'Photos and the technician notes on WhatsApp'},
   {id:'move',   kind:'toggle', max:1, price:0, free:true, n:'نقل العقد للمستأجر الجديد', en:'Transfer to the next tenant', d:'لو أجّرت سكنك، الباقة تنتقل له', de:'If you rent your home out, the plan moves to the tenant'},
   {id:'parts',  kind:'toggle', max:1, price:0, free:true, n:'خصم 10% على القطع', en:'10% off parts', d:'على كل قطعة تحتاجها طول السنة', de:'On every part you need all year'},
 ];
+/* اللي تشمله زيارات الصيانة (الأكثر طلبًا فعلًا): يظهر تحت بند الزيارة على اليمين (فادية 2026-10-19) */
+const PB_COVER=[['تغيير اللمبات والإضاءة','Bulbs and lighting'],['تغيير الخلاطات والحنفيات','Mixers and taps'],['إصلاح السيفونات والشطافات','Flushes and bidet sprays'],['تغيير المحابس وهوزات المغاسل','Valves and basin hoses'],['تسليك المجاري والبالوعات','Drain unblocking'],['إصلاح تسريبات المياه','Water leaks'],['تغيير الفيش والمفاتيح والقواطع','Sockets, switches and breakers'],['إصلاح قصر أو انقطاع الكهرباء','Short circuits and power cuts'],['تركيب الثريات والإنارة','Chandeliers and light fittings']];
+function pbCoverHtml(){ return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل:','Maintenance visits cover:')+'</b><ul>'+PB_COVER.map(x=>'<li>'+esc(LX(x[0],x[1]))+'</li>').join('')+'</ul></div>'; }
 let pbQ={};   // تُستبدل من plan_season_winter / plan_season_summer
 const PLANS = [
   { id:'villa', kind:'بيت', kindEn:'House', ico:'🏠', ac:false, visits:6, cap:100,
@@ -3996,7 +3992,7 @@ function pbCard(it){
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
-  list.innerHTML=PB_ITEMS.map(pbCard).join('');
+  list.innerHTML=PB_ITEMS.map((it,i)=>pbCard(it)+(i===0?pbCoverHtml():'')).join('');
   const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0;
   document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cnt+=n;
     const ctl= it.kind==='count'? `<div class="pb-ctl"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" aria-label="${LX('أكثر','More')}" ${n>=it.max?'disabled':''}>+</button></div>` : `<div class="pb-ctl"><button type="button" class="x" onclick="pbDelta('${it.id}',-99)" aria-label="${LX('حذف','Remove')}">✕</button></div>`;
