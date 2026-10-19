@@ -1892,8 +1892,9 @@ const SETTINGS_KEY='khafet_settings_v1';
 function stNum(k,d){ const n=parseFloat(SETTINGS[k]); return isFinite(n)?n:d; }
 function stJson(k,d){ try{ const v=JSON.parse(SETTINGS[k]); return v==null?d:v; }catch(e){ return d; } }
 function cancelHours(){ return Math.max(0, stNum('cancel_free_hours',4)); }
+let _stLoaded=false;   /* الإعدادات وصلت من الخادم أو من الذاكرة: شاشة الباقات تنتظرها قبل ما تقرر إنها مطفية */
 function applySettings(rows){
-  SETTINGS={}; (rows||[]).forEach(r=>{ if(r&&r.key) SETTINGS[r.key]=r.value; });
+  _stLoaded=true; SETTINGS={}; (rows||[]).forEach(r=>{ if(r&&r.key) SETTINGS[r.key]=r.value; });
   const ws=stNum('work_start',null), we=stNum('work_end',null);
   if(ws!=null&&we!=null&&we>ws){ WORK_START=Math.round(ws*60); WORK_END=Math.round(we*60); }
   const aw=stNum('arrival_window',null); if(aw>=30) ARRIVAL_WINDOW=Math.round(aw);
@@ -3949,7 +3950,10 @@ function monthlyUpfront(){ return Math.max(1, Math.round(stNum('plan_monthly_upf
 function monthlyOn(p){ if(!(planMonthly(p)>0)) return false; if(plansPreview()&&!plansLive()) return true; return stOn('plan_monthly_enabled',false) && cardInappOn(); }
 /* الشاشة الأولى: بيت ولا شقة؟ · لو خطط المكيفات ظاهرة يأتي سؤال ثانٍ: بدون مكيفات / مع المكيفات */
 function renderPlans(kind){
-  if(!plansEnabled()){ toast(LX('باقات الصيانة غير متاحة حاليًا','Maintenance plans are not available right now')); go('home'); return; }
+  if(!plansEnabled()){
+    /* زائر جديد من رابط khafet.com/baqat: الإعدادات ما وصلت بعد، ننتظرها لين 6 ثواني بدل ما نرجعه للرئيسية (2026-10-19) */
+    if(!_stLoaded && (renderPlans._w=(renderPlans._w||0)+1)<=15){ setTimeout(function(){ renderPlans(kind); }, 400); return; }
+    toast(LX('باقات الصيانة غير متاحة حاليًا','Maintenance plans are not available right now')); go('home'); return; }
   if(_deepPlan){ const id=_deepPlan; _deepPlan=''; if(PLANS.some(p=>p.id===id&&(!p.ac||acPlansEnabled()))){ renderPlanSheet(id); return; } }
   pbLoad();
   document.getElementById('app').innerHTML=`
