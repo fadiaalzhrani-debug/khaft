@@ -795,8 +795,8 @@
   /* ═ ريّح بالك · تصميم 2026-10-02: باقتان واضحتان (صيانة / صيانة + تكييف) بغلاف صورة وشريط لون ═ */
   /* ركّب باقتك: الباقة في النص وتبدأ فاضية، الإضافات يمينها على الشاشة الواسعة وفوقها على الجوال */
   .pb-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;margin-top:14px}
-  @media(min-width:900px){ .wrap.plans-screen.pb{max-width:1100px} .pb-grid{grid-template-columns:minmax(300px,360px) minmax(0,1fr)} .pb-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-inline-start:2px} }
-  @media(max-width:899px){ .pb-center{order:-1} }
+  @media(min-width:900px){ .wrap.plans-screen.pb{max-width:1200px} .pb-grid{grid-template-columns:minmax(300px,360px) minmax(0,1fr) minmax(220px,280px)} .pb-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-inline-start:2px} .pb-aside{position:sticky;top:12px} .pb-cover-m{display:none} }
+  @media(max-width:899px){ .pb-aside{display:none} .pb-center{order:-1} .pb-cover-m{margin:-2px 0 10px} .pb-cover-m summary{cursor:pointer;font-weight:800;font-size:.9rem;color:var(--gold-deep);padding:6px 4px} .pb-cover-m .pb-cover{margin-top:6px} }
   .pb-h{font-weight:900;font-size:1.02rem;margin:14px 0 8px}
   .pb-pre{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;text-align:start;box-shadow:var(--shadow-sm);font-family:inherit;color:inherit;margin-bottom:8px}
   .pb-pre b{font-weight:900} .pb-pre small{display:block;color:var(--muted);font-size:.8rem;font-weight:700} .pb-pre .pp{font-weight:900;white-space:nowrap;color:var(--gold-deep)}
@@ -2067,7 +2067,7 @@ function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!A
 const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
-  {id:'visit',  kind:'count', max:12, price:99,  n:'زيارة صيانة سباكة أو كهرباء', en:'Plumbing or electrical maintenance visit', d:'زيارة ساعتين، اليد علينا والقطع بسعرها. متوسط قيمة شغل اليد لزيارة الساعتين كان 180 ريال في أكثر من 1000 زيارة سابقة', de:'A two-hour visit, labour on us and parts at their price. Across more than 1,000 past visits the average labour value of a two-hour visit was 180 SAR', u:'للزيارة', ue:'per visit'},
+  {id:'visit',  kind:'count', max:12, price:99,  n:'زيارة صيانة سباكة أو كهرباء', en:'Plumbing or electrical maintenance visit', d:'اليد علينا والقطع بسعرها', de:'Labour on us, parts at their price', u:'للزيارة', ue:'per visit'},
   {id:'fan',    kind:'count', max:10, price:60,  n:'تبديل مروحة شفط', en:'Exhaust fan replacement', d:'الشغل علينا، والمروحة نفسها بسعرها', de:'Labour on us, the fan itself at its price', u:'للمروحة', ue:'per fan'},
   {id:'exh',    kind:'count', max:8,  price:35,  n:'تنظيف شفاط', en:'Exhaust fan cleaning', d:'شفاطات الحمامات والمطبخ، مرة بالسنة', de:'Bathroom and kitchen fans, once a year', u:'للشفاط', ue:'per fan'},
   {id:'panel',  kind:'toggle', max:1, price:99,  n:'فحص لوحة الكهرباء', en:'Electrical panel check', d:'القواطع والتوصيلات والتسخين، مرة بالسنة', de:'Breakers, connections and heating, once a year'},
@@ -3956,6 +3956,7 @@ function renderPlans(kind){
         <div class="pb-side">
           <div class="pb-h">${LX('الخدمات','Services')}</div><div id="pbList"></div>
         </div>
+        <div class="pb-aside" id="pbAside"></div>
         <div class="pb-center">
           <div class="pb-plan" id="pbPlan">
             <div class="hd"><b>${LX('باقتك السنوية','Your annual plan')}</b><small id="pbCount"></small></div>
@@ -3991,7 +3992,8 @@ function pbCard(it){
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
-  list.innerHTML=PB_ITEMS.map((it,i)=>pbCard(it)+(i===0?pbCoverHtml():'')).join('');
+  list.innerHTML=PB_ITEMS.map((it,i)=>pbCard(it)+(i===0?'<details class="pb-cover-m"><summary>'+LX('وش تشمل زيارة الصيانة؟','What does a visit cover?')+'</summary>'+pbCoverHtml()+'</details>':'')).join('');
+  const aside=document.getElementById('pbAside'); if(aside) aside.innerHTML=pbCoverHtml();
   const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0;
   document.getElementById('pbLines').innerHTML=lines.map(it=>{ const n=pbQ[it.id], t=it.free?0:n*it.price; total+=t; cnt+=n;
     const ctl= it.kind==='count'? `<div class="pb-ctl"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" aria-label="${LX('أكثر','More')}" ${n>=it.max?'disabled':''}>+</button></div>` : `<div class="pb-ctl"><button type="button" class="x" onclick="pbDelta('${it.id}',-99)" aria-label="${LX('حذف','Remove')}">✕</button></div>`;
