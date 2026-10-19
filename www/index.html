@@ -3317,7 +3317,9 @@ function windowLabel(startMin, need){ return fmtTime(startMin)+' – '+fmtTime(M
 /* ============================================================
    التنقل / العرض
    ============================================================ */
-function go(v){ view=v; if(v!=='admin') isAdmin=false; if(v!=='login') otpStep=false; window.scrollTo(0,0); render(); }
+function go(v){ view=v; if(v!=='admin') isAdmin=false; if(v!=='login') otpStep=false; window.scrollTo(0,0); render();
+  /* رابط باقات الصيانة يبقى ظاهرًا في شريط العنوان (?v=plans) ويُمسح لما يطلع منها (فادية 2026-10-19 «ليه ماهي رابط منفصل») */
+  try{ if(v==='plans') history.replaceState({}, '', location.pathname+'?v=plans'); else if(/[?&]v=plans/.test(location.search)) history.replaceState({}, '', location.pathname); }catch(e){} }
 let _payingNow=false;   // أثناء الدفع من صفحة الفاتورة: لا نعيد رسم الصفحة (السلة تفرغت والطلب انحفظ)
 function render(){
   if(_payingNow && view==='pay') return;
