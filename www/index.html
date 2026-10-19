@@ -795,7 +795,7 @@
   /* ═ ريّح بالك · تصميم 2026-10-02: باقتان واضحتان (صيانة / صيانة + تكييف) بغلاف صورة وشريط لون ═ */
   /* ركّب باقتك: الباقة في النص وتبدأ فاضية، الإضافات يمينها على الشاشة الواسعة وفوقها على الجوال */
   .pb-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start;margin-top:14px}
-  @media(min-width:900px){ .wrap.plans-screen.pb{max-width:1200px} .pb-grid{grid-template-columns:minmax(300px,360px) minmax(0,1fr) minmax(220px,280px)} .pb-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-inline-start:2px} .pb-aside{position:sticky;top:12px} .pb-cover-m{display:none} }
+  @media(min-width:900px){ .wrap.plans-screen.pb{max-width:1200px} .pb-grid{grid-template-columns:minmax(300px,360px) minmax(0,1fr) minmax(220px,280px)} .pb-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-inline-start:2px} .pb-aside{position:sticky;top:12px;order:3} .pb-center{order:2} .pb-cover-m{display:none} }
   @media(max-width:899px){ .pb-aside{display:none} .pb-center{order:-1} .pb-cover-m{margin:-2px 0 10px} .pb-cover-m summary{cursor:pointer;font-weight:800;font-size:.9rem;color:var(--gold-deep);padding:6px 4px} .pb-cover-m .pb-cover{margin-top:6px} }
   .pb-h{font-weight:900;font-size:1.02rem;margin:14px 0 8px}
   .pb-pre{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;text-align:start;box-shadow:var(--shadow-sm);font-family:inherit;color:inherit;margin-bottom:8px}
