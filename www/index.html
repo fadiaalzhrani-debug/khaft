@@ -842,6 +842,52 @@
   .pb-bar button{background:var(--gold);color:var(--ink);border-radius:12px;padding:10px 18px;font-weight:900;font-family:inherit} .pb-bar button:disabled{opacity:.45}
   @media(min-width:900px){ .pb-bar{display:none} }
   .cta.gold:disabled{opacity:.45;box-shadow:none;cursor:default}
+  /* ── تجميل صفحة الباقات (2026-10-20) ── */
+  .pb-hero{padding:4px 2px 16px}
+  .pb-hero h1{font-size:1.65rem;font-weight:900;line-height:1.35;margin:0 0 8px;display:inline;background:linear-gradient(transparent 58%,rgba(245,197,24,.45) 58%,rgba(245,197,24,.45) 92%,transparent 92%)}
+  .pb-hero p{color:var(--muted);font-weight:700;font-size:.95rem;line-height:1.75;margin:10px 0 0;max-width:42rem}
+  .pb-h{font-size:1.15rem;font-weight:900;margin:4px 0 12px;color:var(--ink)}
+  .pb-plan{border:0;border-radius:24px;background:var(--card);box-shadow:0 20px 44px -24px rgba(26,23,18,.35),0 2px 6px rgba(26,23,18,.05)}
+  .pb-plan .hd{background:var(--gold-tint);color:var(--ink);border-bottom:1px solid var(--gold-soft);padding:16px 20px}
+  .pb-plan .hd b{font-size:1.1rem;font-weight:900}
+  .pb-plan .hd small{opacity:1;background:var(--card);border:1px solid var(--gold-soft);border-radius:999px;padding:3px 11px;font-size:.78rem;color:var(--muted);font-weight:800}
+  .pb-empty{margin:18px;padding:40px 18px;border:2px dashed var(--gold-soft);background:var(--gold-tint);border-radius:18px;color:var(--muted);font-weight:700}
+  .pb-empty b{color:var(--ink);font-size:1.15rem}
+  .pb-lines{padding:4px 20px}
+  .pb-ln{padding:14px 0;gap:8px 12px}
+  .pb-ln .l{font-weight:800;font-size:1rem;line-height:1.4} .pb-ln .l small{color:var(--muted);font-weight:700;font-size:.8rem;margin-top:2px}
+  .pb-ln .amt{font-size:1.1rem}
+  .pb-ctl{background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+  .pb-ctl button{width:32px;height:32px;border:0;background:var(--card);border-radius:999px;box-shadow:0 1px 3px rgba(26,23,18,.12);font-size:1.05rem}
+  .pb-ctl button.x{background:transparent;box-shadow:none;color:var(--muted)}
+  .pb-ctl .q{min-width:28px;font-size:1rem}
+  .pb-sum{background:var(--card);border-top:1px solid var(--line);padding:18px 20px 20px}
+  .pb-sum .big{align-items:center;flex-wrap:wrap;gap:8px}
+  .pb-sum .big .v{font-size:2.5rem;letter-spacing:-.01em} .pb-sum .big .v small{color:var(--muted);font-size:.95rem}
+  .pb-sum .mo{background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:999px;padding:5px 13px;font-size:.88rem;color:var(--ink)}
+  .pb-save{margin-top:10px;padding:5px 13px}
+  .pb-sum .cta{margin-top:14px;border-radius:16px;font-size:1.1rem;padding:16px}
+  .pb-hint{font-size:.86rem;margin-top:10px}
+  .pb-item{border:1px solid var(--line);border-radius:18px;padding:16px 18px;gap:12px;margin-bottom:10px;position:relative;overflow:hidden;box-shadow:0 1px 2px rgba(40,32,10,.04),0 6px 16px -12px rgba(40,32,10,.18);transition:border-color .15s,box-shadow .15s,transform .15s}
+  .pb-item.on{border-color:var(--gold);background:linear-gradient(180deg,#FFFBEA 0%,#FFFFFF 100%);box-shadow:0 10px 24px -14px rgba(245,197,24,.6)}
+  .pb-item.on::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:5px;background:var(--gold)}
+  .pb-item.free .pb-gift{font-size:1.15rem}
+  .pb-item .t{font-size:1.06rem;line-height:1.45}
+  .pb-item .d{font-size:.85rem;line-height:1.6;margin-top:5px}
+  .pb-item .p{background:transparent;border:0;padding:0;gap:6px;align-items:baseline;color:var(--ink)}
+  .pb-item .p b{font-size:1.35rem;font-weight:900;color:var(--ink)}
+  .pb-item .p s{font-size:.9rem;color:var(--danger);font-weight:700;margin-inline-end:2px}
+  .pb-item .p .unit{font-size:.8rem;color:var(--muted);font-weight:700}
+  .pb-add{height:42px;padding:0 18px;border-radius:999px;border:1.5px solid var(--ink);font-size:.95rem;background:var(--card)}
+  .pb-add:hover{background:var(--gold-tint)}
+  .pb-item.on .pb-add{background:var(--gold);border-color:var(--gold);box-shadow:0 6px 14px -6px rgba(245,197,24,.9)}
+  .pb-cover{border:1px solid var(--gold-soft);background:var(--gold-tint);border-radius:18px;padding:14px}
+  .pb-cover b{font-size:.95rem} .pb-cover ul{gap:7px} .pb-cover li{background:var(--card);border:1px solid var(--line);padding:5px 11px;font-size:.82rem}
+  .pb-cover-m summary{font-size:.95rem;padding:8px 6px}
+  .pb-bar{left:12px;right:12px;bottom:10px;border-radius:18px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));box-shadow:0 14px 34px -8px rgba(26,23,18,.45)}
+  .pb-bar .v{font-size:1.25rem}
+  .pb-bar button{border-radius:999px;padding:11px 20px}
+  @media(min-width:900px){ .pb-hero h1{font-size:2rem} .pb-item .t{font-size:1.02rem} }
   .rb-hero{margin-top:14px;position:relative;overflow:hidden;background:linear-gradient(150deg,#3A2F1B 0%,#1F1810 70%);color:#F3EDE0;border-radius:var(--r-lg);padding:22px 18px 18px;text-align:center;box-shadow:0 12px 30px rgba(58,47,27,.25)}
   .rb-hero::before{content:"";position:absolute;inset:auto -40px -70px auto;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.28),transparent 65%)}
   .rb-hero::after{content:"";position:absolute;inset:-60px auto auto -50px;width:170px;height:170px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,24,.16),transparent 65%)}
@@ -2095,7 +2141,7 @@ const PB_ITEMS=[
 /* اللي تشمله زيارات الصيانة (الأكثر طلبًا فعلًا): يظهر تحت بند الزيارة على اليمين (فادية 2026-10-19) */
 const PB_COVER=[['تغيير اللمبات والإضاءة','Bulbs and lighting'],['تغيير الخلاطات والحنفيات','Mixers and taps'],['إصلاح السيفونات والشطافات','Flushes and bidet sprays'],['تغيير المحابس وهوزات المغاسل','Valves and basin hoses'],['تسليك المجاري والبالوعات','Drain unblocking'],['إصلاح تسريبات المياه','Water leaks'],['تغيير الفيش والمفاتيح والقواطع','Sockets, switches and breakers'],['إصلاح قصر أو انقطاع الكهرباء','Short circuits and power cuts'],['تركيب الثريات والإنارة','Chandeliers and light fittings']];
 /* القائمة الكاملة (44 خدمة سباكة وكهرباء من CT_SVC) بطلبها «اذكرها كلها عشان تطلع كثير» 2026-10-19 */
-function pbCoverHtml(){ const G=(typeof CT_SVC!=='undefined'?CT_SVC:[]).slice(0,2); if(!G.length) return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل:','Maintenance visits cover:')+'</b><ul>'+PB_COVER.map(x=>'<li>'+esc(LX(x[0],x[1]))+'</li>').join('')+'</ul></div>'; const n=G.reduce((t,g)=>t+g.i.length,0); return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل '+en(n)+' خدمة:','Maintenance visits cover '+n+' services:')+'</b>'+G.map(g=>'<small>'+esc(LX(g.t,g.te||g.t))+'</small><ul>'+g.i.map(x=>'<li>'+esc(LX(x[0],x[2]||x[0]))+'</li>').join('')+'</ul>').join('')+'</div>'; }
+function pbCoverHtml(){ const G=(typeof CT_SVC!=='undefined'?CT_SVC:[]).slice(0,2); if(!G.length) return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل:','Maintenance visits cover:')+'</b><ul>'+PB_COVER.map(x=>'<li>'+esc(LX(x[0],x[1]))+'</li>').join('')+'</ul></div>'; const n=G.reduce((t,g)=>t+g.i.length,0); return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل '+en(n)+' خدمة:','Maintenance visits cover '+n+' services:')+'</b>'+G.map(g=>'<small>'+esc(String(LX(g.t,g.te||g.t)).replace(/^[^؀-ۿA-Za-z]+/,''))+'</small><ul>'+g.i.map(x=>'<li>'+esc(LX(x[0],x[2]||x[0]))+'</li>').join('')+'</ul>').join('')+'</div>'; }
 const PB_GROUPS=[['visits','زيارات الصيانة','Maintenance visits'],['fans','مراوح الشفط','Exhaust fans'],['extra','طوارئ','Emergency'],['checks','فحوص الموسم','Seasonal checks'],['free','مجاني مع أي باقة','Free with any plan']];
 let pbQ={};   // تُستبدل من plan_season_winter / plan_season_summer
 const PLANS = [
@@ -3971,7 +4017,7 @@ function renderPlans(kind){
   document.getElementById('app').innerHTML=`
     <div class="wrap screen plans-screen pb">
       ${pageHead(LX('باقات الصيانة','Maintenance plans'),'home')}
-      <div class="rb-hero"><b>${LX('وش تفضل يكون في باقتك السنوية؟','What would you like in your annual plan?')}</b><small>${LX('سباكة وكهرباء فقط. اختر اللي يناسب سكنك والسعر التقريبي يتحدّث تحت. هذي مو طلب شراء: ترسلها لنا وندرسها','Plumbing and electrical only. Pick what suits your home and the estimated price updates below. This is not a purchase: you send it to us and we study it')}</small></div>
+      <div class="pb-hero"><h1>${LX('وش تفضل يكون في باقتك السنوية؟','What would you like in your annual plan?')}</h1><p>${LX('سباكة وكهرباء فقط. اختر اللي يناسب سكنك والسعر التقريبي يتحدّث تحت. هذي مو طلب شراء: ترسلها لنا وندرسها','Plumbing and electrical only. Pick what suits your home and the estimated price updates below. This is not a purchase: you send it to us and we study it')}</p></div>
       <div class="pb-grid">
         <div class="pb-side">
           <div class="pb-h">${LX('الخدمات','Services')}</div><div id="pbList"></div>
@@ -4006,7 +4052,7 @@ function pbSaveQ(){ try{ localStorage.setItem('khafet_pb_v1', JSON.stringify(pbQ
 function pbCard(it){
   const n=pbQ[it.id]||0, on=n>0;
   const label= it.kind==='toggle'? (on? LX('✓ مضافة','✓ Added') : LX('أضف','Add')) : (on? `<span class="bd num">${en(n)}</span> ${LX('زيادة','More')}` : LX('أضف','Add'));
-  const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list>it.price?`<s class="num">${en(it.list)}</s> `:''}<b class="num">${en(it.price)}</b> ${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}`;
+  const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list>it.price?`<s class="num">${en(it.list)}</s>`:''}<b class="num">${en(it.price)}</b><span class="unit">${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}</span>`;
   return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><div class="t">${esc(LX(it.n,it.en))}${it.note?`<div class="d">${esc(LX(it.note,it.noteEn))}</div>`:''}</div><div class="r"><div class="p">${price}</div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div></div>`;
 }
 function pbRender(){
