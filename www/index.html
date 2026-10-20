@@ -808,7 +808,9 @@
   .pb-item .p{display:inline-flex;align-items:baseline;gap:5px;margin:0;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.9rem;color:var(--muted);font-weight:700;white-space:nowrap}
   .pb-ln .li{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--gold-tint);font-size:.9rem;margin-inline-end:6px;vertical-align:middle}
   .pb-item.on{border-color:var(--gold-strong);background:var(--gold-tint)}
-  .pb-item .t{font-weight:900;font-size:1.02rem;line-height:1.4;min-width:0} .pb-item .d{color:var(--muted);font-size:.8rem;font-weight:700;margin-top:2px}
+  .pb-item .t{font-weight:900;font-size:1.02rem;line-height:1.4;min-width:0} .pb-item .d{color:var(--muted);font-size:.84rem;font-weight:700;margin-top:4px;line-height:1.5}
+  .pb .rb-hero{padding:18px 18px 16px} .pb .rb-hero b{font-size:1.45rem;line-height:1.3} .pb .rb-hero small{font-size:.9rem;line-height:1.6}
+  .pb-hint{line-height:1.6} .pb-item .d{color:var(--muted);font-size:.8rem;font-weight:700;margin-top:2px}
   .pb-item .p b{color:var(--ink);font-weight:900;font-size:1rem} .pb-item .p s{color:var(--danger);margin-inline-end:4px}
   .pb-add{flex:none;height:40px;padding:0 14px;border-radius:12px;border:1.5px solid var(--ink);background:var(--card);font-weight:900;white-space:nowrap;display:flex;align-items:center;gap:6px;font-family:inherit;color:inherit}
   .pb-add:disabled{opacity:.45} .pb-add .bd{background:var(--ink);color:#fff;border-radius:999px;min-width:22px;height:22px;display:grid;place-items:center;font-size:.78rem;padding:0 6px}
@@ -831,8 +833,8 @@
   .pb-reset{display:block;margin:4px auto 0;color:var(--muted);text-decoration:underline;font-size:.84rem;font-weight:700;font-family:inherit}
   .pb-sendsum{background:var(--gold-tint);border:1.5px solid var(--gold-soft);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;font-weight:800} .pb-sendsum small{flex-basis:100%;color:var(--muted);font-weight:700;font-size:.82rem}
   .pb-notify{margin-top:16px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;box-shadow:var(--shadow-sm)} .pb-notify b{display:block;font-weight:900} .pb-notify small{display:block;color:var(--muted);font-weight:700;font-size:.84rem;margin:2px 0 10px} .pb-notify .row{display:flex;gap:8px} .pb-notify input{flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line-strong);font:inherit;font-size:1rem;background:#fcfbf7;direction:ltr;text-align:right} .pb-notify .row{align-items:center} .pb-notify .row input{height:48px;padding:0 14px} .pb-notify .row .cta,.pb-sum .pb-note .cta{width:auto;height:48px;min-height:0;padding:0 18px;line-height:1;font-size:1rem;box-shadow:none;border-radius:12px;white-space:nowrap}
-  .pb-sum .pb-notify{margin-top:12px;padding:12px;box-shadow:none;background:var(--card)} .pb-sum .pb-notify b{font-size:.92rem;margin-bottom:8px}
-  .pb-sum .pb-note textarea{min-height:64px;margin-bottom:8px} .pb-sum .pb-note .row{justify-content:flex-start}
+  .pb-sum .pb-notify{margin-top:14px;padding:14px 0 0;box-shadow:none;background:transparent;border:0;border-top:1px solid var(--line);border-radius:0} .pb-sum .pb-notify b{font-size:.92rem;margin-bottom:8px;font-weight:800} .pb-sum .pb-notify .row .cta,.pb-sum .pb-note .cta{height:42px;font-size:.95rem;padding:0 16px} .pb-sum .pb-notify .row input{height:42px;background:var(--card)}
+  .pb-sum .pb-note textarea{min-height:56px;margin-bottom:8px;background:var(--card);font-size:.95rem} .pb-sum .pb-note .row{justify-content:flex-start}
   .pb-note textarea{width:100%;min-height:84px;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line-strong);font:inherit;font-size:1rem;background:#fcfbf7;resize:vertical;margin-bottom:8px}
   .pb-pad{height:84px} @media(min-width:900px){ .pb-pad{height:10px} }
   .pb-bar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:var(--ink);color:#fff;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;justify-content:space-between;align-items:center;gap:12px}
@@ -2078,7 +2080,7 @@ function inCoverage(city){ const list=stJson('coverage_cities',[]); if(!city||!A
 const PLAN_SEASONS = { winter:'10-01..12-20', summer:'03-13..06-30' };
 /* ركّب باقتك (2026-10-18): الأسماء هنا، والأسعار والحدود تُستبدل من إعداد plan_items في applySettings، والخادم يحسب السعر بنفسه (khafet_plan_custom) */
 const PB_ITEMS=[
-  {id:'visit', ic:'🔧', grp:'visits',  kind:'count', max:12, price:150, n:'زيارة صيانة سباكة أو كهرباء (ساعتين)', en:'Plumbing or electrical maintenance visit (2 hours)', list:180, d:'زيارة ساعتين كاملتين لإصلاح أو تبديل حتى 3 أعطال صغيرة، اليد علينا والقطع بسعرها', de:'A full two-hour visit to repair or replace up to 3 small faults, labour on us and parts at their price', u:'للزيارة', ue:'per visit'},
+  {id:'visit', ic:'🔧', grp:'visits',  kind:'count', max:12, price:150, note:'الزيارة ساعتين، وتقدر تستخدم ساعة وحدة وتنحفظ لك الساعة الثانية لمرة ثانية', noteEn:'A two-hour visit; you can use one hour and keep the second hour for another time', n:'زيارة صيانة سباكة أو كهرباء (ساعتين)', en:'Plumbing or electrical maintenance visit (2 hours)', list:180, d:'زيارة ساعتين كاملتين لإصلاح أو تبديل حتى 3 أعطال صغيرة، اليد علينا والقطع بسعرها', de:'A full two-hour visit to repair or replace up to 3 small faults, labour on us and parts at their price', u:'للزيارة', ue:'per visit'},
   {id:'fan', ic:'🌀', grp:'fans',    kind:'toggle', max:1, price:299, list:400, n:'تبديل مراوح الشفط (حتى 6)', en:'Replace exhaust fans (up to 6)', d:'حتى 6 مراوح، الشغل علينا والمراوح نفسها بسعرها', de:'Up to 6 fans, labour on us and the fans at their price'},
   {id:'exh', ic:'💨', grp:'fans',    kind:'toggle', max:1, price:149, list:249, n:'تنظيف مراوح الشفط (حتى 6)', en:'Clean exhaust fans (up to 6)', d:'حتى 6 شفاطات للحمامات والمطبخ، مرة بالسنة', de:'Up to 6 bathroom and kitchen fans, once a year'},
   {id:'panel', ic:'⚡', grp:'checks',  kind:'toggle', max:1, price:129,  n:'فحص كهرباء المنزل', en:'Home electrical check', d:'اللوحة والقواطع والتوصيلات والإضاءة والأفياش، كل شي مرة بالسنة', de:'Panel, breakers, wiring, lighting and sockets, everything once a year'},
@@ -3985,8 +3987,6 @@ function renderPlans(kind){
               <span class="pb-save" id="pbSave" hidden></span>
               <button class="cta gold" id="pbCta" style="margin-top:12px" onclick="pbSend()">${LX('أرسل لنا باقتك','Send us your plan')}</button>
               <p class="pb-hint" id="pbHint"></p>
-              <div class="pb-notify in pb-note" id="pbNote"><b>${LX('عندك ملاحظة أو اقتراح على الباقات؟','Any notes or suggestions on the plans?')}</b><textarea id="pbNoteBody" rows="2" placeholder="${LX('اكتب ملاحظتك هنا','Write your note here')}"></textarea><div class="row"><button type="button" class="cta gold" onclick="pbNoteSend()">${LX('أرسل الملاحظة','Send note')}</button></div></div>
-              <div class="pb-notify in" id="pbNotify"><b>${LX('لو مهتم، سجّل رقمك عشان نعلمك إذا أطلقنا الباقة السنوية','If you are interested, leave your number and we will tell you when the annual plan launches')}</b><div class="row"><input id="pbNotifyPhone" inputmode="tel" placeholder="05xxxxxxxx" value="${esc((state.customer&&state.customer.phone)||'')}"><button type="button" class="cta gold" onclick="pbNotifyMe()">${LX('سجّل','Save')}</button></div></div>
             </div>
           </div>
         </div>
@@ -4007,7 +4007,7 @@ function pbCard(it){
   const n=pbQ[it.id]||0, on=n>0;
   const label= it.kind==='toggle'? (on? LX('✓ مضافة','✓ Added') : LX('أضف','Add')) : (on? `<span class="bd num">${en(n)}</span> ${LX('زيادة','More')}` : LX('أضف','Add'));
   const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list>it.price?`<s class="num">${en(it.list)}</s> `:''}<b class="num">${en(it.price)}</b> ${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}`;
-  return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><div class="t">${esc(LX(it.n,it.en))}</div><div class="r"><div class="p">${price}</div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div></div>`;
+  return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><div class="t">${esc(LX(it.n,it.en))}${it.note?`<div class="d">${esc(LX(it.note,it.noteEn))}</div>`:''}</div><div class="r"><div class="p">${price}</div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div></div>`;
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
