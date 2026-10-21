@@ -19,18 +19,36 @@
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@400..700&family=Noto+Kufi+Arabic:wght@400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body data-whatsapp="966500000000">
+
+  <!-- أيقونات مشتركة -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-wa" viewBox="0 0 24 24"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></symbol>
+    <symbol id="i-arch" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M5 20v-8.5a7 7 0 0 1 14 0V20"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" d="M3 20h18"/></symbol>
+  </svg>
+
+  <!-- المقدمة الافتتاحية -->
+  <div class="intro" id="intro" aria-hidden="true">
+    <div class="intro__inner">
+      <svg class="intro__mark" viewBox="0 0 24 24" aria-hidden="true">
+        <path class="intro__arch" d="M5 20v-8.5a7 7 0 0 1 14 0V20"/>
+        <path class="intro__base" d="M3 20h18"/>
+      </svg>
+      <span class="intro__name">كنف</span>
+    </div>
+  </div>
+  <script>try{if(sessionStorage.getItem('kanafIntro')||window.matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.classList.add('no-intro');}}catch(e){}</script>
+
+  <div class="progress" id="progress" aria-hidden="true"></div>
 
   <!-- ===== الهيدر ===== -->
   <header class="site-header" id="siteHeader">
     <div class="container site-header__inner">
       <a href="#home" class="brand" aria-label="كنف — الرئيسية">
-        <svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-          <path d="M5 20v-8.5a7 7 0 0 1 14 0V20"/><path d="M3 20h18"/>
-        </svg>
+        <svg class="brand__mark" aria-hidden="true"><use href="#i-arch"/></svg>
         <span class="brand__name">كنف</span>
       </a>
 
@@ -57,11 +75,11 @@
       <div class="container hero__inner">
         <div class="hero__text">
           <p class="eyebrow reveal">شاليه خاص · إيجار يومي</p>
-          <h1 class="hero__title reveal">كنف</h1>
+          <h1 class="hero__title">كنف</h1>
           <p class="hero__lead reveal">حيث يلتقي الهدوء بالدفء. شاليه عصري بتصميم هادئ وتفاصيل مدروسة، صُمم ليكون ملاذك بعيدًا عن ضجيج المدينة.</p>
           <div class="hero__actions reveal">
             <a class="btn btn--primary" href="https://wa.me/966500000000" data-wa="السلام عليكم، أرغب بالاستفسار عن حجز شاليه كنف." target="_blank" rel="noopener">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+              <svg aria-hidden="true"><use href="#i-wa"/></svg>
               احجز عبر واتساب
             </a>
             <a class="btn btn--ghost" href="#spaces">استكشف المكان</a>
@@ -74,15 +92,19 @@
           </ul>
         </div>
 
-        <div class="hero__visual">
+        <div class="hero__visual" id="heroVisual">
           <figure class="hero__img hero__img--main reveal">
-            <img src="images/living-1.jpg" alt="المجلس الرئيسي في شاليه كنف بكنبات بيج وسجادة وإضاءة دافئة" width="1200" height="1600" fetchpriority="high" decoding="async">
+            <div class="hero__img-inner" data-parallax-x="-10">
+              <img src="images/living-1.jpg" alt="المجلس الرئيسي في شاليه كنف بكنبات بيج وسجادة وإضاءة دافئة" width="1200" height="1600" fetchpriority="high" decoding="async">
+            </div>
           </figure>
           <figure class="hero__img hero__img--small reveal">
-            <img src="images/bathtub.jpg" alt="حوض استحمام مستقل مع إنارة مضفورة وستائر ناعمة" width="1200" height="1600" loading="lazy" decoding="async">
+            <div class="hero__img-inner" data-parallax-x="16">
+              <img src="images/bathtub.jpg" alt="حوض استحمام مستقل مع إنارة مضفورة وستائر ناعمة" width="1200" height="1600" loading="lazy" decoding="async">
+            </div>
           </figure>
           <div class="hero__badge reveal">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8.5a7 7 0 0 1 14 0V20"/><path d="M3 20h18"/></svg>
+            <svg aria-hidden="true"><use href="#i-arch"/></svg>
             <span>حجز مباشر<small>بدون وسيط</small></span>
           </div>
         </div>
@@ -90,22 +112,35 @@
       <a href="#about" class="scroll-cue" aria-label="انتقل للأسفل"><span></span></a>
     </section>
 
+    <!-- ===== الشريط المتحرك ===== -->
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee__track">
+        <div class="marquee__group">
+          <span>إقامة هادئة</span><i>✦</i><span>تصميم عصري</span><i>✦</i><span>خصوصية تامة</span><i>✦</i><span>حجز مباشر</span><i>✦</i><span>تفاصيل دافئة</span><i>✦</i>
+        </div>
+        <div class="marquee__group">
+          <span>إقامة هادئة</span><i>✦</i><span>تصميم عصري</span><i>✦</i><span>خصوصية تامة</span><i>✦</i><span>حجز مباشر</span><i>✦</i><span>تفاصيل دافئة</span><i>✦</i>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== عن كنف ===== -->
     <section class="about section" id="about">
       <div class="container about__inner">
         <div class="about__media">
           <figure class="about__img reveal">
-            <img src="images/dining.jpg" alt="ركن الطعام بطاولة أنيقة ومصباح معلق ولوحة فنية" width="1200" height="1600" loading="lazy" decoding="async">
+            <img class="fade" src="images/dining.jpg" alt="ركن الطعام بطاولة أنيقة ومصباح معلق ولوحة فنية" width="1200" height="1600" loading="lazy" decoding="async">
           </figure>
           <figure class="about__img about__img--second reveal">
-            <img src="images/majlis-1.jpg" alt="مجلس بكنبات بيج أمام ستائر مضاءة" width="1200" height="1600" loading="lazy" decoding="async">
+            <img class="fade" src="images/majlis-1.jpg" alt="مجلس بكنبات بيج أمام ستائر مضاءة" width="1200" height="1600" loading="lazy" decoding="async">
           </figure>
-          <div class="about__stamp reveal" aria-hidden="true">كنف</div>
+          <div class="about__stamp reveal" aria-hidden="true"><span>كنف</span></div>
         </div>
         <div class="about__text">
           <p class="eyebrow reveal">عن كنف</p>
           <h2 class="section__title reveal">سكينةٌ تحتضنك<br>من أول خطوة</h2>
           <p class="reveal">كنف ليس مجرد مكان للإقامة، بل تجربة صُممت بالكامل حول راحتك. ألوان هادئة من البيج والرملي، إضاءة مخفية ناعمة، وأرضيات بنقش الهيرنغبون تمنح كل زاوية دفئًا وأناقة.</p>
+          <blockquote class="about__quote reveal">«صُمم كنف ليكون أكثر من مكان تنام فيه؛ حالة من السكينة تعود إليها كلما اشتقت للهدوء.»</blockquote>
           <p class="reveal">من المجلس الواسع إلى غرفة النوم الرئيسية بحوض الاستحمام المستقل، كل تفصيلة اختيرت بعناية لتجعل إقامتك لحظة تستحق أن تُذكر.</p>
           <ul class="about__points reveal">
             <li><span class="dot"></span>تصميم عصري بألوان هادئة</li>
@@ -122,60 +157,66 @@
         <div class="section__head">
           <p class="eyebrow reveal">المساحات</p>
           <h2 class="section__title reveal">كل زاوية لها حكاية</h2>
-          <p class="section__desc reveal">تجوّل بين مساحات كنف واكتشف كيف يجتمع الفخامة والبساطة في مكان واحد.</p>
+          <p class="section__desc reveal">تجوّل بين مساحات كنف واكتشف كيف يجتمع الفخامة والبساطة في مكان واحد. اضغط على أي مساحة لعرض صورها.</p>
         </div>
 
         <div class="spaces__grid">
           <article class="card reveal">
-            <figure class="card__media">
-              <img src="images/living-1.jpg" alt="المجلس الرئيسي" width="1200" height="1600" loading="lazy" decoding="async">
+            <button type="button" class="card__media" data-gallery="0" aria-label="عرض صور المجلس الرئيسي">
+              <img class="fade" src="images/living-1.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
               <span class="card__num">٠١</span>
-            </figure>
+              <span class="card__view">عرض الصور</span>
+            </button>
             <h3 class="card__title">المجلس الرئيسي</h3>
             <p class="card__desc">جلسة واسعة بكنبات مريحة وإضاءة محيطية هادئة، مثالية لتجمّع العائلة والأصدقاء.</p>
           </article>
 
           <article class="card reveal">
-            <figure class="card__media">
-              <img src="images/master-bedroom-2.jpg" alt="غرفة النوم الرئيسية" width="1200" height="1600" loading="lazy" decoding="async">
+            <button type="button" class="card__media" data-gallery="8" aria-label="عرض صور غرفة النوم الرئيسية">
+              <img class="fade" src="images/master-bedroom-2.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
               <span class="card__num">٠٢</span>
-            </figure>
+              <span class="card__view">عرض الصور</span>
+            </button>
             <h3 class="card__title">غرفة النوم الرئيسية</h3>
             <p class="card__desc">سرير فاخر بظهر مبطّن وحوض استحمام مستقل داخل الغرفة لتجربة استرخاء لا تُنسى.</p>
           </article>
 
           <article class="card reveal">
-            <figure class="card__media">
-              <img src="images/twin-bedroom-1.jpg" alt="غرفة النوم الثانية" width="1200" height="1600" loading="lazy" decoding="async">
+            <button type="button" class="card__media" data-gallery="3" aria-label="عرض صور غرفة النوم الثانية">
+              <img class="fade" src="images/twin-bedroom-1.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
               <span class="card__num">٠٣</span>
-            </figure>
+              <span class="card__view">عرض الصور</span>
+            </button>
             <h3 class="card__title">غرفة النوم الثانية</h3>
             <p class="card__desc">سريران مريحان مع مرآة وطاولة زينة وإضاءة ناعمة تمنح الغرفة دفئًا وهدوءًا.</p>
           </article>
 
           <article class="card reveal">
-            <figure class="card__media">
-              <img src="images/dining.jpg" alt="ركن الطعام" width="1200" height="1600" loading="lazy" decoding="async">
+            <button type="button" class="card__media" data-gallery="2" aria-label="عرض صور ركن الطعام">
+              <img class="fade" src="images/dining.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
               <span class="card__num">٠٤</span>
-            </figure>
+              <span class="card__view">عرض الصور</span>
+            </button>
             <h3 class="card__title">ركن الطعام</h3>
             <p class="card__desc">طاولة أنيقة لأربعة أشخاص تحت مصباح معلق دافئ، لوجبات تجمع الأحبّة.</p>
           </article>
 
           <article class="card reveal">
-            <figure class="card__media">
-              <img src="images/tv-lounge.jpg" alt="صالة التلفزيون" width="1200" height="1600" loading="lazy" decoding="async">
+            <button type="button" class="card__media" data-gallery="5" aria-label="عرض صور صالة التلفزيون">
+              <img class="fade" src="images/tv-lounge.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
               <span class="card__num">٠٥</span>
-            </figure>
+              <span class="card__view">عرض الصور</span>
+            </button>
             <h3 class="card__title">صالة التلفزيون</h3>
             <p class="card__desc">جدار تلفزيون عصري وركن قهوة مضاء بإنارة خفية، لأمسيات هادئة.</p>
           </article>
 
           <article class="card reveal">
-            <figure class="card__media">
-              <img src="images/bathtub.jpg" alt="زاوية الاسترخاء" width="1200" height="1600" loading="lazy" decoding="async">
+            <button type="button" class="card__media" data-gallery="4" aria-label="عرض صور زاوية الاسترخاء">
+              <img class="fade" src="images/bathtub.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
               <span class="card__num">٠٦</span>
-            </figure>
+              <span class="card__view">عرض الصور</span>
+            </button>
             <h3 class="card__title">زاوية الاسترخاء</h3>
             <p class="card__desc">حوض استحمام حر مع إنارة مضفورة وستائر ناعمة تنساب عليها الأضواء.</p>
           </article>
@@ -183,8 +224,24 @@
       </div>
     </section>
 
+    <!-- ===== لحظة هدوء ===== -->
+    <section class="immersive" aria-label="لحظة هدوء">
+      <div class="immersive__bg" id="immersiveBg">
+        <img src="images/bathtub.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
+      </div>
+      <div class="container immersive__content reveal">
+        <p class="eyebrow eyebrow--light">لحظة هدوء</p>
+        <h2>هنا، يتباطأ الوقت</h2>
+        <p>أضواء خافتة، ستائر تنساب عليها الإنارة، وحوض استحمام يهمس لك أن تترك كل شيء خلفك.</p>
+        <a class="btn btn--light" href="#booking">احجز لحظتك</a>
+      </div>
+    </section>
+
     <!-- ===== المميزات ===== -->
     <section class="features section" id="features">
+      <div class="features__bg" aria-hidden="true">
+        <img src="images/living-2.jpg" alt="" width="1200" height="1600" loading="lazy" decoding="async">
+      </div>
       <div class="container">
         <div class="section__head section__head--light">
           <p class="eyebrow reveal">المميزات</p>
@@ -247,17 +304,17 @@
         </div>
 
         <div class="gallery__grid">
-          <button type="button" class="gallery__item reveal"><img src="images/living-1.jpg" alt="المجلس الرئيسي بسجادة وطاولات قهوة" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/master-bedroom-1.jpg" alt="غرفة النوم الرئيسية مع حوض الاستحمام" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/dining.jpg" alt="ركن الطعام" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/twin-bedroom-1.jpg" alt="غرفة النوم الثانية بسريرين" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/bathtub.jpg" alt="حوض الاستحمام مع الإنارة المضفورة" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/tv-lounge.jpg" alt="صالة التلفزيون وركن القهوة" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/living-2.jpg" alt="المجلس الرئيسي من زاوية أخرى" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/twin-bedroom-2.jpg" alt="سرير مريح بإضاءة خلفية ناعمة" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/master-bedroom-2.jpg" alt="غرفة النوم الرئيسية بإضاءة مسائية" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/majlis-1.jpg" alt="المجلس بكنبات بيج" width="1200" height="1600" loading="lazy" decoding="async"></button>
-          <button type="button" class="gallery__item reveal"><img src="images/majlis-2.jpg" alt="المجلس من زاوية أخرى" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/living-1.jpg" alt="المجلس الرئيسي بسجادة وطاولات قهوة" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/master-bedroom-1.jpg" alt="غرفة النوم الرئيسية مع حوض الاستحمام" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/dining.jpg" alt="ركن الطعام" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/twin-bedroom-1.jpg" alt="غرفة النوم الثانية بسريرين" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/bathtub.jpg" alt="حوض الاستحمام مع الإنارة المضفورة" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/tv-lounge.jpg" alt="صالة التلفزيون وركن القهوة" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/living-2.jpg" alt="المجلس الرئيسي من زاوية أخرى" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/twin-bedroom-2.jpg" alt="سرير مريح بإضاءة خلفية ناعمة" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/master-bedroom-2.jpg" alt="غرفة النوم الرئيسية بإضاءة مسائية" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/majlis-1.jpg" alt="المجلس بكنبات بيج" width="1200" height="1600" loading="lazy" decoding="async"></button>
+          <button type="button" class="gallery__item reveal"><img class="fade" src="images/majlis-2.jpg" alt="المجلس من زاوية أخرى" width="1200" height="1600" loading="lazy" decoding="async"></button>
         </div>
       </div>
     </section>
@@ -268,8 +325,26 @@
         <div class="section__head">
           <p class="eyebrow reveal">الحجز</p>
           <h2 class="section__title reveal">احجز إقامتك في كنف</h2>
-          <p class="section__desc reveal">أرسل لنا تفاصيل إقامتك وسنرد عليك بأقرب وقت لتأكيد التوفر والسعر.</p>
+          <p class="section__desc reveal">ثلاث خطوات بسيطة تفصلك عن إقامة هادئة.</p>
         </div>
+
+        <ol class="steps">
+          <li class="reveal">
+            <span class="steps__num">١</span>
+            <h3>اختر تواريخك</h3>
+            <p>حدد يوم الوصول والمغادرة وعدد الضيوف.</p>
+          </li>
+          <li class="reveal">
+            <span class="steps__num">٢</span>
+            <h3>أرسل الطلب</h3>
+            <p>يصلنا طلبك عبر واتساب برسالة جاهزة بكل التفاصيل.</p>
+          </li>
+          <li class="reveal">
+            <span class="steps__num">٣</span>
+            <h3>تأكيد الحجز</h3>
+            <p>نؤكد لك التوفر والسعر ونرسل لك موقع الشاليه.</p>
+          </li>
+        </ol>
 
         <div class="booking__grid">
           <form class="booking__form reveal" id="bookingForm" novalidate>
@@ -302,7 +377,7 @@
             </div>
             <p class="form__error" id="formError" hidden>فضلًا أكمل الاسم وتاريخي الوصول والمغادرة.</p>
             <button type="submit" class="btn btn--primary btn--block">
-              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+              <svg aria-hidden="true"><use href="#i-wa"/></svg>
               أرسل طلب الحجز عبر واتساب
             </button>
             <a class="btn btn--ghost btn--block form__fallback" id="waFallback" href="https://wa.me/966500000000" target="_blank" rel="noopener" hidden>لم يفتح واتساب؟ اضغط هنا</a>
@@ -341,6 +416,20 @@
         </div>
       </div>
     </section>
+
+    <!-- ===== دعوة للحجز ===== -->
+    <section class="cta-band" aria-label="احجز الآن">
+      <div class="container cta-band__inner reveal">
+        <div>
+          <h2>جاهز لإقامة لا تُنسى؟</h2>
+          <p>راسلنا الآن وسنرتب لك كل شيء قبل وصولك.</p>
+        </div>
+        <a class="btn btn--primary btn--lg" href="https://wa.me/966500000000" data-wa="السلام عليكم، أرغب بالاستفسار عن حجز شاليه كنف." target="_blank" rel="noopener">
+          <svg aria-hidden="true"><use href="#i-wa"/></svg>
+          احجز عبر واتساب
+        </a>
+      </div>
+    </section>
   </main>
 
   <!-- ===== الفوتر ===== -->
@@ -348,7 +437,7 @@
     <div class="container site-footer__inner">
       <div class="site-footer__brand">
         <span class="brand brand--light">
-          <svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M5 20v-8.5a7 7 0 0 1 14 0V20"/><path d="M3 20h18"/></svg>
+          <svg class="brand__mark" aria-hidden="true"><use href="#i-arch"/></svg>
           <span class="brand__name">كنف</span>
         </span>
         <p>شاليه عصري بتصميم هادئ وتفاصيل دافئة، صُمم ليكون ملاذك.</p>
@@ -391,7 +480,7 @@
 
   <!-- زر واتساب العائم -->
   <a class="wa-float" href="https://wa.me/966500000000" data-wa="السلام عليكم، أرغب بالاستفسار عن حجز شاليه كنف." target="_blank" rel="noopener" aria-label="تواصل عبر واتساب">
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+    <svg aria-hidden="true"><use href="#i-wa"/></svg>
   </a>
 
   <script src="js/main.js"></script>

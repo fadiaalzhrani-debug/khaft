@@ -4,18 +4,56 @@
 (function () {
   'use strict';
 
-  document.documentElement.classList.remove('no-js');
-  document.documentElement.classList.add('js');
+  var root = document.documentElement;
+  root.classList.remove('no-js');
+  root.classList.add('js');
 
   var body = document.body;
   var header = document.getElementById('siteHeader');
+  var progress = document.getElementById('progress');
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var introShown = !root.classList.contains('no-intro') && !!document.getElementById('intro');
 
-  /* ---------- الهيدر عند التمرير ---------- */
-  function onScroll() {
-    header.classList.toggle('is-scrolled', window.scrollY > 24);
+  /* ---------- المقدمة: تُعرض مرة واحدة في الجلسة ---------- */
+  if (introShown) {
+    try { sessionStorage.setItem('kanafIntro', '1'); } catch (err) {}
   }
-  onScroll();
+
+  /* ---------- التمرير: الهيدر، شريط التقدم، تأثير العمق ---------- */
+  var immersiveBg = document.getElementById('immersiveBg');
+  var immersive = immersiveBg && immersiveBg.parentElement;
+  var ticking = false;
+
+  function update() {
+    ticking = false;
+    var y = window.scrollY || window.pageYOffset;
+    header.classList.toggle('is-scrolled', y > 24);
+
+    if (progress) {
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      progress.style.width = (max > 0 ? Math.min(100, (y / max) * 100) : 0) + '%';
+    }
+
+    if (immersive && !reduced) {
+      var r = immersive.getBoundingClientRect();
+      var vh = window.innerHeight;
+      if (r.bottom > 0 && r.top < vh) {
+        var p = (r.top + r.height / 2 - vh / 2) / vh;
+        immersiveBg.style.transform = 'translateY(' + (p * -12).toFixed(2) + '%)';
+      }
+    }
+  }
+
+  function onScroll() {
+    if (!ticking) {
+      ticking = true;
+      window.requestAnimationFrame(update);
+    }
+  }
+
+  update();
   window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
 
   /* ---------- قائمة الجوال ---------- */
   var toggle = document.getElementById('navToggle');
@@ -41,18 +79,58 @@
 
   /* ---------- حركات الظهور ---------- */
   var reveals = document.querySelectorAll('.reveal');
-  if ('IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('is-visible');
-          io.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
-    reveals.forEach(function (el) { io.observe(el); });
+
+  function startReveals() {
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1, rootMargin: '0px 0px -6% 0px' });
+      reveals.forEach(function (el) { io.observe(el); });
+    } else {
+      reveals.forEach(function (el) { el.classList.add('is-visible'); });
+    }
+  }
+
+  if (introShown && !reduced) {
+    window.setTimeout(startReveals, 1300);
   } else {
-    reveals.forEach(function (el) { el.classList.add('is-visible'); });
+    startReveals();
+  }
+
+  /* ---------- تلاشي الصور عند اكتمال تحميلها ---------- */
+  document.querySelectorAll('img.fade').forEach(function (img) {
+    if (img.complete && img.naturalWidth > 0) {
+      img.classList.add('is-loaded');
+    } else {
+      img.addEventListener('load', function () { img.classList.add('is-loaded'); });
+      img.addEventListener('error', function () { img.classList.add('is-loaded'); });
+    }
+  });
+
+  /* ---------- حركة خفيفة مع الفأرة في الواجهة ---------- */
+  var heroVisual = document.getElementById('heroVisual');
+  if (heroVisual && !reduced && window.matchMedia('(pointer: fine)').matches) {
+    var layers = heroVisual.querySelectorAll('[data-parallax-x]');
+    var hero = heroVisual.closest('.hero');
+
+    hero.addEventListener('mousemove', function (e) {
+      var r = hero.getBoundingClientRect();
+      var x = (e.clientX - r.left) / r.width - 0.5;
+      var y = (e.clientY - r.top) / r.height - 0.5;
+      layers.forEach(function (layer) {
+        var depth = parseFloat(layer.getAttribute('data-parallax-x')) || 0;
+        layer.style.transform = 'translate(' + (x * depth).toFixed(1) + 'px, ' + (y * depth).toFixed(1) + 'px)';
+      });
+    });
+
+    hero.addEventListener('mouseleave', function () {
+      layers.forEach(function (layer) { layer.style.transform = ''; });
+    });
   }
 
   /* ---------- تمييز رابط القسم الحالي ---------- */
@@ -215,6 +293,14 @@
 
     items.forEach(function (btn, i) {
       btn.addEventListener('click', function () { open(i); });
+    });
+
+    /* بطاقات المساحات تفتح الصورة المقابلة في العارض */
+    document.querySelectorAll('[data-gallery]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var i = parseInt(btn.getAttribute('data-gallery'), 10);
+        if (!isNaN(i)) open(i);
+      });
     });
 
     lbClose.addEventListener('click', close);
