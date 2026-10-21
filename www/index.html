@@ -798,7 +798,10 @@
   @media(min-width:900px){ .wrap.plans-screen.pb{max-width:1200px} .pb-grid{grid-template-columns:minmax(300px,360px) minmax(0,1fr) minmax(220px,280px)} .pb-side{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-inline-start:2px} .pb-aside{position:sticky;top:12px;order:3;max-height:calc(100vh - 24px);overflow:auto} .pb-center{order:2} .pb-cover-m{display:none} }
   @media(max-width:899px){ .pb-aside{display:none} .pb-center{order:-1} .pb-lines .pb-ln{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px} .pb-lines .pb-ln .l{flex:1 1 100%} .pb-lines .pb-ln .amt{margin-inline-start:auto;text-align:left;min-width:0} .pb-lines{padding:6px 14px} .pb-sum{padding:14px 14px 16px} .pb-cover-m{margin:-2px 0 10px} .pb-cover-m summary{cursor:pointer;font-weight:800;font-size:.9rem;color:var(--gold-deep);padding:6px 4px} .pb-cover-m .pb-cover{margin-top:6px} }
   .pb-h{font-weight:900;font-size:1.02rem;margin:14px 0 8px}
-  .pb-pre{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;text-align:start;box-shadow:var(--shadow-sm);font-family:inherit;color:inherit;margin-bottom:8px}
+  .pb-pre{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;background:linear-gradient(180deg,#FFFBEA,#FFFFFF);border:1.5px solid var(--gold-soft);border-radius:18px;padding:14px 16px;text-align:start;box-shadow:0 8px 20px -14px rgba(245,197,24,.9);font-family:inherit;color:inherit;margin-bottom:10px;cursor:pointer;transition:.15s}
+  .pb-pre:hover{border-color:var(--gold);transform:translateY(-1px)}
+  .pb-pre .pt{min-width:0} .pb-pre .pt b{display:block;font-weight:900;font-size:1.02rem;line-height:1.4} .pb-pre .pt small{display:block;color:var(--muted);font-size:.82rem;font-weight:700;line-height:1.5;margin-top:3px}
+  .pb-pre .pp{flex:none;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px} .pb-pre .pp b{font-size:1.35rem;font-weight:900;color:var(--ink);line-height:1} .pb-pre .pp small{font-size:.72rem;color:var(--muted);font-weight:700} .pb-pre .pp i{font-style:normal;margin-top:6px;background:var(--gold);color:var(--ink);border-radius:999px;padding:5px 14px;font-weight:900;font-size:.85rem}
   .pb-pre b{font-weight:900} .pb-pre small{display:block;color:var(--muted);font-size:.8rem;font-weight:700} .pb-pre .pp{font-weight:900;white-space:nowrap;color:var(--gold-deep)}
   .pb-grp{margin-bottom:14px} .pb-grp h3{font-size:.86rem;font-weight:900;color:var(--muted);letter-spacing:.01em;margin:0 0 8px;padding-inline-start:4px}
   .pb-item{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;margin-bottom:10px;box-shadow:var(--shadow-sm)}
@@ -2130,6 +2133,8 @@ const PB_ITEMS=[
   {id:'fan', ic:'🌀', grp:'fans',    kind:'toggle', max:1, price:299, list:400, n:'تبديل مراوح الشفط (حتى 6)', en:'Replace exhaust fans (up to 6)', d:'حتى 6 مراوح، الشغل علينا والمراوح نفسها بسعرها', de:'Up to 6 fans, labour on us and the fans at their price'},
   {id:'exh', ic:'💨', grp:'fans',    kind:'toggle', max:1, price:149, list:249, n:'تنظيف مراوح الشفط (حتى 6)', en:'Clean exhaust fans (up to 6)', d:'حتى 6 شفاطات للحمامات والمطبخ، مرة بالسنة', de:'Up to 6 bathroom and kitchen fans, once a year'},
   {id:'panel', ic:'⚡', grp:'checks',  kind:'toggle', max:1, price:129,  n:'فحص كهرباء المنزل', en:'Home electrical check', d:'اللوحة والقواطع والتوصيلات والإضاءة والأفياش، كل شي مرة بالسنة', de:'Panel, breakers, wiring, lighting and sockets, everything once a year'},
+  {id:'ac_clean', ic:'❄️', grp:'ac', kind:'toggle', max:1, price:299, list:420, n:'تنظيف المكيفات (حتى 6)', en:'AC cleaning (up to 6)', d:'الوحدة الداخلية والخارجية والفلاتر، مرة بالسنة', de:'Indoor and outdoor units and filters, once a year'},
+  {id:'ac_svc', ic:'❄️', grp:'ac', kind:'toggle', max:1, price:499, list:699, n:'صيانة المكيفات (حتى 6)', en:'AC servicing (up to 6)', d:'فحص الفريون والضغط والكهرباء مع التنظيف، مرة بالسنة', de:'Refrigerant, pressure and electrical check with cleaning, once a year'},
   {id:'emerg', ic:'🚨', grp:'extra',  kind:'count', max:6, price:149, u:'للطلب', ue:'per call',  n:'طلب طوارئ', en:'Emergency call-out', d:'خلال ساعة يكونون عندك', de:'They are at your door within an hour'},
   {id:'cheater', ic:'🔥', grp:'checks',kind:'count', max:4,  price:139, n:'تنظيف سخان مركزي من الترسبات', en:'Central heater descaling', d:'مرة بالسنة قبل الشتاء', de:'Once a year before winter', u:'للسخان', ue:'per heater'},
   {id:'tank', ic:'💧', grp:'checks',   kind:'toggle', max:1, price:99,  n:'فحص الخزان والعوامة والمضخة', en:'Tank, float and pump check', d:'مرة بالسنة قبل الصيف', de:'Once a year before summer'},
@@ -2143,6 +2148,11 @@ const PB_COVER=[['تغيير اللمبات والإضاءة','Bulbs and lightin
 /* القائمة الكاملة (44 خدمة سباكة وكهرباء من CT_SVC) بطلبها «اذكرها كلها عشان تطلع كثير» 2026-10-19 */
 function pbCoverHtml(){ const G=(typeof CT_SVC!=='undefined'?CT_SVC:[]).slice(0,2); if(!G.length) return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل:','Maintenance visits cover:')+'</b><ul>'+PB_COVER.map(x=>'<li>'+esc(LX(x[0],x[1]))+'</li>').join('')+'</ul></div>'; const n=G.reduce((t,g)=>t+g.i.length,0); return '<div class="pb-cover"><b>'+LX('زيارات الصيانة تشمل '+en(n)+' خدمة:','Maintenance visits cover '+n+' services:')+'</b>'+G.map(g=>'<small>'+esc(String(LX(g.t,g.te||g.t)).replace(/^[^؀-ۿA-Za-z]+/,''))+'</small><ul>'+g.i.map(x=>'<li>'+esc(LX(x[0],x[2]||x[0]))+'</li>').join('')+'</ul>').join('')+'</div>'; }
 const PB_GROUPS=[['visits','زيارات الصيانة','Maintenance visits'],['fans','مراوح الشفط','Exhaust fans'],['extra','طوارئ','Emergency'],['checks','فحوص الموسم','Seasonal checks'],['free','مجاني مع أي باقة','Free with any plan']];
+const PB_PRESETS=[
+  {id:'basic', n:'صيانة سباكة وكهرباء', en:'Plumbing and electrical', d:'4 زيارات صيانة، فحص كهرباء المنزل، تنظيف الشفاطات', de:'4 maintenance visits, home electrical check, exhaust fan cleaning', q:{visit:4, panel:1, exh:1}},
+  {id:'ac', n:'سباكة وكهرباء وتنظيف تكييف', en:'Plumbing, electrical and AC cleaning', d:'نفس الأولى + تنظيف المكيفات', de:'Same as the first + AC cleaning', q:{visit:4, panel:1, exh:1, ac_clean:1}},
+  {id:'full', n:'الشاملة مع صيانة المكيفات', en:'Complete with AC servicing', d:'كل الخدمات: زيارات، فحص كهرباء، شفاطات، سخان، خزان، تنظيف وصيانة المكيفات', de:'Everything: visits, electrical check, fans, heater, tank, AC cleaning and servicing', q:{visit:4, panel:1, exh:1, cheater:1, tank:1, ac_clean:1, ac_svc:1}},
+];
 let pbQ={};   // تُستبدل من plan_season_winter / plan_season_summer
 const PLANS = [
   { id:'villa', kind:'بيت', kindEn:'House', ico:'🏠', ac:false, visits:6, cap:100,
@@ -4020,7 +4030,8 @@ function renderPlans(kind){
       <div class="pb-hero"><h1>${LX('وش تفضل يكون في باقتك السنوية؟','What would you like in your annual plan?')}</h1><p>${LX('سباكة وكهرباء فقط. اختر اللي يناسب سكنك والسعر التقريبي يتحدّث تحت. هذي مو طلب شراء: ترسلها لنا وندرسها','Plumbing and electrical only. Pick what suits your home and the estimated price updates below. This is not a purchase: you send it to us and we study it')}</p></div>
       <div class="pb-grid">
         <div class="pb-side">
-          <div class="pb-h">${LX('الخدمات','Services')}</div><div id="pbList"></div>
+          <div class="pb-h">${LX('باقات جاهزة','Ready plans')}</div><div id="pbPresets"></div>
+          <div class="pb-h" style="margin-top:18px">${LX('أو ركّبها بنفسك','Or build your own')}</div><div id="pbList"></div>
         </div>
         <div class="pb-aside" id="pbAside"></div>
         <div class="pb-center">
@@ -4057,6 +4068,7 @@ function pbCard(it){
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
+  const pr=document.getElementById('pbPresets'); if(pr) pr.innerHTML=PB_PRESETS.map(p=>`<button type="button" class="pb-pre" onclick="pbPreset('${p.id}')"><span class="pt"><b>${esc(LX(p.n,p.en))}</b><small>${esc(LX(p.d,p.de))}</small></span><span class="pp"><b class="num">${en(pbPrice(p.q))}</b><small>${LX('ريال بالسنة','SAR a year')}</small><i>${LX('اختر','Pick')}</i></span></button>`).join('');
   list.innerHTML=PB_ITEMS.map(it=>pbCard(it)+(it.id==='visit'?'<details class="pb-cover-m"><summary>'+LX('وش تشمل زيارة الصيانة؟','What does a visit cover?')+'</summary>'+pbCoverHtml()+'</details>':'')).join('');
   const aside=document.getElementById('pbAside'); if(aside) aside.innerHTML=pbCoverHtml();
   const lines=PB_ITEMS.filter(it=>(pbQ[it.id]||0)>0); let total=0, cnt=0, saved=0;
