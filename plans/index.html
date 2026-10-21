@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>باقات الصيانة السنوية | خافِت</title>
+<meta name="description" content="ثلاث باقات صيانة سنوية من خافت: سباكة وكهرباء، مع تنظيف التكييف، أو الشاملة مع صيانة المكيفات. استبيان بدون التزام.">
+<meta property="og:title" content="باقات الصيانة السنوية | خافِت">
+<meta property="og:description" content="اختر باقتك أو ركّبها بنفسك. سباكة وكهرباء، تنظيف وصيانة المكيفات.">
+<meta property="og:image" content="https://khafet.com/og-khafet.jpg">
+<link rel="icon" href="/icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&display=swap">
+<style>
+  /* هوية خافت: أصفر ذهبي + فحمي دافئ على بيج */
+  :root{--gold:#F5C518;--gold-strong:#E3AF07;--gold-deep:#B8860B;--gold-soft:#FBF1C9;--gold-tint:#FDF8E7;--ink:#1A1712;--bg:#FAF7EF;--card:#FFFFFF;--muted:#6E685B;--line:#EBE5D6;--ok:#15803D;--ok-soft:#DCFCE7;--danger:#DC2626}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 max(18px,env(safe-area-inset-right,0px)) 40px max(18px,env(safe-area-inset-left,0px))}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0}
+  .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit}
+  .brand img{width:44px;height:44px;border-radius:12px}
+  .brand b{font-size:1.25rem;font-weight:900;display:block;line-height:1.1}
+  .brand small{color:var(--muted);font-size:.78rem;font-weight:700}
+  .back{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 16px;font-weight:800;font-size:.9rem;text-decoration:none;color:var(--ink)}
+  .hero{text-align:center;padding:26px 0 10px}
+  .hero h1{font-size:clamp(1.7rem,4.5vw,2.5rem);font-weight:900;line-height:1.3;display:inline;background:linear-gradient(transparent 58%,rgba(245,197,24,.45) 58%,rgba(245,197,24,.45) 92%,transparent 92%)}
+  .hero p{color:var(--muted);font-weight:700;max-width:40rem;margin:14px auto 0;font-size:1rem;line-height:1.8}
+  .plans{display:grid;grid-template-columns:1fr;gap:18px;margin-top:28px;align-items:stretch}
+  @media(min-width:860px){.plans{grid-template-columns:repeat(3,1fr)}}
+  .plan{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px 22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 2px 6px rgba(26,23,18,.04),0 16px 36px -24px rgba(26,23,18,.3);position:relative}
+  .plan.hot{border:2px solid var(--gold);box-shadow:0 20px 44px -22px rgba(245,197,24,.7)}
+  .plan .tag{position:absolute;top:-13px;inset-inline-start:22px;background:var(--gold);color:var(--ink);border-radius:999px;padding:3px 14px;font-size:.8rem;font-weight:900}
+  .plan h2{font-size:1.25rem;font-weight:900;line-height:1.35}
+  .plan .for{color:var(--muted);font-weight:700;font-size:.9rem;margin-top:-8px}
+  .price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:10px 0 4px;border-bottom:1px dashed var(--line)}
+  .price b{font-size:2.5rem;font-weight:900;line-height:1;letter-spacing:-.01em}
+  .price span{color:var(--muted);font-weight:700}
+  .price s{color:var(--danger);font-weight:700;font-size:1rem}
+  .mo{display:inline-flex;align-items:center;gap:6px;background:var(--gold-tint);border:1px solid var(--gold-soft);border-radius:999px;padding:4px 12px;font-size:.86rem;font-weight:800;width:fit-content}
+  .save{display:inline-flex;background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:4px 12px;font-size:.86rem;font-weight:900;width:fit-content}
+  ul{list-style:none;display:grid;gap:9px;flex:1}
+  li{display:flex;gap:10px;align-items:flex-start;font-weight:700;font-size:.95rem;line-height:1.5}
+  li::before{content:'';flex:none;width:22px;height:22px;border-radius:50%;background:var(--gold-tint);border:1px solid var(--gold-soft);background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231A1712' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 13l4 4L19 7'/></svg>");background-size:13px;background-repeat:no-repeat;background-position:center;margin-top:2px}
+  li.plus{color:var(--gold-deep)}
+  li.plus::before{background-color:var(--gold);border-color:var(--gold)}
+  li small{display:block;color:var(--muted);font-size:.8rem;font-weight:700}
+  .free{border-top:1px dashed var(--line);padding-top:10px;color:var(--muted);font-size:.84rem;font-weight:700}
+  .cta{display:block;text-align:center;background:var(--gold);color:var(--ink);text-decoration:none;border-radius:16px;padding:15px;font-weight:900;font-size:1.05rem;box-shadow:0 8px 26px rgba(245,197,24,.35)}
+  .cta.dark{background:var(--ink);color:#fff;box-shadow:0 8px 22px rgba(26,23,18,.22)}
+  .own{margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+  .own b{font-size:1.1rem;font-weight:900;display:block}
+  .own small{color:var(--muted);font-weight:700}
+  .own a{flex:none}
+  .note{text-align:center;color:var(--muted);font-weight:700;font-size:.9rem;margin-top:22px;line-height:1.8}
+  footer{text-align:center;color:var(--muted);font-size:.82rem;font-weight:700;padding:26px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" href="/www/"><img src="/icon.png" alt=""><span><b>خافِت</b><small>للصيانة المنزلية</small></span></a>
+    <a class="back" href="/www/">التطبيق</a>
+  </header>
+
+  <section class="hero">
+    <h1>باقات الصيانة السنوية</h1>
+    <p>سباكة وكهرباء وتكييف لسكنك طول السنة، بزيارات ساعتين واليد علينا والقطع بسعرها. اختر باقة جاهزة أو ركّبها بنفسك، وهذي مو طلب شراء: ترسلها لنا وندرسها ونتواصل معك بدون أي التزام.</p>
+  </section>
+
+  <section class="plans">
+    <article class="plan">
+      <h2>صيانة سباكة وكهرباء</h2>
+      <div class="for">للشقق والبيوت بدون مكيفات</div>
+      <div class="price"><b>878</b><span>ريال بالسنة</span><s>1,098</s></div>
+      <span class="mo">73 ريال شهريًا</span>
+      <span class="save">وفّرت 220 ريال</span>
+      <ul>
+        <li>4 زيارات صيانة سباكة أو كهرباء<small>كل زيارة ساعتين، اليد علينا والقطع بسعرها، وتقدر تقسم الزيارة ساعة وساعة</small></li>
+        <li>فحص كهرباء المنزل<small>اللوحة والقواطع والتوصيلات والإضاءة والأفياش، مرة بالسنة</small></li>
+        <li>تنظيف مراوح الشفط (حتى 6)<small>الحمامات والمطبخ، مرة بالسنة</small></li>
+      </ul>
+      <div class="free">مجانًا: تذكير بموعد الفحص، تقرير مصوّر بعد كل فحص، ونقل العقد للمستأجر الجديد</div>
+      <a class="cta dark" href="/www/?v=plans&pick=basic">اختر هذي الباقة</a>
+    </article>
+
+    <article class="plan hot">
+      <span class="tag">الأكثر طلبًا</span>
+      <h2>سباكة وكهرباء وتنظيف تكييف</h2>
+      <div class="for">لبيت فيه مكيفات سبليت أو شباك</div>
+      <div class="price"><b>1,377</b><span>ريال بالسنة</span><s>1,938</s></div>
+      <span class="mo">115 ريال شهريًا</span>
+      <span class="save">وفّرت 561 ريال</span>
+      <ul>
+        <li>كل ما في باقة السباكة والكهرباء<small>4 زيارات، فحص الكهرباء، تنظيف الشفاطات</small></li>
+        <li class="plus">تنظيف المكيفات (حتى 12)<small>الوحدة الداخلية والخارجية والفلاتر، مرة بالسنة. الزيادة 25 ريال للمكيف</small></li>
+      </ul>
+      <div class="free">مجانًا: تذكير بموعد الفحص، تقرير مصوّر بعد كل فحص، ونقل العقد للمستأجر الجديد</div>
+      <a class="cta" href="/www/?v=plans&pick=ac">اختر هذي الباقة</a>
+    </article>
+
+    <article class="plan">
+      <h2>الشاملة مع صيانة المكيفات</h2>
+      <div class="for">للفلل والبيوت الكبيرة</div>
+      <div class="price"><b>2,414</b><span>ريال بالسنة</span><s>3,375</s></div>
+      <span class="mo">201 ريال شهريًا</span>
+      <span class="save">وفّرت 961 ريال</span>
+      <ul>
+        <li>كل ما في الباقة الثانية<small>4 زيارات، فحص الكهرباء، تنظيف الشفاطات، تنظيف المكيفات</small></li>
+        <li class="plus">صيانة المكيفات (حتى 12)<small>فحص الفريون والضغط والكهرباء مع التنظيف، مرة بالسنة</small></li>
+        <li class="plus">تنظيف السخان المركزي من الترسبات<small>مرة بالسنة قبل الشتاء</small></li>
+        <li class="plus">فحص الخزان والعوامة والمضخة<small>مرة بالسنة قبل الصيف</small></li>
+      </ul>
+      <div class="free">مجانًا: تذكير بموعد الفحص، تقرير مصوّر بعد كل فحص، ونقل العقد للمستأجر الجديد</div>
+      <a class="cta dark" href="/www/?v=plans&pick=full">اختر هذي الباقة</a>
+    </article>
+  </section>
+
+  <section class="own">
+    <div><b>ما ناسبتك ولا وحدة؟ ركّب باقتك بنفسك</b><small>اختر الزيارات والفحوص اللي تحتاجها بس، والسعر التقريبي يتحدّث مع كل إضافة</small></div>
+    <a class="cta" href="/www/?v=plans">ركّب باقتك</a>
+  </section>
+
+  <p class="note">الأسعار تقريبية للدراسة. لما تختار باقة نستلمها وندرسها ونتواصل معك على جوالك، وما فيه أي دفع ولا التزام الحين.</p>
+  <footer>مؤسسة خافت للسباكة والكهرباء · khafet.com</footer>
+</div>
+</body>
+</html>
