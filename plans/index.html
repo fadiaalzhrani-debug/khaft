@@ -43,7 +43,8 @@
   li::before{content:'';flex:none;width:22px;height:22px;border-radius:50%;background:var(--gold-tint);border:1px solid var(--gold-soft);background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231A1712' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><path d='M5 13l4 4L19 7'/></svg>");background-size:13px;background-repeat:no-repeat;background-position:center;margin-top:2px}
   li.plus{color:var(--gold-deep)}
   li.plus::before{background-color:var(--gold);border-color:var(--gold)}
-  li small{display:block;color:var(--muted);font-size:.8rem;font-weight:700}
+  li>span{flex:1;min-width:0}
+  li small{display:block;color:var(--muted);font-size:.8rem;font-weight:700;margin-top:2px}
   .free{border-top:1px dashed var(--line);padding-top:10px;color:var(--muted);font-size:.84rem;font-weight:700}
   .cta{display:block;text-align:center;background:var(--gold);color:var(--ink);text-decoration:none;border-radius:16px;padding:15px;font-weight:900;font-size:1.05rem;box-shadow:0 8px 26px rgba(245,197,24,.35)}
   .cta.dark{background:var(--ink);color:#fff;box-shadow:0 8px 22px rgba(26,23,18,.22)}
@@ -75,9 +76,9 @@
       <span class="mo">73 ريال شهريًا</span>
       <span class="save">وفّرت 220 ريال</span>
       <ul>
-        <li>4 زيارات صيانة سباكة أو كهرباء<small>كل زيارة ساعتين، اليد علينا والقطع بسعرها، وتقدر تقسم الزيارة ساعة وساعة</small></li>
-        <li>فحص كهرباء المنزل<small>اللوحة والقواطع والتوصيلات والإضاءة والأفياش، مرة بالسنة</small></li>
-        <li>تنظيف مراوح الشفط (حتى 6)<small>الحمامات والمطبخ، مرة بالسنة</small></li>
+        <li><span>4 زيارات صيانة سباكة أو كهرباء<small>كل زيارة ساعتين، اليد علينا والقطع بسعرها، وتقدر تقسم الزيارة ساعة وساعة</small></span></li>
+        <li><span>فحص كهرباء المنزل<small>اللوحة والقواطع والتوصيلات والإضاءة والأفياش، مرة بالسنة</small></span></li>
+        <li><span>تنظيف مراوح الشفط (حتى 6)<small>الحمامات والمطبخ، مرة بالسنة</small></span></li>
       </ul>
       <div class="free">مجانًا: تذكير بموعد الفحص، تقرير مصوّر بعد كل فحص، ونقل العقد للمستأجر الجديد</div>
       <a class="cta dark" href="/www/?v=plans&pick=basic">اختر هذي الباقة</a>
@@ -91,8 +92,8 @@
       <span class="mo">115 ريال شهريًا</span>
       <span class="save">وفّرت 561 ريال</span>
       <ul>
-        <li>كل ما في باقة السباكة والكهرباء<small>4 زيارات، فحص الكهرباء، تنظيف الشفاطات</small></li>
-        <li class="plus">تنظيف المكيفات (حتى 12)<small>الوحدة الداخلية والخارجية والفلاتر، مرة بالسنة. الزيادة 25 ريال للمكيف</small></li>
+        <li><span>كل ما في باقة السباكة والكهرباء<small>4 زيارات، فحص الكهرباء، تنظيف الشفاطات</small></span></li>
+        <li class="plus"><span>تنظيف المكيفات (حتى 12)<small>الوحدة الداخلية والخارجية والفلاتر، مرة بالسنة. الزيادة 25 ريال للمكيف</small></span></li>
       </ul>
       <div class="free">مجانًا: تذكير بموعد الفحص، تقرير مصوّر بعد كل فحص، ونقل العقد للمستأجر الجديد</div>
       <a class="cta" href="/www/?v=plans&pick=ac">اختر هذي الباقة</a>
@@ -105,10 +106,10 @@
       <span class="mo">201 ريال شهريًا</span>
       <span class="save">وفّرت 961 ريال</span>
       <ul>
-        <li>كل ما في الباقة الثانية<small>4 زيارات، فحص الكهرباء، تنظيف الشفاطات، تنظيف المكيفات</small></li>
-        <li class="plus">صيانة المكيفات (حتى 12)<small>فحص الفريون والضغط والكهرباء مع التنظيف، مرة بالسنة</small></li>
-        <li class="plus">تنظيف السخان المركزي من الترسبات<small>مرة بالسنة قبل الشتاء</small></li>
-        <li class="plus">فحص الخزان والعوامة والمضخة<small>مرة بالسنة قبل الصيف</small></li>
+        <li><span>كل ما في الباقة الثانية<small>4 زيارات، فحص الكهرباء، تنظيف الشفاطات، تنظيف المكيفات</small></span></li>
+        <li class="plus"><span>صيانة المكيفات (حتى 12)<small>فحص الفريون والضغط والكهرباء مع التنظيف، مرة بالسنة</small></span></li>
+        <li class="plus"><span>تنظيف السخان المركزي من الترسبات<small>مرة بالسنة قبل الشتاء</small></span></li>
+        <li class="plus"><span>فحص الخزان والعوامة والمضخة<small>مرة بالسنة قبل الصيف</small></span></li>
       </ul>
       <div class="free">مجانًا: تذكير بموعد الفحص، تقرير مصوّر بعد كل فحص، ونقل العقد للمستأجر الجديد</div>
       <a class="cta dark" href="/www/?v=plans&pick=full">اختر هذي الباقة</a>
