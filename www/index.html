@@ -1387,6 +1387,7 @@ html,body{touch-action:manipulation}
   .pw-q input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:9px 12px;font:inherit;background:#fff}
   .pw-more{display:block;width:calc(100% - 24px);margin:10px 12px 2px;border:1.5px solid var(--line);background:var(--gold-tint);border-radius:12px;padding:10px;font:inherit;font-weight:800;cursor:pointer}
 .pb-sec{margin-top:14px;font-size:1rem;opacity:.85}.pb-sec:first-child{margin-top:0}
+.pb-ctl-card{flex:none;background:var(--gold);border-radius:12px;padding:3px 4px;gap:2px}.pb-ctl-card button{width:30px;height:30px;border-color:transparent;background:transparent;color:var(--ink)}.pb-ctl-card .q{min-width:26px;color:var(--ink)}
 </style>
 <style id="kh-skin">
 /* ═══ خافت · التصميم الجديد 2026-09-19 (طبقة شكل فقط: ألوان وخط وأشكال وحركة، بدون لمس الوظائف) ═══ */
@@ -4065,7 +4066,11 @@ function pbCard(it){
   const n=pbQ[it.id]||0, on=n>0;
   const label= it.kind==='toggle'? (on? LX('✓ مضافة','✓ Added') : LX('أضف','Add')) : (on? `<span class="bd num">${en(n)}</span> ${LX('زيادة','More')}` : LX('أضف','Add'));
   const price= it.free? `<b class="pb-gift">${LX('مجاني','Free')}</b>` : `${it.list>it.price?`<s class="num">${en(it.list)}</s>`:''}<b class="num">${en(it.price)}</b><span class="unit">${LX('ريال','SAR')}${it.u?' '+LX(it.u,it.ue):''}</span>`;
-  return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><div class="t">${esc(LX(it.n,it.en))}${it.note?`<div class="d">${esc(LX(it.note,it.noteEn))}</div>`:''}</div><div class="r"><div class="p">${price}</div><button type="button" class="pb-add" onclick="pbAdd('${it.id}')" ${it.kind==='count'&&n>=it.max?'disabled':''}>${label}</button></div></div>`;
+  // بند بعدد (زيارات ومرات): بعد أول إضافة يظهر على البطاقة نفسها عدّاد − العدد + (طلب فادية 2026-11-04 «هل في زيادة وناقص يبين العدد»)
+  const ctl=(it.kind==='count'&&on)
+    ? `<div class="pb-ctl pb-ctl-card"><button type="button" onclick="pbDelta('${it.id}',-1)" aria-label="${LX('أقل','Less')}">−</button><span class="q num">${en(n)}</span><button type="button" onclick="pbDelta('${it.id}',1)" ${n>=it.max?'disabled':''} aria-label="${LX('أكثر','More')}">+</button></div>`
+    : `<button type="button" class="pb-add" onclick="pbAdd('${it.id}')">${label}</button>`;
+  return `<div class="pb-item${on?' on':''}${it.free?' free':''}"><div class="t">${esc(LX(it.n,it.en))}${it.note?`<div class="d">${esc(LX(it.note,it.noteEn))}</div>`:''}</div><div class="r"><div class="p">${price}</div>${ctl}</div></div>`;
 }
 function pbRender(){
   const list=document.getElementById('pbList'); if(!list) return;
