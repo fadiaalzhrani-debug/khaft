@@ -58,13 +58,24 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-he
 .pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);font-size:2.4rem;z-index:500;pointer-events:none;filter:drop-shadow(0 3px 3px rgba(0,0,0,.3))}
 .mapfoot{padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
 .mapfoot p{margin:0;text-align:center;color:var(--muted);font-size:.85rem;min-height:1.3em}
+.appt{display:flex;flex-direction:column;gap:10px}
+.ap{border:1px solid var(--border);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:8px}
+.ap.on{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.ap-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.ap-top b{font-weight:600}.ap-top span{color:var(--muted);font-size:.85rem}
+.ap p{margin:0;color:var(--muted);font-size:.9rem}
+.ap-act{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn.danger{color:var(--destructive)}.btn.danger.sure{background:var(--destructive);border-color:var(--destructive);color:#fff}
+.editbar{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.link{font:inherit;background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:4px}
 @media (prefers-reduced-motion:reduce){.chip,.card,.btn{transition:none}}
 </style>
 </head>
 <body>
 
 <div class="wrap" id="form" hidden>
-  <h1>احجز زيارتك</h1>
+  <section class="card" id="mine" hidden><p class="step">مواعيدك</p><div class="appt" id="appts"></div></section>
+  <div class="editbar"><h1 id="ttl">احجز زيارتك</h1><button class="link" id="stopEdit" type="button" hidden>رجوع</button></div>
   <section class="card" id="c1"><p class="step"><i>1</i>اليوم</p><div class="row" id="days" role="listbox" aria-label="اليوم"></div></section>
   <section class="card off" id="c2"><p class="step"><i>2</i>الوقت</p><div class="row" id="times" role="listbox" aria-label="الوقت"></div></section>
   <section class="card off" id="c3"><p class="step"><i>3</i>موقع البيت</p>
@@ -81,7 +92,7 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-he
 <div class="bar" id="bar" hidden></div>
 
 <div class="wrap" id="end" hidden>
-  <div class="card msg"><div class="big" id="endIc">✅</div><h2 id="endT"></h2><p id="endS"></p></div>
+  <div class="card msg"><div class="big" id="endIc">✅</div><h2 id="endT"></h2><p id="endS"></p><button class="btn" id="again" type="button" hidden>تم</button></div>
 </div>
 
 <div class="mapwrap" id="mapwrap" hidden>
@@ -108,16 +119,18 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-he
     NET: "النت ضعيف، جرّب مرة ثانية"
   };
   var D = null, DAYS = [], st = { day: null, time: null }, loc = { lat: null, lng: null, city: "", district: "", ok: false, how: "" };
-  var map = null, busy = false;
+  var map = null, busy = false, ORDERS = [], editing = null;
 
   function api(op, body) {
     return fetch(API + op, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(Object.assign({ t: T }, body || {})) })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { if (r.status === 401) { end("⏰", "انتهت صلاحية الرابط", "اكتب لنا في الواتساب ونرسل لك رابط جديد"); throw new Error("expired"); } j.__s = r.status; return j; }); },
             function () { throw new Error("NET"); });
   }
+  var back = false;
   function end(ic, t, s) {
     ["form", "loading", "bar", "mapwrap"].forEach(function (id) { $(id).hidden = true; });
     $("endIc").textContent = ic; $("endT").textContent = t; $("endS").textContent = s; $("end").hidden = false;
+    $("again").hidden = !back;
   }
 
   // ───── الأيام والأوقات ─────
@@ -189,6 +202,42 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-he
     var p = map.getCenter(); $("mapwrap").hidden = true; resolve(p.lat, p.lng, "map");
   };
 
+  // ───── مواعيده الحالية: التفاصيل، وتعديل أو إلغاء ─────
+  function renderMine() {
+    $("mine").hidden = !ORDERS.length;
+    $("appts").innerHTML = ORDERS.map(function (o, i) {
+      var q = dayParts(o.d);
+      return '<div class="ap' + (editing && editing.id === o.id ? " on" : "") + '"><div class="ap-top"><b>' + esc(q.name + " " + q.date) + "</b><span>طلب " + esc(o.no) + "</span></div>" +
+        "<p>" + esc(o.label) + (o.place ? " · " + esc(o.place) : "") + "</p>" + (o.state ? "<p>" + esc(o.state) + "</p>" : "") +
+        (o.edit ? '<div class="ap-act"><button class="btn" type="button" data-ed="' + i + '">تعديل</button><button class="btn danger" type="button" data-cx="' + i + '">إلغاء</button></div>' : "") + "</div>";
+    }).join("");
+    [].forEach.call($("appts").querySelectorAll("[data-ed]"), function (b) { b.onclick = function () { startEdit(ORDERS[+b.dataset.ed]); }; });
+    [].forEach.call($("appts").querySelectorAll("[data-cx]"), function (b) { b.onclick = function () {
+      if (!b.classList.contains("sure")) { b.classList.add("sure"); b.textContent = "متأكد؟"; return; }
+      b.disabled = true; b.textContent = "نلغي…";
+      api("cancel", { order: ORDERS[+b.dataset.cx].id }).then(function (r) {
+        if (r.ok) { if (editing && editing.id === ORDERS[+b.dataset.cx].id) stopEdit(); ORDERS = r.orders || []; renderMine(); }
+        else { b.disabled = false; b.textContent = "ما يمديك تلغيه"; }
+      }).catch(function () { b.disabled = false; b.textContent = "إلغاء"; });
+    }; });
+  }
+  function startEdit(o) {
+    editing = o; $("ttl").textContent = "تعديل طلب " + o.no; $("stopEdit").hidden = false; $("go").textContent = "احفظ التعديل";
+    st.day = null; st.time = null;
+    DAYS.forEach(function (x, i) { if (x.d === o.d) st.day = i; });
+    if (st.day !== null) (DAYS[st.day].times || []).forEach(function (t, i) { if (t.s === o.s) st.time = i; });
+    if (o.lat && o.lng) { loc.lat = o.lat; loc.lng = o.lng; loc.city = o.city; loc.district = o.district; loc.ok = true; loc.how = "old"; showPicked("✓ " + (o.place || "الموقع الحالي"), true); }
+    renderMine(); renderDays(); renderTimes(); sync();
+    $("ttl").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function stopEdit() {
+    editing = null; $("ttl").textContent = "احجز زيارتك"; $("stopEdit").hidden = true; $("go").textContent = "أكد الحجز";
+    st.day = null; st.time = null; loc.ok = false; loc.lat = null; loc.lng = null; showPicked("", true);
+    $("here").classList.remove("on"); $("pickmap").classList.remove("on");
+    renderMine(); renderDays(); renderTimes(); sync();
+  }
+  $("stopEdit").onclick = stopEdit;
+  $("again").onclick = function () { $("end").hidden = true; $("form").hidden = false; stopEdit(); window.scrollTo(0, 0); };
   // ───── التأكيد ─────
   function sync() {
     $("days").classList.toggle("picked", st.day !== null);
@@ -204,10 +253,10 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-he
   $("go").onclick = function () {
     if (busy) return; busy = true; sync(); $("go").textContent = "نأكد حجزك…";
     var dy = DAYS[st.day], tm = dy.times[st.time];
-    api("book", { items: ITEMS, date: dy.d, start: tm.s, lat: loc.lat, lng: loc.lng, city: loc.city, district: loc.district }).then(function (r) {
-      busy = false; $("go").textContent = "أكد الحجز";
+    api("book", { items: ITEMS, date: dy.d, start: tm.s, lat: loc.lat, lng: loc.lng, city: loc.city, district: loc.district, replace: editing ? editing.id : "" }).then(function (r) {
+      busy = false; $("go").textContent = editing ? "احفظ التعديل" : "أكد الحجز";
       if (r.ok && r.pay) { location.href = r.pay; return; }
-      if (r.ok) { end("✅", "تأكد طلبك" + (r.order_no ? " رقم " + r.order_no : ""), shortDay(dy) + " · " + tm.label + "، والفني يتواصل معك قبل الموعد"); return; }
+      if (r.ok) { if (r.orders) ORDERS = r.orders; back = true; end("✅", (editing ? "تعدّل طلبك" : "تأكد طلبك") + (r.order_no ? " رقم " + r.order_no : ""), shortDay(dy) + " · " + tm.label); return; }
       if (r.error === "KHAFET_BAD_TIME") { st.time = null; loadSlots(); }
       showPicked(ERR[r.error] || "صار خطأ، جرّب مرة ثانية", false); sync();
     }).catch(function (e) { busy = false; $("go").textContent = "أكد الحجز"; if (e.message !== "expired") showPicked(ERR.NET, false); sync(); });
@@ -233,7 +282,7 @@ h1{font-size:1.6rem;font-weight:700;letter-spacing:-.01em;margin:0 0 4px;line-he
     }
     DAYS = out; renderDays(); renderTimes(); sync();
   })();
-  Promise.all([api("init").then(function (d) { D = d; }), loadSlots()]).catch(function (e) { if (e.message !== "expired") end("📶", "ما قدرنا نفتح الصفحة", ERR.NET); });
+  Promise.all([api("init").then(function (d) { D = d; ORDERS = d.orders || []; renderMine(); }), loadSlots()]).catch(function (e) { if (e.message !== "expired") end("📶", "ما قدرنا نفتح الصفحة", ERR.NET); });
 })();
 </script>
 </body>
