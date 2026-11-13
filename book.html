@@ -149,7 +149,7 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;margin:0;line-hei
   }
   function renderTimes() {
     if (st.day === null) { $("times").innerHTML = ""; return; }
-    $("times").innerHTML = DAYS[st.day].times.map(function (t, i) {
+    $("times").innerHTML = (DAYS[st.day].times || []).map(function (t, i) {
       return '<button class="chip time' + (st.time === i ? " on" : "") + '" role="option" aria-selected="' + (st.time === i) + '" data-i="' + i + '">' + esc(t.label) + "</button>";
     }).join("");
     [].forEach.call($("times").querySelectorAll("button"), function (b) { b.onclick = function () { st.time = +b.dataset.i; renderTimes(); sync(); }; });
@@ -216,13 +216,24 @@ h1{font-family:var(--display);font-weight:800;font-size:1.6rem;margin:0;line-hei
 
   function loadSlots() {
     return api("slots", { items: ITEMS, city: loc.city || "" }).then(function (r) {
+      var picked = st.day !== null && DAYS[st.day] ? DAYS[st.day].d : null;
       DAYS = (r.days || []).slice(0, 10);
-      if (st.day !== null && st.day >= DAYS.length) st.day = null;
+      st.day = null; st.time = null;
+      DAYS.forEach(function (x, i) { if (x.d === picked) st.day = i; });
       renderDays(); renderTimes(); sync();
     });
   }
   if (!T) { end("🔗", "الرابط ناقص", "اكتب لنا في الواتساب ونرسل لك رابط الحجز"); return; }
   $("form").hidden = false; $("bar").hidden = false;
+  (function () {
+    var now = new Date(Date.now() + 3 * 3600000), out = [];
+    for (var i = 0; out.length < 10 && i < 20; i++) {
+      var dt = new Date(now.getTime() + i * 86400000);
+      if (dt.getUTCDay() === 5 || (i === 0 && now.getUTCHours() >= 19)) continue;
+      out.push({ d: dt.toISOString().slice(0, 10), times: null });
+    }
+    DAYS = out; renderDays();
+  })();
   Promise.all([api("init").then(function (d) { D = d; }), loadSlots()]).catch(function (e) { if (e.message !== "expired") end("📶", "ما قدرنا نفتح الصفحة", ERR.NET); });
 })();
 </script>
